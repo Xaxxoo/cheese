@@ -1,12 +1,10 @@
-# dabdub 
-
-# 🌍 DabDub - Universal Crypto-to-Fiat Settlement Infrastructure
+# Cheese - Universal Crypto-to-Fiat Settlement Infrastructure
 
 > **Seamless crypto payments, instant fiat settlements** - A multi-chain settlement infrastructure that bridges Web3 payments with traditional banking, enabling merchants to accept stablecoin payments and receive instant fiat settlements.
 
-## 🎯 Overview
+## Overview
 
-DabDub is a B2B2C payment settlement platform that enables businesses to accept cryptocurrency payments (USDC) from customers while receiving instant fiat settlements in their bank accounts. Built with multi-chain support across EVM and non-EVM networks, it abstracts away blockchain complexity for merchants while providing secure, compliant, and fast payment processing.
+Cheese is a B2B2C payment settlement platform that enables businesses to accept cryptocurrency payments (USDC) from customers while receiving instant fiat settlements in their bank accounts. Built with multi-chain support across EVM and non-EVM networks, it abstracts away blockchain complexity for merchants while providing secure, compliant, and fast payment processing.
 
 ### Key Value Propositions
 
@@ -17,7 +15,7 @@ DabDub is a B2B2C payment settlement platform that enables businesses to accept 
 - **Enterprise-Grade**: Built for scale with monitoring, webhooks, and APIs
 - **Progressive Web App**: Works offline, installable on any device
 
-## 🏗️ Architecture
+## Architecture
 
 ### Technology Stack
 
@@ -83,7 +81,7 @@ DabDub is a B2B2C payment settlement platform that enables businesses to accept 
    - Best for: Bitcoin-secured settlements
 
 
-## 🚀 Features
+## Features
 
 ### Core Functionality
 
@@ -152,7 +150,7 @@ DabDub is a B2B2C payment settlement platform that enables businesses to accept 
 
 
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 
@@ -301,7 +299,7 @@ NEXT_PUBLIC_GA_TRACKING_ID=G-XXXXXXXXXX
 
 ### Webhook Events
 
-DabDub sends webhooks for the following events:
+Cheese sends webhooks for the following events:
 
 - `payment.created` - New payment request created
 - `payment.confirmed` - Payment confirmed on blockchain
@@ -359,21 +357,21 @@ vercel --prod
 
 
 ### Project Links
-- **Website**: [https://dabdub.xyz](https://dabdub.xyz)
-- **Documentation**: [https://docs.dabdub.xyz](https://docs.dabdub.xyz)
-- **API Reference**: [https://api.dabdub.xyz/docs](https://api.dabdub.xyz/docs)
-- **Status Page**: [https://status.dabdub.xyz](https://status.dabdub.xyz)
+- **Website**: [https://dabdub.xyz](https://Cheesepay.xyz)
+- **Documentation**: [https://docs.dabdub.xyz](https://docs.Cheesepay.xyz)
+- **API Reference**: [https://api.dabdub.xyz/docs](https://api.Cheesepay.xyz/docs)
+- **Status Page**: [https://status.dabdub.xyz](https://status.Cheesepay.xyz)
 
 ### Community
-- **Twitter**: [@CryptoSettle](https://twitter.com/dabdubpay)
-- **Telegram**: [CryptoSettle Community](https://t.me/dabdubpay)
+- **Twitter**: [@CryptoSettle](https://twitter.com/Cheesepay)
+- **Telegram**: [CryptoSettle Community](https://t.me/Cheesepay)
 
 
 ## 📞 Support
 
-- **Email**: support@dabdub.xyz
-- **Enterprise Inquiries**: enterprise@dabdub.xyz
+- **Email**: support@Cheesepay.xyz
+- **Enterprise Inquiries**: enterprise@Cheesepay.xyz
 
 
 
-Built with ❤️ by the DabDub team
+Built with ❤️ by the Cheese team
