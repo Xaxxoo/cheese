@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -12,11 +14,7 @@ import { BlockchainModule } from './modules/blockchain/blockchain.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [
-        '.env.local', 
-        '.env.development', 
-        '.env', 
-      ],
+      envFilePath: ['.env.local', '.env.development', '.env'],
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
