@@ -6,7 +6,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  Index,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Device } from '../../devices/entities/device.entity';
@@ -28,8 +27,6 @@ export enum Tier {
 }
 
 @Entity('users')
-@Index('idx_user_points', ['points'])
-@Index('idx_user_points_created', ['points', 'createdAt'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;

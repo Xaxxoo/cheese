@@ -14,8 +14,6 @@ export enum WaitlistStatus {
 }
 
 @Entity('waitlist_entries')
-@Index('idx_waitlist_points', ['points'])
-@Index('idx_waitlist_points_created', ['points', 'createdAt'])
 export class WaitlistEntry {
   @PrimaryGeneratedColumn('uuid')
   id: string;
