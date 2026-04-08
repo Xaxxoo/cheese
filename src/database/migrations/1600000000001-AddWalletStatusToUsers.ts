@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm'; 
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddWalletStatusToUsers1600000000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
