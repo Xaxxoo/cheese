@@ -53,7 +53,7 @@ export class ShareEvent {
   @JoinColumn({ name: 'waitlist_id' })
   waitlistEntry?: WaitlistEntry;
 
-  // sqlite doesn't support enum types, so use varchar in development
+  // postgres doesn't support enum types, so use varchar in development
   @Column({ type: 'varchar', length: 20 })
   platform: SharePlatform;
 

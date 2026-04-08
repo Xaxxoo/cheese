@@ -190,9 +190,9 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
           }
         }
 
-        // Local development: use SQLite (no server required)
+        // Local development: use postgres (no server required)
         return {
-          type: 'sqlite',
+          type: 'postgres',
           database: config.get('db.name') + '.db',
           entities: [
             User,

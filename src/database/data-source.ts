@@ -71,10 +71,10 @@ if (usePostgres) {
     };
   }
 } else {
-  // Local development: use SQLite (no server required)
-  // Exclude blockchain entities that use enums not supported by SQLite
+  // Local development: use postgres (no server required)
+  // Exclude blockchain entities that use enums not supported by postgres
   dataSourceConfig = {
-    type: 'sqlite',
+    type: 'postgres',
     database: (process.env.DB_NAME || 'cheese_wallet') + '.db',
     entities: [
       User,
