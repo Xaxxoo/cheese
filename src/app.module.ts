@@ -56,14 +56,16 @@ import { Otp } from './otp/entities/otp.entity';
 import { ShareEvent } from './waitlist/entities/share-event.entity';
 import { ReferralEvent } from './waitlist/entities/referral-event.entity';
 import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity';
-// import { BlockchainWallet } from './blockchain/entities/blockchain-wallet.entity';
-// import { BlockchainTransaction } from './blockchain/entities/blockchain-transaction.entity';
+// Required by BlockchainModule (imported via AuthModule) and their scheduler
+import { BlockchainWallet } from './blockchain/entities/blockchain-wallet.entity';
+import { BlockchainTransaction } from './blockchain/entities/blockchain-transaction.entity';
+// Required by NotificationsModule (imported via WaitlistModule and AgentsModule)
+import { Notification } from './notifications/entities/notification.entity';
 // Inactive entities — uncomment when their modules are re-enabled
 import { Transaction } from './transactions/entities/transaction.entity';
 import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 // import { BankTransfer } from './banks/entities/bank-transfer.entity';
 // import { VirtualCard } from './cards/entities/virtual-card.entity';
-// import { Notification } from './notifications/entities/notification.entity';
 // import { Referral } from './referral/entities/referral.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
@@ -134,14 +136,14 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
                 ShareEvent,
                 ReferralEvent,
                 WaitlistEntry,
-                // BlockchainWallet,
-                // BlockchainTransaction,
+                BlockchainWallet,
+                BlockchainTransaction,
+                Notification,
                 // Uncomment as you re-enable each module:
                 Transaction,
                 ExchangeRate,
                 // BankTransfer,
                 // VirtualCard,
-                // Notification,
                 // Referral,
                 // PaymentRequest,
               ],
@@ -169,14 +171,14 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
                 ShareEvent,
                 ReferralEvent,
                 WaitlistEntry,
-                // BlockchainWallet,
-                // BlockchainTransaction,
+                BlockchainWallet,
+                BlockchainTransaction,
+                Notification,
                 // Uncomment as you re-enable each module:
                 Transaction,
                 ExchangeRate,
                 // BankTransfer,
                 // VirtualCard,
-                // Notification,
                 // Referral,
                 // PaymentRequest,
               ],
@@ -202,14 +204,14 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
             ShareEvent,
             ReferralEvent,
             WaitlistEntry,
-            // BlockchainWallet,
-            // BlockchainTransaction,
+            BlockchainWallet,
+            BlockchainTransaction,
+            Notification,
             // Uncomment as you re-enable each module:
             Transaction,
             ExchangeRate,
             // BankTransfer,
             // VirtualCard,
-            // Notification,
             // Referral,
             // PaymentRequest,
           ],

@@ -66,9 +66,10 @@ export class OtpService {
     code: string,
     type: OtpType,
   ): Promise<boolean> {
-    const codeHash = this.hashCode(code);
+    // Find the active OTP record without filtering by code first,
+    // so that failed attempts can be tracked against the right record.
     const otp = await this.otpRepo.findOne({
-      where: { email, codeHash, type, isUsed: false },
+      where: { email, type, isUsed: false },
       order: { createdAt: 'DESC' },
     });
     if (!otp) throw new BadRequestException('Invalid or expired OTP');
@@ -78,6 +79,13 @@ export class OtpService {
       throw new BadRequestException(
         'Too many failed attempts. Request a new OTP.',
       );
+
+    const codeHash = this.hashCode(code);
+    if (otp.codeHash !== codeHash) {
+      await this.otpRepo.increment({ id: otp.id }, 'attempts', 1);
+      throw new BadRequestException('Invalid OTP');
+    }
+
     await this.otpRepo.update(otp.id, { isUsed: true });
     return true;
   }
