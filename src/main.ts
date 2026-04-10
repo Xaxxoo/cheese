@@ -20,7 +20,7 @@ async function bootstrap() {
   // ── Security ─────────────────────────────────────────────
   // Disable CSP in dev so Swagger UI loads its inline scripts
   app.use(helmet({ contentSecurityPolicy: isDev ? false : undefined }));
-  // app.use(cookieParser());
+  app.use(cookieParser());
 
   // ── CORS ────────────────────────────────────────────────
 

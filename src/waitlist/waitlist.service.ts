@@ -388,13 +388,36 @@ export class WaitlistService {
 
   @Cron('0 8 * * *', { timeZone: 'UTC' })
   async sendReminders(): Promise<void> {
-    const appUrl    = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
-    const signupBase = `${appUrl}/signup`;
-
+    const appUrl = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
     const entries = await this.entryRepo.find({ where: { status: WaitlistStatus.PENDING } });
+    const now = new Date();
 
     for (const entry of entries) {
-      this.logger.debug(`Reminding waitlist entry ${entry.email}`);
+      const daysSinceJoined = Math.floor(
+        (now.getTime() - entry.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      if (daysSinceJoined !== FIRST_REMINDER_DAYS && daysSinceJoined !== SECOND_REMINDER_DAYS) {
+        continue;
+      }
+
+      const signupUrl = `${appUrl}/signup?email=${encodeURIComponent(entry.email)}`;
+
+      this.emailService
+        .sendWaitlistReminder({
+          to:          entry.email,
+          username:    entry.username,
+          signupUrl,
+          daysOnList:  daysSinceJoined,
+          position:    entry.position ?? undefined,
+        })
+        .then(() => {
+          this.logger.log(`Reminder sent [email=${entry.email}] [day=${daysSinceJoined}]`);
+          return this.entryRepo.update(entry.id, { notifiedAt: new Date() });
+        })
+        .catch((err) =>
+          this.logger.error(`Reminder failed [email=${entry.email}]: ${(err as Error).message}`),
+        );
     }
   }
 

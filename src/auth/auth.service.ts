@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -69,8 +70,9 @@ export class AuthService {
     @InjectRepository(ReferralEvent)
     private readonly referralEventRepo: Repository<ReferralEvent>,
 
+    @Optional()
     @InjectQueue('wallet-creation')
-    private readonly walletQueue: Queue,
+    private readonly walletQueue: Queue | null,
 
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -183,7 +185,7 @@ export class AuthService {
     await this.userRepo.save(user);
 
     // Queue retry job if any chain failed — exponential backoff, 5 attempts
-    if (failedChains.length > 0) {
+    if (failedChains.length > 0 && this.walletQueue) {
       await this.walletQueue.add(
         'retry-wallet-creation',
         { userId: user.id, username: user.username, chains: failedChains } satisfies WalletCreationJobData,
@@ -196,6 +198,10 @@ export class AuthService {
       );
       this.logger.warn(
         `Wallet creation queued for retry [user=${user.id}] [chains=${failedChains.join(',')}]`,
+      );
+    } else if (failedChains.length > 0) {
+      this.logger.warn(
+        `Wallet creation failed for [user=${user.id}] [chains=${failedChains.join(',')}] — Redis unavailable, no retry queued`,
       );
     }
 
@@ -229,93 +235,6 @@ export class AuthService {
     return { userId: user.id, email: user.email };
   }
 
-  // ── Create new user (non-waitlist path) ────────────────────────────────────
-
-  private async createNewUser(dto: SignupDto): Promise<{ userId: string; email: string }> {
-    const phoneExists = await this.userRepo.findOne({ where: { phone: dto.phone } });
-    if (phoneExists) throw new ConflictException('Phone already registered');
-
-    const usernameExists = await this.userRepo.findOne({ where: { username: dto.username } });
-    if (usernameExists) throw new ConflictException('Username taken');
-
-    const emailExists = await this.userRepo.findOne({ where: { email: dto.email } });
-    if (emailExists) throw new ConflictException('Email already registered');
-
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-
-    const user = this.userRepo.create({
-      fullName:     dto.fullName,
-      email:        dto.email,
-      phone:        dto.phone,
-      username:     dto.username,
-      passwordHash,
-      referralCode: nanoid(8),
-    });
-
-    const failedChains: Array<'stellar' | 'evm'> = [];
-
-    // Stellar
-    try {
-      const stellarWallet = await this.blockchainService.createStellarWallet();
-      user.stellarPublicKey = stellarWallet.publicKey;
-      user.stellarSecretEnc = stellarWallet.secretKeyEnc;
-      this.logger.log(`Stellar wallet created [user=${dto.username}] [pk=${stellarWallet.publicKey}]`);
-    } catch (err) {
-      this.logger.error(
-        `Stellar wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
-      );
-      failedChains.push('stellar');
-    }
-
-    // EVM
-    try {
-      const evmKeypair = ethers.Wallet.createRandom();
-      const evmResult  = await this.blockchainService.createEvmWallet(
-        evmKeypair.address,
-        dto.username,
-      );
-      user.evmAddress = evmResult.walletAddress;
-      this.logger.log(
-        `EVM wallet created [user=${dto.username}] [contractWallet=${evmResult.walletAddress}]`,
-      );
-    } catch (err) {
-      this.logger.error(
-        `EVM wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
-      );
-      failedChains.push('evm');
-    }
-
-    await this.userRepo.save(user);
-
-    if (failedChains.length > 0) {
-      await this.walletQueue.add(
-        'retry-wallet-creation',
-        { userId: user.id, username: user.username, chains: failedChains } satisfies WalletCreationJobData,
-        {
-          attempts: 5,
-          backoff: { type: 'exponential', delay: 10_000 },
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-      );
-    }
-
-    await this.deviceRepo.save(
-      this.deviceRepo.create({
-        userId:     user.id,
-        deviceId:   dto.deviceId,
-        publicKey:  dto.devicePublicKey,
-        deviceName: 'Primary Device',
-      }),
-    );
-
-    const otpCode = await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
-      fullName: dto.fullName,
-    });
-    this.logger.log(`OTP sent [email=${dto.email}] [otp=${otpCode}]`);
-
-    return { userId: user.id, email: user.email };
-  }
 
   // ── Verify OTP ─────────────────────────────────────────────────────────────
 

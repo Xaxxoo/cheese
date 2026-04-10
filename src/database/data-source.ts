@@ -15,6 +15,7 @@ import { ReferralEvent } from '../waitlist/entities/referral-event.entity';
 import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
 import { BlockchainWallet } from '../blockchain/entities/blockchain-wallet.entity';
 import { BlockchainTransaction } from '../blockchain/entities/blockchain-transaction.entity';
+import { Notification } from '../notifications/entities/notification.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
 const usePostgres = !!databaseUrl || !!process.env.DB_HOST;
@@ -40,6 +41,7 @@ if (usePostgres) {
         WaitlistEntry,
         BlockchainWallet,
         BlockchainTransaction,
+        Notification,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -65,6 +67,7 @@ if (usePostgres) {
         WaitlistEntry,
         BlockchainWallet,
         BlockchainTransaction,
+        Notification,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -86,8 +89,9 @@ if (usePostgres) {
       ShareEvent,
       ReferralEvent,
       WaitlistEntry,
-      // BlockchainWallet,    // Excluded: uses enums
-      // BlockchainTransaction, // Excluded: uses enums
+      // BlockchainWallet,    // Excluded locally: uses postgres enum types
+      // BlockchainTransaction, // Excluded locally: uses postgres enum types
+      Notification,
     ],
     migrations: [join(__dirname, 'migrations/*.{ts,js}')], // Enable migrations
     synchronize: false, // Disable synchronize when using migrations

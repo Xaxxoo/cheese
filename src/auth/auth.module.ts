@@ -8,7 +8,6 @@ import { OtpModule } from '../otp/otp.module';
 import { EmailModule } from '../email/email.module';
 import { WaitlistModule } from '../waitlist/waitlist.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
-import { WalletModule } from '../wallet/wallet.module';
 import { Device } from '../devices/entities/device.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -29,12 +28,14 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
       WaitlistEntry,
       ReferralEvent,
     ]),
-    BullModule.registerQueue({ name: 'wallet-creation' }),
+    // Only register the wallet-creation queue when Redis is available
+    ...(process.env.REDIS_URL || process.env.REDIS_HOST
+      ? [BullModule.registerQueue({ name: 'wallet-creation' })]
+      : []),
     PassportModule,
     JwtModule.register({}),
     OtpModule,
     BlockchainModule,
-    WalletModule,
     EmailModule,
     WaitlistModule,
   ],
