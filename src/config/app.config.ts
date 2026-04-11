@@ -67,3 +67,11 @@ export const emailConfig = registerAs('email', () => ({
   fromName: process.env.EMAIL_FROM_NAME || 'Cheese Pay',
   replyTo: process.env.EMAIL_REPLY_TO || 'hi@cheesepay.xyz',
 }));
+
+export const pulseMfbConfig = registerAs('pulsemfb', () => ({
+  baseUrl:        process.env.PULSE_MFB_BASE_URL    || 'https://api.pulsemfb.com',
+  publicKey:      process.env.PULSE_MFB_PUBLIC_KEY,
+  privateKey:     process.env.PULSE_MFB_PRIVATE_KEY,
+  debitAccount:   process.env.PULSE_MFB_DEBIT_ACCOUNT,  // platform's NGN account at PulseMFB
+  webhookSecret:  process.env.PULSE_MFB_WEBHOOK_SECRET,  // for verifying inbound webhooks
+}));
