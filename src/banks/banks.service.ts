@@ -382,6 +382,34 @@ export class BanksService {
     }
   }
 
+  // ── POST /banks/webhook/pulsemfb ─────────────────────────────────────────
+  // Receives transfer.completed / transfer.failed events from PulseMFB.
+  // The controller verifies the HMAC signature before calling this method.
+  async processPulseMfbWebhook(event: string, data: Record<string, any>) {
+    // We only act on transfer events — ignore account.created, vas.*, etc.
+    if (!event.startsWith('transfer.')) {
+      this.logger.log(`PulseMFB webhook [event=${event}] — ignored (non-transfer)`);
+      return { processed: false, event };
+    }
+
+    const reference: string = data['reference'];
+    if (!reference) {
+      this.logger.warn(`PulseMFB webhook missing reference [event=${event}]`);
+      return { processed: false, reason: 'missing reference' };
+    }
+
+    // Map PulseMFB event names to our internal webhook events
+    const internalEvent =
+      event === 'transfer.completed' ? 'transfer.success' : 'transfer.failed';
+
+    this.logger.log(
+      `PulseMFB webhook [event=${event}] [ref=${reference}] → processing as ${internalEvent}`,
+    );
+
+    // Reuse the existing processWebhook logic
+    return this.processWebhook({ reference, event: internalEvent as any, failureReason: data['narration'] });
+  }
+
   // ── PulseMFB transfer ─────────────────────────────────────────────────────
   private async initiateBankingTransfer(params: {
     accountNumber: string;
