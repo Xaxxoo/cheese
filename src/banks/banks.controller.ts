@@ -1,11 +1,16 @@
 // src/banks/banks.controller.ts
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Post,
+  RawBodyRequest,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -13,16 +18,21 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { BanksService } from './banks.service';
-import { BankTransferDto, BankWebhookDto, ResolveAccountDto } from './dto';
+import { PulseMfbClient } from './pulsemfb.client';
+import { BankTransferDto, BankWebhookDto, PulseMfbWebhookDto, ResolveAccountDto } from './dto';
 
 @ApiTags('Banks')
 @Controller('banks')
 export class BanksController {
-  constructor(private readonly banksService: BanksService) {}
+  constructor(
+    private readonly banksService: BanksService,
+    private readonly pulseMfb: PulseMfbClient,
+  ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
   @Get()
@@ -107,5 +117,38 @@ export class BanksController {
   @ApiResponse({ status: 404, description: 'Transfer reference not found' })
   processWebhook(@Body() dto: BankWebhookDto) {
     return this.banksService.processWebhook(dto);
+  }
+
+  // ── POST /banks/webhook/pulsemfb ──────────────────────────────────────────
+  @Public()
+  @Post('webhook/pulsemfb')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'PulseMFB inbound webhook',
+    description:
+      'Receives transfer settlement events from PulseMFB.\n\n' +
+      'PulseMFB signs every request with `X-Webhook-Signature: HMAC-SHA256(webhookSecret, rawBody)`. ' +
+      'Set `PULSE_MFB_WEBHOOK_SECRET` to enable signature verification.\n\n' +
+      '**Events handled:**\n' +
+      '- `transfer.completed` → marks the transfer COMPLETED.\n' +
+      '- `transfer.failed` → refunds USDC to the user, marks transfer FAILED.\n\n' +
+      '**Configure this URL in your PulseMFB webhook settings:**\n' +
+      '`POST https://<your-domain>/v1/banks/webhook/pulsemfb`',
+  })
+  @ApiResponse({ status: 200, description: 'Webhook processed' })
+  @ApiResponse({ status: 401, description: 'Invalid webhook signature' })
+  async processPulseMfbWebhook(
+    @Body() dto: PulseMfbWebhookDto,
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('x-webhook-signature') signature: string,
+  ) {
+    // Verify HMAC-SHA256 signature sent by PulseMFB
+    const rawBody = (req.rawBody ?? Buffer.from(JSON.stringify(dto))).toString('utf8');
+    const sigValid = this.pulseMfb.verifyWebhookSignature(rawBody, signature ?? '');
+    if (!sigValid) {
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
+
+    return this.banksService.processPulseMfbWebhook(dto.event, dto.data);
   }
 }
