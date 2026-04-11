@@ -27,6 +27,7 @@ import { AuthService } from './auth.service';
 import { JwtRefreshGuard } from './guards/jwt.guard';
 import {
   ChangePinDto,
+  SetPinDto,
   ForgotPasswordDto,
   LoginDto,
   ResendOtpDto,
@@ -252,6 +253,24 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid PIN or device' })
   async verifyPin(@CurrentUser() user: User, @Body() dto: VerifyPinDto) {
     return this.authService.verifyPin(user.id, dto);
+  }
+
+  // ── POST /auth/set-pin ────────────────────────────────────
+  @Post('set-pin')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Set PIN (first time only)',
+    description:
+      'Sets the transaction PIN for a new account that has no PIN yet. ' +
+      'The PIN is stored as HMAC-SHA256(pin, deviceId) — the raw PIN never leaves the device.\n\n' +
+      'Returns 400 if a PIN is already set — use `POST /auth/change-pin` to update an existing PIN.',
+  })
+  @ApiResponse({ status: 200, description: 'PIN set successfully' })
+  @ApiResponse({ status: 400, description: 'PIN already set' })
+  async setPin(@CurrentUser() user: User, @Body() dto: SetPinDto) {
+    await this.authService.setPin(user.id, dto);
+    return { message: 'PIN set successfully' };
   }
 
   // ── POST /auth/change-pin ─────────────────────────────────
