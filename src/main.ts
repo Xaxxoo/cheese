@@ -10,6 +10,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
+    rawBody: true,  // needed for PulseMFB webhook signature verification
   });
 
   const config = app.get(ConfigService);
