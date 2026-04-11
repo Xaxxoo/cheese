@@ -16,6 +16,7 @@ import {
   ratesConfig,
   redisConfig,
   emailConfig,
+  pulseMfbConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -82,6 +83,7 @@ import { BankTransfer } from './banks/entities/bank-transfer.entity';
         otpConfig,
         ratesConfig,
         emailConfig,
+        pulseMfbConfig,
       ],
       envFilePath: ['.env'],
     }),
