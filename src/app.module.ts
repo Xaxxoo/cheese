@@ -26,14 +26,14 @@ import { AuthModule } from './auth/auth.module';
 import { DevicesModule } from './devices/devices.module';
 import { OtpModule } from './otp/otp.module';
 // import { BlockchainModule } from './blockchain/blockchain.module';
-// Phase 2 — commented out until needed
-// import { WalletModule } from './wallet/wallet.module';
-// import { RatesModule } from './rates/rates.module';
-// import { TransactionsModule } from './transactions/transactions.module';
+// Phase 2
+import { WalletModule } from './wallet/wallet.module';
+import { RatesModule } from './rates/rates.module';
+import { TransactionsModule } from './transactions/transactions.module';
 // Phase 3
-// import { SendModule } from './send/send.module';
+import { SendModule } from './send/send.module';
 // Phase 4
-// import { BanksModule } from './banks/banks.module';
+import { BanksModule } from './banks/banks.module';
 // Phase 5
 // import { CardsModule } from './cards/cards.module';
 // Phase 6
@@ -64,7 +64,7 @@ import { Notification } from './notifications/entities/notification.entity';
 // Inactive entities — uncomment when their modules are re-enabled
 import { Transaction } from './transactions/entities/transaction.entity';
 import { ExchangeRate } from './rates/entities/exchange-rate.entity';
-// import { BankTransfer } from './banks/entities/bank-transfer.entity';
+import { BankTransfer } from './banks/entities/bank-transfer.entity';
 // import { VirtualCard } from './cards/entities/virtual-card.entity';
 // import { Referral } from './referral/entities/referral.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
@@ -142,7 +142,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
                 // Uncomment as you re-enable each module:
                 Transaction,
                 ExchangeRate,
-                // BankTransfer,
+                BankTransfer,
                 // VirtualCard,
                 // Referral,
                 // PaymentRequest,
@@ -177,7 +177,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
                 // Uncomment as you re-enable each module:
                 Transaction,
                 ExchangeRate,
-                // BankTransfer,
+                BankTransfer,
                 // VirtualCard,
                 // Referral,
                 // PaymentRequest,
@@ -225,15 +225,14 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
     AuthModule,
     DevicesModule,
     OtpModule,
-    // BlockchainModule,
-    // Phase 2 — uncomment when ready
-    // WalletModule,
-    // RatesModule,
-    // TransactionsModule,
+    // Phase 2
+    WalletModule,
+    RatesModule,
+    TransactionsModule,
     // Phase 3
-    // SendModule,
+    SendModule,
     // Phase 4
-    // BanksModule,
+    BanksModule,
     // Phase 5
     // CardsModule,
     // Phase 6
