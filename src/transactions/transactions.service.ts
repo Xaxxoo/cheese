@@ -47,6 +47,10 @@ export class TransactionsService {
     await this.txRepo.update({ reference }, data);
   }
 
+  async existsByTxHash(txHash: string): Promise<boolean> {
+    return this.txRepo.existsBy({ txHash });
+  }
+
   private format(tx: Transaction) {
     return {
       id: tx.id,
