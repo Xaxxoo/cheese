@@ -22,6 +22,7 @@ import {
   BankTransferStatus,
 } from './entities/bank-transfer.entity';
 import { BankTransferDto, BankWebhookDto, ResolveAccountDto } from './dto';
+import { PulseMfbClient } from './pulsemfb.client';
 
 // ── Nigerian banks (NIP-enabled) ─────────────────────────────────────────────
 const NIGERIAN_BANKS = [
@@ -80,6 +81,7 @@ export class BanksService {
     private readonly blockchainService: BlockchainService,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
+    private readonly pulseMfb: PulseMfbClient,
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
@@ -91,12 +93,17 @@ export class BanksService {
   async resolveAccount(
     dto: ResolveAccountDto,
   ): Promise<{ accountName: string; accountNumber: string; bankCode: string }> {
-    // Placeholder: return a mock resolved name for demo/testing.
-    // Replace this block with a real NIP / bank-partner API call in production.
-    this.logger.warn('resolveAccount: using placeholder — returning mock account name');
+    const result = await this.pulseMfb.nameEnquiry(dto.accountNumber, dto.bankCode);
+
+    if (result.responseCode !== '00') {
+      throw new BadRequestException(
+        result.responseMessage || 'Account could not be resolved',
+      );
+    }
+
     return {
-      accountName:   'Demo Account Holder',
-      accountNumber: dto.accountNumber,
+      accountName:   result.accountName,
+      accountNumber: result.accountNumber,
       bankCode:      dto.bankCode,
     };
   }
@@ -375,13 +382,7 @@ export class BanksService {
     }
   }
 
-  // ── Placeholder banking provider ──────────────────────────────────────────
-  //
-  // Replace this method with a real bank/fintech API (e.g. Flutterwave, Mono,
-  // Sudo, Grey, or a direct NIP switch integration) when going to production.
-  // The method must return a unique provider-side reference for the transfer
-  // so it can be correlated with incoming webhook events.
-  //
+  // ── PulseMFB transfer ─────────────────────────────────────────────────────
   private async initiateBankingTransfer(params: {
     accountNumber: string;
     bankCode:      string;
@@ -389,15 +390,22 @@ export class BanksService {
     amountNgn:     number;
     reference:     string;
   }): Promise<string> {
-    this.logger.warn(
-      `[PLACEHOLDER] Banking transfer initiated [ref=${params.reference}] ` +
-      `[to=${params.accountName} / ${params.accountNumber} @ ${params.bankCode}] ` +
-      `[amount=₦${params.amountNgn.toLocaleString()}]`,
+    const result = await this.pulseMfb.initiateTransfer({
+      beneficiaryAccountNumber: params.accountNumber,
+      beneficiaryBankCode:      params.bankCode,
+      beneficiaryName:          params.accountName,
+      amountNgn:                params.amountNgn,
+      narration:                `Cheese Pay withdrawal [${params.reference}]`,
+      reference:                params.reference,
+    });
+
+    this.logger.log(
+      `PulseMFB transfer initiated [ref=${params.reference}] ` +
+      `[internal=${result.internal_reference}] [status=${result.status}]`,
     );
 
-    // In production: POST to your banking provider's payout endpoint here.
-    // Return their transfer reference (used to correlate webhook callbacks).
-    return `DEMO-${params.reference}`;
+    // Return the provider's internal reference for tracking
+    return result.internal_reference;
   }
 
   // ── USDC refund helper ────────────────────────────────────────────────────
