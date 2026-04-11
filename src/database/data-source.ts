@@ -16,6 +16,7 @@ import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
 import { BlockchainWallet } from '../blockchain/entities/blockchain-wallet.entity';
 import { BlockchainTransaction } from '../blockchain/entities/blockchain-transaction.entity';
 import { Notification } from '../notifications/entities/notification.entity';
+import { BankTransfer } from '../banks/entities/bank-transfer.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
 const usePostgres = !!databaseUrl || !!process.env.DB_HOST;
@@ -42,6 +43,7 @@ if (usePostgres) {
         BlockchainWallet,
         BlockchainTransaction,
         Notification,
+        BankTransfer,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -68,6 +70,7 @@ if (usePostgres) {
         BlockchainWallet,
         BlockchainTransaction,
         Notification,
+        BankTransfer,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -92,6 +95,7 @@ if (usePostgres) {
       // BlockchainWallet,    // Excluded locally: uses postgres enum types
       // BlockchainTransaction, // Excluded locally: uses postgres enum types
       Notification,
+      BankTransfer,
     ],
     migrations: [join(__dirname, 'migrations/*.{ts,js}')], // Enable migrations
     synchronize: false, // Disable synchronize when using migrations
