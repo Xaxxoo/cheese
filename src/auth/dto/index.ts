@@ -3,12 +3,13 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OtpType } from '../../otp/entities/otp.entity';
 
 export class SignupDto {
@@ -73,6 +74,15 @@ export class SignupDto {
   @IsString()
   @IsNotEmpty()
   deviceId: string;
+
+  @ApiPropertyOptional({
+    example: 'TUNDE_OK',
+    description:
+      "Optional referral code from a friend's share link. Links this account to the referrer so they earn a reward on your first transaction.",
+  })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }
 
 export class VerifyOtpDto {
