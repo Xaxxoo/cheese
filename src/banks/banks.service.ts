@@ -118,11 +118,19 @@ export class BanksService {
     );
     if (!pinOk) throw new ForbiddenException('Incorrect PIN');
 
-    // 3. Verify device
+    // 3. Verify device & device signature
     const device = await this.deviceRepo.findOne({
       where: { deviceId: dto.deviceId, userId, isActive: true },
     });
     if (!device) throw new ForbiddenException('Device not recognised');
+    const sigValid = this.blockchainService.verifyDeviceSignature({
+      publicKey: device.publicKey,
+      signature: dto.deviceSignature,
+      message:   dto.deviceId,
+    });
+    if (!sigValid && this.config.get('app.nodeEnv') === 'production') {
+      throw new ForbiddenException('Invalid device signature');
+    }
 
     // 4. Validate NGN amount
     const amountNgn = parseFloat(dto.amountNgn);
@@ -189,17 +197,16 @@ export class BanksService {
       description:   `Withdrawal to ${dto.accountName} — ${bankName}`,
     });
 
-    // 9. Deduct USDC — send to the platform wallet which funds the NGN payout
+    // 9. Deduct USDC — send to the platform wallet which funds the NGN payout.
+    //    platformWithdrawUsdc reads the platform keypair from config and handles the transfer.
     //    If this fails the user's balance is untouched, so we just mark failed and stop.
     let stellarTxHash: string;
     try {
-      const platformWallet = this.config.get<string>('stellar.platformWalletAddress');
-      stellarTxHash = await this.blockchainService.sendUsdc({
-        fromSecretEnc: user.stellarSecretEnc,
-        toAddress:     platformWallet ?? user.stellarPublicKey, // fallback for local dev
+      stellarTxHash = await this.blockchainService.platformWithdrawUsdc(
+        user.stellarSecretEnc,
         amountUsdc,
-        memo:          reference,
-      });
+        reference,
+      );
       await this.txService.update(tx.id, { txHash: stellarTxHash });
     } catch (err) {
       // USDC never left the user — safe to mark failed with no refund
