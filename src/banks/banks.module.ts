@@ -8,6 +8,7 @@ import { RatesModule } from '../rates/rates.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { BanksController } from './banks.controller';
 import { BanksService } from './banks.service';
+import { PulseMfbClient } from './pulsemfb.client';
 import { BankTransfer } from './entities/bank-transfer.entity';
 
 @Module({
@@ -18,7 +19,7 @@ import { BankTransfer } from './entities/bank-transfer.entity';
     TransactionsModule,
   ],
   controllers: [BanksController],
-  providers: [BanksService],
+  providers: [BanksService, PulseMfbClient],
   exports: [BanksService],
 })
 export class BanksModule {}
