@@ -33,6 +33,17 @@ export interface StellarTransferResult {
   balanceAfter: string;
 }
 
+export interface StellarPayment {
+  txHash:      string;
+  from:        string;
+  to:          string;
+  amount:      string;
+  assetCode:   string;
+  assetIssuer: string;
+  createdAt:   string;
+  pagingToken: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // USDC issuers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -661,8 +672,112 @@ export class BlockchainService implements OnModuleInit {
     await this.evmDebit(walletAddress, amountUsdc, `withdraw:${username}:${toAddress}`);
   }
 
-  verifyDeviceSignature(opts: { publicKey: string; signature: string; message: string }): boolean {
-    this.logger.warn(`verifyDeviceSignature not yet implemented — skipping [publicKey=${opts.publicKey}]`);
-    return true;
+  // ─────────────────────────────────────────────────────────────────────────
+  // Ready state — used by schedulers to bail early if chains not configured
+  // ─────────────────────────────────────────────────────────────────────────
+
+  get isStellarReady(): boolean {
+    return this.stellarReady;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Stellar — inbound payment polling (deposit detection)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async fetchInboundStellarUsdc(
+    publicKey: string,
+    cursor?: string,
+  ): Promise<StellarPayment[]> {
+    this.requireStellar('fetchInboundStellarUsdc');
+
+    let builder = this.stellarServer
+      .payments()
+      .forAccount(publicKey)
+      .order('asc' as const)
+      .limit(50);
+
+    if (cursor) {
+      builder = builder.cursor(cursor);
+    }
+
+    const response = await builder.call();
+    const results: StellarPayment[] = [];
+
+    for (const record of response.records) {
+      // Only process payment operations (not path_payment, etc.)
+      if (record.type !== 'payment') continue;
+
+      const payment = record as any;
+
+      // Only USDC on the configured issuer
+      if (payment.asset_type !== 'credit_alphanum4') continue;
+      if (payment.asset_code !== 'USDC') continue;
+      if (payment.asset_issuer !== this.stellarUsdcIssuer) continue;
+
+      // Only inbound — skip outgoing transfers from this address
+      if (payment.to !== publicKey) continue;
+
+      results.push({
+        txHash:      payment.transaction_hash,
+        from:        payment.from,
+        to:          payment.to,
+        amount:      payment.amount,
+        assetCode:   payment.asset_code,
+        assetIssuer: payment.asset_issuer,
+        createdAt:   payment.created_at,
+        pagingToken: payment.paging_token,
+      });
+    }
+
+    return results;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Device signature verification — ECDSA P-256 (secp256r1)
+  //
+  // Public key formats accepted:
+  //   • PEM  ("-----BEGIN PUBLIC KEY-----…")
+  //   • Base64 / base64url DER SubjectPublicKeyInfo
+  //
+  // Signature format: base64 or base64url DER-encoded ECDSA signature
+  // Message: the plain-text string that was signed on the client
+  // ─────────────────────────────────────────────────────────────────────────
+
+  verifyDeviceSignature(opts: {
+    publicKey: string;
+    signature: string;
+    message:   string;
+  }): boolean {
+    try {
+      const { publicKey: rawKey, signature, message } = opts;
+
+      // Build a KeyObject from either PEM or base64-encoded DER
+      let keyObject: crypto.KeyObject;
+      if (rawKey.startsWith('-----BEGIN')) {
+        keyObject = crypto.createPublicKey(rawKey);
+      } else {
+        // Normalise base64url → standard base64 before decoding
+        const b64 = rawKey.replace(/-/g, '+').replace(/_/g, '/');
+        keyObject = crypto.createPublicKey({
+          key:    Buffer.from(b64, 'base64'),
+          format: 'der',
+          type:   'spki',
+        });
+      }
+
+      const verify = crypto.createVerify('SHA256');
+      verify.update(message);
+
+      // Normalise signature: base64url → base64
+      const sigB64  = signature.replace(/-/g, '+').replace(/_/g, '/');
+      const sigBuf  = Buffer.from(sigB64, 'base64');
+
+      return verify.verify(keyObject, sigBuf);
+    } catch (err) {
+      this.logger.warn(
+        `verifyDeviceSignature failed: ${(err as Error).message}`,
+      );
+      return false;
+    }
   }
 }
