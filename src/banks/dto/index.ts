@@ -3,6 +3,7 @@ import {
   IsIn,
   IsNotEmpty,
   IsNumberString,
+  IsObject,
   IsOptional,
   IsString,
   MinLength,
@@ -124,4 +125,29 @@ export class BankWebhookDto {
   @IsOptional()
   @IsString()
   failureReason?: string;
+}
+
+// ── PulseMFB inbound webhook ──────────────────────────────────────────────────
+// PulseMFB posts this to POST /banks/webhook/pulsemfb when a transfer settles.
+// They also include X-Webhook-Signature: HMAC-SHA256(webhookSecret, rawBody).
+export class PulseMfbWebhookDto {
+  @ApiProperty({
+    enum: ['transfer.completed', 'transfer.failed', 'vas.completed', 'vas.failed', 'account.created'],
+    example: 'transfer.completed',
+  })
+  @IsString()
+  @IsNotEmpty()
+  event: string;
+
+  @ApiPropertyOptional({ example: '2025-12-27T14:00:00Z' })
+  @IsOptional()
+  @IsString()
+  timestamp?: string;
+
+  @ApiProperty({
+    example: { reference: 'CW-NGN-ABCDEF1234567890', amount: 5000, status: 'completed' },
+    description: 'Event payload — shape varies by event type',
+  })
+  @IsObject()
+  data: Record<string, any>;
 }
