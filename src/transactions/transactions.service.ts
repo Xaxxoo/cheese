@@ -43,6 +43,10 @@ export class TransactionsService {
     await this.txRepo.update({ id }, data);
   }
 
+  async updateByReference(reference: string, data: Partial<Transaction>): Promise<void> {
+    await this.txRepo.update({ reference }, data);
+  }
+
   private format(tx: Transaction) {
     return {
       id: tx.id,
