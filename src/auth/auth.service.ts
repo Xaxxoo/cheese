@@ -23,6 +23,7 @@ import { OtpType } from '../otp/entities/otp.entity';
 import { Device } from '../devices/entities/device.entity';
 import {
   ChangePinDto,
+  SetPinDto,
   ForgotPasswordDto,
   LoginDto,
   ResetPasswordDto,
@@ -343,6 +344,19 @@ export class AuthService {
       // Revoke all refresh tokens on password change
       await this.rtRepo.update({ userId: user.id }, { isRevoked: true });
     }
+  }
+
+  // ── Set PIN (first-time only) ──────────────────────────────────────────────
+
+  async setPin(userId: string, dto: SetPinDto): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.pinHash) {
+      throw new BadRequestException(
+        'PIN already set — use POST /auth/change-pin to update it',
+      );
+    }
+    await this.userRepo.update({ id: userId }, { pinHash: dto.pinHash });
   }
 
   // ── Verify PIN ─────────────────────────────────────────────────────────────
