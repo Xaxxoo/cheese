@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual } from 'crypto';
 import { Repository } from 'typeorm';
@@ -28,6 +29,7 @@ export class SendService {
     private readonly blockchainService: BlockchainService,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
+    private readonly config: ConfigService,
   ) {}
 
   // ── GET /send/resolve/:username ───────────────────────────
@@ -97,11 +99,19 @@ export class SendService {
     );
     if (!pinOk) throw new ForbiddenException('Incorrect PIN');
 
-    // 3. Verify device signature
+    // 3. Verify device & device signature
     const device = await this.deviceRepo.findOne({
       where: { deviceId: params.deviceId, userId: senderId, isActive: true },
     });
     if (!device) throw new ForbiddenException('Device not recognised');
+    const sigValid = this.blockchainService.verifyDeviceSignature({
+      publicKey: device.publicKey,
+      signature: params.deviceSignature,
+      message:   params.deviceId,
+    });
+    if (!sigValid && this.config.get('app.nodeEnv') === 'production') {
+      throw new ForbiddenException('Invalid device signature');
+    }
 
     // 4. Validate amount
     const amount = parseFloat(params.amountUsdc);
