@@ -8,6 +8,7 @@ import { OtpModule } from '../otp/otp.module';
 import { EmailModule } from '../email/email.module';
 import { WaitlistModule } from '../waitlist/waitlist.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
+import { ReferralModule } from '../referral/referral.module';
 import { Device } from '../devices/entities/device.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -38,6 +39,7 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
     BlockchainModule,
     EmailModule,
     WaitlistModule,
+    ReferralModule,
   ],
   controllers: [AuthController],
   providers: [

@@ -39,6 +39,7 @@ import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { WaitlistEntry, WaitlistStatus } from '../waitlist/entities/waitlist-entry.entity';
 import { ReferralEvent, REFERRAL_POINTS } from '../waitlist/entities/referral-event.entity';
 import { nanoid } from 'nanoid';
+import { ReferralService } from '../referral/referral.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -81,6 +82,9 @@ export class AuthService {
     private readonly blockchainService: BlockchainService,
     private readonly emailService: EmailService,
     private readonly waitlistService: WaitlistService,
+
+    @Optional()
+    private readonly referralService: ReferralService | null,
   ) {}
 
   // ── Signup ─────────────────────────────────────────────────────────────────
@@ -184,6 +188,11 @@ export class AuthService {
     }
 
     await this.userRepo.save(user);
+
+    // ── Link app referral (Phase 7) ───────────────────────────────────────
+    if (dto.referralCode && this.referralService) {
+      await this.referralService.linkReferral(user.id, dto.referralCode).catch(() => {});
+    }
 
     // Queue retry job if any chain failed — exponential backoff, 5 attempts
     if (failedChains.length > 0 && this.walletQueue) {
