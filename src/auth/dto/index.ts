@@ -205,6 +205,25 @@ export class VerifyPinDto {
   deviceId: string;
 }
 
+export class SetPinDto {
+  @ApiProperty({
+    example: 'hmac-sha256-base64url-here',
+    description:
+      'HMAC-SHA256(pin, deviceId) — the PIN hash to set. Only valid when no PIN exists yet.',
+  })
+  @IsString()
+  @IsNotEmpty()
+  pinHash: string;
+
+  @ApiProperty({
+    example: 'device-uuid-v4-here',
+    description: 'Device ID used as the HMAC key',
+  })
+  @IsString()
+  @IsNotEmpty()
+  deviceId: string;
+}
+
 export class ChangePinDto {
   @ApiProperty({
     example: 'hmac-sha256-old-pin-base64url',
