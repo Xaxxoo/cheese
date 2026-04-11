@@ -111,6 +111,10 @@ export class User {
   })
   stellarWalletStatus: WalletStatus;
 
+  // Cursor for incremental Horizon deposit polling (stores the paging_token of the last seen payment)
+  @Column({ name: 'stellar_deposit_cursor', type: 'varchar', nullable: true })
+  stellarDepositCursor: string | null;
+
   // ── EVM wallet ───────────────────────────────────────────────────────────
   @Column({ name: 'evm_address', type: 'varchar', nullable: true, unique: true })
   evmAddress: string | null;
