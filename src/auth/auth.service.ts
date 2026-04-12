@@ -281,7 +281,7 @@ export class AuthService {
           username: user.username,
           appUrl:   this.config.get('app.frontendUrl') + '/wallet',
         })
-        .catch(() => {});
+        .catch((err) => this.logger.error(`Welcome email failed: ${(err as Error).message}`));
 
       const tokens = await this.issueTokens(user, dto.deviceId ?? null, meta);
       return { user: this.sanitiseUser(user), tokens };
@@ -369,7 +369,7 @@ export class AuthService {
     if (user) {
       this.emailService
         .sendPasswordChanged({ to: dto.email, fullName: user.fullName })
-        .catch(() => {});
+        .catch((err) => this.logger.error(`Password changed email failed: ${(err as Error).message}`));
 
       // Revoke all refresh tokens on password change
       await this.rtRepo.update({ userId: user.id }, { isRevoked: true });
