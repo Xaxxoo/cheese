@@ -15,6 +15,7 @@ import {
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { SendService } from './send.service';
@@ -26,6 +27,7 @@ import { SendToAddressDto, SendToUsernameDto } from './dto';
 export class SendController {
   constructor(private readonly sendService: SendService) {}
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get('resolve/:username')
   @ApiOperation({
     summary: 'Resolve username to wallet info',
@@ -46,6 +48,7 @@ export class SendController {
     return this.sendService.resolveUsername(username);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('username')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -68,6 +71,7 @@ export class SendController {
     return this.sendService.sendToUsername(user.id, dto);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('address')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

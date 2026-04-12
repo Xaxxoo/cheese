@@ -20,6 +20,7 @@ import {
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthService } from './auth.service';
@@ -46,6 +47,7 @@ export class AuthController {
 
   // ── POST /auth/signup ────────────────────────────────────
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('signup')
   @ApiOperation({
     summary: 'Register a new user',
@@ -68,6 +70,7 @@ export class AuthController {
 
   // ── POST /auth/verify-otp ────────────────────────────────
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -85,6 +88,7 @@ export class AuthController {
 
   // ── POST /auth/resend-otp ────────────────────────────────
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('resend-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -100,6 +104,7 @@ export class AuthController {
 
   // ── POST /auth/login ─────────────────────────────────────
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -200,6 +205,7 @@ export class AuthController {
 
   // ── POST /auth/forgot-password ────────────────────────────
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -218,6 +224,7 @@ export class AuthController {
 
   // ── POST /auth/reset-password ─────────────────────────────
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -232,6 +239,7 @@ export class AuthController {
   }
 
   // ── POST /auth/verify-pin ─────────────────────────────────
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('verify-pin')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('access-token')
@@ -247,6 +255,7 @@ export class AuthController {
   }
 
   // ── POST /auth/change-pin ─────────────────────────────────
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('change-pin')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('access-token')

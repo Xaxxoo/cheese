@@ -13,6 +13,7 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { CardsService } from './cards.service';
@@ -70,6 +71,7 @@ export class CardsController {
     return this.cardsService.unfreezeCard(user.id);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('cvv')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

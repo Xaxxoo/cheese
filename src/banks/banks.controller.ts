@@ -13,6 +13,7 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { BanksService } from './banks.service';
@@ -38,6 +39,7 @@ export class BanksController {
     return this.banksService.getBanks();
   }
 
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('resolve')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -58,6 +60,7 @@ export class BanksController {
     return this.banksService.resolveAccount(dto);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('transfer')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
