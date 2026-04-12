@@ -1,8 +1,7 @@
 // src/email/email.service.ts
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import {
   waitlistConfirmation,
   appLaunch,
@@ -25,35 +24,20 @@ interface SendPayload {
 }
 
 @Injectable()
-export class EmailService implements OnModuleInit {
+export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private readonly apiKey: string;
   private readonly from: string;
   private readonly fromName: string;
   private readonly replyTo: string;
-  private transporter: Transporter | null = null;
+  private readonly resend: Resend;
 
   constructor(private readonly config: ConfigService) {
+    this.apiKey = config.get<string>('email.resendApiKey', '');
+    this.resend = new Resend(this.apiKey);
     this.from = config.get<string>('email.fromAddress', 'hi@cheesepay.xyz');
     this.fromName = config.get<string>('email.fromName', 'Cheese Pay');
     this.replyTo = config.get<string>('email.replyTo', 'hi@cheesepay.xyz');
-  }
-
-  onModuleInit() {
-    const apiKey = this.config.get<string>('email.zeptoApiKey', '');
-    if (!apiKey) {
-      this.logger.warn('ZEPTO_API_KEY not set — emails will be logged to console only');
-      return;
-    }
-    this.transporter = nodemailer.createTransport({
-      host: 'smtp.zeptomail.in',
-      port: 587,
-      secure: false, // STARTTLS
-      auth: {
-        user: 'emailapikey',
-        pass: apiKey,
-      },
-    });
-    this.logger.log('ZeptoMail SMTP transporter initialised');
   }
 
   private get frontendUrl() {
@@ -62,28 +46,41 @@ export class EmailService implements OnModuleInit {
 
   // ── Core send ─────────────────────────────────────────────
   private async send(payload: SendPayload): Promise<void> {
-    if (!this.transporter) {
+    const apiKey = this.config.get<string>('email.resendApiKey', '');
+
+    if (!apiKey) {
+      // Dev mode: log email to console instead of sending
       this.logger.warn(
         `[EMAIL — dev preview] To: ${payload.to} | Subject: ${payload.subject}`,
       );
       return;
     }
 
-    await this.transporter.sendMail({
-      from: `"${this.fromName}" <${this.from}>`,
-      to: payload.to,
-      subject: payload.subject,
-      html: payload.html,
-      text: payload.text,
-      replyTo: payload.replyTo || this.replyTo,
-      headers: {
-        'X-Entity-Ref-ID': `${Date.now()}-${payload.to}`,
-        'List-Unsubscribe': `<mailto:${this.replyTo}?subject=unsubscribe>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
-    });
+    try {
+      const { error } = await this.resend.emails.send({
+        from: `${this.fromName} <${this.from}>`,
+        to: payload.to,
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+        replyTo: payload.replyTo || this.replyTo,
+        headers: {
+          'X-Entity-Ref-ID': `${Date.now()}-${payload.to}`,
+          'List-Unsubscribe': `<mailto:${this.replyTo}?subject=unsubscribe>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      });
 
-    this.logger.log(`Email sent [to=${payload.to}] [subject="${payload.subject}"]`);
+      if (error) {
+        this.logger.error(`Resend API error [to=${payload.to}]: ${JSON.stringify(error)}`);
+        throw new Error(`Resend rejected email: ${(error as any).message ?? JSON.stringify(error)}`);
+      }
+
+      this.logger.log(`Email sent [to=${payload.to}] [subject="${payload.subject}"]`);
+    } catch (err) {
+      // Re-throw so callers can decide whether to swallow or surface the error
+      throw err;
+    }
   }
 
   // ── Template senders ──────────────────────────────────────
@@ -92,13 +89,13 @@ export class EmailService implements OnModuleInit {
     to: string;
     username: string;
     position?: number;
-    
+
   }): Promise<void> {
     const { subject, html } = waitlistConfirmation({
       email: params.to,
       username: params.username,
       position: params.position,
-     
+
     });
     await this.send({ to: params.to, subject, html });
   }
