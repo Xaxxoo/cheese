@@ -38,6 +38,12 @@ export class EmailService {
     this.from = config.get<string>('email.fromAddress', 'hi@cheesepay.xyz');
     this.fromName = config.get<string>('email.fromName', 'Cheese Pay');
     this.replyTo = config.get<string>('email.replyTo', 'hi@cheesepay.xyz');
+
+    if (this.apiKey) {
+      this.logger.log(`Resend initialised [from=${this.from}]`);
+    } else {
+      this.logger.warn('RESEND_API_KEY not set — emails will NOT be sent');
+    }
   }
 
   private get frontendUrl() {
