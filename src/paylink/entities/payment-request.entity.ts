@@ -30,7 +30,7 @@ export class PaymentRequest {
   creator: User;
 
   // ── Payer (null until someone pays) ──────────────────────
-  @Column({ name: 'payer_id', nullable: true })
+  @Column({ name: 'payer_id', type: 'varchar', nullable: true })
   payerId: string | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
@@ -61,11 +61,11 @@ export class PaymentRequest {
   expiresAt: Date;
 
   // ── Settled transaction reference ────────────────────────
-  @Column({ name: 'settled_tx_id', nullable: true })
+  @Column({ name: 'settled_tx_id', type: 'varchar', nullable: true })
   settledTxId: string | null;
 
   // Stellar on-chain hash once paid
-  @Column({ name: 'settled_tx_hash', nullable: true })
+  @Column({ name: 'settled_tx_hash', type: 'varchar', nullable: true })
   settledTxHash: string | null;
 
   @Column({ name: 'paid_at', type: 'integer', transformer: {
@@ -75,7 +75,7 @@ export class PaymentRequest {
   paidAt: Date | null;
 
   // IP of whoever paid (for fraud logging)
-  @Column({ name: 'payer_ip', nullable: true })
+  @Column({ name: 'payer_ip', type: 'varchar', nullable: true })
   payerIp: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

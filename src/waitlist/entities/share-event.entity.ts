@@ -36,10 +36,10 @@ export class ShareEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'user_id', nullable: true })
+  @Column({ name: 'user_id', type: 'varchar', nullable: true })
   userId: string | null;
 
-  @Column({ name: 'waitlist_id', nullable: true })
+  @Column({ name: 'waitlist_id', type: 'varchar', nullable: true })
   waitlistId: string | null;
 
   @Column({ name: 'sharer_type', type: 'varchar', default: 'waitlist' })

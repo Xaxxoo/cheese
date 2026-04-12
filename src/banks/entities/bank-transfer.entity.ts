@@ -65,10 +65,10 @@ export class BankTransfer {
   reference: string;
 
   // Paystack transfer reference
-  @Column({ name: 'provider_reference', nullable: true })
+  @Column({ name: 'provider_reference', type: 'varchar', nullable: true })
   providerReference: string | null;
 
-  @Column({ name: 'failure_reason', nullable: true })
+  @Column({ name: 'failure_reason', type: 'varchar', nullable: true })
   failureReason: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

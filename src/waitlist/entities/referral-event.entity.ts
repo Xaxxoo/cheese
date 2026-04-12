@@ -22,16 +22,16 @@ export class ReferralEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'referrer_user_id', nullable: true })
+  @Column({ name: 'referrer_user_id', type: 'varchar', nullable: true })
   referrerUserId: string | null;
 
-  @Column({ name: 'referrer_waitlist_id', nullable: true })
+  @Column({ name: 'referrer_waitlist_id', type: 'varchar', nullable: true })
   referrerWaitlistId: string | null;
 
-  @Column({ name: 'referred_user_id', nullable: true })
+  @Column({ name: 'referred_user_id', type: 'varchar', nullable: true })
   referredUserId: string | null;
 
-  @Column({ name: 'referred_waitlist_id', nullable: true })
+  @Column({ name: 'referred_waitlist_id', type: 'varchar', nullable: true })
   referredWaitlistId: string | null;
 
   @Column({ name: 'referred_type', type: 'varchar', default: 'waitlist' })

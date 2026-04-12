@@ -42,7 +42,7 @@ export class Notification {
   @Column({ default: false })
   read: boolean;
 
-  @Column({ name: 'deep_link', nullable: true })
+  @Column({ name: 'deep_link', type: 'varchar', nullable: true })
   deepLink: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

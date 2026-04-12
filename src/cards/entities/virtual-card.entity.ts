@@ -79,7 +79,7 @@ export class VirtualCard {
   })
   monthlySpend: string;
 
-  @Column({ name: 'provider_card_id', nullable: true })
+  @Column({ name: 'provider_card_id', type: 'varchar', nullable: true })
   providerCardId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
