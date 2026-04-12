@@ -46,7 +46,11 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
     AuthService,
     JwtAccessStrategy,
     JwtRefreshStrategy,
-    WalletCreationProcessor,
+    // Only register the processor when Redis is available — the @Processor
+    // decorator tries to connect to the queue at startup and crashes without it
+    ...(process.env.REDIS_URL || process.env.REDIS_HOST
+      ? [WalletCreationProcessor]
+      : []),
   ],
   exports: [AuthService, TypeOrmModule, WaitlistModule],
 })

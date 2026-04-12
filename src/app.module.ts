@@ -68,7 +68,7 @@ import { Transaction } from './transactions/entities/transaction.entity';
 import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 import { BankTransfer } from './banks/entities/bank-transfer.entity';
 // import { VirtualCard } from './cards/entities/virtual-card.entity';
-// import { Referral } from './referral/entities/referral.entity';
+import { Referral } from './referral/entities/referral.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
@@ -146,8 +146,8 @@ import { BankTransfer } from './banks/entities/bank-transfer.entity';
                 Transaction,
                 ExchangeRate,
                 BankTransfer,
+                Referral,
                 // VirtualCard,
-                // Referral,
                 // PaymentRequest,
               ],
               synchronize: config.get('app.nodeEnv') !== 'production',
@@ -181,8 +181,8 @@ import { BankTransfer } from './banks/entities/bank-transfer.entity';
                 Transaction,
                 ExchangeRate,
                 BankTransfer,
+                Referral,
                 // VirtualCard,
-                // Referral,
                 // PaymentRequest,
               ],
               synchronize: config.get('app.nodeEnv') !== 'production',
