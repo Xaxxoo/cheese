@@ -16,15 +16,12 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const port = config.get<number>('app.port', 3001);
   const origin = config.get<string>('app.frontendUrl', 'http://localhost:3000');
-  const isDev = config.get('app.nodeEnv') !== 'production';
-
   // ── Security ─────────────────────────────────────────────
-  // Disable CSP in dev so Swagger UI loads its inline scripts
-  app.use(helmet({ contentSecurityPolicy: isDev ? false : undefined }));
+  // Disable CSP — this is a pure API server, CSP is a browser concern
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cookieParser());
 
   // ── CORS ────────────────────────────────────────────────
-
   app.enableCors({
     origin: [
       process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -49,8 +46,8 @@ async function bootstrap() {
   // ── API prefix ───────────────────────────────────────────
   app.setGlobalPrefix('v1');
 
-  // ── Swagger (dev only) ───────────────────────────────────
-  if (isDev) {
+  // ── Swagger ──────────────────────────────────────────────
+  {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('🧀 Cheese Wallet API')
       .setDescription(
