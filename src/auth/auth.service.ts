@@ -109,6 +109,11 @@ export class AuthService {
       return this.createUserFromWaitlist(dto, waitlistEntry);
     }
 
+    // Allow open signup when SIGNUP_OPEN=true (set in Railway env vars)
+    if (process.env.SIGNUP_OPEN === 'true') {
+      return this.createUserFromWaitlist(dto, null);
+    }
+
     throw new ForbiddenException('Signup is currently restricted to waitlist users only');
   }
 
@@ -116,7 +121,7 @@ export class AuthService {
 
   private async createUserFromWaitlist(
     dto: SignupDto,
-    waitlistEntry: WaitlistEntry,
+    waitlistEntry: WaitlistEntry | null,
   ): Promise<{ userId: string; email: string }> {
     // Conflict checks
     const phoneExists = await this.userRepo.findOne({ where: { phone: dto.phone } });
@@ -137,8 +142,8 @@ export class AuthService {
       username:     dto.username,
       passwordHash,
       referralCode: nanoid(8),
-      referredBy:   waitlistEntry.referrerId || null,
-      points:       waitlistEntry.points,
+      referredBy:   waitlistEntry?.referrerId || null,
+      points:       waitlistEntry?.points ?? 0,
     });
 
     // ── Wallet creation (both chains) ─────────────────────────────────────
@@ -216,15 +221,17 @@ export class AuthService {
     }
 
     // ── Referral points ───────────────────────────────────────────────────
-    if (waitlistEntry.referrerId) {
+    if (waitlistEntry?.referrerId) {
       await this.awardReferralPoints(waitlistEntry.referrerId, user.id);
     }
 
     // ── Mark waitlist entry as converted ──────────────────────────────────
-    await this.waitlistRepo.update(
-      { id: waitlistEntry.id },
-      { status: WaitlistStatus.CONVERTED, convertedAt: new Date() },
-    );
+    if (waitlistEntry) {
+      await this.waitlistRepo.update(
+        { id: waitlistEntry.id },
+        { status: WaitlistStatus.CONVERTED, convertedAt: new Date() },
+      );
+    }
 
     // ── Register device ───────────────────────────────────────────────────
     await this.deviceRepo.save(
