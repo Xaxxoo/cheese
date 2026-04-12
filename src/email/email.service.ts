@@ -19,6 +19,7 @@ interface SendPayload {
   to: string;
   subject: string;
   html: string;
+  text?: string;
   replyTo?: string;
 }
 
@@ -61,7 +62,13 @@ export class EmailService {
         to: payload.to,
         subject: payload.subject,
         html: payload.html,
+        text: payload.text,
         replyTo: payload.replyTo || this.replyTo,
+        headers: {
+          'X-Entity-Ref-ID': `${Date.now()}-${payload.to}`,
+          'List-Unsubscribe': `<mailto:${this.replyTo}?subject=unsubscribe>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       });
 
       if (error) {
@@ -113,7 +120,13 @@ export class EmailService {
       otp: params.otp,
       expiresIn: params.expiresIn || '5 minutes',
     });
-    await this.send({ to: params.to, subject, html });
+    const text =
+      `Hi ${params.fullName},\n\n` +
+      `Your Cheese Wallet verification code is: ${params.otp}\n\n` +
+      `This code expires in ${params.expiresIn || '5 minutes'}.\n` +
+      `If you did not request this, ignore this email.\n\n` +
+      `– The Cheese Team`;
+    await this.send({ to: params.to, subject, html, text });
   }
 
   async sendSignupSuccess(params: {
@@ -122,12 +135,25 @@ export class EmailService {
     username: string;
     appUrl?: string;
   }): Promise<void> {
+    const appUrl = params.appUrl || 'https://cheesewallet.app/wallet';
+    const name = params.fullName || params.username;
     const { subject, html } = signupSuccess({
-      fullName: params.fullName || params.username,
+      fullName: name,
       username: params.username,
-      appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
+      appUrl,
     });
-    await this.send({ to: params.to, subject, html });
+    const text =
+      `Hi ${name},\n\n` +
+      `Your Cheese Wallet account is ready.\n\n` +
+      `Username: @${params.username}\n` +
+      `Open your wallet: ${appUrl}\n\n` +
+      `Get started:\n` +
+      `1. Fund your wallet — deposit USDC via Stellar\n` +
+      `2. Start earning — toggle Earn on for 5% APY\n` +
+      `3. Withdraw anytime — send NGN to your bank\n\n` +
+      `– The Cheese Team\n\n` +
+      `To unsubscribe, reply with "unsubscribe" in the subject.`;
+    await this.send({ to: params.to, subject, html, text });
   }
 
   async sendPasswordResetOtp(params: {

@@ -229,7 +229,7 @@ export function signupSuccess(params: {
   username: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `Welcome to Cheese Wallet, @${params.username}`;
+  const subject = `Your Cheese Wallet account is ready, @${params.username}`;
   const html = baseLayout({
     preheader: 'Your account is live. Fund your wallet and start earning.',
     body: `
