@@ -8,17 +8,21 @@ import { User } from '../auth/entities/user.entity';
 import { ShareEvent } from '../waitlist/entities/share-event.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 
+const redisAvailable = !!(process.env.REDIS_URL || process.env.REDIS_HOST);
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, ShareEvent]),
-    // Only register queue if Redis is available
-    ...(process.env.REDIS_HOST
+    ...(redisAvailable
       ? [BullModule.registerQueue({ name: 'fraud-analysis' })]
       : []),
     NotificationsModule,
   ],
   controllers: [AgentsController],
-  providers: [AgentsService, AgentsProcessor],
+  providers: [
+    AgentsService,
+    ...(redisAvailable ? [AgentsProcessor] : []),
+  ],
   exports: [AgentsService],
 })
 export class AgentsModule {}

@@ -13,11 +13,12 @@ import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AgentsModule } from '../agents/agents.module';
 
+const redisAvailable = !!(process.env.REDIS_URL || process.env.REDIS_HOST);
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, ShareEvent, ReferralEvent, WaitlistEntry]),
-    // Only register queues if Redis is available
-    ...(process.env.REDIS_HOST
+    ...(redisAvailable
       ? [
           BullModule.registerQueue(
             { name: 'share-tracking' },
@@ -30,7 +31,10 @@ import { AgentsModule } from '../agents/agents.module';
     AgentsModule,
   ],
   controllers: [WaitlistController],
-  providers: [WaitlistService, ShareProcessor, FraudProcessor],
+  providers: [
+    WaitlistService,
+    ...(redisAvailable ? [ShareProcessor, FraudProcessor] : []),
+  ],
   exports: [WaitlistService],
 })
 export class WaitlistModule {}
