@@ -65,13 +65,14 @@ export class EmailService {
       });
 
       if (error) {
-        this.logger.error(`Resend send failed: ${JSON.stringify(error)}`);
-        return; // Fail silently — don't crash the request
+        this.logger.error(`Resend API error [to=${payload.to}]: ${JSON.stringify(error)}`);
+        throw new Error(`Resend rejected email: ${(error as any).message ?? JSON.stringify(error)}`);
       }
 
-      this.logger.log(`Email sent → ${payload.to} | "${payload.subject}"`);
+      this.logger.log(`Email sent [to=${payload.to}] [subject="${payload.subject}"]`);
     } catch (err) {
-      this.logger.error(`Email network error: ${err.message}`);
+      // Re-throw so callers can decide whether to swallow or surface the error
+      throw err;
     }
   }
 

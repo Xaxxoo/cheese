@@ -274,14 +274,18 @@ export class AuthService {
       const user = await this.userRepo.findOne({ where: { email: dto.email } });
       if (!user) throw new NotFoundException('User not found');
 
-      this.emailService
-        .sendSignupSuccess({
+      try {
+        await this.emailService.sendSignupSuccess({
           to:       user.email,
           fullName: user.fullName,
           username: user.username,
           appUrl:   this.config.get('app.frontendUrl') + '/wallet',
-        })
-        .catch((err) => this.logger.error(`Welcome email failed: ${(err as Error).message}`));
+        });
+        this.logger.log(`Welcome email delivered [user=${user.email}]`);
+      } catch (err) {
+        this.logger.error(`Welcome email failed [user=${user.email}]: ${(err as Error).message}`);
+        // Do NOT rethrow — tokens are still issued even if email fails
+      }
 
       const tokens = await this.issueTokens(user, dto.deviceId ?? null, meta);
       return { user: this.sanitiseUser(user), tokens };
