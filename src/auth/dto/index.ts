@@ -109,6 +109,14 @@ export class VerifyOtpDto {
   })
   @IsEnum(OtpType)
   type: OtpType;
+
+  @ApiPropertyOptional({
+    example: 'device-uuid-v4-here',
+    description: 'Device ID from signup — required for EMAIL_VERIFY to bind the session token to the device',
+  })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 }
 
 export class ResendOtpDto {

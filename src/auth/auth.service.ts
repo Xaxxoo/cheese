@@ -255,22 +255,25 @@ export class AuthService {
 
   // ── Verify OTP ─────────────────────────────────────────────────────────────
 
-  async verifyOtp(dto: VerifyOtpDto): Promise<{ verified: boolean }> {
+  async verifyOtp(dto: VerifyOtpDto, meta: { userAgent?: string; ip?: string } = {}) {
     await this.otpService.verifyOtp(dto.email, dto.otp, dto.type);
 
     if (dto.type === OtpType.EMAIL_VERIFY) {
       await this.userRepo.update({ email: dto.email }, { emailVerified: true });
       const user = await this.userRepo.findOne({ where: { email: dto.email } });
-      if (user) {
-        this.emailService
-          .sendSignupSuccess({
-            to:       user.email,
-            fullName: user.fullName,
-            username: user.username,
-            appUrl:   this.config.get('app.frontendUrl') + '/wallet',
-          })
-          .catch(() => {});
-      }
+      if (!user) throw new NotFoundException('User not found');
+
+      this.emailService
+        .sendSignupSuccess({
+          to:       user.email,
+          fullName: user.fullName,
+          username: user.username,
+          appUrl:   this.config.get('app.frontendUrl') + '/wallet',
+        })
+        .catch(() => {});
+
+      const tokens = await this.issueTokens(user, dto.deviceId ?? null, meta);
+      return { user: this.sanitiseUser(user), tokens };
     }
 
     return { verified: true };

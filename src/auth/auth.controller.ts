@@ -83,8 +83,20 @@ export class AuthController {
     description: 'OTP verified — returns accessToken + sets refresh cookie',
   })
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
-  async verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyOtp(dto);
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.verifyOtp(dto, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    });
+    if ('tokens' in result) {
+      this.setRefreshCookie(res, result.tokens.refreshToken);
+      return { user: result.user, tokens: { accessToken: result.tokens.accessToken } };
+    }
+    return result;
   }
 
   // ── POST /auth/resend-otp ────────────────────────────────
