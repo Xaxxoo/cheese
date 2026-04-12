@@ -123,15 +123,25 @@ export class AuthService {
     dto: SignupDto,
     waitlistEntry: WaitlistEntry | null,
   ): Promise<{ userId: string; email: string }> {
+    // ── Resume unverified signup (retry-safe) ─────────────────────────────
+    const existingUnverified = await this.userRepo.findOne({
+      where: { email: dto.email, emailVerified: false },
+    });
+    if (existingUnverified) {
+      // Previous attempt created the user but OTP was never verified.
+      // Re-send the OTP and return so the user can complete verification.
+      await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
+        fullName: existingUnverified.fullName,
+      });
+      return { userId: existingUnverified.id, email: existingUnverified.email };
+    }
+
     // Conflict checks
     const phoneExists = await this.userRepo.findOne({ where: { phone: dto.phone } });
     if (phoneExists) throw new ConflictException('Phone already registered');
 
     const usernameExists = await this.userRepo.findOne({ where: { username: dto.username } });
     if (usernameExists) throw new ConflictException('Username taken');
-
-    const emailExists = await this.userRepo.findOne({ where: { email: dto.email } });
-    if (emailExists) throw new ConflictException('Email already registered');
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
@@ -233,14 +243,15 @@ export class AuthService {
       );
     }
 
-    // ── Register device ───────────────────────────────────────────────────
-    await this.deviceRepo.save(
-      this.deviceRepo.create({
+    // ── Register device (upsert — idempotent on retry) ────────────────────
+    await this.deviceRepo.upsert(
+      {
         userId:     user.id,
         deviceId:   dto.deviceId,
         publicKey:  dto.devicePublicKey,
         deviceName: 'Primary Device',
-      }),
+      },
+      { conflictPaths: ['deviceId'] },
     );
 
     // ── Send verification OTP ─────────────────────────────────────────────
