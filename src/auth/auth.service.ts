@@ -131,7 +131,7 @@ export class AuthService {
       // Previous attempt created the user but OTP was never verified.
       // Re-send the OTP and return so the user can complete verification.
       await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
-        fullName: existingUnverified.fullName,
+        fullName: existingUnverified.fullName ?? undefined,
       });
       return { userId: existingUnverified.id, email: existingUnverified.email };
     }

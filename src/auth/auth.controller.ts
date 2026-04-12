@@ -93,8 +93,8 @@ export class AuthController {
       ip: req.ip,
     });
     if ('tokens' in result) {
-      this.setRefreshCookie(res, result.tokens.refreshToken);
-      return { user: result.user, tokens: { accessToken: result.tokens.accessToken } };
+      this.setRefreshCookie(res, result.tokens!.refreshToken);
+      return { user: result.user, tokens: { accessToken: result.tokens!.accessToken } };
     }
     return result;
   }
