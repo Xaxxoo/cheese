@@ -4,6 +4,7 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -27,6 +28,7 @@ export class PaymentRequest {
   creatorId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'creator_id' })
   creator: User;
 
   // ── Payer (null until someone pays) ──────────────────────
@@ -34,6 +36,7 @@ export class PaymentRequest {
   payerId: string | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'payer_id' })
   payer: User | null;
 
   // ── Link token — the secret part of the URL ───────────────
