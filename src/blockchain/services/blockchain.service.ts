@@ -174,7 +174,8 @@ export class BlockchainService implements OnModuleInit {
   }
 
   private async initStellar(horizonUrl: string, secretKey: string): Promise<void> {
-    const isMainnet = this.config.get<string>('NODE_ENV') === 'production';
+    const network   = this.config.get<string>('STELLAR_NETWORK', 'testnet');
+    const isMainnet = network === 'mainnet';
 
     this.stellarServer          = new StellarSdk.Horizon.Server(horizonUrl);
     this.stellarNetwork         = isMainnet ? StellarSdk.Networks.PUBLIC : StellarSdk.Networks.TESTNET;
@@ -184,7 +185,7 @@ export class BlockchainService implements OnModuleInit {
     const account   = await this.stellarServer.loadAccount(this.stellarPlatformKeypair.publicKey());
     const xlmBalance = account.balances.find((b) => b.asset_type === 'native');
     this.logger.log(
-      `Stellar ready [network=${isMainnet ? 'mainnet' : 'testnet'}]` +
+      `Stellar ready [network=${network}]` +
       ` [platform=${this.stellarPlatformKeypair.publicKey()}]` +
       ` [xlm=${xlmBalance?.balance ?? '?'}]`,
     );
