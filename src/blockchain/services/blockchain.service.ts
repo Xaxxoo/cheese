@@ -129,21 +129,24 @@ export class BlockchainService implements OnModuleInit {
       }
 
       // Stellar — only init if secret looks like a real Stellar secret key (starts with S)
+      const trimmedSecret = stellarSecret?.trim();
+      console.log(`[BlockchainService] Stellar condition check — secret_len=${trimmedSecret?.length ?? 0} starts_S=${trimmedSecret?.startsWith('S')} horizon=${!!horizonUrl}`);
       if (
-        horizonUrl && stellarSecret &&
-        stellarSecret.startsWith('S') &&
-        !stellarSecret.includes('placeholder')
+        horizonUrl && trimmedSecret &&
+        trimmedSecret.startsWith('S') &&
+        !trimmedSecret.includes('placeholder')
       ) {
         try {
-          await this.initStellar(horizonUrl, stellarSecret);
+          await this.initStellar(horizonUrl, trimmedSecret);
           this.stellarReady = true;
         } catch (err) {
-          this.logger.error(`Stellar init failed: ${(err as Error).message}`);
-          console.log(`[BlockchainService] Stellar init failed: ${(err as Error).message}`);
+          const msg = (err as Error).message ?? String(err);
+          this.logger.error(`Stellar init failed: ${msg}`);
+          console.log(`[BlockchainService] Stellar init FAILED: ${msg}`);
         }
       } else {
         this.logger.warn('Stellar not configured — Stellar features disabled');
-        console.log(`[BlockchainService] Stellar not configured — secret=${stellarSecret?.startsWith('S')} horizon=${!!horizonUrl}`);
+        console.log(`[BlockchainService] Stellar not configured — trimmed_secret_len=${trimmedSecret?.length ?? 0} starts_S=${trimmedSecret?.startsWith('S')} has_horizon=${!!horizonUrl}`);
       }
 
       // Encryption — only init if key is exactly 64 hex chars
@@ -192,13 +195,25 @@ export class BlockchainService implements OnModuleInit {
     this.stellarPlatformKeypair = StellarSdk.Keypair.fromSecret(secretKey);
     this.stellarUsdcIssuer      = isMainnet ? STELLAR_USDC_ISSUERS.mainnet : STELLAR_USDC_ISSUERS.testnet;
 
-    const account   = await this.stellarServer.loadAccount(this.stellarPlatformKeypair.publicKey());
-    const xlmBalance = account.balances.find((b) => b.asset_type === 'native');
-    this.logger.log(
-      `Stellar ready [network=${network}]` +
-      ` [platform=${this.stellarPlatformKeypair.publicKey()}]` +
-      ` [xlm=${xlmBalance?.balance ?? '?'}]`,
-    );
+    console.log(`[BlockchainService] Stellar keypair derived — publicKey=${this.stellarPlatformKeypair.publicKey()}`);
+
+    // loadAccount is a connectivity/balance check only — don't let it block init
+    try {
+      const account    = await this.stellarServer.loadAccount(this.stellarPlatformKeypair.publicKey());
+      const xlmBalance = account.balances.find((b) => b.asset_type === 'native');
+      this.logger.log(
+        `Stellar ready [network=${network}]` +
+        ` [platform=${this.stellarPlatformKeypair.publicKey()}]` +
+        ` [xlm=${xlmBalance?.balance ?? '?'}]`,
+      );
+    } catch (err) {
+      const msg = (err as Error).message ?? String(err);
+      console.log(`[BlockchainService] loadAccount failed (non-fatal): ${msg}`);
+      this.logger.warn(
+        `Stellar keypair OK but loadAccount failed [network=${network}]` +
+        ` [platform=${this.stellarPlatformKeypair.publicKey()}] — ${msg}`,
+      );
+    }
   }
 
   private initEncryption(keyHex: string): void {
