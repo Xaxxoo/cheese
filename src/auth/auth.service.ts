@@ -104,7 +104,11 @@ export class AuthService {
         throw new ConflictException('Username does not match waitlist reservation');
       }
       if (waitlistEntry.status === WaitlistStatus.CONVERTED) {
-        throw new ConflictException('This email has already been converted');
+        // If the user was deleted from the DB, allow re-signup by resetting the waitlist entry
+        const userExists = await this.userRepo.findOne({ where: { email: dto.email } });
+        if (userExists) throw new ConflictException('This email has already been converted');
+        await this.waitlistRepo.update({ id: waitlistEntry.id }, { status: WaitlistStatus.PENDING });
+        waitlistEntry.status = WaitlistStatus.PENDING;
       }
       return this.createUserFromWaitlist(dto, waitlistEntry);
     }
