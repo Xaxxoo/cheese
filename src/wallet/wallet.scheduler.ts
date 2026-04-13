@@ -20,6 +20,37 @@ export class WalletDepositScheduler {
     private readonly txService: TransactionsService,
   ) {}
 
+  // ── Auto-provision missing Stellar wallets ────────────────────────────────
+  // Runs every 2 minutes. Finds users with no stellarPublicKey and creates
+  // wallets for them. Handles users who signed up before Stellar was ready.
+  @Cron('*/2 * * * *')
+  async provisionMissingWallets() {
+    if (!this.blockchainService.isStellarReady) return;
+
+    const pending = await this.userRepo.find({
+      where: { stellarPublicKey: null as any },
+      select: ['id', 'username'],
+      take: 20, // process at most 20 per run
+    });
+
+    if (pending.length === 0) return;
+
+    this.logger.log(`Auto-provisioning Stellar wallets for ${pending.length} user(s)`);
+
+    for (const user of pending) {
+      try {
+        const wallet = await this.blockchainService.createStellarWallet();
+        await this.userRepo.update({ id: user.id }, {
+          stellarPublicKey: wallet.publicKey,
+          stellarSecretEnc: wallet.secretKeyEnc,
+        });
+        this.logger.log(`Wallet provisioned [user=${user.username}] [pk=${wallet.publicKey}]`);
+      } catch (err) {
+        this.logger.error(`Auto-provision failed [user=${user.username}]: ${(err as Error).message}`);
+      }
+    }
+  }
+
   @Cron(CronExpression.EVERY_MINUTE)
   async pollStellarDeposits() {
     if (!this.blockchainService.isStellarReady) {
