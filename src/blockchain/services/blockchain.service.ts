@@ -100,57 +100,67 @@ export class BlockchainService implements OnModuleInit {
   // ─────────────────────────────────────────────────────────────────────────
 
   async onModuleInit(): Promise<void> {
-    const rpcUrl      = this.config.get<string>('BLOCKCHAIN_RPC_URL');
-    const privateKey  = this.config.get<string>('PLATFORM_WALLET_PRIVATE_KEY');
-    const contractAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
+    console.log('[BlockchainService] onModuleInit START');
+    try {
+      const rpcUrl      = this.config.get<string>('BLOCKCHAIN_RPC_URL');
+      const privateKey  = this.config.get<string>('PLATFORM_WALLET_PRIVATE_KEY');
+      const contractAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
 
-    const stellarSecret = this.config.get<string>('STELLAR_PLATFORM_SECRET_KEY');
-    const horizonUrl    = this.config.get<string>('STELLAR_HORIZON_URL');
+      const stellarSecret = this.config.get<string>('STELLAR_PLATFORM_SECRET_KEY');
+      const horizonUrl    = this.config.get<string>('STELLAR_HORIZON_URL');
+      const encKey        = this.config.get<string>('SECRET_ENCRYPTION_KEY');
 
-    const encKey = this.config.get<string>('SECRET_ENCRYPTION_KEY');
+      console.log(`[BlockchainService] stellar_secret=${stellarSecret ? 'SET' : 'MISSING'} horizon=${horizonUrl ?? 'MISSING'} enc=${encKey ? 'SET' : 'MISSING'}`);
 
-    // EVM — only init if all three vars are present and non-placeholder
-    if (
-      rpcUrl && privateKey && contractAddr &&
-      !privateKey.includes('placeholder') &&
-      !contractAddr.includes('placeholder')
-    ) {
-      try {
-        await this.initEvm(rpcUrl, privateKey, contractAddr);
-        this.evmReady = true;
-      } catch (err) {
-        this.logger.error(`EVM init failed: ${(err as Error).message}`);
+      // EVM — only init if all three vars are present and non-placeholder
+      if (
+        rpcUrl && privateKey && contractAddr &&
+        !privateKey.includes('placeholder') &&
+        !contractAddr.includes('placeholder')
+      ) {
+        try {
+          await this.initEvm(rpcUrl, privateKey, contractAddr);
+          this.evmReady = true;
+        } catch (err) {
+          this.logger.error(`EVM init failed: ${(err as Error).message}`);
+        }
+      } else {
+        this.logger.warn('EVM not configured — blockchain EVM features disabled');
       }
-    } else {
-      this.logger.warn('EVM not configured — blockchain EVM features disabled');
-    }
 
-    // Stellar — only init if secret looks like a real Stellar secret key (starts with S)
-    if (
-      horizonUrl && stellarSecret &&
-      stellarSecret.startsWith('S') &&
-      !stellarSecret.includes('placeholder')
-    ) {
-      try {
-        await this.initStellar(horizonUrl, stellarSecret);
-        this.stellarReady = true;
-      } catch (err) {
-        this.logger.error(`Stellar init failed: ${(err as Error).message}`);
+      // Stellar — only init if secret looks like a real Stellar secret key (starts with S)
+      if (
+        horizonUrl && stellarSecret &&
+        stellarSecret.startsWith('S') &&
+        !stellarSecret.includes('placeholder')
+      ) {
+        try {
+          await this.initStellar(horizonUrl, stellarSecret);
+          this.stellarReady = true;
+        } catch (err) {
+          this.logger.error(`Stellar init failed: ${(err as Error).message}`);
+          console.log(`[BlockchainService] Stellar init failed: ${(err as Error).message}`);
+        }
+      } else {
+        this.logger.warn('Stellar not configured — Stellar features disabled');
+        console.log(`[BlockchainService] Stellar not configured — secret=${stellarSecret?.startsWith('S')} horizon=${!!horizonUrl}`);
       }
-    } else {
-      this.logger.warn('Stellar not configured — Stellar features disabled');
-    }
 
-    // Encryption — only init if key is exactly 64 hex chars
-    if (encKey && encKey.length === 64 && !encKey.includes('placeholder')) {
-      try {
-        this.initEncryption(encKey);
-        this.encryptionReady = true;
-      } catch (err) {
-        this.logger.error(`Encryption init failed: ${(err as Error).message}`);
+      // Encryption — only init if key is exactly 64 hex chars
+      if (encKey && encKey.length === 64 && !encKey.includes('placeholder')) {
+        try {
+          this.initEncryption(encKey);
+          this.encryptionReady = true;
+        } catch (err) {
+          this.logger.error(`Encryption init failed: ${(err as Error).message}`);
+        }
+      } else {
+        this.logger.warn(`SECRET_ENCRYPTION_KEY not configured (length=${encKey?.length ?? 0}) — encryption disabled`);
       }
-    } else {
-      this.logger.warn('SECRET_ENCRYPTION_KEY not configured — encryption disabled');
+
+      console.log(`[BlockchainService] onModuleInit DONE — stellar=${this.stellarReady} evm=${this.evmReady} enc=${this.encryptionReady}`);
+    } catch (err) {
+      console.log(`[BlockchainService] onModuleInit CRASHED: ${(err as Error).message}`);
     }
   }
 
