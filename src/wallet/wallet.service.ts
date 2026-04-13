@@ -1,5 +1,5 @@
 // src/wallet/wallet.service.ts
-import { Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common'
 import { InjectRepository }                      from '@nestjs/typeorm'
 import { Repository }                            from 'typeorm'
 import { BlockchainService }                     from '../blockchain/services/blockchain.service'
@@ -109,6 +109,28 @@ export class WalletService {
         note:          'Send USDC to your EVM address via the Cheese EVM contract.',
       },
     ]
+  }
+
+  async provisionWallet(userId: string): Promise<{ stellarPublicKey: string; alreadyExisted: boolean }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.stellarPublicKey) {
+      return { stellarPublicKey: user.stellarPublicKey, alreadyExisted: true };
+    }
+
+    if (!this.blockchainService.isStellarReady) {
+      throw new ServiceUnavailableException('Stellar not ready — check server configuration');
+    }
+
+    const wallet = await this.blockchainService.createStellarWallet();
+    await this.userRepo.update({ id: userId }, {
+      stellarPublicKey: wallet.publicKey,
+      stellarSecretEnc: wallet.secretKeyEnc,
+    });
+
+    this.logger.log(`Wallet provisioned on-demand [userId=${userId}] [pk=${wallet.publicKey}]`);
+    return { stellarPublicKey: wallet.publicKey, alreadyExisted: false };
   }
 
   async registerOnChain(user: User): Promise<void> {

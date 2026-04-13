@@ -1,5 +1,5 @@
 // src/wallet/wallet.controller.ts
-import { Controller, Get } from '@nestjs/common'
+import { Controller, Get, Post } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger'
 import { CurrentUser }   from '../common/decorators/current-user.decorator'
 import { User }          from '../auth/entities/user.entity'
@@ -29,6 +29,16 @@ export class WalletController {
   @ApiResponse({ status: 200, description: 'stellarAddress, evmAddress, network, asset' })
   getAddress(@CurrentUser() user: User) {
     return this.walletService.getAddress(user.id)
+  }
+
+  @Post('provision')
+  @ApiOperation({
+    summary:     'Provision missing wallets',
+    description: 'Creates a Stellar wallet for the authenticated user if one does not exist yet. Safe to call multiple times — idempotent.',
+  })
+  @ApiResponse({ status: 201, description: 'stellarPublicKey, alreadyExisted' })
+  provisionWallet(@CurrentUser() user: User) {
+    return this.walletService.provisionWallet(user.id)
   }
 
   @Get('deposit-networks')
