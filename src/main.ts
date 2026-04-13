@@ -112,7 +112,7 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`\n🧀 Cheese Wallet API  →  http://localhost:${port}/v1`);
   console.log(`   Environment : ${config.get('app.nodeEnv')}`);
-  console.log(`   Stellar     : ${config.get('stellar.network')}`);
+  console.log(`   Stellar     : ${config.get('stellar.network') ?? 'NOT SET'} | key=${process.env.STELLAR_PLATFORM_SECRET_KEY ? 'SET' : 'MISSING'} | horizon=${process.env.STELLAR_HORIZON_URL ?? 'MISSING'} | enc=${process.env.SECRET_ENCRYPTION_KEY ? 'SET' : 'MISSING'}`);
   console.log(`   Frontend    : ${origin}\n`);
 }
 

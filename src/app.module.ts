@@ -18,6 +18,7 @@ import {
   redisConfig,
   emailConfig,
   pulseMfbConfig,
+  stellarConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -85,6 +86,7 @@ import { Referral } from './referral/entities/referral.entity';
         ratesConfig,
         emailConfig,
         pulseMfbConfig,
+        stellarConfig,
       ],
       envFilePath: ['.env'],
     }),
