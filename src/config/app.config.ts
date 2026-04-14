@@ -39,9 +39,9 @@ export const redisConfig = registerAs('redis', () => ({
 }));
 
 export const stellarConfig = registerAs('stellar', () => ({
-  network: process.env.STELLAR_NETWORK || 'testnet',
+  network: process.env.STELLAR_NETWORK || 'mainnet',
   horizonUrl:
-    process.env.STELLAR_HORIZON_URL || 'https://horizon-testnet.stellar.org',
+    process.env.STELLAR_HORIZON_URL || 'https://horizon.stellar.org',
   usdcIssuer: process.env.STELLAR_USDC_ISSUER,
   masterSecret: process.env.STELLAR_MASTER_SECRET,
   encryptionKey: process.env.STELLAR_WALLET_ENCRYPTION_KEY,

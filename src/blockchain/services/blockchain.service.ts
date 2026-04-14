@@ -100,71 +100,52 @@ export class BlockchainService implements OnModuleInit {
   // ─────────────────────────────────────────────────────────────────────────
 
   async onModuleInit(): Promise<void> {
-    console.log('[BlockchainService] onModuleInit START');
-    try {
-      const rpcUrl      = this.config.get<string>('BLOCKCHAIN_RPC_URL');
-      const privateKey  = this.config.get<string>('PLATFORM_WALLET_PRIVATE_KEY');
-      const contractAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
+    const rpcUrl       = this.config.get<string>('BLOCKCHAIN_RPC_URL');
+    const privateKey   = this.config.get<string>('PLATFORM_WALLET_PRIVATE_KEY');
+    const contractAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
 
-      const stellarSecret = this.config.get<string>('STELLAR_PLATFORM_SECRET_KEY');
-      const horizonUrl    = this.config.get<string>('STELLAR_HORIZON_URL');
-      const encKey        = this.config.get<string>('SECRET_ENCRYPTION_KEY');
+    const stellarSecret = this.config.get<string>('STELLAR_PLATFORM_SECRET_KEY');
+    const horizonUrl    = this.config.get<string>('STELLAR_HORIZON_URL');
+    const encKey        = this.config.get<string>('SECRET_ENCRYPTION_KEY');
 
-      console.log(`[BlockchainService] stellar_secret=${stellarSecret ? 'SET' : 'MISSING'} horizon=${horizonUrl ?? 'MISSING'} enc=${encKey ? 'SET' : 'MISSING'}`);
-
-      // EVM — only init if all three vars are present and non-placeholder
-      if (
-        rpcUrl && privateKey && contractAddr &&
-        !privateKey.includes('placeholder') &&
-        !contractAddr.includes('placeholder')
-      ) {
-        try {
-          await this.initEvm(rpcUrl, privateKey, contractAddr);
-          this.evmReady = true;
-        } catch (err) {
-          this.logger.error(`EVM init failed: ${(err as Error).message}`);
-        }
-      } else {
-        this.logger.warn('EVM not configured — blockchain EVM features disabled');
+    // EVM — init if all three vars are present
+    if (rpcUrl && privateKey && contractAddr) {
+      try {
+        await this.initEvm(rpcUrl, privateKey, contractAddr);
+        this.evmReady = true;
+      } catch (err) {
+        this.logger.error(`EVM init failed: ${(err as Error).message}`);
       }
-
-      // Stellar — only init if secret looks like a real Stellar secret key (starts with S)
-      const trimmedSecret = stellarSecret?.trim();
-      console.log(`[BlockchainService] Stellar condition check — secret_len=${trimmedSecret?.length ?? 0} starts_S=${trimmedSecret?.startsWith('S')} horizon=${!!horizonUrl}`);
-      if (
-        horizonUrl && trimmedSecret &&
-        trimmedSecret.startsWith('S') &&
-        !trimmedSecret.includes('placeholder')
-      ) {
-        try {
-          await this.initStellar(horizonUrl, trimmedSecret);
-          this.stellarReady = true;
-        } catch (err) {
-          const msg = (err as Error).message ?? String(err);
-          this.logger.error(`Stellar init failed: ${msg}`);
-          console.log(`[BlockchainService] Stellar init FAILED: ${msg}`);
-        }
-      } else {
-        this.logger.warn('Stellar not configured — Stellar features disabled');
-        console.log(`[BlockchainService] Stellar not configured — trimmed_secret_len=${trimmedSecret?.length ?? 0} starts_S=${trimmedSecret?.startsWith('S')} has_horizon=${!!horizonUrl}`);
-      }
-
-      // Encryption — only init if key is exactly 64 hex chars
-      if (encKey && encKey.length === 64 && !encKey.includes('placeholder')) {
-        try {
-          this.initEncryption(encKey);
-          this.encryptionReady = true;
-        } catch (err) {
-          this.logger.error(`Encryption init failed: ${(err as Error).message}`);
-        }
-      } else {
-        this.logger.warn(`SECRET_ENCRYPTION_KEY not configured (length=${encKey?.length ?? 0}) — encryption disabled`);
-      }
-
-      console.log(`[BlockchainService] onModuleInit DONE — stellar=${this.stellarReady} evm=${this.evmReady} enc=${this.encryptionReady}`);
-    } catch (err) {
-      console.log(`[BlockchainService] onModuleInit CRASHED: ${(err as Error).message}`);
+    } else {
+      this.logger.warn('EVM not configured — blockchain EVM features disabled');
     }
+
+    // Stellar — init if secret looks like a real Stellar secret key (starts with S)
+    const trimmedSecret = stellarSecret?.trim();
+    if (horizonUrl && trimmedSecret && trimmedSecret.startsWith('S')) {
+      try {
+        await this.initStellar(horizonUrl, trimmedSecret);
+        this.stellarReady = true;
+      } catch (err) {
+        this.logger.error(`Stellar init failed: ${(err as Error).message ?? String(err)}`);
+      }
+    } else {
+      this.logger.warn('Stellar not configured — Stellar features disabled');
+    }
+
+    // Encryption — init if key is exactly 64 hex chars
+    if (encKey && encKey.length === 64) {
+      try {
+        this.initEncryption(encKey);
+        this.encryptionReady = true;
+      } catch (err) {
+        this.logger.error(`Encryption init failed: ${(err as Error).message}`);
+      }
+    } else {
+      this.logger.warn(`SECRET_ENCRYPTION_KEY not configured (length=${encKey?.length ?? 0}) — encryption disabled`);
+    }
+
+    this.logger.log(`Blockchain init — stellar=${this.stellarReady} evm=${this.evmReady} enc=${this.encryptionReady}`);
   }
 
   private async initEvm(
@@ -187,7 +168,7 @@ export class BlockchainService implements OnModuleInit {
   }
 
   private async initStellar(horizonUrl: string, secretKey: string): Promise<void> {
-    const network   = this.config.get<string>('STELLAR_NETWORK', 'testnet');
+    const network   = this.config.get<string>('STELLAR_NETWORK', 'mainnet');
     const isMainnet = network === 'mainnet';
 
     this.stellarServer          = new StellarSdk.Horizon.Server(horizonUrl);
@@ -195,7 +176,7 @@ export class BlockchainService implements OnModuleInit {
     this.stellarPlatformKeypair = StellarSdk.Keypair.fromSecret(secretKey);
     this.stellarUsdcIssuer      = isMainnet ? STELLAR_USDC_ISSUERS.mainnet : STELLAR_USDC_ISSUERS.testnet;
 
-    console.log(`[BlockchainService] Stellar keypair derived — publicKey=${this.stellarPlatformKeypair.publicKey()}`);
+
 
     // loadAccount is a connectivity/balance check only — don't let it block init
     try {
@@ -208,7 +189,6 @@ export class BlockchainService implements OnModuleInit {
       );
     } catch (err) {
       const msg = (err as Error).message ?? String(err);
-      console.log(`[BlockchainService] loadAccount failed (non-fatal): ${msg}`);
       this.logger.warn(
         `Stellar keypair OK but loadAccount failed [network=${network}]` +
         ` [platform=${this.stellarPlatformKeypair.publicKey()}] — ${msg}`,
