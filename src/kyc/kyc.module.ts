@@ -7,14 +7,17 @@ import { KycAttempt } from './entities/kyc-attempt.entity';
 import { DojahClient } from './dojah.client';
 import { KycService } from './kyc.service';
 import { KycController } from './kyc.controller';
+import { TierMilestoneService } from './tier-milestone.service';
+import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([KycAttempt, User]),
     EmailModule,
+    TransactionsModule,
   ],
   controllers: [KycController],
-  providers: [KycService, DojahClient],
-  exports: [KycService],
+  providers: [KycService, DojahClient, TierMilestoneService],
+  exports: [KycService, TierMilestoneService],
 })
 export class KycModule {}

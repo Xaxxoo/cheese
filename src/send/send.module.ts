@@ -8,6 +8,7 @@ import { RatesModule } from '../rates/rates.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { SendController } from './send.controller';
 import { SendService } from './send.service';
+import { KycModule } from '../kyc/kyc.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { SendService } from './send.service';
     BlockchainModule,
     RatesModule,
     TransactionsModule,
+    KycModule,
   ],
   controllers: [SendController],
   providers: [SendService],

@@ -10,6 +10,7 @@ import { BanksController } from './banks.controller';
 import { BanksService } from './banks.service';
 import { PulseMfbClient } from './pulsemfb.client';
 import { BankTransfer } from './entities/bank-transfer.entity';
+import { KycModule } from '../kyc/kyc.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { BankTransfer } from './entities/bank-transfer.entity';
     BlockchainModule,
     RatesModule,
     TransactionsModule,
+    KycModule,
   ],
   controllers: [BanksController],
   providers: [BanksService, PulseMfbClient],

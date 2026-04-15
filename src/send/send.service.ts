@@ -19,6 +19,7 @@ import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { SendToAddressDto, SendToUsernameDto } from './dto';
 import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
+import { TierMilestoneService } from '../kyc/tier-milestone.service';
 
 const PLATFORM_FEE_PCT = 0.001; // 0.1%
 const MIN_USDC = 0.01;
@@ -32,6 +33,7 @@ export class SendService {
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
     private readonly config: ConfigService,
+    private readonly tierMilestone: TierMilestoneService,
   ) {}
 
   // ── GET /send/resolve/:username ───────────────────────────
@@ -180,6 +182,9 @@ export class SendService {
         status: TxStatus.COMPLETED,
         txHash,
       });
+
+      // Fire-and-forget milestone check
+      void this.tierMilestone.checkAndNotify(senderId);
 
       return this.txService.getById(senderId, tx.id);
     } catch (err) {

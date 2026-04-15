@@ -25,6 +25,7 @@ import { BankTransferDto, BankWebhookDto, ResolveAccountDto } from './dto';
 import { PulseMfbClient } from './pulsemfb.client';
 import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_NGN_LIMIT, formatNgnLimit } from '../kyc/tier.limits';
+import { TierMilestoneService } from '../kyc/tier-milestone.service';
 
 // ── Nigerian banks (NIP-enabled) ─────────────────────────────────────────────
 const NIGERIAN_BANKS = [
@@ -84,6 +85,7 @@ export class BanksService {
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
     private readonly pulseMfb: PulseMfbClient,
+    private readonly tierMilestone: TierMilestoneService,
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
@@ -295,6 +297,9 @@ export class BanksService {
 
       throw new BadRequestException(`Bank transfer failed: ${(err as Error).message}`);
     }
+
+    // Fire-and-forget milestone check
+    void this.tierMilestone.checkAndNotify(userId);
 
     return {
       reference,

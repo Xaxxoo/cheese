@@ -14,6 +14,7 @@ import {
   kycApproved,
   tierUpgrade,
 } from './templates';
+import { tierEligible } from './templates/tier-eligible';
 
 interface SendPayload {
   to: string;
@@ -302,6 +303,38 @@ export class EmailService {
       toTier: params.toTier,
       appUrl: params.appUrl || 'https://cheesewallet.app',
       benefits: tierUpgradeBenefits[params.toTier.toLowerCase()] || [],
+    });
+    await this.send({ to: params.to, subject, html });
+  }
+
+  async sendTierEligible(params: {
+    to: string;
+    fullName: string;
+    currentTier: string;
+    nextTier: string;
+    kycStep: string;
+    ctaUrl?: string;
+  }): Promise<void> {
+    const limitsByTier: Record<string, string[]> = {
+      gold: [
+        'Send up to $50,000 USDC per day',
+        'Withdraw up to ₦1,000,000 per day',
+        'Virtual card with $500 spend limit',
+      ],
+      black: [
+        'Send up to $100,000 USDC per day',
+        'Withdraw up to ₦10,000,000 per day',
+        'Virtual card with $5,000 spend limit',
+      ],
+    };
+
+    const { subject, html } = tierEligible({
+      fullName:    params.fullName,
+      currentTier: params.currentTier,
+      nextTier:    params.nextTier,
+      kycStep:     params.kycStep,
+      ctaUrl:      params.ctaUrl || `${this.frontendUrl}/kyc`,
+      newLimits:   limitsByTier[params.nextTier.toLowerCase()] || [],
     });
     await this.send({ to: params.to, subject, html });
   }

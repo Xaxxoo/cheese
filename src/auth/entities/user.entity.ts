@@ -126,6 +126,15 @@ export class User {
   })
   evmWalletStatus: WalletStatus;
 
+  // ── Tier upgrade eligibility ─────────────────────────────────────────────
+  /** Set when user first hits the Silver→Gold transaction milestone. Used to avoid repeat emails. */
+  @Column({ name: 'gold_eligible_at', type: 'timestamp', nullable: true })
+  goldEligibleAt: Date | null;
+
+  /** Set when user first hits the Gold→Black transaction milestone. Used to avoid repeat emails. */
+  @Column({ name: 'black_eligible_at', type: 'timestamp', nullable: true })
+  blackEligibleAt: Date | null;
+
   // ── Timestamps ───────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
