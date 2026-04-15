@@ -41,10 +41,10 @@ import { TransactionsModule } from './transactions/transactions.module';
 // Phase 5
 // import { CardsModule } from './cards/cards.module';
 // Phase 6
-// import { NotificationsModule } from './notifications/notifications.module';
-// import { ProfileModule } from './profile/profile.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ProfileModule } from './profile/profile.module';
 // Phase 7
-// import { ReferralModule } from './referral/referral.module';
+import { ReferralModule } from './referral/referral.module';
 // Email + Waitlist + PayLink
 import { EmailModule } from './email/email.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
@@ -248,10 +248,10 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
     // Phase 5
     // CardsModule,
     // Phase 6
-    // NotificationsModule,
-    // ProfileModule,
+    NotificationsModule,
+    ProfileModule,
     // Phase 7
-    // ReferralModule,
+    ReferralModule,
     // Email + Waitlist
     EmailModule,
     WaitlistModule,
