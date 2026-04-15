@@ -135,6 +135,10 @@ export class User {
   @Column({ name: 'black_eligible_at', type: 'timestamp', nullable: true })
   blackEligibleAt: Date | null;
 
+  /** True while document is submitted and awaiting admin approval for Black tier. */
+  @Column({ name: 'pending_black_approval', default: false })
+  pendingBlackApproval: boolean;
+
   // ── Timestamps ───────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

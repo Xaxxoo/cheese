@@ -41,6 +41,15 @@ export interface DojahSelfieResult {
   confidence: number;
 }
 
+export interface DojahDocumentResult {
+  valid:        boolean;
+  documentType: string;
+  firstName:    string;
+  lastName:     string;
+  documentNo:   string;
+  expiryDate:   string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -97,6 +106,27 @@ export class DojahClient implements OnModuleInit {
       dateOfBirth: e.birthdate   ?? '',
       phone:       e.mobile      ?? '',
       photo:       e.photo       ?? '',
+    };
+  }
+
+  // ── Document verification ───────────────────────────────────────────────────
+
+  async verifyDocument(
+    documentImage: string,
+    documentType: 'passport' | 'drivers_license' | 'nin_slip',
+  ): Promise<DojahDocumentResult> {
+    const data = await this.post<any>('/api/v1/kyc/document/verify', {
+      document_image: documentImage,
+      document_type:  documentType,
+    });
+    const e = data.entity;
+    return {
+      valid:        Boolean(e.valid ?? e.status === 'success'),
+      documentType: e.document_type ?? documentType,
+      firstName:    (e.first_name ?? '').trim(),
+      lastName:     (e.last_name  ?? '').trim(),
+      documentNo:   e.document_number ?? '',
+      expiryDate:   e.expiry_date     ?? '',
     };
   }
 

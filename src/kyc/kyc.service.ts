@@ -185,6 +185,122 @@ export class KycService {
     return { status: 'verified', tier: Tier.GOLD, message: 'Face verified. Your account has been upgraded to Gold.' };
   }
 
+  // ── Document verification (Black tier prerequisite) ─────────────────────────
+
+  async verifyDocument(
+    userId: string,
+    documentImage: string,
+    documentType: 'passport' | 'drivers_license' | 'nin_slip',
+  ): Promise<{ status: string; message: string }> {
+    this.requireDojah();
+
+    const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
+
+    if (user.tier !== Tier.GOLD) {
+      throw new BadRequestException('Document verification is only available for Gold tier users upgrading to Black.');
+    }
+    if (user.pendingBlackApproval) {
+      throw new ConflictException('Your document is already submitted and pending admin review.');
+    }
+
+    await this.guardDuplicateAttempt(userId, KycAttemptType.DOCUMENT);
+
+    let result: Awaited<ReturnType<DojahClient['verifyDocument']>>;
+    try {
+      result = await this.dojah.verifyDocument(documentImage, documentType);
+    } catch (err) {
+      await this.recordAttempt({
+        userId,
+        type:           KycAttemptType.DOCUMENT,
+        status:         KycAttemptStatus.FAILED,
+        documentSuffix: null,
+        errorMessage:   (err as Error).message,
+        rawResponse:    null,
+      });
+      throw new BadRequestException(`Document verification failed: ${(err as Error).message}`);
+    }
+
+    if (!result.valid) {
+      await this.recordAttempt({
+        userId,
+        type:           KycAttemptType.DOCUMENT,
+        status:         KycAttemptStatus.FAILED,
+        documentSuffix: result.documentNo?.slice(-4) ?? null,
+        errorMessage:   'Document could not be validated',
+        rawResponse:    result as unknown as Record<string, unknown>,
+      });
+      throw new BadRequestException('Document could not be validated. Please ensure the image is clear and try again.');
+    }
+
+    // Strip sensitive data before storing
+    const { documentNo: _docNo, ...safeResult } = result;
+    await this.recordAttempt({
+      userId,
+      type:           KycAttemptType.DOCUMENT,
+      status:         KycAttemptStatus.VERIFIED,
+      documentSuffix: result.documentNo?.slice(-4) ?? null,
+      errorMessage:   null,
+      rawResponse:    safeResult as Record<string, unknown>,
+    });
+
+    // Mark pending admin approval — admin must approve before Black is granted
+    await this.userRepo.update(userId, { pendingBlackApproval: true });
+
+    this.logger.log(`Document verified — pending admin approval for Black [userId=${userId}]`);
+
+    return {
+      status:  'pending_approval',
+      message: 'Document verified successfully. Your account is pending admin review for Black tier upgrade. You will be notified by email.',
+    };
+  }
+
+  // ── Admin: approve Black tier ────────────────────────────────────────────────
+
+  async adminApproveBlack(userId: string): Promise<{ status: string; message: string }> {
+    const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
+
+    if (!user.pendingBlackApproval) {
+      throw new BadRequestException('This user has no pending Black tier approval request.');
+    }
+    if (user.tier === Tier.BLACK) {
+      throw new ConflictException('User is already on Black tier.');
+    }
+
+    await this.userRepo.update(userId, {
+      tier:                Tier.BLACK,
+      pendingBlackApproval: false,
+    });
+
+    this.logger.log(`Black tier approved by admin [userId=${userId}]`);
+
+    await this.emailService.sendTierUpgrade({
+      to:       user.email,
+      fullName: user.fullName ?? user.username,
+      fromTier: Tier.GOLD,
+      toTier:   Tier.BLACK,
+    }).catch((e) =>
+      this.logger.warn(`Black upgrade email failed [userId=${userId}]: ${(e as Error).message}`),
+    );
+
+    return { status: 'approved', message: `User ${userId} upgraded to Black tier.` };
+  }
+
+  // ── Admin: reject Black tier ─────────────────────────────────────────────────
+
+  async adminRejectBlack(userId: string, reason: string): Promise<{ status: string; message: string }> {
+    const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
+
+    if (!user.pendingBlackApproval) {
+      throw new BadRequestException('This user has no pending Black tier approval request.');
+    }
+
+    await this.userRepo.update(userId, { pendingBlackApproval: false });
+
+    this.logger.log(`Black tier rejected by admin [userId=${userId}] [reason=${reason}]`);
+
+    return { status: 'rejected', message: `Black tier request for user ${userId} rejected.` };
+  }
+
   // ── Status ──────────────────────────────────────────────────────────────────
 
   async getStatus(userId: string): Promise<{

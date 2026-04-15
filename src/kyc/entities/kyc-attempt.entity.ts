@@ -8,9 +8,10 @@ import {
 } from 'typeorm';
 
 export enum KycAttemptType {
-  BVN    = 'bvn',
-  NIN    = 'nin',
-  SELFIE = 'selfie',
+  BVN      = 'bvn',
+  NIN      = 'nin',
+  SELFIE   = 'selfie',
+  DOCUMENT = 'document',
 }
 
 export enum KycAttemptStatus {
