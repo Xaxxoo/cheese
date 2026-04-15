@@ -143,13 +143,21 @@ export function baseLayout(params: {
 
         <!-- Header -->
         <tr>
-          <td style="padding-bottom:32px;text-align:center;">
+          <td style="padding-bottom:36px;text-align:center;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
               <tr>
-                <td style="background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});border-radius:16px;padding:12px 20px;">
-                  <span style="font-size:22px;font-weight:700;color:${BRAND.black};letter-spacing:-0.5px;font-family:'Inter',sans-serif;">
-                    &#129472; Cheese Pay
-                  </span>
+                <!-- Serif C monogram -->
+                <td style="vertical-align:middle;padding-right:16px;">
+                  <span style="font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:34px;font-weight:300;color:${BRAND.gold};letter-spacing:2px;line-height:1;">C</span>
+                </td>
+                <!-- Hairline divider -->
+                <td style="vertical-align:middle;padding-right:16px;">
+                  <div style="width:1px;height:34px;background:linear-gradient(180deg,transparent,${BRAND.gold}88,transparent);"></div>
+                </td>
+                <!-- Wordmark -->
+                <td style="vertical-align:middle;">
+                  <p style="font-size:11px;font-weight:500;letter-spacing:6px;color:${BRAND.gold};font-family:'Inter',-apple-system,sans-serif;text-transform:uppercase;line-height:1;margin:0;">CHEESE PAY</p>
+                  <p style="font-size:7.5px;font-weight:300;letter-spacing:3px;color:#555555;font-family:'Inter',-apple-system,sans-serif;text-transform:uppercase;margin:5px 0 0 0;line-height:1;">THE GOLDEN STANDARD</p>
                 </td>
               </tr>
             </table>
