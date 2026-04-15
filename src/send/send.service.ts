@@ -17,6 +17,8 @@ import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { SendToAddressDto, SendToUsernameDto } from './dto';
+import { KycStatus } from '../auth/entities/user.entity';
+import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
 
 const PLATFORM_FEE_PCT = 0.001; // 0.1%
 const MIN_USDC = 0.01;
@@ -91,7 +93,24 @@ export class SendService {
       throw new BadRequestException('Wallet not initialised');
     }
 
-    // 2. Verify PIN
+    // 2. KYC gate — must be verified before any outbound transaction
+    if (sender.kycStatus !== KycStatus.VERIFIED) {
+      throw new ForbiddenException('Identity verification required before sending. Please complete KYC in your profile.');
+    }
+
+    // 3. Daily crypto send limit
+    const amount     = parseFloat(params.amountUsdc);
+    const dailyLimit = DAILY_CRYPTO_LIMIT_USDC[sender.tier];
+    const dailySpent = await this.txService.getDailyOutboundUsdc(senderId);
+    if (dailySpent + amount > dailyLimit) {
+      const remaining = Math.max(0, dailyLimit - dailySpent);
+      throw new ForbiddenException(
+        `Daily send limit reached. Your ${sender.tier} tier allows ${formatCryptoLimit(sender.tier)}/day. ` +
+        `Remaining today: $${remaining.toFixed(2)} USDC.`,
+      );
+    }
+
+    // 4. Verify PIN
     if (!sender.pinHash) throw new BadRequestException('PIN not set');
     const pinOk = timingSafeEqual(
       Buffer.from(sender.pinHash),
@@ -113,8 +132,7 @@ export class SendService {
       throw new ForbiddenException('Invalid device signature');
     }
 
-    // 4. Validate amount
-    const amount = parseFloat(params.amountUsdc);
+    // 7. Validate amount
     if (isNaN(amount) || amount < MIN_USDC) {
       throw new BadRequestException(`Minimum send amount is ${MIN_USDC} USDC`);
     }

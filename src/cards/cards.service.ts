@@ -19,6 +19,8 @@ import {
 } from './entities/virtual-card.entity';
 import { RevealCvvDto } from './dto';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { KycStatus, Tier } from '../auth/entities/user.entity';
+import { CARD_SPEND_LIMIT_USDC } from '../kyc/tier.limits';
 
 @Injectable()
 export class CardsService {
@@ -37,6 +39,16 @@ export class CardsService {
   async getCard(
     userId: string,
   ): Promise<ReturnType<CardsService['formatCard']>> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.kycStatus !== KycStatus.VERIFIED) {
+      throw new ForbiddenException('Identity verification required before accessing a card.');
+    }
+    if (user.tier === Tier.SILVER) {
+      throw new ForbiddenException('Virtual cards are available from Gold tier onwards. Complete more transactions to unlock your upgrade.');
+    }
+
     let card =
       (await this.cardRepo.findOne({
         where: { userId, status: CardStatus.ACTIVE },
@@ -114,6 +126,8 @@ export class CardsService {
     const cvvEnc = this.blockchainService.encryptSecret(cvv);
     const last4 = cardNumber.slice(-4);
 
+    const spendLimit = CARD_SPEND_LIMIT_USDC[user.tier] ?? 500;
+
     const card = this.cardRepo.create({
       userId,
       cardNumberEnc,
@@ -124,7 +138,7 @@ export class CardsService {
       holderName: (user.fullName || user.username).toUpperCase(),
       network: CardNetwork.MASTERCARD,
       status: CardStatus.ACTIVE,
-      spendLimit: '500.000000',
+      spendLimit: spendLimit.toFixed(6),
       monthlySpend: '0.000000',
     });
 

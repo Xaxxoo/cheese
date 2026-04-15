@@ -2,7 +2,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Transaction } from './entities/transaction.entity';
+import { Transaction, TxStatus, TxType } from './entities/transaction.entity';
 
 @Injectable()
 export class TransactionsService {
@@ -49,6 +49,63 @@ export class TransactionsService {
 
   async existsByTxHash(txHash: string): Promise<boolean> {
     return this.txRepo.existsBy({ txHash });
+  }
+
+  // ── Limit & milestone queries ─────────────────────────────
+
+  /** Total USDC sent outbound today (crypto sends only). */
+  async getDailyOutboundUsdc(userId: string): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const result = await this.txRepo
+      .createQueryBuilder('tx')
+      .select('COALESCE(SUM(CAST(tx.amount_usdc AS DECIMAL)), 0)', 'total')
+      .where('tx.user_id = :userId', { userId })
+      .andWhere('tx.type IN (:...types)', {
+        types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS],
+      })
+      .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
+      .andWhere('tx.created_at >= :startOfDay', { startOfDay })
+      .getRawOne<{ total: string }>();
+
+    return parseFloat(result?.total ?? '0');
+  }
+
+  /** Total NGN transferred to Nigerian banks today. */
+  async getDailyOutboundNgn(userId: string): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const result = await this.txRepo
+      .createQueryBuilder('tx')
+      .select('COALESCE(SUM(CAST(tx.amount_ngn AS DECIMAL)), 0)', 'total')
+      .where('tx.user_id = :userId', { userId })
+      .andWhere('tx.type = :type', { type: TxType.BANK_TRANSFER })
+      .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
+      .andWhere('tx.created_at >= :startOfDay', { startOfDay })
+      .getRawOne<{ total: string }>();
+
+    return parseFloat(result?.total ?? '0');
+  }
+
+  /** Lifetime outbound volume (USDC) and transaction count — used for tier milestone checks. */
+  async getLifetimeOutboundStats(userId: string): Promise<{ totalUsdc: number; txCount: number }> {
+    const result = await this.txRepo
+      .createQueryBuilder('tx')
+      .select('COALESCE(SUM(CAST(tx.amount_usdc AS DECIMAL)), 0)', 'totalUsdc')
+      .addSelect('COUNT(*)', 'txCount')
+      .where('tx.user_id = :userId', { userId })
+      .andWhere('tx.type IN (:...types)', {
+        types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER],
+      })
+      .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
+      .getRawOne<{ totalUsdc: string; txCount: string }>();
+
+    return {
+      totalUsdc: parseFloat(result?.totalUsdc ?? '0'),
+      txCount:   parseInt(result?.txCount   ?? '0', 10),
+    };
   }
 
   private format(tx: Transaction) {

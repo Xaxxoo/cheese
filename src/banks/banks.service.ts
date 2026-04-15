@@ -23,6 +23,8 @@ import {
 } from './entities/bank-transfer.entity';
 import { BankTransferDto, BankWebhookDto, ResolveAccountDto } from './dto';
 import { PulseMfbClient } from './pulsemfb.client';
+import { KycStatus } from '../auth/entities/user.entity';
+import { DAILY_NGN_LIMIT, formatNgnLimit } from '../kyc/tier.limits';
 
 // ── Nigerian banks (NIP-enabled) ─────────────────────────────────────────────
 const NIGERIAN_BANKS = [
@@ -60,9 +62,9 @@ const NIGERIAN_BANKS = [
   { code: '120004', name: 'Kuda Bank',                  shortName: 'Kuda',       color: '#40196D', nipEnabled: true  },
 ];
 
-const TRANSFER_FEE_NGN = 50;     // flat ₦50 per withdrawal
+const TRANSFER_FEE_NGN = 50;      // flat ₦50 per withdrawal
 const MIN_TRANSFER_NGN = 100;
-const MAX_TRANSFER_NGN = 5_000_000;
+const MAX_TRANSFER_NGN = 10_000_000; // Black tier ceiling — daily limit enforced per-tier above
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -117,7 +119,24 @@ export class BanksService {
       throw new BadRequestException('Wallet not initialised');
     }
 
-    // 2. Verify PIN
+    // 2. KYC gate
+    if (user.kycStatus !== KycStatus.VERIFIED) {
+      throw new ForbiddenException('Identity verification required before withdrawing. Please complete KYC in your profile.');
+    }
+
+    // 3. Daily NGN withdrawal limit
+    const amountNgn  = parseFloat(dto.amountNgn);
+    const dailyLimit = DAILY_NGN_LIMIT[user.tier];
+    const dailySpent = await this.txService.getDailyOutboundNgn(userId);
+    if (dailySpent + amountNgn > dailyLimit) {
+      const remaining = Math.max(0, dailyLimit - dailySpent);
+      throw new ForbiddenException(
+        `Daily NGN withdrawal limit reached. Your ${user.tier} tier allows ${formatNgnLimit(user.tier)}/day. ` +
+        `Remaining today: ₦${remaining.toLocaleString()}.`,
+      );
+    }
+
+    // 4. Verify PIN
     if (!user.pinHash) throw new BadRequestException('PIN not set');
     const pinOk = timingSafeEqual(
       Buffer.from(user.pinHash),
@@ -139,8 +158,7 @@ export class BanksService {
       throw new ForbiddenException('Invalid device signature');
     }
 
-    // 4. Validate NGN amount
-    const amountNgn = parseFloat(dto.amountNgn);
+    // 7. Validate NGN amount
     if (isNaN(amountNgn) || amountNgn < MIN_TRANSFER_NGN) {
       throw new BadRequestException(
         `Minimum transfer is ₦${MIN_TRANSFER_NGN.toLocaleString()}`,
