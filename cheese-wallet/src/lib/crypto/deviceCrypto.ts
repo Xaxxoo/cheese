@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-// CHEESE WALLET — Device Crypto
+// CHEESE PAY — Device Crypto
 // Web Crypto API (ECDSA P-256) for device key management.
 // Private key is generated on-device, stored in IndexedDB
 // as a non-extractable CryptoKey — it NEVER leaves the device.

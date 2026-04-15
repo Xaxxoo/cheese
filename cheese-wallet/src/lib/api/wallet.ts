@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-// CHEESE WALLET — Wallet, Transactions, Banks, Rates, Card
+// CHEESE PAY — Wallet, Transactions, Banks, Rates, Card
 // ─────────────────────────────────────────────────────────
 
 import apiClient from './client'

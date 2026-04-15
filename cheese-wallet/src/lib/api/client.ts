@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-// CHEESE WALLET — Axios API Client
+// CHEESE PAY — Axios API Client
 // Handles: base URL, auth headers, token refresh, errors
 // ─────────────────────────────────────────────────────────
 

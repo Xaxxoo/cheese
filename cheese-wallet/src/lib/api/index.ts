@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-// CHEESE WALLET — API barrel exports
+// CHEESE PAY — API barrel exports
 // ─────────────────────────────────────────────────────────
 
 export { default as apiClient, tokenStore } from './client'

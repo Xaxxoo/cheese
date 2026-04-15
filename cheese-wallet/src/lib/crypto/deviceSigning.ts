@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-// CHEESE WALLET — Device Signing (Web Crypto API)
+// CHEESE PAY — Device Signing (Web Crypto API)
 //
 // Uses ECDSA P-256 via the browser's SubtleCrypto API.
 // The private key is generated once, stored in IndexedDB

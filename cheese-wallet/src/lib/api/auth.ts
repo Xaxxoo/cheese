@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-// CHEESE WALLET — Auth API Service
+// CHEESE PAY — Auth API Service
 // All functions return the unwrapped data payload.
 // PIN is never sent in plaintext — always HMAC-SHA256(pin, deviceId).
 // ─────────────────────────────────────────────────────────
