@@ -68,6 +68,11 @@ export const emailConfig = registerAs('email', () => ({
   replyTo: process.env.EMAIL_REPLY_TO || 'hi@cheesepay.xyz',
 }));
 
+export const dojahConfig = registerAs('dojah', () => ({
+  appId:     process.env.DOJAH_APP_ID,
+  secretKey: process.env.DOJAH_SECRET_KEY,
+}));
+
 export const pulseMfbConfig = registerAs('pulsemfb', () => ({
   baseUrl:        process.env.PULSE_MFB_BASE_URL    || 'https://api.pulsemfb.com',
   publicKey:      process.env.PULSE_MFB_PUBLIC_KEY,

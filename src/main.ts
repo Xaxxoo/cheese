@@ -74,6 +74,7 @@ async function bootstrap() {
         'access-token',
       )
       .addTag('Auth', 'Signup · Login · OTP · PIN · Password reset')
+      .addTag('KYC', 'BVN · NIN · Selfie face-match · Tier upgrades')
       .addTag('Devices', 'Device key registration and management')
       .addTag('Wallet', 'Stellar USDC balance and deposit address')
       .addTag('Rates', 'USD → NGN exchange rate (cached 60 s)')

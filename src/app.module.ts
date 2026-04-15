@@ -19,6 +19,7 @@ import {
   emailConfig,
   pulseMfbConfig,
   stellarConfig,
+  dojahConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -49,6 +50,7 @@ import { EmailModule } from './email/email.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { AgentsModule } from './agents/agents.module';
+import { KycModule } from './kyc/kyc.module';
 // import { PayLinkModule } from './paylink/paylink.module';
 
 // Active entities
@@ -70,6 +72,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 import { BankTransfer } from './banks/entities/bank-transfer.entity';
 // import { VirtualCard } from './cards/entities/virtual-card.entity';
 import { Referral } from './referral/entities/referral.entity';
+import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
@@ -87,6 +90,7 @@ import { Referral } from './referral/entities/referral.entity';
         emailConfig,
         pulseMfbConfig,
         stellarConfig,
+        dojahConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -149,6 +153,7 @@ import { Referral } from './referral/entities/referral.entity';
                 ExchangeRate,
                 BankTransfer,
                 Referral,
+                KycAttempt,
                 // VirtualCard,
                 // PaymentRequest,
               ],
@@ -184,6 +189,7 @@ import { Referral } from './referral/entities/referral.entity';
                 ExchangeRate,
                 BankTransfer,
                 Referral,
+                KycAttempt,
                 // VirtualCard,
                 // PaymentRequest,
               ],
@@ -251,6 +257,7 @@ import { Referral } from './referral/entities/referral.entity';
     WaitlistModule,
     LeaderboardModule,
     AgentsModule,
+    KycModule,
     // PayLinkModule,
   ],
   providers: [
