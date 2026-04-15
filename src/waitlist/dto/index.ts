@@ -40,7 +40,7 @@ export class JoinWaitlistDto {
   @ApiPropertyOptional({
     example: 'twitter',
     description:
-      'Where the user heard about Cheese Wallet — used for marketing attribution',
+      'Where the user heard about Cheese Pay — used for marketing attribution',
   })
   @IsOptional()
   @IsString()

@@ -49,9 +49,9 @@ async function bootstrap() {
   // ── Swagger ──────────────────────────────────────────────
   {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('🧀 Cheese Wallet API')
+      .setTitle('🧀 Cheese Pay API')
       .setDescription(
-        '## Cheese Wallet — Custodial USDC Wallet for Nigeria\n\n' +
+        '## Cheese Pay — Custodial USDC Wallet for Nigeria\n\n' +
           'All endpoints are prefixed with **/v1**.\n\n' +
           '### How to authenticate\n' +
           '1. **POST /v1/auth/signup** — create an account\n' +
@@ -101,7 +101,7 @@ async function bootstrap() {
         filter: true, // enable search bar
         showRequestDuration: true, // show ms latency on responses
       },
-      customSiteTitle: '🧀 Cheese Wallet API Docs',
+      customSiteTitle: '🧀 Cheese Pay API Docs',
     });
 
     console.log(`   Swagger UI  : http://localhost:${port}/api/docs`);
@@ -111,7 +111,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   await app.listen(port);
-  console.log(`\n🧀 Cheese Wallet API  →  http://localhost:${port}/v1`);
+  console.log(`\n🧀 Cheese Pay API  →  http://localhost:${port}/v1`);
   console.log(`   Environment : ${config.get('app.nodeEnv')}`);
   console.log(`   Stellar     : ${config.get('stellar.network') ?? 'NOT SET'} | key=${process.env.STELLAR_PLATFORM_SECRET_KEY ? 'SET' : 'MISSING'} | horizon=${process.env.STELLAR_HORIZON_URL ?? 'MISSING'} | enc=${process.env.SECRET_ENCRYPTION_KEY ? 'SET' : 'MISSING'}`);
   console.log(`   Frontend    : ${origin}\n`);

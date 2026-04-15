@@ -5,7 +5,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class SendToUsernameDto {
   @ApiProperty({
     example: 'ada_finance',
-    description: 'Cheese Wallet username of the recipient (without the @ sign)',
+    description: 'Cheese Pay username of the recipient (without the @ sign)',
   })
   @IsString()
   @IsNotEmpty()

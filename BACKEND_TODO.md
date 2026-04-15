@@ -1,4 +1,4 @@
-# Backend TODO — Cheese Wallet
+# Backend TODO — Cheese Pay
 
 Ordered by priority. Top = must be done before launch, bottom = post-launch polish.
 

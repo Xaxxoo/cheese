@@ -65,7 +65,7 @@ export class BlockchainWallet {
   chainId: number;
 
   /**
-   * Address of the Cheese Wallet contract that created this wallet.
+   * Address of the Cheese Pay contract that created this wallet.
    * Stored so historical wallets retain a reference to the exact
    * contract version, even after contract upgrades.
    */

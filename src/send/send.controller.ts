@@ -32,11 +32,11 @@ export class SendController {
   @ApiOperation({
     summary: 'Resolve username to wallet info',
     description:
-      'Looks up a Cheese Wallet username and returns the public profile (name, username, avatar) and Stellar address. Use this before initiating a send to confirm the recipient.',
+      'Looks up a Cheese Pay username and returns the public profile (name, username, avatar) and Stellar address. Use this before initiating a send to confirm the recipient.',
   })
   @ApiParam({
     name: 'username',
-    description: 'Cheese Wallet username to look up',
+    description: 'Cheese Pay username to look up',
     example: 'ada_finance',
   })
   @ApiResponse({
@@ -54,7 +54,7 @@ export class SendController {
   @ApiOperation({
     summary: 'Send USDC by username',
     description:
-      "Sends USDC to another Cheese Wallet user by username. Requires PIN hash and device signature. The transaction is recorded in both users' histories and a push notification is sent to the recipient.",
+      "Sends USDC to another Cheese Pay user by username. Requires PIN hash and device signature. The transaction is recorded in both users' histories and a push notification is sent to the recipient.",
   })
   @ApiResponse({
     status: 200,

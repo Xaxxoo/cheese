@@ -357,7 +357,7 @@ export class PayLinkService {
     const paidAt = new Date();
     const frontendUrl = this.config.get<string>(
       'app.frontendUrl',
-      'https://cheesewallet.app',
+      'https://cheesepay.xyz',
     );
 
     // 12. Notify creator (push + email) — fire-and-forget

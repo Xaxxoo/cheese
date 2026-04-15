@@ -15,7 +15,7 @@ export class CreateWalletDto {
 
   /**
    * Username to register on-chain.
-   * Must match the user's current Cheese Wallet username.
+   * Must match the user's current Cheese Pay username.
    * Immutable after registration.
    */
   @IsString()
@@ -72,13 +72,13 @@ export class CreditWalletDto {
 }
 
 export class TransferByUsernameDto {
-  /** Sender's Cheese Wallet username (registered on-chain) */
+  /** Sender's Cheese Pay username (registered on-chain) */
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
   fromUsername: string;
 
-  /** Recipient's Cheese Wallet username (must be registered on-chain) */
+  /** Recipient's Cheese Pay username (must be registered on-chain) */
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
