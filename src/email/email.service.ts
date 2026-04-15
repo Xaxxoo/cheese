@@ -129,7 +129,7 @@ export class EmailService {
     });
     const text =
       `Hi ${params.fullName},\n\n` +
-      `Your Cheese Wallet verification code is: ${params.otp}\n\n` +
+      `Your Cheese Pay verification code is: ${params.otp}\n\n` +
       `This code expires in ${params.expiresIn || '5 minutes'}.\n` +
       `If you did not request this, ignore this email.\n\n` +
       `– The Cheese Team`;
@@ -142,7 +142,7 @@ export class EmailService {
     username: string;
     appUrl?: string;
   }): Promise<void> {
-    const appUrl = params.appUrl || 'https://cheesewallet.app/wallet';
+    const appUrl = params.appUrl || 'https://cheesepay.xyz/wallet';
     const name = params.fullName || params.username;
     const { subject, html } = signupSuccess({
       fullName: name,
@@ -151,7 +151,7 @@ export class EmailService {
     });
     const text =
       `Hi ${name},\n\n` +
-      `Your Cheese Wallet account is ready.\n\n` +
+      `Your Cheese Pay account is ready.\n\n` +
       `Username: @${params.username}\n` +
       `Open your wallet: ${appUrl}\n\n` +
       `Get started:\n` +
@@ -207,7 +207,7 @@ export class EmailService {
     const { subject, html } = moneyReceived({
       ...params,
       fullName: params.fullName || 'User',
-      appUrl: params.appUrl || 'https://cheesewallet.app',
+      appUrl: params.appUrl || 'https://cheesepay.xyz',
     });
     await this.send({ to: params.to, subject, html });
   }
@@ -266,7 +266,7 @@ export class EmailService {
     const { subject, html } = kycApproved({
       fullName: params.fullName,
       tier: params.tier,
-      appUrl: params.appUrl || 'https://cheesewallet.app',
+      appUrl: params.appUrl || 'https://cheesepay.xyz',
       benefits: tierBenefits[params.tier.toLowerCase()] || tierBenefits.silver,
     });
     await this.send({ to: params.to, subject, html });
@@ -301,7 +301,7 @@ export class EmailService {
       fullName: params.fullName,
       fromTier: params.fromTier,
       toTier: params.toTier,
-      appUrl: params.appUrl || 'https://cheesewallet.app',
+      appUrl: params.appUrl || 'https://cheesepay.xyz',
       benefits: tierUpgradeBenefits[params.toTier.toLowerCase()] || [],
     });
     await this.send({ to: params.to, subject, html });
@@ -378,8 +378,8 @@ export class EmailService {
       <tr>
         <td style="padding:24px 48px;background:#0d0d0d;border-radius:0 0 16px 16px;border-top:1px solid #1f1f1f;">
           <p style="margin:0;font-size:12px;color:#444;line-height:1.6;">
-            You're receiving this because you joined the Cheese Wallet waitlist.<br>
-            © 2025 Cheese Wallet. All rights reserved.
+            You're receiving this because you joined the Cheese Pay waitlist.<br>
+            © 2025 Cheese Pay. All rights reserved.
           </p>
         </td>
       </tr>

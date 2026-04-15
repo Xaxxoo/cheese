@@ -14,6 +14,7 @@ import {
   benefitRow,
 } from './base';
 
+
 // ─────────────────────────────────────────────────────────
 // 1. WAITLIST RESERVATION CONFIRMATION
 // ─────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ export function waitlistConfirmation(params: {
   email: string;
   position?: number;
 }): { subject: string; html: string } {
-  const subject = `@${params.username} is yours — Welcome to Cheese Wallet`;
+  const subject = `@${params.username} is yours — Welcome to Cheese Pay`;
   const html = baseLayout({
     preheader: `Your username @${params.username} has been reserved. You're among the first.`,
     body: `
@@ -41,7 +42,7 @@ export function waitlistConfirmation(params: {
         </h1>
         <p style="font-size:16px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
-          You've secured your spot before the world finds out. When Cheese Wallet launches,
+          You've secured your spot before the world finds out. When Cheese Pay launches,
           your username will be waiting — reserved exclusively for you.
         </p>
 
@@ -102,7 +103,7 @@ export function appLaunch(params: { username: string; appUrl: string }): {
   subject: string;
   html: string;
 } {
-  const subject = `Cheese Wallet is LIVE — @${params.username}, your turn.`;
+  const subject = `Cheese Pay is LIVE — @${params.username}, your turn.`;
   const html = baseLayout({
     preheader: 'The wait is over. Your wallet is ready. Claim your username now.',
     body: `
@@ -121,7 +122,7 @@ export function appLaunch(params: { username: string; appUrl: string }): {
         </h1>
         <p style="font-size:16px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
-          Cheese Wallet is officially open. You reserved your spot early — your username is locked,
+          Cheese Pay is officially open. You reserved your spot early — your username is locked,
           your wallet is ready. All that's left is you.
         </p>
 
@@ -180,7 +181,7 @@ export function signupOtp(params: {
   otp: string;
   expiresIn: string;
 }): { subject: string; html: string } {
-  const subject = `${params.otp} — your Cheese Wallet verification code`;
+  const subject = `${params.otp} — your Cheese Pay verification code`;
   const html = baseLayout({
     preheader: `Your verification code is ${params.otp}. Valid for ${params.expiresIn}.`,
     body: `
@@ -195,7 +196,7 @@ export function signupOtp(params: {
         </h1>
         <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
-          Enter the code below to verify your email and activate your Cheese Wallet account.
+          Enter the code below to verify your email and activate your Cheese Pay account.
         </p>
 
         <div style="margin-bottom:32px;">${otpBox(params.otp)}</div>
@@ -213,7 +214,7 @@ export function signupOtp(params: {
         ${goldDivider()}
 
         <div style="padding:28px 0 0;">
-          ${infoBox('If you did not create a Cheese Wallet account, you can safely ignore this email. Your information is secure.', 'warning')}
+          ${infoBox('If you did not create a Cheese Pay account, you can safely ignore this email. Your information is secure.', 'warning')}
         </div>
       </div>
     `,
@@ -229,7 +230,7 @@ export function signupSuccess(params: {
   username: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `Your Cheese Wallet account is ready, @${params.username}`;
+  const subject = `Your Cheese Pay account is ready, @${params.username}`;
   const html = baseLayout({
     preheader: 'Your account is live. Fund your wallet and start earning.',
     body: `
@@ -249,7 +250,7 @@ export function signupSuccess(params: {
             You're in, ${params.fullName.split(' ')[0]}!
           </h1>
           <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;line-height:1.7;">
-            Your Cheese Wallet is set up and ready. The golden standard of digital finance is now yours.
+            Your Cheese Pay is set up and ready. The golden standard of digital finance is now yours.
           </p>
         </div>
 
@@ -323,7 +324,7 @@ export function passwordResetOtp(params: {
   expiresIn: string;
   ipAddress?: string;
 }): { subject: string; html: string } {
-  const subject = `Reset your Cheese Wallet password`;
+  const subject = `Reset your Cheese Pay password`;
   const html = baseLayout({
     preheader: `Your password reset code is ${params.otp}. Valid for ${params.expiresIn}.`,
     body: `
@@ -338,7 +339,7 @@ export function passwordResetOtp(params: {
         </h1>
         <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
-          We received a request to reset the password for your Cheese Wallet account.
+          We received a request to reset the password for your Cheese Pay account.
           Use the code below to complete the process.
         </p>
 
@@ -375,7 +376,7 @@ export function passwordChanged(params: {
   changedAt: string;
   deviceName?: string;
 }): { subject: string; html: string } {
-  const subject = `Your Cheese Wallet password was changed`;
+  const subject = `Your Cheese Pay password was changed`;
   const html = baseLayout({
     preheader: `Your password was successfully updated on ${params.changedAt}.`,
     body: `
@@ -395,7 +396,7 @@ export function passwordChanged(params: {
             Password Updated
           </h1>
           <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;line-height:1.7;">
-            Your Cheese Wallet password was successfully changed.
+            Your Cheese Pay password was successfully changed.
           </p>
         </div>
 
@@ -407,7 +408,7 @@ export function passwordChanged(params: {
           </tbody>
         </table>
 
-        ${infoBox(`If you did not make this change, your account may be compromised. Please contact support immediately at <a href="mailto:support@cheesewallet.app" style="color:${BRAND.gold};">support@cheesewallet.app</a>`, 'warning')}
+        ${infoBox(`If you did not make this change, your account may be compromised. Please contact support immediately at <a href="mailto:support@cheesepay.xyz" style="color:${BRAND.gold};">support@cheesepay.xyz</a>`, 'warning')}
       </div>
     `,
   });
@@ -427,7 +428,7 @@ export function moneyReceived(params: {
 }): { subject: string; html: string } {
   const subject = `$${params.amountUsdc} USDC received — start spending`;
   const html = baseLayout({
-    preheader: `$${params.amountUsdc} USDC has been credited to your Cheese Wallet.`,
+    preheader: `$${params.amountUsdc} USDC has been credited to your Cheese Pay.`,
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
@@ -440,7 +441,7 @@ export function moneyReceived(params: {
         </h1>
         <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
-          A USDC deposit has landed in your Cheese Wallet. Your funds are safe and ready to use.
+          A USDC deposit has landed in your Cheese Pay. Your funds are safe and ready to use.
         </p>
 
         <div style="margin-bottom:32px;">${amountDisplay(params.amountUsdc, params.amountNgn)}</div>
@@ -716,7 +717,7 @@ export function waitlistReminder(params: {
         <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:32px;">
           You reserved <strong style="color:${BRAND.gold};">@${params.username}</strong> ${params.daysOnList} day${params.daysOnList !== 1 ? 's' : ''} ago.
-          Cheese Wallet is live — your spot is still held, but unclaimed usernames
+          Cheese Pay is live — your spot is still held, but unclaimed usernames
           are released periodically to keep the namespace fresh.
         </p>
 
