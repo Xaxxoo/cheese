@@ -46,7 +46,10 @@ if (usePostgres) {
         BankTransfer,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl:
+        process.env.NODE_ENV === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
     };
   } else {
     // Use individual DB_* environment variables
@@ -73,7 +76,10 @@ if (usePostgres) {
         BankTransfer,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl:
+        process.env.NODE_ENV === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
     };
   }
 } else {

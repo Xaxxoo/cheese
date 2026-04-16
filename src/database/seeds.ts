@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -24,8 +25,11 @@ async function runSeeds() {
   }
 
   try {
-    console.log(`Connecting to database: ${process.env.DB_NAME || 'cheese_pay'}`);
+    console.log(
+      `Connecting to database: ${process.env.DB_NAME || 'cheese_pay'}`,
+    );
 
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
     // Check if kargi user exists in users table
     const kargiUsers = await SeedDataSource.query(
       `SELECT id, username, email, points FROM users WHERE email = $1`,
@@ -42,11 +46,13 @@ async function runSeeds() {
 
       if (result.length > 0) {
         const user = result[0];
-        console.log(`✅ Updated user: ${user.username} (${user.email}) with points: ${user.points}`);
+        console.log(
+          `✅ Updated user: ${user.username} (${user.email}) with points: ${user.points}`,
+        );
       }
     } else {
       // Create new user if missing
-      const userId = require('uuid').v4();
+      const userId = uuidv4();
       const createdAt = new Date();
 
       const result = await SeedDataSource.query(
@@ -72,7 +78,9 @@ async function runSeeds() {
 
       if (result.length > 0) {
         const user = result[0];
-        console.log(`✅ Created new user: ${user.username} (${user.email}) with 500 points and referral code: ${user.referral_code}`);
+        console.log(
+          `✅ Created new user: ${user.username} (${user.email}) with 500 points and referral code: ${user.referral_code}`,
+        );
       }
     }
 
@@ -85,9 +93,11 @@ async function runSeeds() {
     if (waitlistEntries.length > 0) {
       console.log('✅ Waitlist entry already exists for kargi');
     } else {
-      const totalEntries = await SeedDataSource.query(`SELECT COUNT(*) FROM waitlist_entries`);
+      const totalEntries = await SeedDataSource.query(
+        `SELECT COUNT(*) FROM waitlist_entries`,
+      );
       const position = parseInt(totalEntries[0].count, 10) + 1;
-      const entryId = require('uuid').v4();
+      const entryId = uuidv4();
       const createdAt = new Date();
 
       await SeedDataSource.query(
@@ -109,8 +119,11 @@ async function runSeeds() {
           createdAt,
         ],
       );
-      console.log('✅ Inserted kargi into waitlist_entries for reserved username count');
+      console.log(
+        '✅ Inserted kargi into waitlist_entries for reserved username count',
+      );
     }
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
   } catch (error) {
     console.error('❌ Database error:', error);
     throw error;

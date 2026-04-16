@@ -1,10 +1,9 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateInitialSchema1600000000000 implements MigrationInterface {
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Create users table
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create users table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "users" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "email" varchar NOT NULL UNIQUE,
@@ -31,8 +30,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create waitlist_entries table
-        await queryRunner.query(`
+    // Create waitlist_entries table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "waitlist_entries" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "email" varchar NOT NULL UNIQUE,
@@ -50,8 +49,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create devices table
-        await queryRunner.query(`
+    // Create devices table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "devices" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "device_id" varchar NOT NULL UNIQUE,
@@ -67,8 +66,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create refresh_tokens table
-        await queryRunner.query(`
+    // Create refresh_tokens table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "refresh_tokens" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "user_id" uuid NOT NULL,
@@ -83,8 +82,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create otps table
-        await queryRunner.query(`
+    // Create otps table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "otps" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "email" varchar NOT NULL,
@@ -97,8 +96,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create share_events table
-        await queryRunner.query(`
+    // Create share_events table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "share_events" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "user_id" uuid,
@@ -115,8 +114,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create referral_events table
-        await queryRunner.query(`
+    // Create referral_events table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "referral_events" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "referrer_user_id" uuid,
@@ -133,8 +132,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create transactions table
-        await queryRunner.query(`
+    // Create transactions table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "transactions" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "user_id" uuid NOT NULL,
@@ -160,8 +159,8 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create exchange_rates table
-        await queryRunner.query(`
+    // Create exchange_rates table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "exchange_rates" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "usd_to_ngn" decimal(12, 4) NOT NULL,
@@ -172,31 +171,54 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             )
         `);
 
-        // Create indexes
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_user_points" ON "users" ("points")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_user_points_created" ON "users" ("points", "created_at")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_user_email" ON "users" ("email")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_waitlist_points" ON "waitlist_entries" ("points")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_waitlist_points_created" ON "waitlist_entries" ("points", "created_at")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_waitlist_email" ON "waitlist_entries" ("email")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_devices_device_id" ON "devices" ("device_id")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_refresh_tokens_user" ON "refresh_tokens" ("user_id")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_otps_email" ON "otps" ("email")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_share_events_user" ON "share_events" ("user_id")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_share_events_waitlist" ON "share_events" ("waitlist_id")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_transactions_user" ON "transactions" ("user_id")`);
-    }
+    // Create indexes
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_user_points" ON "users" ("points")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_user_points_created" ON "users" ("points", "created_at")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_user_email" ON "users" ("email")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_waitlist_points" ON "waitlist_entries" ("points")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_waitlist_points_created" ON "waitlist_entries" ("points", "created_at")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_waitlist_email" ON "waitlist_entries" ("email")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_devices_device_id" ON "devices" ("device_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_refresh_tokens_user" ON "refresh_tokens" ("user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_otps_email" ON "otps" ("email")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_share_events_user" ON "share_events" ("user_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_share_events_waitlist" ON "share_events" ("waitlist_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_transactions_user" ON "transactions" ("user_id")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP TABLE IF EXISTS "exchange_rates"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "transactions"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "referral_events"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "share_events"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "otps"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "refresh_tokens"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "devices"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "waitlist_entries"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "users"`);
-    }
-
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE IF EXISTS "exchange_rates"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "transactions"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "referral_events"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "share_events"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "otps"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "refresh_tokens"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "devices"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "waitlist_entries"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "users"`);
+  }
 }

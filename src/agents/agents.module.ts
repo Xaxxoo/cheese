@@ -19,10 +19,7 @@ const redisAvailable = !!(process.env.REDIS_URL || process.env.REDIS_HOST);
     NotificationsModule,
   ],
   controllers: [AgentsController],
-  providers: [
-    AgentsService,
-    ...(redisAvailable ? [AgentsProcessor] : []),
-  ],
+  providers: [AgentsService, ...(redisAvailable ? [AgentsProcessor] : [])],
   exports: [AgentsService],
 })
 export class AgentsModule {}

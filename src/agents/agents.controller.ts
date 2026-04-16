@@ -17,7 +17,10 @@ export class AgentsController {
   @ApiOperation({ summary: 'Analyze registration for fraud' })
   @ApiResponse({ status: 200, description: 'Analysis queued' })
   analyzeRegistration(@Body() body: { userId: string; ipAddress: string }) {
-    return this.agentsService.analyzeRegistrationFraud(body.userId, body.ipAddress);
+    return this.agentsService.analyzeRegistrationFraud(
+      body.userId,
+      body.ipAddress,
+    );
   }
 
   @Post('analyze-share')

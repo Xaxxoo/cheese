@@ -1,3 +1,4 @@
+import { Job } from 'bullmq';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,8 +22,11 @@ export class AgentsProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: any): Promise<any> {
-    const { userId, shareEventId } = job.data;
+  async process(job: Job): Promise<unknown> {
+    const { userId, shareEventId } = job.data as {
+      userId: string;
+      shareEventId: string;
+    };
 
     try {
       if (job.name === 'analyze-registration') {
@@ -50,7 +54,9 @@ export class AgentsProcessor extends WorkerHost {
     const recentUsersFromIP = await this.userRepo
       .createQueryBuilder('u')
       .where('u.ipAddress = :ip', { ip: user.ipAddress })
-      .andWhere('u.createdAt > :recent', { recent: new Date(Date.now() - 24 * 60 * 60 * 1000) })
+      .andWhere('u.createdAt > :recent', {
+        recent: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      })
       .getCount();
 
     if (recentUsersFromIP > 5) {
@@ -65,7 +71,11 @@ export class AgentsProcessor extends WorkerHost {
     }
 
     // Check email domain
-    const disposableDomains = ['10minutemail.com', 'temp-mail.org', 'guerrillamail.com'];
+    const disposableDomains = [
+      '10minutemail.com',
+      'temp-mail.org',
+      'guerrillamail.com',
+    ];
     const emailDomain = user.email.split('@')[1];
     if (disposableDomains.includes(emailDomain)) {
       riskScore += 50;
@@ -87,8 +97,15 @@ export class AgentsProcessor extends WorkerHost {
       user.isFlagged = true;
       await this.userRepo.save(user);
 
-      this.notificationsService.notifyAccountFlagged(user.id, `Suspicious registration activity detected. Risk: ${risk}, Score: ${riskScore}`).catch(() => {});
-      this.logger.warn(`User ${user.username} flagged for fraud: ${reasons.join(', ')}`);
+      this.notificationsService
+        .notifyAccountFlagged(
+          user.id,
+          `Suspicious registration activity detected. Risk: ${risk}, Score: ${riskScore}`,
+        )
+        .catch(() => {});
+      this.logger.warn(
+        `User ${user.username} flagged for fraud: ${reasons.join(', ')}`,
+      );
     }
 
     return { risk, score: riskScore, reasons };
@@ -108,7 +125,9 @@ export class AgentsProcessor extends WorkerHost {
     const recentShares = await this.shareRepo
       .createQueryBuilder('s')
       .where('s.userId = :userId', { userId: share.userId })
-      .andWhere('s.createdAt > :recent', { recent: new Date(Date.now() - 60 * 60 * 1000) })
+      .andWhere('s.createdAt > :recent', {
+        recent: new Date(Date.now() - 60 * 60 * 1000),
+      })
       .getCount();
 
     if (recentShares > 10) {
@@ -136,9 +155,16 @@ export class AgentsProcessor extends WorkerHost {
         share.user.isFlagged = true;
         await this.userRepo.save(share.user);
 
-        this.notificationsService.notifyAccountFlagged(share.user.id, `Suspicious sharing activity detected. Risk: ${risk}, Score: ${riskScore}`).catch(() => {});
+        this.notificationsService
+          .notifyAccountFlagged(
+            share.user.id,
+            `Suspicious sharing activity detected. Risk: ${risk}, Score: ${riskScore}`,
+          )
+          .catch(() => {});
       }
-      this.logger.warn(`Share ${shareEventId} marked as fraud: ${reasons.join(', ')}`);
+      this.logger.warn(
+        `Share ${shareEventId} marked as fraud: ${reasons.join(', ')}`,
+      );
     }
 
     return { risk, score: riskScore, reasons };

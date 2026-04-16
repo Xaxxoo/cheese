@@ -13,9 +13,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *  4. blockchain_transactions table — required by BlockchainModule
  */
 export class AddMissingColumnsAndTables1600000000002 implements MigrationInterface {
-
   public async up(queryRunner: QueryRunner): Promise<void> {
-
     // ── 1. share_events: add is_fraud column ────────────────────────────────
     await queryRunner.query(`
       ALTER TABLE "share_events"

@@ -282,9 +282,21 @@ export function infoBox(
   type: 'info' | 'warning' | 'success' = 'info',
 ): string {
   const colors = {
-    info:    { bg: `${BRAND.gold}15`,         border: `${BRAND.gold}40`,         icon: ICONS.info() },
-    warning: { bg: '#F59E0B15',               border: '#F59E0B40',               icon: ICONS.alertTriangle() },
-    success: { bg: `${BRAND.successGreen}15`, border: `${BRAND.successGreen}40`, icon: ICONS.check(BRAND.successGreen, 16) },
+    info: {
+      bg: `${BRAND.gold}15`,
+      border: `${BRAND.gold}40`,
+      icon: ICONS.info(),
+    },
+    warning: {
+      bg: '#F59E0B15',
+      border: '#F59E0B40',
+      icon: ICONS.alertTriangle(),
+    },
+    success: {
+      bg: `${BRAND.successGreen}15`,
+      border: `${BRAND.successGreen}40`,
+      icon: ICONS.check(BRAND.successGreen, 16),
+    },
   };
   const c = colors[type];
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -303,7 +315,11 @@ export function infoBox(
 
 // ── Section label with icon ───────────────────────────────
 
-export function sectionLabel(text: string, icon: string, color = BRAND.gold): string {
+export function sectionLabel(
+  text: string,
+  icon: string,
+  color = BRAND.gold,
+): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
     <tr>
       <td style="vertical-align:middle;padding-right:8px;">${icon}</td>
@@ -332,7 +348,10 @@ export function featureRow(icon: string, title: string, desc: string): string {
 
 // ── Benefit row with check icon ───────────────────────────
 
-export function benefitRow(text: string, checkColor = BRAND.successGreen): string {
+export function benefitRow(
+  text: string,
+  checkColor = BRAND.successGreen,
+): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
     <tr>
       <td width="24" style="vertical-align:top;padding-top:1px;">${ICONS.check(checkColor, 16)}</td>

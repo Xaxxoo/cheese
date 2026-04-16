@@ -17,10 +17,10 @@ export function tierEligible(params: {
   newLimits: string[];
 }): { subject: string; html: string } {
   const tierColors: Record<string, string> = {
-    gold:  BRAND.gold,
+    gold: BRAND.gold,
     black: '#F5F5F5',
   };
-  const color   = tierColors[params.nextTier.toLowerCase()] || BRAND.gold;
+  const color = tierColors[params.nextTier.toLowerCase()] || BRAND.gold;
   const subject = `You've unlocked ${params.nextTier} tier — one step left`;
   const html = baseLayout({
     preheader: `You've hit the ${params.nextTier} milestone. Complete ${params.kycStep} to unlock it.`,

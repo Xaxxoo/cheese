@@ -32,20 +32,23 @@ export class TierMilestoneService {
       const user = await this.userRepo.findOne({ where: { id: userId } });
       if (!user) return;
 
-      const { totalUsdc, txCount } = await this.txService.getLifetimeOutboundStats(userId);
+      const { totalUsdc, txCount } =
+        await this.txService.getLifetimeOutboundStats(userId);
 
       if (user.tier === Tier.SILVER && !user.goldEligibleAt) {
         const { volumeUsdc, txCount: txTarget } = TIER_MILESTONES.silverToGold;
         if (totalUsdc >= volumeUsdc || txCount >= txTarget) {
           await this.userRepo.update(userId, { goldEligibleAt: new Date() });
           await this.emailService.sendTierEligible({
-            to:          user.email,
-            fullName:    user.fullName ?? user.username,
+            to: user.email,
+            fullName: user.fullName ?? user.username,
             currentTier: Tier.SILVER,
-            nextTier:    Tier.GOLD,
-            kycStep:     'selfie face-match',
+            nextTier: Tier.GOLD,
+            kycStep: 'selfie face-match',
           });
-          this.logger.log(`Gold eligibility email sent [userId=${userId}] [volume=${totalUsdc}] [txCount=${txCount}]`);
+          this.logger.log(
+            `Gold eligibility email sent [userId=${userId}] [volume=${totalUsdc}] [txCount=${txCount}]`,
+          );
         }
       }
 
@@ -54,18 +57,22 @@ export class TierMilestoneService {
         if (totalUsdc >= volumeUsdc || txCount >= txTarget) {
           await this.userRepo.update(userId, { blackEligibleAt: new Date() });
           await this.emailService.sendTierEligible({
-            to:          user.email,
-            fullName:    user.fullName ?? user.username,
+            to: user.email,
+            fullName: user.fullName ?? user.username,
             currentTier: Tier.GOLD,
-            nextTier:    Tier.BLACK,
-            kycStep:     'document verification',
+            nextTier: Tier.BLACK,
+            kycStep: 'document verification',
           });
-          this.logger.log(`Black eligibility email sent [userId=${userId}] [volume=${totalUsdc}] [txCount=${txCount}]`);
+          this.logger.log(
+            `Black eligibility email sent [userId=${userId}] [volume=${totalUsdc}] [txCount=${txCount}]`,
+          );
         }
       }
     } catch (err) {
       // Never let milestone checks affect the transaction flow
-      this.logger.warn(`Milestone check failed [userId=${userId}]: ${(err as Error).message}`);
+      this.logger.warn(
+        `Milestone check failed [userId=${userId}]: ${(err as Error).message}`,
+      );
     }
   }
 }

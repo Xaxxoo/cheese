@@ -11,20 +11,20 @@ import { Tier } from '../auth/entities/user.entity';
 
 export const DAILY_CRYPTO_LIMIT_USDC: Record<Tier, number> = {
   [Tier.SILVER]: 10_000,
-  [Tier.GOLD]:   50_000,
-  [Tier.BLACK]:  100_000,
+  [Tier.GOLD]: 50_000,
+  [Tier.BLACK]: 100_000,
 };
 
 export const DAILY_NGN_LIMIT: Record<Tier, number> = {
   [Tier.SILVER]: 200_000,
-  [Tier.GOLD]:   1_000_000,
-  [Tier.BLACK]:  10_000_000,
+  [Tier.GOLD]: 1_000_000,
+  [Tier.BLACK]: 10_000_000,
 };
 
 export const CARD_SPEND_LIMIT_USDC: Record<Tier, number | null> = {
-  [Tier.SILVER]: null,   // no card on Silver
-  [Tier.GOLD]:   500,
-  [Tier.BLACK]:  5_000,
+  [Tier.SILVER]: null, // no card on Silver
+  [Tier.GOLD]: 500,
+  [Tier.BLACK]: 5_000,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,12 +35,12 @@ export const TIER_MILESTONES = {
   // Silver → Gold: $20k lifetime outbound OR 500 outbound transactions
   silverToGold: {
     volumeUsdc: 20_000,
-    txCount:    500,
+    txCount: 500,
   },
   // Gold → Black: $100k lifetime outbound OR 1,000 outbound transactions
   goldToBlack: {
     volumeUsdc: 100_000,
-    txCount:    1_000,
+    txCount: 1_000,
   },
 } as const;
 

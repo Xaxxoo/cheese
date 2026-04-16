@@ -63,31 +63,33 @@ export class EmailService {
       return;
     }
 
-    try {
-      const { error } = await this.resend.emails.send({
-        from: `${this.fromName} <${this.from}>`,
-        to: payload.to,
-        subject: payload.subject,
-        html: payload.html,
-        text: payload.text,
-        replyTo: payload.replyTo || this.replyTo,
-        headers: {
-          'X-Entity-Ref-ID': `${Date.now()}-${payload.to}`,
-          'List-Unsubscribe': `<mailto:${this.replyTo}?subject=unsubscribe>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
-      });
+    const { error } = await this.resend.emails.send({
+      from: `${this.fromName} <${this.from}>`,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      replyTo: payload.replyTo || this.replyTo,
+      headers: {
+        'X-Entity-Ref-ID': `${Date.now()}-${payload.to}`,
+        'List-Unsubscribe': `<mailto:${this.replyTo}?subject=unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    });
 
-      if (error) {
-        this.logger.error(`Resend API error [to=${payload.to}]: ${JSON.stringify(error)}`);
-        throw new Error(`Resend rejected email: ${(error as any).message ?? JSON.stringify(error)}`);
-      }
-
-      this.logger.log(`Email sent [to=${payload.to}] [subject="${payload.subject}"]`);
-    } catch (err) {
-      // Re-throw so callers can decide whether to swallow or surface the error
-      throw err;
+    if (error) {
+      this.logger.error(
+        `Resend API error [to=${payload.to}]: ${JSON.stringify(error)}`,
+      );
+      throw new Error(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        `Resend rejected email: ${(error as any).message ?? JSON.stringify(error)}`,
+      );
     }
+
+    this.logger.log(
+      `Email sent [to=${payload.to}] [subject="${payload.subject}"]`,
+    );
   }
 
   // ── Template senders ──────────────────────────────────────
@@ -96,13 +98,11 @@ export class EmailService {
     to: string;
     username: string;
     position?: number;
-
   }): Promise<void> {
     const { subject, html } = waitlistConfirmation({
       email: params.to,
       username: params.username,
       position: params.position,
-
     });
     await this.send({ to: params.to, subject, html });
   }
@@ -329,17 +329,21 @@ export class EmailService {
     };
 
     const { subject, html } = tierEligible({
-      fullName:    params.fullName,
+      fullName: params.fullName,
       currentTier: params.currentTier,
-      nextTier:    params.nextTier,
-      kycStep:     params.kycStep,
-      ctaUrl:      params.ctaUrl || `${this.frontendUrl}/kyc`,
-      newLimits:   limitsByTier[params.nextTier.toLowerCase()] || [],
+      nextTier: params.nextTier,
+      kycStep: params.kycStep,
+      ctaUrl: params.ctaUrl || `${this.frontendUrl}/kyc`,
+      newLimits: limitsByTier[params.nextTier.toLowerCase()] || [],
     });
     await this.send({ to: params.to, subject, html });
   }
 
-  async sendRegistrationEmail(user: any): Promise<void> {
+  async sendRegistrationEmail(user: {
+    referralCode: string;
+    username: string;
+    email: string;
+  }): Promise<void> {
     const link = `${this.frontendUrl || 'https://cheese.app'}/waitlist?ref=${user.referralCode}`;
     const html = `<!DOCTYPE html>
 <html>
@@ -388,7 +392,11 @@ export class EmailService {
 </table>
 </body>
 </html>`;
-    await this.send({ to: user.email, subject: '🧀 Your Cheese username is reserved', html });
+    await this.send({
+      to: user.email,
+      subject: '🧀 Your Cheese username is reserved',
+      html,
+    });
   }
 
   async sendWaitlistReminder(params: {

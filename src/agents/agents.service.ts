@@ -26,7 +26,7 @@ export class AgentsService {
       await this.analysisQueue.add(
         'analyze-registration',
         { userId, ipAddress },
-        { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }
+        { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
       );
     }
 
@@ -40,7 +40,7 @@ export class AgentsService {
       await this.analysisQueue.add(
         'analyze-share',
         { shareEventId },
-        { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }
+        { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
       );
     }
 
@@ -49,16 +49,22 @@ export class AgentsService {
   }
 
   async getFraudStats() {
-    const flaggedUsers = await this.userRepo.count({ where: { isFlagged: true } });
-    const fraudShares = await this.shareRepo.count({ where: { isFraud: true } });
+    const flaggedUsers = await this.userRepo.count({
+      where: { isFlagged: true },
+    });
+    const fraudShares = await this.shareRepo.count({
+      where: { isFraud: true },
+    });
     const totalUsers = await this.userRepo.count();
     const totalShares = await this.shareRepo.count();
 
     return {
       flaggedUsers,
       fraudShares,
-      flaggedUserPercentage: totalUsers > 0 ? (flaggedUsers / totalUsers * 100).toFixed(2) : 0,
-      fraudSharePercentage: totalShares > 0 ? (fraudShares / totalShares * 100).toFixed(2) : 0,
+      flaggedUserPercentage:
+        totalUsers > 0 ? ((flaggedUsers / totalUsers) * 100).toFixed(2) : 0,
+      fraudSharePercentage:
+        totalShares > 0 ? ((fraudShares / totalShares) * 100).toFixed(2) : 0,
     };
   }
 }

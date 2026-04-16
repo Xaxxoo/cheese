@@ -27,10 +27,14 @@ export class Otp {
   @Column({ type: 'varchar' })
   type: OtpType;
 
-  @Column({ name: 'expires_at', type: 'bigint', transformer: {
-    from: (value: number) => new Date(Number(value)),
-    to: (value: Date) => value.getTime(),
-  } })
+  @Column({
+    name: 'expires_at',
+    type: 'bigint',
+    transformer: {
+      from: (value: number) => new Date(Number(value)),
+      to: (value: Date) => value.getTime(),
+    },
+  })
   expiresAt: Date;
 
   @Column({ name: 'is_used', default: false })

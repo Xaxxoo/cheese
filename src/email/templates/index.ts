@@ -14,7 +14,6 @@ import {
   benefitRow,
 } from './base';
 
-
 // ─────────────────────────────────────────────────────────
 // 1. WAITLIST RESERVATION CONFIRMATION
 // ─────────────────────────────────────────────────────────
@@ -64,7 +63,9 @@ export function waitlistConfirmation(params: {
                          font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin:0 0 12px;">
                 @${params.username}
               </p>
-              ${params.position ? `
+              ${
+                params.position
+                  ? `
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="vertical-align:middle;padding-right:6px;">${ICONS.trophy(BRAND.textMuted, 13)}</td>
@@ -72,7 +73,9 @@ export function waitlistConfirmation(params: {
                     You're <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong> on the waitlist
                   </td>
                 </tr>
-              </table>` : ''}
+              </table>`
+                  : ''
+              }
             </td>
           </tr>
         </table>
@@ -105,7 +108,8 @@ export function appLaunch(params: { username: string; appUrl: string }): {
 } {
   const subject = `Cheese Pay is LIVE — @${params.username}, your turn.`;
   const html = baseLayout({
-    preheader: 'The wait is over. Your wallet is ready. Claim your username now.',
+    preheader:
+      'The wait is over. Your wallet is ready. Claim your username now.',
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
@@ -275,10 +279,24 @@ export function signupSuccess(params: {
                   font-family:'Inter',sans-serif;margin-bottom:16px;">Get started in 3 steps</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           ${[
-            [ICONS.wallet(), 'Fund your wallet', 'Deposit USDC via Stellar network'],
-            [ICONS.trendingUp(), 'Start earning', 'Toggle Earn on to get 5% APY instantly'],
-            [ICONS.landmark(), 'Withdraw anytime', 'Send NGN directly to your bank account'],
-          ].map(([icon, title, desc], i) => `
+            [
+              ICONS.wallet(),
+              'Fund your wallet',
+              'Deposit USDC via Stellar network',
+            ],
+            [
+              ICONS.trendingUp(),
+              'Start earning',
+              'Toggle Earn on to get 5% APY instantly',
+            ],
+            [
+              ICONS.landmark(),
+              'Withdraw anytime',
+              'Send NGN directly to your bank account',
+            ],
+          ]
+            .map(
+              ([icon, title, desc], i) => `
           <tr>
             <td style="padding:12px 0;border-bottom:1px solid ${BRAND.border};">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -305,7 +323,9 @@ export function signupSuccess(params: {
                 </tr>
               </table>
             </td>
-          </tr>`).join('')}
+          </tr>`,
+            )
+            .join('')}
         </table>
 
         ${primaryButton('Open My Wallet', params.appUrl)}
@@ -446,14 +466,18 @@ export function moneyReceived(params: {
 
         <div style="margin-bottom:32px;">${amountDisplay(params.amountUsdc, params.amountNgn)}</div>
 
-        ${params.txHash ? `
+        ${
+          params.txHash
+            ? `
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           <tbody>
             ${params.network ? detailRow('Network', params.network) : ''}
             ${detailRow('Transaction Hash', `${params.txHash.slice(0, 12)}...${params.txHash.slice(-8)}`)}
             ${detailRow('Status', 'Confirmed', true)}
           </tbody>
-        </table>` : ''}
+        </table>`
+            : ''
+        }
 
         <!-- Suggestions -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
@@ -738,7 +762,9 @@ export function waitlistReminder(params: {
                                font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin:0 0 8px;">
                       @${params.username}
                     </p>
-                    ${params.position ? `
+                    ${
+                      params.position
+                        ? `
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td style="vertical-align:middle;padding-right:6px;">${ICONS.trophy(BRAND.textMuted, 13)}</td>
@@ -746,7 +772,9 @@ export function waitlistReminder(params: {
                           Waitlist position <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong>
                         </td>
                       </tr>
-                    </table>` : ''}
+                    </table>`
+                        : ''
+                    }
                   </td>
                   <td align="right" style="vertical-align:top;">
                     <div style="background:#F59E0B20;border:1px solid #F59E0B44;border-radius:8px;

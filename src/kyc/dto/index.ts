@@ -1,12 +1,6 @@
 // src/kyc/dto/index.ts
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  Length,
-  Matches,
-  IsNotEmpty,
-  IsIn,
-} from 'class-validator';
+import { IsString, Length, Matches, IsNotEmpty, IsIn } from 'class-validator';
 
 export class VerifyBvnDto {
   @ApiProperty({ example: '12345678901', description: '11-digit BVN' })
@@ -33,7 +27,10 @@ export class VerifySelfieDto {
   @IsNotEmpty()
   selfieImage: string;
 
-  @ApiProperty({ example: '12345678901', description: '11-digit BVN to match against' })
+  @ApiProperty({
+    example: '12345678901',
+    description: '11-digit BVN to match against',
+  })
   @IsString()
   @Length(11, 11, { message: 'BVN must be exactly 11 digits' })
   @Matches(/^\d{11}$/, { message: 'BVN must contain only digits' })
