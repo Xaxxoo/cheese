@@ -97,18 +97,20 @@ export class SendService {
 
     // 2. KYC gate — must be verified before any outbound transaction
     if (sender.kycStatus !== KycStatus.VERIFIED) {
-      throw new ForbiddenException('Identity verification required before sending. Please complete KYC in your profile.');
+      throw new ForbiddenException(
+        'Identity verification required before sending. Please complete KYC in your profile.',
+      );
     }
 
     // 3. Daily crypto send limit
-    const amount     = parseFloat(params.amountUsdc);
+    const amount = parseFloat(params.amountUsdc);
     const dailyLimit = DAILY_CRYPTO_LIMIT_USDC[sender.tier];
     const dailySpent = await this.txService.getDailyOutboundUsdc(senderId);
     if (dailySpent + amount > dailyLimit) {
       const remaining = Math.max(0, dailyLimit - dailySpent);
       throw new ForbiddenException(
         `Daily send limit reached. Your ${sender.tier} tier allows ${formatCryptoLimit(sender.tier)}/day. ` +
-        `Remaining today: $${remaining.toFixed(2)} USDC.`,
+          `Remaining today: $${remaining.toFixed(2)} USDC.`,
       );
     }
 
@@ -128,7 +130,7 @@ export class SendService {
     const sigValid = this.blockchainService.verifyDeviceSignature({
       publicKey: device.publicKey,
       signature: params.deviceSignature,
-      message:   params.deviceId,
+      message: params.deviceId,
     });
     if (!sigValid && this.config.get('app.nodeEnv') === 'production') {
       throw new ForbiddenException('Invalid device signature');
@@ -190,9 +192,11 @@ export class SendService {
     } catch (err) {
       await this.txService.update(tx.id, {
         status: TxStatus.FAILED,
-        failureReason: err.message,
+        failureReason: (err as Error).message,
       });
-      throw new BadRequestException(`Transaction failed: ${err.message}`);
+      throw new BadRequestException(
+        `Transaction failed: ${(err as Error).message}`,
+      );
     }
   }
 }

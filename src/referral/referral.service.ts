@@ -1,10 +1,5 @@
 // src/referral/referral.service.ts
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -157,7 +152,9 @@ export class ReferralService {
         `Referral reward credited: $${REFERRAL_REWARD_USDC} → ${referral.referrerId}`,
       );
     } catch (err) {
-      this.logger.error(`Failed to credit referral reward: ${err.message}`);
+      this.logger.error(
+        `Failed to credit referral reward: ${(err as Error).message}`,
+      );
     }
   }
 

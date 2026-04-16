@@ -1,9 +1,5 @@
 // src/profile/profile.service.ts
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
@@ -36,7 +32,13 @@ export class ProfileService {
 
     await this.userRepo.update({ id: userId }, dto);
     const updated = await this.userRepo.findOne({ where: { id: userId } });
-    const { passwordHash, pinHash, stellarSecretEnc, ...safe } = updated as any;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash, pinHash, stellarSecretEnc, ...safe } =
+      updated as User & {
+        passwordHash: string;
+        pinHash: string;
+        stellarSecretEnc: string;
+      };
     return safe;
   }
 }

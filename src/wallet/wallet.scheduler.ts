@@ -28,6 +28,7 @@ export class WalletDepositScheduler {
     if (!this.blockchainService.isStellarReady) return;
 
     const pending = await this.userRepo.find({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       where: { stellarPublicKey: null as any },
       select: ['id', 'username'],
       take: 20, // process at most 20 per run
@@ -35,18 +36,27 @@ export class WalletDepositScheduler {
 
     if (pending.length === 0) return;
 
-    this.logger.log(`Auto-provisioning Stellar wallets for ${pending.length} user(s)`);
+    this.logger.log(
+      `Auto-provisioning Stellar wallets for ${pending.length} user(s)`,
+    );
 
     for (const user of pending) {
       try {
         const wallet = await this.blockchainService.createStellarWallet();
-        await this.userRepo.update({ id: user.id }, {
-          stellarPublicKey: wallet.publicKey,
-          stellarSecretEnc: wallet.secretKeyEnc,
-        });
-        this.logger.log(`Wallet provisioned [user=${user.username}] [pk=${wallet.publicKey}]`);
+        await this.userRepo.update(
+          { id: user.id },
+          {
+            stellarPublicKey: wallet.publicKey,
+            stellarSecretEnc: wallet.secretKeyEnc,
+          },
+        );
+        this.logger.log(
+          `Wallet provisioned [user=${user.username}] [pk=${wallet.publicKey}]`,
+        );
       } catch (err) {
-        this.logger.error(`Auto-provision failed [user=${user.username}]: ${(err as Error).message}`);
+        this.logger.error(
+          `Auto-provision failed [user=${user.username}]: ${(err as Error).message}`,
+        );
       }
     }
   }
@@ -75,7 +85,9 @@ export class WalletDepositScheduler {
     }
   }
 
-  private async processDepositsForUser(user: Pick<User, 'id' | 'stellarPublicKey' | 'stellarDepositCursor'>) {
+  private async processDepositsForUser(
+    user: Pick<User, 'id' | 'stellarPublicKey' | 'stellarDepositCursor'>,
+  ) {
     const payments = await this.blockchainService.fetchInboundStellarUsdc(
       user.stellarPublicKey!,
       user.stellarDepositCursor ?? undefined,
@@ -95,12 +107,12 @@ export class WalletDepositScheduler {
       const reference = `CW-DEP-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
 
       await this.txService.create({
-        userId:    user.id,
-        type:      TxType.DEPOSIT,
-        status:    TxStatus.COMPLETED,
+        userId: user.id,
+        type: TxType.DEPOSIT,
+        status: TxStatus.COMPLETED,
         amountUsdc: payment.amount,
-        txHash:    payment.txHash,
-        network:   'stellar',
+        txHash: payment.txHash,
+        network: 'stellar',
         reference,
         description: `USDC deposit from ${payment.from}`,
       });

@@ -57,10 +57,14 @@ export class PaymentRequest {
   status: PayLinkStatus;
 
   // ── Expiry — default 7 days ───────────────────────────────
-  @Column({ name: 'expires_at', type: 'bigint', transformer: {
-    from: (value: number) => new Date(value),
-    to: (value: Date) => value.getTime(),
-  } })
+  @Column({
+    name: 'expires_at',
+    type: 'bigint',
+    transformer: {
+      from: (value: number) => new Date(value),
+      to: (value: Date) => value.getTime(),
+    },
+  })
   expiresAt: Date;
 
   // ── Settled transaction reference ────────────────────────
@@ -71,10 +75,15 @@ export class PaymentRequest {
   @Column({ name: 'settled_tx_hash', type: 'varchar', nullable: true })
   settledTxHash: string | null;
 
-  @Column({ name: 'paid_at', type: 'integer', transformer: {
-    from: (value: number) => value ? new Date(value) : null,
-    to: (value: Date) => value ? value.getTime() : null,
-  }, nullable: true })
+  @Column({
+    name: 'paid_at',
+    type: 'integer',
+    transformer: {
+      from: (value: number) => (value ? new Date(value) : null),
+      to: (value: Date) => (value ? value.getTime() : null),
+    },
+    nullable: true,
+  })
   paidAt: Date | null;
 
   // IP of whoever paid (for fraud logging)

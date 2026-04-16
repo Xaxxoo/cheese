@@ -20,7 +20,7 @@ export class TransactionsService {
     });
 
     return {
-      items: items.map(this.format),
+      items: items.map((tx) => this.format(tx)),
       total,
       page,
       pageSize,
@@ -43,7 +43,10 @@ export class TransactionsService {
     await this.txRepo.update({ id }, data);
   }
 
-  async updateByReference(reference: string, data: Partial<Transaction>): Promise<void> {
+  async updateByReference(
+    reference: string,
+    data: Partial<Transaction>,
+  ): Promise<void> {
     await this.txRepo.update({ reference }, data);
   }
 
@@ -90,21 +93,27 @@ export class TransactionsService {
   }
 
   /** Lifetime outbound volume (USDC) and transaction count — used for tier milestone checks. */
-  async getLifetimeOutboundStats(userId: string): Promise<{ totalUsdc: number; txCount: number }> {
+  async getLifetimeOutboundStats(
+    userId: string,
+  ): Promise<{ totalUsdc: number; txCount: number }> {
     const result = await this.txRepo
       .createQueryBuilder('tx')
       .select('COALESCE(SUM(CAST(tx.amount_usdc AS DECIMAL)), 0)', 'totalUsdc')
       .addSelect('COUNT(*)', 'txCount')
       .where('tx.user_id = :userId', { userId })
       .andWhere('tx.type IN (:...types)', {
-        types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER],
+        types: [
+          TxType.SEND_USERNAME,
+          TxType.SEND_ADDRESS,
+          TxType.BANK_TRANSFER,
+        ],
       })
       .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
       .getRawOne<{ totalUsdc: string; txCount: string }>();
 
     return {
       totalUsdc: parseFloat(result?.totalUsdc ?? '0'),
-      txCount:   parseInt(result?.txCount   ?? '0', 10),
+      txCount: parseInt(result?.txCount ?? '0', 10),
     };
   }
 

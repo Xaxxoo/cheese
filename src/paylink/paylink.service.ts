@@ -311,8 +311,8 @@ export class PayLinkService {
       });
     } catch (err) {
       this.logger.error(
-        `PayLink Stellar send failed: ${err.message}`,
-        err.stack,
+        `PayLink Stellar send failed: ${(err as Error).message}`,
+        (err as Error).stack,
       );
       // Revert DB gate so payer can retry
       await this.prRepo.update(pr.id, {

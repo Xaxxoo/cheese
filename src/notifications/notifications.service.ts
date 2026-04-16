@@ -117,7 +117,11 @@ export class NotificationsService {
     });
   }
 
-  async notifyLeaderboardUpdate(userId: string, newRank: number, oldRank: number) {
+  async notifyLeaderboardUpdate(
+    userId: string,
+    newRank: number,
+    oldRank: number,
+  ) {
     const direction = newRank < oldRank ? 'up' : 'down';
     return this.create({
       userId,

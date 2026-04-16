@@ -64,7 +64,9 @@ export class RatesService implements OnModuleInit {
       );
       return saved;
     } catch (err) {
-      this.logger.error(`Failed to fetch exchange rate: ${err.message}`);
+      this.logger.error(
+        `Failed to fetch exchange rate: ${(err as Error).message}`,
+      );
       // Return stale rate rather than crashing
       if (this.cachedRate) return this.cachedRate;
       // Fallback hardcoded value so the app doesn't break on startup
