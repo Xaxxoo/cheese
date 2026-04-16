@@ -42,13 +42,15 @@ export class WalletCreationProcessor extends WorkerHost {
 
     this.logger.log(
       `wallet-creation retry [attempt=${job.attemptsMade + 1}]` +
-      ` [userId=${userId}] [chains=${chains.join(',')}]`,
+        ` [userId=${userId}] [chains=${chains.join(',')}]`,
     );
 
     // Re-fetch user — their wallet fields may have been updated since the job was queued
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      this.logger.warn(`WalletCreationProcessor: user ${userId} not found — skipping`);
+      this.logger.warn(
+        `WalletCreationProcessor: user ${userId} not found — skipping`,
+      );
       return;
     }
 
@@ -59,10 +61,13 @@ export class WalletCreationProcessor extends WorkerHost {
     if (chains.includes('stellar')) {
       if (user.stellarPublicKey) {
         // Already created (maybe by a concurrent job or manual fix)
-        this.logger.debug(`Stellar wallet already exists for user ${userId} — skipping`);
+        this.logger.debug(
+          `Stellar wallet already exists for user ${userId} — skipping`,
+        );
       } else {
         try {
-          const stellarWallet = await this.blockchainService.createStellarWallet();
+          const stellarWallet =
+            await this.blockchainService.createStellarWallet();
           updates.stellarPublicKey = stellarWallet.publicKey;
           updates.stellarSecretEnc = stellarWallet.secretKeyEnc;
           this.logger.log(
@@ -80,11 +85,13 @@ export class WalletCreationProcessor extends WorkerHost {
     // ── EVM ───────────────────────────────────────────────────────────────
     if (chains.includes('evm')) {
       if (user.evmAddress) {
-        this.logger.debug(`EVM wallet already exists for user ${userId} — skipping`);
+        this.logger.debug(
+          `EVM wallet already exists for user ${userId} — skipping`,
+        );
       } else {
         try {
           const evmKeypair = ethers.Wallet.createRandom();
-          const evmResult  = await this.blockchainService.createEvmWallet(
+          const evmResult = await this.blockchainService.createEvmWallet(
             evmKeypair.address,
             username,
           );
@@ -116,6 +123,8 @@ export class WalletCreationProcessor extends WorkerHost {
       );
     }
 
-    this.logger.log(`Wallet creation complete for all chains [userId=${userId}]`);
+    this.logger.log(
+      `Wallet creation complete for all chains [userId=${userId}]`,
+    );
   }
 }

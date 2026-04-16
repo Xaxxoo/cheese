@@ -24,7 +24,9 @@ export class JwtAccessStrategy extends PassportStrategy(
     config: ConfigService,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     super({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: config.get<string>('jwt.accessSecret'),
       ignoreExpiration: false,

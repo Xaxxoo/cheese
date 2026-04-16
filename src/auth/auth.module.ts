@@ -54,4 +54,4 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
   ],
   exports: [AuthService, TypeOrmModule, WaitlistModule],
 })
-export class AuthModule { }
+export class AuthModule {}

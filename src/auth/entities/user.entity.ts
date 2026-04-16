@@ -15,31 +15,31 @@ import { Transaction } from '../../transactions/entities/transaction.entity';
 import { ShareEvent } from '../../waitlist/entities/share-event.entity';
 
 export enum KycStatus {
-  PENDING   = 'pending',
+  PENDING = 'pending',
   SUBMITTED = 'submitted',
-  VERIFIED  = 'verified',
-  REJECTED  = 'rejected',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected',
 }
 
 export enum Tier {
   SILVER = 'silver',
-  GOLD   = 'gold',
-  BLACK  = 'black',
+  GOLD = 'gold',
+  BLACK = 'black',
 }
 
 export enum WalletStatus {
   PENDING = 'pending', // creation in progress / retry job running
-  ACTIVE  = 'active',  // wallet exists and is ready
-  FAILED  = 'failed',  // all retry attempts exhausted — needs manual fix
+  ACTIVE = 'active', // wallet exists and is ready
+  FAILED = 'failed', // all retry attempts exhausted — needs manual fix
 }
 
 @Entity('users')
-@Index('idx_user_email',             ['email'])
-@Index('idx_user_username',          ['username'])
-@Index('idx_user_points',            ['points'])
-@Index('idx_user_points_created',    ['points', 'createdAt'])
-@Index('idx_user_stellar_public_key',['stellarPublicKey'])
-@Index('idx_user_evm_address',       ['evmAddress'])
+@Index('idx_user_email', ['email'])
+@Index('idx_user_username', ['username'])
+@Index('idx_user_points', ['points'])
+@Index('idx_user_points_created', ['points', 'createdAt'])
+@Index('idx_user_stellar_public_key', ['stellarPublicKey'])
+@Index('idx_user_evm_address', ['evmAddress'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -80,7 +80,13 @@ export class User {
   phoneVerified: boolean;
 
   // ── Waitlist / Referral ──────────────────────────────────────────────────
-  @Column({ name: 'referral_code', type: 'varchar', length: 20, nullable: true, unique: true })
+  @Column({
+    name: 'referral_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    unique: true,
+  })
   referralCode: string | null;
 
   // Stored as plain varchar — referrer may be a waitlist entry or a full user
@@ -97,7 +103,12 @@ export class User {
   ipAddress: string | null;
 
   // ── Stellar custodial wallet ─────────────────────────────────────────────
-  @Column({ name: 'stellar_public_key', type: 'varchar', nullable: true, unique: true })
+  @Column({
+    name: 'stellar_public_key',
+    type: 'varchar',
+    nullable: true,
+    unique: true,
+  })
   stellarPublicKey: string | null;
 
   @Exclude()
@@ -116,7 +127,12 @@ export class User {
   stellarDepositCursor: string | null;
 
   // ── EVM wallet ───────────────────────────────────────────────────────────
-  @Column({ name: 'evm_address', type: 'varchar', nullable: true, unique: true })
+  @Column({
+    name: 'evm_address',
+    type: 'varchar',
+    nullable: true,
+    unique: true,
+  })
   evmAddress: string | null;
 
   @Column({

@@ -21,9 +21,11 @@ export class JwtRefreshStrategy extends PassportStrategy(
     private readonly rtRepo: Repository<RefreshToken>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     super({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => req?.cookies?.['refresh_token'] || null,
+        (req: Request) => (req?.cookies?.['refresh_token'] as string) || null,
       ]),
       secretOrKey: config.get<string>('jwt.refreshSecret'),
       ignoreExpiration: false,
@@ -33,9 +35,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
   async validate(
     req: Request,
-    payload: { sub: string },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _payload: { sub: string },
   ): Promise<{ user: User; tokenHash: string }> {
-    const rawToken = req.cookies?.['refresh_token'];
+    const rawToken = req.cookies?.['refresh_token'] as string | undefined;
     if (!rawToken) throw new UnauthorizedException('No refresh token');
 
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');

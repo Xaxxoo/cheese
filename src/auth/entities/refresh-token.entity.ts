@@ -8,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
-import { Device } from '../../devices/entities/device.entity';
 
 @Entity('refresh_tokens')
 export class RefreshToken {
@@ -21,10 +20,14 @@ export class RefreshToken {
   @Column({ name: 'device_id', type: 'varchar', nullable: true })
   deviceId: string | null;
 
-  @Column({ name: 'expires_at', type: 'bigint', transformer: {
-    from: (value: number) => new Date(Number(value)),
-    to: (value: Date) => value.getTime(),
-  } })
+  @Column({
+    name: 'expires_at',
+    type: 'bigint',
+    transformer: {
+      from: (value: number) => new Date(Number(value)),
+      to: (value: Date) => value.getTime(),
+    },
+  })
   expiresAt: Date;
 
   @Column({ name: 'is_revoked', default: false })

@@ -94,7 +94,10 @@ export class AuthController {
     });
     if ('tokens' in result) {
       this.setRefreshCookie(res, result.tokens!.refreshToken);
-      return { user: result.user, tokens: { accessToken: result.tokens!.accessToken } };
+      return {
+        user: result.user,
+        tokens: { accessToken: result.tokens!.accessToken },
+      };
     }
     return result;
   }
@@ -191,7 +194,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const rawToken = req.cookies?.['refresh_token'];
     const tokenHash = rawToken
       ? createHash('sha256')
