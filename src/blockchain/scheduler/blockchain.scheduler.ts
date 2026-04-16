@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { WalletService, MAX_CREATION_RETRIES } from '../services/wallet.service';
+import {
+  WalletService,
+  MAX_CREATION_RETRIES,
+} from '../services/wallet.service';
 import { BlockchainTransactionService } from '../services/blockchain-transaction.service';
 import { BlockchainService } from '../services/blockchain.service';
 
@@ -21,7 +24,9 @@ export class BlockchainScheduler {
 
       if (pendingWallets.length === 0) return;
 
-      this.logger.log(`Scheduler: retrying ${pendingWallets.length} pending wallet(s)`);
+      this.logger.log(
+        `Scheduler: retrying ${pendingWallets.length} pending wallet(s)`,
+      );
 
       const platformAddress = this.blockchainService.getSignerAddress();
 
@@ -29,13 +34,16 @@ export class BlockchainScheduler {
         if (wallet.retryCount >= MAX_CREATION_RETRIES) {
           this.logger.error(
             `ALERT: Wallet creation exceeded max retries [userId=${wallet.userId}]` +
-            ` [retries=${wallet.retryCount}] — manual intervention required`,
+              ` [retries=${wallet.retryCount}] — manual intervention required`,
           );
           continue;
         }
 
         try {
-          await this.walletService.retryWalletCreation(wallet.id, platformAddress);
+          await this.walletService.retryWalletCreation(
+            wallet.id,
+            platformAddress,
+          );
         } catch (err) {
           this.logger.error(
             `Scheduler retry failed [walletId=${wallet.id}] [userId=${wallet.userId}]`,
@@ -62,7 +70,7 @@ export class BlockchainScheduler {
       for (const tx of stuckTxs) {
         this.logger.warn(
           `  [id=${tx.id}] [type=${tx.txType}] [ref=${tx.appReference}]` +
-          ` [txHash=${tx.txHash}] [submittedAt=${tx.submittedAt?.toISOString()}]`,
+            ` [txHash=${tx.txHash}] [submittedAt=${tx.submittedAt?.toISOString()}]`,
         );
       }
     } catch {
@@ -78,8 +86,8 @@ export class BlockchainScheduler {
 
       this.logger.log(
         `Daily blockchain health report:` +
-        ` failedTxs=${failedCount}` +
-        ` pendingWallets=${pendingWallets.length}`,
+          ` failedTxs=${failedCount}` +
+          ` pendingWallets=${pendingWallets.length}`,
       );
 
       if (failedCount > 10) {

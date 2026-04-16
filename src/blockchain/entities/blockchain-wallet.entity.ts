@@ -1,6 +1,11 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, Index, OneToMany,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+  OneToMany,
 } from 'typeorm';
 import { BlockchainTransaction } from './blockchain-transaction.entity';
 
@@ -9,13 +14,13 @@ export enum WalletStatus {
    * createWallet() submitted to chain but tx not yet mined.
    * The scheduler retries these until confirmed or max retries exceeded.
    */
-  PENDING   = 'pending',
+  PENDING = 'pending',
   /** Contract confirmed wallet creation. Ready for all operations. */
-  ACTIVE    = 'active',
+  ACTIVE = 'active',
   /** Suspended by admin or risk engine. All contract operations blocked. */
   SUSPENDED = 'suspended',
   /** Permanently deactivated. Cannot be reactivated. */
-  REVOKED   = 'revoked',
+  REVOKED = 'revoked',
 }
 
 export enum TokenSymbol {
@@ -24,11 +29,16 @@ export enum TokenSymbol {
 }
 
 @Entity('blockchain_wallets')
-@Index('UQ_blockchain_wallets_user_id',   ['userId'],             { unique: true })
-@Index('UQ_blockchain_wallets_address',   ['walletAddress'],      { unique: true, where: '"wallet_address" IS NOT NULL' })
-@Index('UQ_blockchain_wallets_username',  ['registeredUsername'], { unique: true })
-@Index('IDX_blockchain_wallets_status',   ['status'])
-@Index('IDX_blockchain_wallets_created',  ['createdAt'])
+@Index('UQ_blockchain_wallets_user_id', ['userId'], { unique: true })
+@Index('UQ_blockchain_wallets_address', ['walletAddress'], {
+  unique: true,
+  where: '"wallet_address" IS NOT NULL',
+})
+@Index('UQ_blockchain_wallets_username', ['registeredUsername'], {
+  unique: true,
+})
+@Index('IDX_blockchain_wallets_status', ['status'])
+@Index('IDX_blockchain_wallets_created', ['createdAt'])
 export class BlockchainWallet {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -45,7 +55,13 @@ export class BlockchainWallet {
    * Set to non-null exactly once, when the WalletCreated event is parsed.
    * Never changes after that.
    */
-  @Column({ type: 'varchar', length: 100, nullable: true, default: null, name: 'wallet_address' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    default: null,
+    name: 'wallet_address',
+  })
   walletAddress: string | null;
 
   /**

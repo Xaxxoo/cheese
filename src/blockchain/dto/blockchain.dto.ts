@@ -1,11 +1,25 @@
 import {
-  IsUUID, IsString, IsNotEmpty, IsNumberString,
-  IsEnum, IsOptional, IsEthereumAddress, MaxLength,
-  IsInt, Min, Max,
+  IsUUID,
+  IsString,
+  IsNotEmpty,
+  IsNumberString,
+  IsEnum,
+  IsOptional,
+  IsEthereumAddress,
+  MaxLength,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TokenSymbol, WalletStatus } from '../entities/blockchain-wallet.entity';
-import { BlockchainTxStatus, BlockchainTxType } from '../entities/blockchain-transaction.entity';
+import {
+  TokenSymbol,
+  WalletStatus,
+} from '../entities/blockchain-wallet.entity';
+import {
+  BlockchainTxStatus,
+  BlockchainTxType,
+} from '../entities/blockchain-transaction.entity';
 
 // ─── Request DTOs ─────────────────────────────────────────────────────────────
 
@@ -148,20 +162,22 @@ export class WalletResponseDto {
   activatedAt: string | null;
   createdAt: string;
 
-  static from(wallet: import('../entities/blockchain-wallet.entity').BlockchainWallet): WalletResponseDto {
+  static from(
+    wallet: import('../entities/blockchain-wallet.entity').BlockchainWallet,
+  ): WalletResponseDto {
     const dto = new WalletResponseDto();
-    dto.id                 = wallet.id;
-    dto.userId             = wallet.userId;
-    dto.walletAddress      = wallet.walletAddress;
+    dto.id = wallet.id;
+    dto.userId = wallet.userId;
+    dto.walletAddress = wallet.walletAddress;
     dto.registeredUsername = wallet.registeredUsername;
-    dto.chainId            = wallet.chainId;
-    dto.contractAddress    = wallet.contractAddress;
-    dto.tokenSymbol        = wallet.tokenSymbol;
-    dto.tokenDecimals      = wallet.tokenDecimals;
-    dto.status             = wallet.status;
-    dto.creationTxHash     = wallet.creationTxHash;
-    dto.activatedAt        = wallet.activatedAt?.toISOString() ?? null;
-    dto.createdAt          = wallet.createdAt.toISOString();
+    dto.chainId = wallet.chainId;
+    dto.contractAddress = wallet.contractAddress;
+    dto.tokenSymbol = wallet.tokenSymbol;
+    dto.tokenDecimals = wallet.tokenDecimals;
+    dto.status = wallet.status;
+    dto.creationTxHash = wallet.creationTxHash;
+    dto.activatedAt = wallet.activatedAt?.toISOString() ?? null;
+    dto.createdAt = wallet.createdAt.toISOString();
     return dto;
   }
 }
@@ -198,22 +214,22 @@ export class BlockchainTransactionResponseDto {
     tx: import('../entities/blockchain-transaction.entity').BlockchainTransaction,
   ): BlockchainTransactionResponseDto {
     const dto = new BlockchainTransactionResponseDto();
-    dto.id           = tx.id;
-    dto.walletId     = tx.walletId;
+    dto.id = tx.id;
+    dto.walletId = tx.walletId;
     dto.appReference = tx.appReference;
-    dto.txType       = tx.txType;
-    dto.status       = tx.status;
-    dto.txHash       = tx.txHash;
-    dto.blockNumber  = tx.blockNumber;
-    dto.amount       = tx.amount;
-    dto.amountRaw    = tx.amountRaw;
-    dto.toAddress    = tx.toAddress;
-    dto.gasUsed      = tx.gasUsed;
-    dto.gasPrice     = tx.gasPrice;
+    dto.txType = tx.txType;
+    dto.status = tx.status;
+    dto.txHash = tx.txHash;
+    dto.blockNumber = tx.blockNumber;
+    dto.amount = tx.amount;
+    dto.amountRaw = tx.amountRaw;
+    dto.toAddress = tx.toAddress;
+    dto.gasUsed = tx.gasUsed;
+    dto.gasPrice = tx.gasPrice;
     dto.revertReason = tx.revertReason;
-    dto.submittedAt  = tx.submittedAt?.toISOString() ?? null;
-    dto.confirmedAt  = tx.confirmedAt?.toISOString() ?? null;
-    dto.createdAt    = tx.createdAt.toISOString();
+    dto.submittedAt = tx.submittedAt?.toISOString() ?? null;
+    dto.confirmedAt = tx.confirmedAt?.toISOString() ?? null;
+    dto.createdAt = tx.createdAt.toISOString();
     return dto;
   }
 }
@@ -241,10 +257,10 @@ export class PaginatedResponseDto<T> {
   totalPages: number;
 
   constructor(data: T[], total: number, page: number, limit: number) {
-    this.data       = data;
-    this.total      = total;
-    this.page       = page;
-    this.limit      = limit;
+    this.data = data;
+    this.total = total;
+    this.page = page;
+    this.limit = limit;
     this.totalPages = Math.ceil(total / limit);
   }
 }

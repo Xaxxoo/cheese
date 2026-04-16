@@ -1,6 +1,14 @@
 import {
-  Controller, Post, Get, Patch, Body, Param, Query,
-  HttpCode, HttpStatus, UseGuards,
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Param,
+  Query,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { WalletService } from '../services/wallet.service';
@@ -12,8 +20,6 @@ import {
   TransferByUsernameDto,
   BlockchainTxFilterDto,
   UsernameResolveResponseDto,
-  OnChainOperationResultDto,
-  BlockchainTransactionResponseDto,
 } from '../dto/blockchain.dto';
 
 @Controller('blockchain')
@@ -36,7 +42,11 @@ export class BlockchainController {
   @Throttle({ default: { ttl: 600_000, limit: 3 } })
   @HttpCode(HttpStatus.CREATED)
   createWallet(@Body() dto: CreateWalletDto) {
-    return this.walletService.createWallet(dto.userId, dto.username, dto.evmAddress);
+    return this.walletService.createWallet(
+      dto.userId,
+      dto.username,
+      dto.evmAddress,
+    );
   }
 
   /**
@@ -83,7 +93,11 @@ export class BlockchainController {
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
   async debitWallet(@Body() dto: DebitWalletDto) {
-    const result = await this.walletService.debit(dto.userId, dto.amount, dto.appReference);
+    const result = await this.walletService.debit(
+      dto.userId,
+      dto.amount,
+      dto.appReference,
+    );
     return result;
   }
 
@@ -95,7 +109,11 @@ export class BlockchainController {
   @Post('wallets/credit')
   @HttpCode(HttpStatus.OK)
   async creditWallet(@Body() dto: CreditWalletDto) {
-    const result = await this.walletService.credit(dto.userId, dto.amount, dto.appReference);
+    const result = await this.walletService.credit(
+      dto.userId,
+      dto.amount,
+      dto.appReference,
+    );
     return result;
   }
 
@@ -151,7 +169,9 @@ export class BlockchainController {
    * Used by the payment initiation flow to validate recipient usernames.
    */
   @Get('username/:username/resolve')
-  async resolveUsername(@Param('username') username: string): Promise<UsernameResolveResponseDto> {
+  async resolveUsername(
+    @Param('username') username: string,
+  ): Promise<UsernameResolveResponseDto> {
     const result = await this.walletService.resolveUsername(username);
     return { username, ...result };
   }

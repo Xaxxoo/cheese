@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BlockchainTransaction, BlockchainTxStatus, BlockchainTxType } from '../entities/blockchain-transaction.entity';
+import {
+  BlockchainTransaction,
+  BlockchainTxStatus,
+} from '../entities/blockchain-transaction.entity';
 import { BlockchainTransactionNotFoundException } from '../exceptions/blockchain.exceptions';
 import {
   BlockchainTransactionResponseDto,
@@ -39,20 +42,24 @@ export class BlockchainTransactionService {
    * e.g. pass a CHZ-… reference to find both the original debit tx and
    * any associated reversal credit tx.
    */
-  async getByAppReference(appReference: string): Promise<BlockchainTransactionResponseDto[]> {
+  async getByAppReference(
+    appReference: string,
+  ): Promise<BlockchainTransactionResponseDto[]> {
     const txs = await this.txRepo.find({
       where: { appReference },
       order: { createdAt: 'ASC' },
     });
-    return txs.map(BlockchainTransactionResponseDto.from);
+    return txs.map((tx) => BlockchainTransactionResponseDto.from(tx));
   }
 
   /**
    * Paginated query across all blockchain transactions with optional filters.
    * Used by the admin dashboard.
    */
-  async query(filters: BlockchainTxFilterDto): Promise<PaginatedResponseDto<BlockchainTransactionResponseDto>> {
-    const page  = filters.page  ?? 1;
+  async query(
+    filters: BlockchainTxFilterDto,
+  ): Promise<PaginatedResponseDto<BlockchainTransactionResponseDto>> {
+    const page = filters.page ?? 1;
     const limit = filters.limit ?? 20;
 
     const qb = this.txRepo
@@ -74,7 +81,7 @@ export class BlockchainTransactionService {
     const [txs, total] = await qb.getManyAndCount();
 
     return new PaginatedResponseDto(
-      txs.map(BlockchainTransactionResponseDto.from),
+      txs.map((tx) => BlockchainTransactionResponseDto.from(tx)),
       total,
       page,
       limit,
@@ -93,7 +100,9 @@ export class BlockchainTransactionService {
    * Find all SUBMITTED transactions that are older than a given age in minutes.
    * Used by the scheduler to detect stuck submissions (submitted but never mined).
    */
-  async findStuckSubmissions(olderThanMinutes: number): Promise<BlockchainTransaction[]> {
+  async findStuckSubmissions(
+    olderThanMinutes: number,
+  ): Promise<BlockchainTransaction[]> {
     const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000);
     return this.txRepo
       .createQueryBuilder('tx')

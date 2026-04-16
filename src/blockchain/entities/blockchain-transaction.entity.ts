@@ -1,42 +1,48 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, Index, ManyToOne, JoinColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { BlockchainWallet } from './blockchain-wallet.entity';
 
 export enum BlockchainTxType {
-  WALLET_CREATION  = 'wallet_creation',
-  DEBIT            = 'debit',
-  CREDIT           = 'credit',
-  TRANSFER         = 'transfer',
+  WALLET_CREATION = 'wallet_creation',
+  DEBIT = 'debit',
+  CREDIT = 'credit',
+  TRANSFER = 'transfer',
 }
 
 export enum BlockchainTxStatus {
   /**
    * Transaction submitted to the mempool — hash available but not yet mined.
    */
-  SUBMITTED  = 'submitted',
+  SUBMITTED = 'submitted',
   /**
    * Transaction mined and confirmed (≥ 1 block confirmation).
    */
-  CONFIRMED  = 'confirmed',
+  CONFIRMED = 'confirmed',
   /**
    * Transaction reverted on-chain (contract threw).
    */
-  REVERTED   = 'reverted',
+  REVERTED = 'reverted',
   /**
    * RPC call failed before a tx hash was obtained (network error, nonce issue, etc.)
    */
-  FAILED     = 'failed',
+  FAILED = 'failed',
 }
 
 @Entity('blockchain_transactions')
-@Index('IDX_blockchain_tx_wallet_id',      ['walletId'])
-@Index('IDX_blockchain_tx_status',         ['status'])
-@Index('IDX_blockchain_tx_type',           ['txType'])
-@Index('IDX_blockchain_tx_app_reference',  ['appReference'])
-@Index('IDX_blockchain_tx_hash',           ['txHash'])
-@Index('IDX_blockchain_tx_created',        ['createdAt'])
+@Index('IDX_blockchain_tx_wallet_id', ['walletId'])
+@Index('IDX_blockchain_tx_status', ['status'])
+@Index('IDX_blockchain_tx_type', ['txType'])
+@Index('IDX_blockchain_tx_app_reference', ['appReference'])
+@Index('IDX_blockchain_tx_hash', ['txHash'])
+@Index('IDX_blockchain_tx_created', ['createdAt'])
 export class BlockchainTransaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -57,13 +63,17 @@ export class BlockchainTransaction {
    * (e.g., original + reversal).
    */
   @Column({ type: 'varchar', length: 100 })
-  @Index('IDX_blockchain_tx_app_ref', { })
+  @Index('IDX_blockchain_tx_app_ref', {})
   appReference: string;
 
   @Column({ type: 'enum', enum: BlockchainTxType })
   txType: BlockchainTxType;
 
-  @Column({ type: 'enum', enum: BlockchainTxStatus, default: BlockchainTxStatus.SUBMITTED })
+  @Column({
+    type: 'enum',
+    enum: BlockchainTxStatus,
+    default: BlockchainTxStatus.SUBMITTED,
+  })
   status: BlockchainTxStatus;
 
   /**
@@ -83,7 +93,13 @@ export class BlockchainTransaction {
    * Amount in human-readable format, e.g. "31.25000000".
    * Null for wallet_creation type (no token transfer involved).
    */
-  @Column({ type: 'decimal', precision: 18, scale: 8, nullable: true, default: null })
+  @Column({
+    type: 'decimal',
+    precision: 18,
+    scale: 8,
+    nullable: true,
+    default: null,
+  })
   amount: string | null;
 
   /**
@@ -145,7 +161,10 @@ export class BlockchainTransaction {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
-  @ManyToOne(() => BlockchainWallet, (w) => w.transactions, { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => BlockchainWallet, (w) => w.transactions, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
   @JoinColumn({ name: 'walletId' })
   wallet: BlockchainWallet;
 }

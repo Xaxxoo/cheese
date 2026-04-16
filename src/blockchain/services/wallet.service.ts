@@ -66,7 +66,7 @@ export class WalletService {
     const existing = await this.walletRepo.findOne({ where: { userId } });
     if (existing) throw new WalletAlreadyExistsException(userId);
 
-    const chainId         = await this.blockchainService.getChainId();
+    const chainId = await this.blockchainService.getChainId();
     const contractAddress = this.blockchainService.getContractAddress();
 
     // Insert PENDING wallet immediately — claims the userId slot
@@ -74,45 +74,48 @@ export class WalletService {
       this.walletRepo.create({
         userId,
         registeredUsername: username.toLowerCase(),
-        walletAddress:      null,
+        walletAddress: null,
         chainId,
         contractAddress,
-        tokenSymbol:        TokenSymbol.USDC,
-        tokenDecimals:      this.blockchainService.getTokenDecimals(),
-        status:             WalletStatus.PENDING,
-        retryCount:         0,
+        tokenSymbol: TokenSymbol.USDC,
+        tokenDecimals: this.blockchainService.getTokenDecimals(),
+        status: WalletStatus.PENDING,
+        retryCount: 0,
       }),
     );
 
     // Create a tx record before the contract call
-    let blockchainTx = await this.txRepo.save(
+    const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
-        walletId:     wallet.id,
+        walletId: wallet.id,
         appReference: userId, // wallet creation keyed by userId
-        txType:       BlockchainTxType.WALLET_CREATION,
-        status:       BlockchainTxStatus.SUBMITTED,
-        submittedAt:  new Date(),
+        txType: BlockchainTxType.WALLET_CREATION,
+        status: BlockchainTxStatus.SUBMITTED,
+        submittedAt: new Date(),
       }),
     );
 
     try {
-      const result = await this.blockchainService.createWallet(evmAddress, username);
+      const result = await this.blockchainService.createWallet(
+        evmAddress,
+        username,
+      );
 
       // Update wallet to ACTIVE
       await this.walletRepo.update(wallet.id, {
-        walletAddress:  result.walletAddress,
+        walletAddress: result.walletAddress,
         creationTxHash: result.txHash,
-        status:         WalletStatus.ACTIVE,
-        activatedAt:    new Date(),
+        status: WalletStatus.ACTIVE,
+        activatedAt: new Date(),
       });
 
       // Update tx to CONFIRMED
       await this.txRepo.update(blockchainTx.id, {
-        status:      BlockchainTxStatus.CONFIRMED,
-        txHash:      result.txHash,
+        status: BlockchainTxStatus.CONFIRMED,
+        txHash: result.txHash,
         blockNumber: result.blockNumber.toString(),
-        gasUsed:     result.gasUsed,
-        toAddress:   result.walletAddress,
+        gasUsed: result.gasUsed,
+        toAddress: result.walletAddress,
         confirmedAt: new Date(),
       });
 
@@ -126,11 +129,14 @@ export class WalletService {
     } catch (err) {
       // Contract call failed — leave wallet PENDING for scheduler retry
       await this.txRepo.update(blockchainTx.id, {
-        status:       BlockchainTxStatus.FAILED,
+        status: BlockchainTxStatus.FAILED,
         revertReason: err instanceof Error ? err.message : String(err),
       });
 
-      this.logger.error(`Wallet creation failed [userId=${userId}] — will retry`, err);
+      this.logger.error(
+        `Wallet creation failed [userId=${userId}] — will retry`,
+        err,
+      );
 
       return WalletResponseDto.from(
         await this.walletRepo.findOneOrFail({ where: { id: wallet.id } }),
@@ -142,27 +148,33 @@ export class WalletService {
    * Retry wallet creation for a PENDING wallet.
    * Called by BlockchainScheduler — not exposed via HTTP.
    */
-  async retryWalletCreation(walletId: string, evmAddress: string): Promise<void> {
+  async retryWalletCreation(
+    walletId: string,
+    evmAddress: string,
+  ): Promise<void> {
     const wallet = await this.walletRepo.findOne({ where: { id: walletId } });
     if (!wallet || wallet.status !== WalletStatus.PENDING) return;
 
     if (wallet.retryCount >= MAX_CREATION_RETRIES) {
-      throw new WalletCreationMaxRetriesException(wallet.userId, wallet.retryCount);
+      throw new WalletCreationMaxRetriesException(
+        wallet.userId,
+        wallet.retryCount,
+      );
     }
 
     await this.walletRepo.update(walletId, {
-      retryCount:  wallet.retryCount + 1,
+      retryCount: wallet.retryCount + 1,
       lastRetryAt: new Date(),
     });
 
     const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
-        walletId:     wallet.id,
+        walletId: wallet.id,
         appReference: wallet.userId,
-        txType:       BlockchainTxType.WALLET_CREATION,
-        status:       BlockchainTxStatus.SUBMITTED,
-        submittedAt:  new Date(),
-        metadata:     { retryAttempt: wallet.retryCount + 1 },
+        txType: BlockchainTxType.WALLET_CREATION,
+        status: BlockchainTxStatus.SUBMITTED,
+        submittedAt: new Date(),
+        metadata: { retryAttempt: wallet.retryCount + 1 },
       }),
     );
 
@@ -174,28 +186,31 @@ export class WalletService {
       );
 
       await this.walletRepo.update(walletId, {
-        walletAddress:  result.walletAddress,
+        walletAddress: result.walletAddress,
         creationTxHash: result.txHash,
-        status:         WalletStatus.ACTIVE,
-        activatedAt:    new Date(),
+        status: WalletStatus.ACTIVE,
+        activatedAt: new Date(),
       });
 
       await this.txRepo.update(blockchainTx.id, {
-        status:      BlockchainTxStatus.CONFIRMED,
-        txHash:      result.txHash,
+        status: BlockchainTxStatus.CONFIRMED,
+        txHash: result.txHash,
         blockNumber: result.blockNumber.toString(),
-        gasUsed:     result.gasUsed,
-        toAddress:   result.walletAddress,
+        gasUsed: result.gasUsed,
+        toAddress: result.walletAddress,
         confirmedAt: new Date(),
       });
 
       this.logger.log(`Wallet creation retry succeeded [walletId=${walletId}]`);
     } catch (err) {
       await this.txRepo.update(blockchainTx.id, {
-        status:       BlockchainTxStatus.FAILED,
+        status: BlockchainTxStatus.FAILED,
         revertReason: err instanceof Error ? err.message : String(err),
       });
-      this.logger.error(`Wallet creation retry ${wallet.retryCount + 1} failed [walletId=${walletId}]`, err);
+      this.logger.error(
+        `Wallet creation retry ${wallet.retryCount + 1} failed [walletId=${walletId}]`,
+        err,
+      );
     }
   }
 
@@ -206,14 +221,16 @@ export class WalletService {
   async getBalance(userId: string): Promise<WalletBalanceResponseDto> {
     const wallet = await this.requireReadyWallet(userId);
 
-    const balance = await this.blockchainService.getBalance(wallet.walletAddress!);
+    const balance = await this.blockchainService.getBalance(
+      wallet.walletAddress!,
+    );
 
     return {
       userId,
       walletAddress: wallet.walletAddress!,
-      tokenSymbol:   wallet.tokenSymbol,
+      tokenSymbol: wallet.tokenSymbol,
       balance,
-      fetchedAt:     new Date().toISOString(),
+      fetchedAt: new Date().toISOString(),
     };
   }
 
@@ -240,13 +257,13 @@ export class WalletService {
 
     const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
-        walletId:     wallet.id,
+        walletId: wallet.id,
         appReference,
-        txType:       BlockchainTxType.DEBIT,
-        status:       BlockchainTxStatus.SUBMITTED,
+        txType: BlockchainTxType.DEBIT,
+        status: BlockchainTxStatus.SUBMITTED,
         amount,
-        amountRaw:    this.blockchainService.toUnits(amount).toString(),
-        submittedAt:  new Date(),
+        amountRaw: this.blockchainService.toUnits(amount).toString(),
+        submittedAt: new Date(),
       }),
     );
 
@@ -258,22 +275,22 @@ export class WalletService {
       );
 
       await this.txRepo.update(blockchainTx.id, {
-        status:      BlockchainTxStatus.CONFIRMED,
-        txHash:      result.txHash,
+        status: BlockchainTxStatus.CONFIRMED,
+        txHash: result.txHash,
         blockNumber: result.blockNumber.toString(),
-        gasUsed:     result.gasUsed,
+        gasUsed: result.gasUsed,
         confirmedAt: new Date(),
-        metadata:    { balanceAfter: result.balanceAfter },
+        metadata: { balanceAfter: result.balanceAfter },
       });
 
       return {
-        txHash:         result.txHash,
-        balanceAfter:   result.balanceAfter,
+        txHash: result.txHash,
+        balanceAfter: result.balanceAfter,
         blockchainTxId: blockchainTx.id,
       };
     } catch (err) {
       await this.txRepo.update(blockchainTx.id, {
-        status:       BlockchainTxStatus.FAILED,
+        status: BlockchainTxStatus.FAILED,
         revertReason: err instanceof Error ? err.message : String(err),
       });
       throw err;
@@ -293,14 +310,14 @@ export class WalletService {
 
     const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
-        walletId:     wallet.id,
+        walletId: wallet.id,
         appReference,
-        txType:       BlockchainTxType.CREDIT,
-        status:       BlockchainTxStatus.SUBMITTED,
+        txType: BlockchainTxType.CREDIT,
+        status: BlockchainTxStatus.SUBMITTED,
         amount,
-        amountRaw:    this.blockchainService.toUnits(amount).toString(),
-        toAddress:    wallet.walletAddress!,
-        submittedAt:  new Date(),
+        amountRaw: this.blockchainService.toUnits(amount).toString(),
+        toAddress: wallet.walletAddress!,
+        submittedAt: new Date(),
       }),
     );
 
@@ -312,22 +329,22 @@ export class WalletService {
       );
 
       await this.txRepo.update(blockchainTx.id, {
-        status:      BlockchainTxStatus.CONFIRMED,
-        txHash:      result.txHash,
+        status: BlockchainTxStatus.CONFIRMED,
+        txHash: result.txHash,
         blockNumber: result.blockNumber.toString(),
-        gasUsed:     result.gasUsed,
+        gasUsed: result.gasUsed,
         confirmedAt: new Date(),
-        metadata:    { balanceAfter: result.balanceAfter },
+        metadata: { balanceAfter: result.balanceAfter },
       });
 
       return {
-        txHash:         result.txHash,
-        balanceAfter:   result.balanceAfter,
+        txHash: result.txHash,
+        balanceAfter: result.balanceAfter,
         blockchainTxId: blockchainTx.id,
       };
     } catch (err) {
       await this.txRepo.update(blockchainTx.id, {
-        status:       BlockchainTxStatus.FAILED,
+        status: BlockchainTxStatus.FAILED,
         revertReason: err instanceof Error ? err.message : String(err),
       });
       throw err;
@@ -351,15 +368,15 @@ export class WalletService {
 
     const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
-        walletId:     senderWallet.id,
+        walletId: senderWallet.id,
         appReference,
-        txType:       BlockchainTxType.TRANSFER,
-        status:       BlockchainTxStatus.SUBMITTED,
+        txType: BlockchainTxType.TRANSFER,
+        status: BlockchainTxStatus.SUBMITTED,
         amount,
-        amountRaw:    this.blockchainService.toUnits(amount).toString(),
-        toAddress:    toAddress ?? toUsername, // store address or username if unresolved
-        submittedAt:  new Date(),
-        metadata:     { toUsername, fromUsername: senderWallet.registeredUsername },
+        amountRaw: this.blockchainService.toUnits(amount).toString(),
+        toAddress: toAddress ?? toUsername, // store address or username if unresolved
+        submittedAt: new Date(),
+        metadata: { toUsername, fromUsername: senderWallet.registeredUsername },
       }),
     );
 
@@ -372,12 +389,12 @@ export class WalletService {
       );
 
       await this.txRepo.update(blockchainTx.id, {
-        status:      BlockchainTxStatus.CONFIRMED,
-        txHash:      result.txHash,
+        status: BlockchainTxStatus.CONFIRMED,
+        txHash: result.txHash,
         blockNumber: result.blockNumber.toString(),
-        gasUsed:     result.gasUsed,
+        gasUsed: result.gasUsed,
         confirmedAt: new Date(),
-        metadata:    {
+        metadata: {
           toUsername,
           fromUsername: senderWallet.registeredUsername,
           balanceAfter: result.balanceAfter,
@@ -385,13 +402,13 @@ export class WalletService {
       });
 
       return {
-        txHash:         result.txHash,
-        balanceAfter:   result.balanceAfter,
+        txHash: result.txHash,
+        balanceAfter: result.balanceAfter,
         blockchainTxId: blockchainTx.id,
       };
     } catch (err) {
       await this.txRepo.update(blockchainTx.id, {
-        status:       BlockchainTxStatus.FAILED,
+        status: BlockchainTxStatus.FAILED,
         revertReason: err instanceof Error ? err.message : String(err),
       });
       throw err;
@@ -402,8 +419,11 @@ export class WalletService {
   // Username resolution
   // ─────────────────────────────────────────────────────────────────────────
 
-  async resolveUsername(username: string): Promise<{ walletAddress: string | null; isRegistered: boolean }> {
-    const walletAddress = await this.blockchainService.resolveUsername(username);
+  async resolveUsername(
+    username: string,
+  ): Promise<{ walletAddress: string | null; isRegistered: boolean }> {
+    const walletAddress =
+      await this.blockchainService.resolveUsername(username);
     return { walletAddress, isRegistered: walletAddress !== null };
   }
 
@@ -421,19 +441,25 @@ export class WalletService {
     userId: string,
     page = 1,
     limit = 20,
-  ): Promise<{ data: BlockchainTransactionResponseDto[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<{
+    data: BlockchainTransactionResponseDto[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     const wallet = await this.walletRepo.findOne({ where: { userId } });
     if (!wallet) throw new WalletNotFoundException(userId);
 
     const [txs, total] = await this.txRepo.findAndCount({
-      where:  { walletId: wallet.id },
-      order:  { createdAt: 'DESC' },
-      skip:   (page - 1) * limit,
-      take:   limit,
+      where: { walletId: wallet.id },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
     return {
-      data:       txs.map(BlockchainTransactionResponseDto.from),
+      data: txs.map((tx) => BlockchainTransactionResponseDto.from(tx)),
       total,
       page,
       limit,
@@ -445,11 +471,14 @@ export class WalletService {
   // Admin operations
   // ─────────────────────────────────────────────────────────────────────────
 
-  async suspendWallet(userId: string, reason: string): Promise<WalletResponseDto> {
+  async suspendWallet(
+    userId: string,
+    reason: string,
+  ): Promise<WalletResponseDto> {
     const wallet = await this.walletRepo.findOne({ where: { userId } });
     if (!wallet) throw new WalletNotFoundException(userId);
     await this.walletRepo.update(wallet.id, {
-      status:           WalletStatus.SUSPENDED,
+      status: WalletStatus.SUSPENDED,
       suspensionReason: reason,
     });
     return WalletResponseDto.from(
@@ -461,7 +490,7 @@ export class WalletService {
     const wallet = await this.walletRepo.findOne({ where: { userId } });
     if (!wallet) throw new WalletNotFoundException(userId);
     await this.walletRepo.update(wallet.id, {
-      status:           WalletStatus.ACTIVE,
+      status: WalletStatus.ACTIVE,
       suspensionReason: null,
     });
     return WalletResponseDto.from(

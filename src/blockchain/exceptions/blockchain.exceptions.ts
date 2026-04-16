@@ -3,7 +3,10 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 export class WalletNotFoundException extends HttpException {
   constructor(identifier: string) {
     super(
-      { code: 'WALLET_NOT_FOUND', message: `Blockchain wallet not found: ${identifier}` },
+      {
+        code: 'WALLET_NOT_FOUND',
+        message: `Blockchain wallet not found: ${identifier}`,
+      },
       HttpStatus.NOT_FOUND,
     );
   }
@@ -24,7 +27,10 @@ export class WalletNotReadyException extends HttpException {
 export class WalletAlreadyExistsException extends HttpException {
   constructor(userId: string) {
     super(
-      { code: 'WALLET_ALREADY_EXISTS', message: `A wallet already exists for user: ${userId}` },
+      {
+        code: 'WALLET_ALREADY_EXISTS',
+        message: `A wallet already exists for user: ${userId}`,
+      },
       HttpStatus.CONFLICT,
     );
   }
