@@ -24,21 +24,21 @@ import { createHmac, timingSafeEqual } from 'crypto';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PulseMfbNameEnquiryResult {
-  responseCode:    string;   // "00" = success
-  accountName:     string;
-  accountNumber:   string;
-  bankCode:        string | null;
+  responseCode: string; // "00" = success
+  accountName: string;
+  accountNumber: string;
+  bankCode: string | null;
   responseMessage: string;
 }
 
 export interface PulseMfbTransferResult {
-  reference:          string;
+  reference: string;
   internal_reference: string;
-  amount:             number;
-  debit_account:      string;
+  amount: number;
+  debit_account: string;
   beneficiary_account: string;
-  status:             string;   // "completed" | "pending" | "failed"
-  created_at:         string;
+  status: string; // "completed" | "pending" | "failed"
+  created_at: string;
 }
 
 export interface PulseMfbTransferStatus extends PulseMfbTransferResult {
@@ -51,18 +51,18 @@ export interface PulseMfbTransferStatus extends PulseMfbTransferResult {
 export class PulseMfbClient implements OnModuleInit {
   private readonly logger = new Logger(PulseMfbClient.name);
 
-  private baseUrl:      string;
-  private publicKey:    string;
-  private privateKey:   string;
+  private baseUrl: string;
+  private publicKey: string;
+  private privateKey: string;
   private debitAccount: string;
   private ready = false;
 
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
-    this.baseUrl      = this.config.get<string>('pulsemfb.baseUrl')!;
-    this.publicKey    = this.config.get<string>('pulsemfb.publicKey') ?? '';
-    this.privateKey   = this.config.get<string>('pulsemfb.privateKey') ?? '';
+    this.baseUrl = this.config.get<string>('pulsemfb.baseUrl')!;
+    this.publicKey = this.config.get<string>('pulsemfb.publicKey') ?? '';
+    this.privateKey = this.config.get<string>('pulsemfb.privateKey') ?? '';
     this.debitAccount = this.config.get<string>('pulsemfb.debitAccount') ?? '';
 
     if (this.publicKey && this.privateKey && this.debitAccount) {
@@ -100,22 +100,22 @@ export class PulseMfbClient implements OnModuleInit {
   // ── Initiate Transfer ───────────────────────────────────────────────────────
   async initiateTransfer(params: {
     beneficiaryAccountNumber: string;
-    beneficiaryBankCode:      string;
-    beneficiaryName:          string;
-    amountNgn:                number;
-    narration:                string;
-    reference:                string;
+    beneficiaryBankCode: string;
+    beneficiaryName: string;
+    amountNgn: number;
+    narration: string;
+    reference: string;
   }): Promise<PulseMfbTransferResult> {
     const data = await this.post<{ data: PulseMfbTransferResult }>(
       '/api/v1/external-api/transfers',
       {
-        debit_account_number:       this.debitAccount,
+        debit_account_number: this.debitAccount,
         beneficiary_account_number: params.beneficiaryAccountNumber,
-        beneficiary_bank_code:      params.beneficiaryBankCode,
-        beneficiary_name:           params.beneficiaryName,
-        amount:                     params.amountNgn,
-        narration:                  params.narration,
-        reference:                  params.reference,
+        beneficiary_bank_code: params.beneficiaryBankCode,
+        beneficiary_name: params.beneficiaryName,
+        amount: params.amountNgn,
+        narration: params.narration,
+        reference: params.reference,
       },
     );
     return data.data;
@@ -134,11 +134,15 @@ export class PulseMfbClient implements OnModuleInit {
   verifyWebhookSignature(rawBody: string, signature: string): boolean {
     const secret = this.config.get<string>('pulsemfb.webhookSecret');
     if (!secret) {
-      this.logger.warn('PULSE_MFB_WEBHOOK_SECRET not set — skipping signature verification');
+      this.logger.warn(
+        'PULSE_MFB_WEBHOOK_SECRET not set — skipping signature verification',
+      );
       return true; // allow through in unconfigured dev env
     }
     try {
-      const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
+      const expected = createHmac('sha256', secret)
+        .update(rawBody)
+        .digest('hex');
       return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
     } catch {
       return false;
@@ -149,19 +153,23 @@ export class PulseMfbClient implements OnModuleInit {
   // Private HTTP helpers
   // ─────────────────────────────────────────────────────────────────────────
 
-  private buildHeaders(method: string, path: string, body: unknown): Record<string, string> {
-    const timestamp   = Date.now().toString();
-    const bodyString  = body ? JSON.stringify(body) : '';
-    const sigPayload  = timestamp + method.toUpperCase() + path + bodyString;
-    const signature   = createHmac('sha256', this.privateKey)
+  private buildHeaders(
+    method: string,
+    path: string,
+    body: unknown,
+  ): Record<string, string> {
+    const timestamp = Date.now().toString();
+    const bodyString = body ? JSON.stringify(body) : '';
+    const sigPayload = timestamp + method.toUpperCase() + path + bodyString;
+    const signature = createHmac('sha256', this.privateKey)
       .update(sigPayload)
       .digest('hex');
 
     return {
-      'Content-Type':  'application/json',
-      'x-public-key':  this.publicKey,
-      'x-signature':   signature,
-      'x-timestamp':   timestamp,
+      'Content-Type': 'application/json',
+      'x-public-key': this.publicKey,
+      'x-signature': signature,
+      'x-timestamp': timestamp,
     };
   }
 
@@ -169,9 +177,9 @@ export class PulseMfbClient implements OnModuleInit {
     this.requireReady(path);
     const headers = this.buildHeaders('POST', path, body);
     const res = await fetch(`${this.baseUrl}${path}`, {
-      method:  'POST',
+      method: 'POST',
       headers,
-      body:    JSON.stringify(body),
+      body: JSON.stringify(body),
     });
     return this.handleResponse<T>(res, path);
   }
@@ -180,16 +188,19 @@ export class PulseMfbClient implements OnModuleInit {
     this.requireReady(path);
     const headers = this.buildHeaders('GET', path, null);
     const res = await fetch(`${this.baseUrl}${path}`, {
-      method:  'GET',
+      method: 'GET',
       headers,
     });
     return this.handleResponse<T>(res, path);
   }
 
   private async handleResponse<T>(res: Response, path: string): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const msg = (json as any)?.message || `PulseMFB ${res.status}`;
+      const msg: string =
+        ((json as Record<string, unknown>)?.message as string) ||
+        `PulseMFB ${res.status}`;
       this.logger.error(`PulseMFB error [${path}] ${res.status}: ${msg}`);
       throw new BadRequestException(`Banking provider error: ${msg}`);
     }

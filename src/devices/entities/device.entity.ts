@@ -24,10 +24,15 @@ export class Device {
   @Column({ name: 'device_name', type: 'varchar', nullable: true })
   deviceName: string | null;
 
-  @Column({ name: 'last_seen', type: 'bigint', transformer: {
-    from: (value: number) => value ? new Date(Number(value)) : null,
-    to: (value: Date) => value ? value.getTime() : null,
-  }, nullable: true })
+  @Column({
+    name: 'last_seen',
+    type: 'bigint',
+    transformer: {
+      from: (value: number) => (value ? new Date(Number(value)) : null),
+      to: (value: Date) => (value ? value.getTime() : null),
+    },
+    nullable: true,
+  })
   lastSeen: Date | null;
 
   @Column({ type: 'varchar', nullable: true })

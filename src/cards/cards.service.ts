@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { timingSafeEqual, randomInt } from 'crypto';
+import { randomInt } from 'crypto';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -18,6 +18,7 @@ import {
   CardNetwork,
 } from './entities/virtual-card.entity';
 import { RevealCvvDto } from './dto';
+import { TxType } from '../transactions/entities/transaction.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { KycStatus, Tier } from '../auth/entities/user.entity';
 import { CARD_SPEND_LIMIT_USDC } from '../kyc/tier.limits';
@@ -43,10 +44,14 @@ export class CardsService {
     if (!user) throw new NotFoundException('User not found');
 
     if (user.kycStatus !== KycStatus.VERIFIED) {
-      throw new ForbiddenException('Identity verification required before accessing a card.');
+      throw new ForbiddenException(
+        'Identity verification required before accessing a card.',
+      );
     }
     if (user.tier === Tier.SILVER) {
-      throw new ForbiddenException('Virtual cards are available from Gold tier onwards. Complete more transactions to unlock your upgrade.');
+      throw new ForbiddenException(
+        'Virtual cards are available from Gold tier onwards. Complete more transactions to unlock your upgrade.',
+      );
     }
 
     let card =
@@ -84,7 +89,8 @@ export class CardsService {
   }
 
   // ── POST /card/cvv ────────────────────────────────────────
-  async revealCvv(userId: string, dto: RevealCvvDto) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async revealCvv(userId: string, _dto: RevealCvvDto) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     if (!user.pinHash) throw new BadRequestException('PIN not set');
@@ -109,7 +115,7 @@ export class CardsService {
   // ── GET /card/transactions ────────────────────────────────
   async getCardTransactions(userId: string) {
     const { items } = await this.txService.getList(userId, 1, 50);
-    return items.filter((tx) => tx.type === 'card_payment');
+    return items.filter((tx) => tx.type === TxType.CARD_PAYMENT);
   }
 
   // ── Provision a new card ──────────────────────────────────

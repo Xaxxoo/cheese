@@ -94,7 +94,10 @@ export class BankTransferDto {
   deviceId: string;
 }
 
-export type WebhookEvent = 'transfer.success' | 'transfer.failed' | 'transfer.reversed';
+export type WebhookEvent =
+  | 'transfer.success'
+  | 'transfer.failed'
+  | 'transfer.reversed';
 
 export class BankWebhookDto {
   @ApiProperty({
@@ -132,7 +135,13 @@ export class BankWebhookDto {
 // They also include X-Webhook-Signature: HMAC-SHA256(webhookSecret, rawBody).
 export class PulseMfbWebhookDto {
   @ApiProperty({
-    enum: ['transfer.completed', 'transfer.failed', 'vas.completed', 'vas.failed', 'account.created'],
+    enum: [
+      'transfer.completed',
+      'transfer.failed',
+      'vas.completed',
+      'vas.failed',
+      'account.created',
+    ],
     example: 'transfer.completed',
   })
   @IsString()
@@ -145,7 +154,11 @@ export class PulseMfbWebhookDto {
   timestamp?: string;
 
   @ApiProperty({
-    example: { reference: 'CW-NGN-ABCDEF1234567890', amount: 5000, status: 'completed' },
+    example: {
+      reference: 'CW-NGN-ABCDEF1234567890',
+      amount: 5000,
+      status: 'completed',
+    },
     description: 'Event payload — shape varies by event type',
   })
   @IsObject()

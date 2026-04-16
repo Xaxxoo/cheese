@@ -19,7 +19,8 @@ export class DevicesService {
   async register(
     userId: string,
     dto: RegisterDeviceDto,
-    currentDeviceId?: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _currentDeviceId?: string,
   ): Promise<Device> {
     const existing = await this.deviceRepo.findOne({
       where: { deviceId: dto.deviceId },
