@@ -29,9 +29,7 @@ import { CheckUsernameDto, RegisterDto, ShareDto } from './dto/waitlist.dto';
 @UseGuards(ThrottlerGuard)
 @Controller('waitlist')
 export class WaitlistController {
-  constructor(
-    private readonly waitlistService: WaitlistService,
-  ) {}
+  constructor(private readonly waitlistService: WaitlistService) {}
 
   @Post('register')
   @Public()
@@ -202,8 +200,8 @@ export class WaitlistController {
     // Disable caching to ensure fresh points data
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
+      Pragma: 'no-cache',
+      Expires: '0',
     });
     return this.waitlistService.getUserPoints(userId);
   }
@@ -217,4 +215,3 @@ export class WaitlistController {
     return req.socket?.remoteAddress || req.ip || 'unknown';
   }
 }
-

@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
-  Index,
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
 import { WaitlistEntry } from './waitlist-entry.entity';

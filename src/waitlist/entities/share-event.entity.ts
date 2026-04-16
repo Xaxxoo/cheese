@@ -5,13 +5,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
-  Index,
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
 import { WaitlistEntry } from './waitlist-entry.entity';
 
 export enum SharePlatform {
-  TWITTER  = 'twitter',
+  TWITTER = 'twitter',
   LINKEDIN = 'linkedin',
   WHATSAPP = 'whatsapp',
   TELEGRAM = 'telegram',
@@ -19,7 +18,7 @@ export enum SharePlatform {
 }
 
 export const PLATFORM_POINTS: Record<SharePlatform, number> = {
-  [SharePlatform.TWITTER]:  10,
+  [SharePlatform.TWITTER]: 10,
   [SharePlatform.LINKEDIN]: 8,
   [SharePlatform.FACEBOOK]: 6,
   [SharePlatform.WHATSAPP]: 5,
@@ -45,7 +44,10 @@ export class ShareEvent {
   @Column({ name: 'sharer_type', type: 'varchar', default: 'waitlist' })
   sharerType: 'user' | 'waitlist';
 
-  @ManyToOne(() => User, (user) => user.shareEvents, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => User, (user) => user.shareEvents, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

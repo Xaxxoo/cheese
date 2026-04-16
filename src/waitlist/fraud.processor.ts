@@ -1,3 +1,4 @@
+import { Job } from 'bullmq';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -23,14 +24,19 @@ export class FraudProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: any): Promise<void> {
-    const { type, userId, ipAddress, shareEventId } = job.data;
+  async process(job: Job): Promise<void> {
+    const { type, userId, ipAddress, shareEventId } = job.data as {
+      type: string;
+      userId: string;
+      ipAddress: string;
+      shareEventId: string;
+    };
 
     try {
       if (type === 'check-registration') {
         await this.checkRegistrationFraud(userId, ipAddress);
       } else if (type === 'check-share') {
-        await this.checkShareFraud(shareEventId, ipAddress);
+        await this.checkShareFraud(shareEventId);
       }
 
       this.logger.log(`Fraud check completed for ${type}`);
@@ -51,7 +57,7 @@ export class FraudProcessor extends WorkerHost {
     // But the detailed analysis happens in the agents processor
   }
 
-  private async checkShareFraud(shareEventId: string, ipAddress: string) {
+  private async checkShareFraud(shareEventId: string) {
     // Queue fraud analysis
     await this.agentsService.analyzeShareFraud(shareEventId);
 

@@ -14,7 +14,7 @@ import { SharePlatform } from '../entities/share-event.entity';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Please provide a valid email address' })
-  @Transform(({ value }) => value?.toLowerCase().trim())
+  @Transform(({ value }: { value: string }) => value?.toLowerCase().trim())
   email: string;
 
   @IsString()
@@ -24,12 +24,12 @@ export class RegisterDto {
   @Matches(/^[a-zA-Z0-9_]+$/, {
     message: 'Username can only contain letters, numbers, and underscores',
   })
-  @Transform(({ value }) => value?.toLowerCase().trim())
+  @Transform(({ value }: { value: string }) => value?.toLowerCase().trim())
   username: string;
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.trim() || undefined)
+  @Transform(({ value }: { value: string }) => value?.trim() || undefined)
   referralCode?: string;
 }
 
@@ -38,7 +38,8 @@ export class ShareDto {
   userId: string;
 
   @IsEnum(SharePlatform, {
-    message: 'platform must be one of: twitter, linkedin, whatsapp, telegram, facebook',
+    message:
+      'platform must be one of: twitter, linkedin, whatsapp, telegram, facebook',
   })
   platform: SharePlatform;
 }
@@ -49,11 +50,11 @@ export class CheckUsernameDto {
   @MinLength(3)
   @MaxLength(20)
   @Matches(/^[a-zA-Z0-9_]+$/)
-  @Transform(({ value }) => value?.toLowerCase().trim())
+  @Transform(({ value }: { value: string }) => value?.toLowerCase().trim())
   username: string;
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => value?.trim() || undefined)
+  @Transform(({ value }: { value: string }) => value?.trim() || undefined)
   referralCode?: string;
 }

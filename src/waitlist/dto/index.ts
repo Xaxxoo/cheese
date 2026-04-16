@@ -1,7 +1,6 @@
 // src/waitlist/dto/index.ts
 import {
   IsEmail,
-  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
@@ -18,7 +17,7 @@ export class JoinWaitlistDto {
       'Email address to receive launch notification and waitlist updates',
   })
   @IsEmail()
-  @Transform(({ value }) => value?.toLowerCase().trim())
+  @Transform(({ value }: { value: string }) => value?.toLowerCase().trim())
   email: string;
 
   @ApiProperty({
@@ -34,7 +33,9 @@ export class JoinWaitlistDto {
   @Matches(/^[a-zA-Z0-9_]+$/, {
     message: 'Username can only contain letters, numbers and underscores',
   })
-  @Transform(({ value }) => value?.toLowerCase().trim().replace(/^@/, ''))
+  @Transform(({ value }: { value: string }) =>
+    value?.toLowerCase().trim().replace(/^@/, ''),
+  )
   username: string;
 
   @ApiPropertyOptional({

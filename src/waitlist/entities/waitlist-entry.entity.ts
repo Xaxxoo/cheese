@@ -44,7 +44,13 @@ export class WaitlistEntry {
   @Column({ name: 'referrer_id', type: 'uuid', nullable: true })
   referrerId: string | null;
 
-  @Column({ name: 'referral_code', type: 'varchar', length: 20, nullable: true, unique: true })
+  @Column({
+    name: 'referral_code',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    unique: true,
+  })
   referralCode: string | null;
 
   @Column({ type: 'int', default: 0 })
@@ -53,16 +59,28 @@ export class WaitlistEntry {
   @Column({ name: 'ip_address', type: 'varchar', nullable: true })
   ipAddress: string | null;
 
-  @Column({ name: 'notified_at', type: 'bigint', transformer: {
-    from: (value: number) => value ? new Date(parseInt(value as any, 10)) : null,
-    to: (value: Date) => value ? value.getTime() : null,
-  }, nullable: true })
+  @Column({
+    name: 'notified_at',
+    type: 'bigint',
+    transformer: {
+      from: (value: number) =>
+        value ? new Date(parseInt(value as any, 10)) : null,
+      to: (value: Date) => (value ? value.getTime() : null),
+    },
+    nullable: true,
+  })
   notifiedAt: Date | null;
 
-  @Column({ name: 'converted_at', type: 'bigint', transformer: {
-    from: (value: number) => value ? new Date(parseInt(value as any, 10)) : null,
-    to: (value: Date) => value ? value.getTime() : null,
-  }, nullable: true })
+  @Column({
+    name: 'converted_at',
+    type: 'bigint',
+    transformer: {
+      from: (value: number) =>
+        value ? new Date(parseInt(value as any, 10)) : null,
+      to: (value: Date) => (value ? value.getTime() : null),
+    },
+    nullable: true,
+  })
   convertedAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
