@@ -40,8 +40,7 @@ export const redisConfig = registerAs('redis', () => ({
 
 export const stellarConfig = registerAs('stellar', () => ({
   network: process.env.STELLAR_NETWORK || 'mainnet',
-  horizonUrl:
-    process.env.STELLAR_HORIZON_URL || 'https://horizon.stellar.org',
+  horizonUrl: process.env.STELLAR_HORIZON_URL || 'https://horizon.stellar.org',
   usdcIssuer: process.env.STELLAR_USDC_ISSUER,
   masterSecret: process.env.STELLAR_MASTER_SECRET,
   encryptionKey: process.env.STELLAR_WALLET_ENCRYPTION_KEY,
@@ -69,14 +68,14 @@ export const emailConfig = registerAs('email', () => ({
 }));
 
 export const dojahConfig = registerAs('dojah', () => ({
-  appId:     process.env.DOJAH_APP_ID,
+  appId: process.env.DOJAH_APP_ID,
   secretKey: process.env.DOJAH_SECRET_KEY,
 }));
 
 export const pulseMfbConfig = registerAs('pulsemfb', () => ({
-  baseUrl:        process.env.PULSE_MFB_BASE_URL    || 'https://api.pulsemfb.com',
-  publicKey:      process.env.PULSE_MFB_PUBLIC_KEY,
-  privateKey:     process.env.PULSE_MFB_PRIVATE_KEY,
-  debitAccount:   process.env.PULSE_MFB_DEBIT_ACCOUNT,  // platform's NGN account at PulseMFB
-  webhookSecret:  process.env.PULSE_MFB_WEBHOOK_SECRET,  // for verifying inbound webhooks
+  baseUrl: process.env.PULSE_MFB_BASE_URL || 'https://api.pulsemfb.com',
+  publicKey: process.env.PULSE_MFB_PUBLIC_KEY,
+  privateKey: process.env.PULSE_MFB_PRIVATE_KEY,
+  debitAccount: process.env.PULSE_MFB_DEBIT_ACCOUNT, // platform's NGN account at PulseMFB
+  webhookSecret: process.env.PULSE_MFB_WEBHOOK_SECRET, // for verifying inbound webhooks
 }));

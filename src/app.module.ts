@@ -2,7 +2,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bullmq';
@@ -126,7 +126,7 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
       : []),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      useFactory: (config: ConfigService): TypeOrmModuleOptions => {
         const databaseUrl = process.env.DATABASE_URL;
         const usePostgres = !!databaseUrl || !!config.get('db.host');
 
@@ -157,22 +157,22 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
                 // VirtualCard,
                 // PaymentRequest,
               ],
-              synchronize: config.get('app.nodeEnv') !== 'production',
-              logging: config.get('app.nodeEnv') === 'development',
+              synchronize: config.get<string>('app.nodeEnv') !== 'production',
+              logging: config.get<string>('app.nodeEnv') === 'development',
               ssl:
-                config.get('app.nodeEnv') === 'production'
+                config.get<string>('app.nodeEnv') === 'production'
                   ? { rejectUnauthorized: false }
                   : false,
-            } as any;
+            } as TypeOrmModuleOptions;
           } else {
             // Use individual DB_* environment variables
             return {
               type: 'postgres',
-              host: config.get('db.host'),
-              port: config.get('db.port'),
-              username: config.get('db.user'),
-              password: config.get('db.pass'),
-              database: config.get('db.name'),
+              host: config.get<string>('db.host'),
+              port: config.get<number>('db.port'),
+              username: config.get<string>('db.user'),
+              password: config.get<string>('db.pass'),
+              database: config.get<string>('db.name'),
               entities: [
                 User,
                 RefreshToken,
@@ -193,20 +193,20 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
                 // VirtualCard,
                 // PaymentRequest,
               ],
-              synchronize: config.get('app.nodeEnv') !== 'production',
-              logging: config.get('app.nodeEnv') === 'development',
+              synchronize: config.get<string>('app.nodeEnv') !== 'production',
+              logging: config.get<string>('app.nodeEnv') === 'development',
               ssl:
-                config.get('app.nodeEnv') === 'production'
+                config.get<string>('app.nodeEnv') === 'production'
                   ? { rejectUnauthorized: false }
                   : false,
-            } as any;
+            } as TypeOrmModuleOptions;
           }
         }
 
         // Local development: use postgres (no server required)
         return {
           type: 'postgres',
-          database: config.get('db.name') + '.db',
+          database: `${config.get<string>('db.name')}.db`,
           entities: [
             User,
             RefreshToken,
@@ -226,9 +226,9 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
             // Referral,
             // PaymentRequest,
           ],
-          synchronize: config.get('app.nodeEnv') !== 'production',
-          logging: config.get('app.nodeEnv') === 'development',
-        } as any;
+          synchronize: config.get<string>('app.nodeEnv') !== 'production',
+          logging: config.get<string>('app.nodeEnv') === 'development',
+        } as TypeOrmModuleOptions;
       },
     }),
 

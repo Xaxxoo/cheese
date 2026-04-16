@@ -1,5 +1,10 @@
 import {
-  ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger,
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
@@ -8,21 +13,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
-    const ctx    = host.switchToHttp();
-    const req    = ctx.getRequest<Request>();
-    const res    = ctx.getResponse<Response>();
+    const ctx = host.switchToHttp();
+    const req = ctx.getRequest<Request>();
+    const res = ctx.getResponse<Response>();
 
-    const status = exception instanceof HttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const body = exception instanceof HttpException
-      ? exception.getResponse()
-      : { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' };
+    const body =
+      exception instanceof HttpException
+        ? exception.getResponse()
+        : { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' };
 
-    const payload = typeof body === 'string'
-      ? { code: 'ERROR', message: body }
-      : body;
+    const payload =
+      typeof body === 'string' ? { code: 'ERROR', message: body } : body;
 
     if (status >= 500) {
       this.logger.error(
@@ -30,13 +36,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         exception instanceof Error ? exception.stack : String(exception),
       );
     } else {
-      this.logger.warn(`[${req.method}] ${req.url} → ${status} ${JSON.stringify(payload)}`);
+      this.logger.warn(
+        `[${req.method}] ${req.url} → ${status} ${JSON.stringify(payload)}`,
+      );
     }
 
     res.status(status).json({
-      ...(payload as object),
+      ...payload,
       timestamp: new Date().toISOString(),
-      path:      req.url,
+      path: req.url,
     });
   }
 }

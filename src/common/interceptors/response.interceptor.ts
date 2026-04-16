@@ -21,12 +21,13 @@ export class ResponseInterceptor<T> implements NestInterceptor<
 > {
   intercept(
     _ctx: ExecutionContext,
-    next: CallHandler,
+    next: CallHandler<T>,
   ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
-      map((data) => {
+      map((data: T) => {
         // If service already returns shaped response, pass through
-        if (data && typeof data === 'object' && 'success' in data) return data;
+        if (data && typeof data === 'object' && 'success' in data)
+          return data as unknown as ApiResponse<T>;
         return { success: true, data };
       }),
     );

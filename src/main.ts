@@ -10,7 +10,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
-    rawBody: true,  // needed for PulseMFB webhook signature verification
+    rawBody: true, // needed for PulseMFB webhook signature verification
   });
 
   const config = app.get(ConfigService);
@@ -113,8 +113,10 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`\n🧀 Cheese Pay API  →  http://localhost:${port}/v1`);
   console.log(`   Environment : ${config.get('app.nodeEnv')}`);
-  console.log(`   Stellar     : ${config.get('stellar.network') ?? 'NOT SET'} | key=${process.env.STELLAR_PLATFORM_SECRET_KEY ? 'SET' : 'MISSING'} | horizon=${process.env.STELLAR_HORIZON_URL ?? 'MISSING'} | enc=${process.env.SECRET_ENCRYPTION_KEY ? 'SET' : 'MISSING'}`);
+  console.log(
+    `   Stellar     : ${config.get('stellar.network') ?? 'NOT SET'} | key=${process.env.STELLAR_PLATFORM_SECRET_KEY ? 'SET' : 'MISSING'} | horizon=${process.env.STELLAR_HORIZON_URL ?? 'MISSING'} | enc=${process.env.SECRET_ENCRYPTION_KEY ? 'SET' : 'MISSING'}`,
+  );
   console.log(`   Frontend    : ${origin}\n`);
 }
 
-bootstrap();
+void bootstrap();

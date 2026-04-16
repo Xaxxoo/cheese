@@ -24,14 +24,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
-      const exResponse = exception.getResponse() as any;
+      const exResponse = exception.getResponse() as
+        | string
+        | { message?: string | string[]; error?: string };
       message =
         typeof exResponse === 'string'
           ? exResponse
           : Array.isArray(exResponse.message)
             ? exResponse.message[0]
             : exResponse.message || exception.message;
-      error = exResponse.error || exception.name;
+      error =
+        (typeof exResponse !== 'string' && exResponse.error) || exception.name;
     } else if (exception instanceof Error) {
       message = exception.message;
       this.logger.error(

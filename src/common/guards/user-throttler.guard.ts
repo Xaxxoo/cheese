@@ -18,13 +18,19 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  */
 @Injectable()
 export class UserThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, any>): Promise<string> {
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
     const userId = (req.user as { id?: string } | undefined)?.id;
-    if (userId) return `user:${userId}`;
+    if (userId) return Promise.resolve(`user:${userId}`);
 
     // Honour X-Forwarded-For when behind a reverse proxy, then fall back to req.ip
-    const forwarded = req.headers?.['x-forwarded-for'] as string | undefined;
-    const ip = (forwarded ? forwarded.split(',')[0].trim() : req.ip) ?? 'unknown';
-    return `ip:${ip}`;
+    const headers = req.headers as Record<
+      string,
+      string | string[] | undefined
+    >;
+    const forwarded = headers?.['x-forwarded-for'] as string | undefined;
+    const ip =
+      (forwarded ? forwarded.split(',')[0].trim() : (req.ip as string)) ??
+      'unknown';
+    return Promise.resolve(`ip:${ip}`);
   }
 }
