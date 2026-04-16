@@ -22,7 +22,12 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { BanksService } from './banks.service';
 import { PulseMfbClient } from './pulsemfb.client';
-import { BankTransferDto, BankWebhookDto, PulseMfbWebhookDto, ResolveAccountDto } from './dto';
+import {
+  BankTransferDto,
+  BankWebhookDto,
+  PulseMfbWebhookDto,
+  ResolveAccountDto,
+} from './dto';
 
 @ApiTags('Banks')
 @Controller('banks')
@@ -37,10 +42,12 @@ export class BanksController {
   @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'List Nigerian banks',
-    description:
-      'Returns all supported Nigerian banks with their bank codes.',
+    description: 'Returns all supported Nigerian banks with their bank codes.',
   })
-  @ApiResponse({ status: 200, description: 'Array of banks with name and code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Array of banks with name and code',
+  })
   getBanks() {
     return this.banksService.getBanks();
   }
@@ -56,8 +63,14 @@ export class BanksController {
       'Looks up the account holder name for a given account number and bank code. ' +
       'Use this before initiating a transfer to confirm the recipient.',
   })
-  @ApiResponse({ status: 200, description: 'Account resolved — returns account name' })
-  @ApiResponse({ status: 400, description: 'Account not found or invalid details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Account resolved — returns account name',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Account not found or invalid details',
+  })
   resolveAccount(@Body() dto: ResolveAccountDto) {
     return this.banksService.resolveAccount(dto);
   }
@@ -73,19 +86,26 @@ export class BanksController {
       "Converts the user's USDC to NGN at the current effective rate and initiates " +
       'a bank transfer. Requires PIN hash and device ID.\n\n' +
       '**Flow:**\n' +
-      '1. USDC is deducted from the user\'s Stellar wallet.\n' +
+      "1. USDC is deducted from the user's Stellar wallet.\n" +
       '2. The banking provider is called to initiate the NGN payout.\n' +
       '3. The transfer stays in **processing** state until `POST /banks/webhook` ' +
       'receives a `transfer.success` or `transfer.failed` event.\n\n' +
       'If the banking provider call fails *after* USDC is deducted, the USDC is ' +
-      'automatically refunded to the user\'s wallet.',
+      "automatically refunded to the user's wallet.",
   })
   @ApiResponse({
     status: 200,
-    description: 'Transfer initiated — status is "processing" until webhook confirms',
+    description:
+      'Transfer initiated — status is "processing" until webhook confirms',
   })
-  @ApiResponse({ status: 400, description: 'Insufficient balance or validation error' })
-  @ApiResponse({ status: 401, description: 'Invalid PIN or unrecognised device' })
+  @ApiResponse({
+    status: 400,
+    description: 'Insufficient balance or validation error',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid PIN or unrecognised device',
+  })
   bankTransfer(@CurrentUser() user: User, @Body() dto: BankTransferDto) {
     return this.banksService.bankTransfer(user.id, dto);
   }
@@ -104,7 +124,7 @@ export class BanksController {
       '2. Call this endpoint with that reference and `event: transfer.success` ' +
       'to simulate a successful NGN settlement.\n' +
       '3. Or use `transfer.failed` / `transfer.reversed` to simulate a failure — ' +
-      'the USDC will be automatically refunded to the user\'s wallet.\n\n' +
+      "the USDC will be automatically refunded to the user's wallet.\n\n" +
       '**Events:**\n' +
       '- `transfer.success` — NGN landed in recipient account → marks transfer COMPLETED.\n' +
       '- `transfer.failed`  — NGN payout failed → refunds USDC, marks transfer FAILED.\n' +
@@ -112,7 +132,8 @@ export class BanksController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Webhook processed — returns updated status and whether USDC was refunded',
+    description:
+      'Webhook processed — returns updated status and whether USDC was refunded',
   })
   @ApiResponse({ status: 404, description: 'Transfer reference not found' })
   processWebhook(@Body() dto: BankWebhookDto) {
@@ -139,11 +160,16 @@ export class BanksController {
   @ApiResponse({ status: 401, description: 'Invalid webhook signature' })
   async processPulseMfbWebhook(
     @Body() dto: PulseMfbWebhookDto,
-    @Req() req: any,
+    @Req() req: { rawBody?: Buffer },
     @Headers('x-webhook-signature') signature: string,
   ) {
-    const rawBody = (req.rawBody ?? Buffer.from(JSON.stringify(dto))).toString('utf8');
-    const sigValid = this.pulseMfb.verifyWebhookSignature(rawBody, signature ?? '');
+    const rawBody = (req.rawBody ?? Buffer.from(JSON.stringify(dto))).toString(
+      'utf8',
+    );
+    const sigValid = this.pulseMfb.verifyWebhookSignature(
+      rawBody,
+      signature ?? '',
+    );
     if (!sigValid) {
       throw new UnauthorizedException('Invalid webhook signature');
     }
