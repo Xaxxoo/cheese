@@ -141,13 +141,15 @@ export class SendService {
       throw new BadRequestException(`Minimum send amount is ${MIN_USDC} USDC`);
     }
 
-    // 5. Check balance
-    const balance = await this.blockchainService.getUsdcBalance(
+    // 5. Check balance — send routes through Stellar, so we check Stellar balance.
+    //    The user's total spendable balance (EVM + Stellar combined) is surfaced
+    //    by the /wallet/balance endpoint; here we guard against the Stellar leg only.
+    const stellarBalance = await this.blockchainService.getStellarUsdcBalance(
       sender.stellarPublicKey,
     );
     const feeUsdc = amount * PLATFORM_FEE_PCT;
     const totalRequired = amount + feeUsdc;
-    if (parseFloat(balance.usdc) < totalRequired) {
+    if (parseFloat(stellarBalance) < totalRequired) {
       throw new BadRequestException('Insufficient USDC balance');
     }
 

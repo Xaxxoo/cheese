@@ -5,7 +5,6 @@ import {
   MAX_CREATION_RETRIES,
 } from '../services/wallet.service';
 import { BlockchainTransactionService } from '../services/blockchain-transaction.service';
-import { BlockchainService } from '../services/blockchain.service';
 
 @Injectable()
 export class BlockchainScheduler {
@@ -14,7 +13,6 @@ export class BlockchainScheduler {
   constructor(
     private readonly walletService: WalletService,
     private readonly blockchainTxService: BlockchainTransactionService,
-    private readonly blockchainService: BlockchainService,
   ) {}
 
   @Cron(CronExpression.EVERY_5_MINUTES)
@@ -28,8 +26,6 @@ export class BlockchainScheduler {
         `Scheduler: retrying ${pendingWallets.length} pending wallet(s)`,
       );
 
-      const platformAddress = this.blockchainService.getSignerAddress();
-
       for (const wallet of pendingWallets) {
         if (wallet.retryCount >= MAX_CREATION_RETRIES) {
           this.logger.error(
@@ -40,10 +36,7 @@ export class BlockchainScheduler {
         }
 
         try {
-          await this.walletService.retryWalletCreation(
-            wallet.id,
-            platformAddress,
-          );
+          await this.walletService.retryWalletCreation(wallet.id);
         } catch (err) {
           this.logger.error(
             `Scheduler retry failed [walletId=${wallet.id}] [userId=${wallet.userId}]`,

@@ -5,7 +5,6 @@ import {
   IsNumberString,
   IsEnum,
   IsOptional,
-  IsEthereumAddress,
   MaxLength,
   IsInt,
   Min,
@@ -36,14 +35,6 @@ export class CreateWalletDto {
   @IsNotEmpty()
   @MaxLength(30)
   username: string;
-
-  /**
-   * EVM address to associate with the wallet.
-   * For fully-custodial model, pass the platform address.
-   * For self-custodial, pass the user's own EOA.
-   */
-  @IsEthereumAddress()
-  evmAddress: string;
 }
 
 export class DebitWalletDto {
@@ -186,7 +177,16 @@ export class WalletBalanceResponseDto {
   userId: string;
   walletAddress: string;
   tokenSymbol: TokenSymbol;
-  /** Live balance read from smart contract. Human-readable, e.g. "31.25000000" */
+  /** USDC held in the EVM UserWallet contract on Polygon */
+  evmBalance: string;
+  /** USDC held on the Stellar wallet (0 if Stellar not configured or no wallet) */
+  stellarBalance: string;
+  /** Combined total across both chains — this is the user's spendable balance */
+  totalBalance: string;
+  /**
+   * Backward-compat alias for totalBalance.
+   * @deprecated use totalBalance
+   */
   balance: string;
   /** ISO UTC timestamp of when this balance was fetched */
   fetchedAt: string;

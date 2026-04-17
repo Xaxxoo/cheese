@@ -63,7 +63,11 @@ export class BlockchainService implements OnModuleInit {
   // ── EVM ────────────────────────────────────────────────────────────────
   private evmProvider: ethers.JsonRpcProvider;
   private evmSigner: ethers.Wallet;
-  private evmContract: ethers.Contract;
+  /** UserWalletFactory — the single deployed contract */
+  private evmFactory: ethers.Contract;
+  /** USDC ERC-20 — used by the platform signer to credit user wallets */
+  private evmUsdcContract: ethers.Contract;
+  private evmUsdcAddress: string;
   private tokenDecimals: number;
   private evmReady = false;
 
@@ -78,19 +82,58 @@ export class BlockchainService implements OnModuleInit {
   private encryptionKey: Buffer;
   private encryptionReady = false;
 
-  // ── Contract ABI ───────────────────────────────────────────────────────
-  private readonly CONTRACT_ABI = [
-    'function createWallet(address user, string calldata username) external returns (address walletAddress)',
-    'function debit(address wallet, uint256 amount, string calldata ref) external returns (bool)',
-    'function credit(address wallet, uint256 amount, string calldata ref) external returns (bool)',
-    'function transferByUsername(string calldata fromUsername, string calldata toUsername, uint256 amount, string calldata ref) external returns (bool)',
-    'function getBalance(address wallet) external view returns (uint256)',
+  // ─────────────────────────────────────────────────────────────────────────
+  // Contract ABIs — matched exactly to the deployed Solidity sources
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * UserWalletFactory — the single contract at WALLET_CONTRACT_ADDRESS.
+   * Handles wallet creation, P2P transfers and username resolution.
+   */
+  private readonly FACTORY_ABI = [
+    // ── Mutating ────────────────────────────────────────────────────────
+    'function createWallet(string calldata userId, string calldata username) external returns (address wallet)',
+    'function transferByUsername(string calldata fromUsername, string calldata toUsername, uint256 amount) external',
+    // ── Views ────────────────────────────────────────────────────────────
+    'function getWallet(string calldata userId) external view returns (address)',
     'function getWalletByUsername(string calldata username) external view returns (address)',
-    'function tokenDecimals() external view returns (uint8)',
-    'event WalletCreated(address indexed user, address indexed wallet, string username)',
-    'event Debited(address indexed wallet, uint256 amount, string ref)',
-    'event Credited(address indexed wallet, uint256 amount, string ref)',
-    'event Transferred(address indexed fromWallet, address indexed toWallet, uint256 amount, string ref)',
+    'function hasWallet(string calldata userId) external view returns (bool)',
+    'function isUsernameTaken(string calldata username) external view returns (bool)',
+    'function getWalletAtIndex(uint256 index) external view returns (address)',
+    'function totalWallets() external view returns (uint256)',
+    // ── Events ───────────────────────────────────────────────────────────
+    'event WalletCreated(bytes32 indexed userIdHash, bytes32 indexed usernameHash, address indexed wallet, string username, uint256 timestamp)',
+    'event Transfer(address indexed fromWallet, address indexed toWallet, string fromUsername, string toUsername, uint256 amount, uint256 timestamp)',
+  ];
+
+  /**
+   * UserWallet — individual contract deployed per user.
+   * Address read from the blockchain_wallets table (wallet_address column).
+   */
+  private readonly USER_WALLET_ABI = [
+    // ── Views ────────────────────────────────────────────────────────────
+    'function getBalance() external view returns (uint256)',
+    // ── Mutating ────────────────────────────────────────────────────────
+    'function withdraw(uint256 amount, address recipient) external',
+    'function transferToUser(address recipientWallet, uint256 amount) external',
+    'function transferToVault(uint256 paymentAmount) external returns (uint256 totalAmount)',
+    'function setOwner(address newOwner) external',
+    'function emergencyWithdraw() external',
+    // ── Events ───────────────────────────────────────────────────────────
+    'event Withdrawal(address indexed recipient, uint256 amount, uint256 timestamp)',
+    'event TransferredToUser(address indexed recipient, uint256 amount, uint256 timestamp)',
+    'event TransferredToVault(uint256 paymentAmount, uint256 feeAmount, uint256 totalAmount, uint256 timestamp)',
+    'event OwnerUpdated(address indexed oldOwner, address indexed newOwner)',
+  ];
+
+  /**
+   * Minimal ERC-20 ABI — used to send USDC from the platform signer to a
+   * UserWallet address (the "credit" path, i.e. fiat → on-chain deposit).
+   */
+  private readonly ERC20_ABI = [
+    'function transfer(address to, uint256 amount) returns (bool)',
+    'function balanceOf(address account) view returns (uint256)',
+    'function decimals() view returns (uint8)',
   ];
 
   constructor(private readonly config: ConfigService) {}
@@ -103,7 +146,8 @@ export class BlockchainService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     const rpcUrl = this.config.get<string>('BLOCKCHAIN_RPC_URL');
     const privateKey = this.config.get<string>('PLATFORM_WALLET_PRIVATE_KEY');
-    const contractAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
+    const factoryAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
+    const usdcAddr = this.config.get<string>('USDC_CONTRACT_ADDRESS');
 
     const stellarSecret = this.config.get<string>(
       'STELLAR_PLATFORM_SECRET_KEY',
@@ -111,16 +155,19 @@ export class BlockchainService implements OnModuleInit {
     const horizonUrl = this.config.get<string>('STELLAR_HORIZON_URL');
     const encKey = this.config.get<string>('SECRET_ENCRYPTION_KEY');
 
-    // EVM — init if all three vars are present
-    if (rpcUrl && privateKey && contractAddr) {
+    // EVM — all four vars required
+    if (rpcUrl && privateKey && factoryAddr && usdcAddr) {
       try {
-        await this.initEvm(rpcUrl, privateKey, contractAddr);
+        await this.initEvm(rpcUrl, privateKey, factoryAddr, usdcAddr);
         this.evmReady = true;
       } catch (err) {
         this.logger.error(`EVM init failed: ${(err as Error).message}`);
       }
     } else {
-      this.logger.warn('EVM not configured — blockchain EVM features disabled');
+      this.logger.warn(
+        'EVM not configured — blockchain EVM features disabled ' +
+          '(need BLOCKCHAIN_RPC_URL, PLATFORM_WALLET_PRIVATE_KEY, WALLET_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS)',
+      );
     }
 
     // Stellar — init if secret looks like a real Stellar secret key (starts with S)
@@ -160,23 +207,31 @@ export class BlockchainService implements OnModuleInit {
   private async initEvm(
     rpcUrl: string,
     privateKey: string,
-    contractAddress: string,
+    factoryAddress: string,
+    usdcAddress: string,
   ): Promise<void> {
     this.evmProvider = new ethers.JsonRpcProvider(rpcUrl);
     this.evmSigner = new ethers.Wallet(privateKey, this.evmProvider);
-    this.evmContract = new ethers.Contract(
-      contractAddress,
-      this.CONTRACT_ABI,
+    this.evmFactory = new ethers.Contract(
+      factoryAddress,
+      this.FACTORY_ABI,
+      this.evmSigner,
+    );
+    this.evmUsdcAddress = usdcAddress;
+    this.evmUsdcContract = new ethers.Contract(
+      usdcAddress,
+      this.ERC20_ABI,
       this.evmSigner,
     );
 
-    this.tokenDecimals = Number(await this.evmContract.tokenDecimals());
+    // USDC is always 6 decimals on every EVM chain — verify to be safe
+    this.tokenDecimals = Number(await this.evmUsdcContract.decimals());
 
     const network = await this.evmProvider.getNetwork();
     this.logger.log(
       `EVM ready [chain=${network.name}] [chainId=${network.chainId}]` +
-        ` [contract=${contractAddress}] [signer=${this.evmSigner.address}]` +
-        ` [tokenDecimals=${this.tokenDecimals}]`,
+        ` [factory=${factoryAddress}] [usdc=${usdcAddress}]` +
+        ` [signer=${this.evmSigner.address}] [tokenDecimals=${this.tokenDecimals}]`,
     );
   }
 
@@ -229,7 +284,7 @@ export class BlockchainService implements OnModuleInit {
     if (!this.evmReady) {
       throw new ContractCallException(
         operation,
-        'EVM not initialised — check BLOCKCHAIN_RPC_URL, PLATFORM_WALLET_PRIVATE_KEY, WALLET_CONTRACT_ADDRESS',
+        'EVM not initialised — check BLOCKCHAIN_RPC_URL, PLATFORM_WALLET_PRIVATE_KEY, WALLET_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS',
       );
     }
   }
@@ -253,24 +308,47 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // EVM — helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Return a UserWallet contract instance connected to the platform signer.
+   * Each user has their own deployed UserWallet at `walletAddress`.
+   */
+  private getUserWallet(walletAddress: string): ethers.Contract {
+    return new ethers.Contract(
+      walletAddress,
+      this.USER_WALLET_ABI,
+      this.evmSigner,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // EVM — Wallet creation
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Deploy a new UserWallet via the factory and register the username.
+   *
+   * @param userId    Internal platform user ID (stored hashed on-chain — no PII).
+   * @param username  Display @handle. Lowercased before submission.
+   */
   async createEvmWallet(
-    evmAddress: string,
+    userId: string,
     username: string,
   ): Promise<EvmWalletCreationResult> {
     this.requireEvm('createEvmWallet');
     this.logger.log(
-      `createEvmWallet [username=${username}] [evmAddress=${evmAddress}]`,
+      `createEvmWallet [userId=${userId}] [username=${username}]`,
     );
     try {
-      const tx = await this.evmContract.createWallet(
-        evmAddress,
+      const tx = await this.evmFactory.createWallet(
+        userId,
         username.toLowerCase(),
       );
       const receipt = (await tx.wait(1)) as ethers.TransactionReceipt;
-      const walletAddress = this.parseEventArg(
+      // WalletCreated(bytes32 userIdHash, bytes32 usernameHash, address wallet, string username, uint256 timestamp)
+      const walletAddress = this.parseFactoryEventArg(
         receipt,
         'WalletCreated',
         'wallet',
@@ -296,10 +374,16 @@ export class BlockchainService implements OnModuleInit {
   // EVM — Balance
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Read the USDC balance held inside a UserWallet contract.
+   * The UserWallet's getBalance() calls usdc.balanceOf(address(this)) — meaning
+   * ANY USDC sent to the wallet address (from any source / chain) is captured.
+   */
   async getEvmBalance(walletAddress: string): Promise<string> {
     this.requireEvm('getEvmBalance');
     try {
-      const raw: bigint = await this.evmContract.getBalance(walletAddress);
+      const userWallet = this.getUserWallet(walletAddress);
+      const raw: bigint = await userWallet.getBalance();
       return this.toHuman(raw);
     } catch (err) {
       throw this.wrapError('getEvmBalance', err);
@@ -307,25 +391,31 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // EVM — Debit / Credit / Transfer
+  // EVM — Debit (withdraw from UserWallet)
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Debit USDC from a user's on-chain wallet by calling
+   * UserWallet.withdraw(amount, recipient).
+   *
+   * @param walletAddress   The deployed UserWallet contract address.
+   * @param amount          Human-readable USDC amount ("31.25").
+   * @param recipientAddress Where to send the USDC (platform collection wallet
+   *                        for bank cashouts, or any external address).
+   */
   async evmDebit(
     walletAddress: string,
     amount: string,
-    appReference: string,
+    recipientAddress: string,
   ): Promise<ContractOperationResult> {
     this.requireEvm('evmDebit');
     const units = this.toUnits(amount);
     this.logger.log(
-      `evmDebit [wallet=${walletAddress}] [amount=${amount}] [ref=${appReference}]`,
+      `evmDebit [wallet=${walletAddress}] [amount=${amount}] [to=${recipientAddress}]`,
     );
     try {
-      const tx = await this.evmContract.debit(
-        walletAddress,
-        units,
-        appReference,
-      );
+      const userWallet = this.getUserWallet(walletAddress);
+      const tx = await userWallet.withdraw(units, recipientAddress);
       const receipt = (await tx.wait(1)) as ethers.TransactionReceipt;
       const balanceAfter = await this.getEvmBalance(walletAddress);
       this.logger.log(
@@ -342,22 +432,30 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // EVM — Credit (send USDC into UserWallet)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Credit USDC into a user's on-chain wallet by sending directly via the
+   * USDC ERC-20 contract from the platform signer.
+   *
+   * The UserWallet holds the USDC balance as usdc.balanceOf(address(this)).
+   * There is no explicit "deposit" function — any ERC-20 transfer to the
+   * wallet address is immediately reflected in getBalance().
+   *
+   * @param walletAddress The deployed UserWallet contract address.
+   * @param amount        Human-readable USDC amount ("100.00").
+   */
   async evmCredit(
     walletAddress: string,
     amount: string,
-    appReference: string,
   ): Promise<ContractOperationResult> {
     this.requireEvm('evmCredit');
     const units = this.toUnits(amount);
-    this.logger.log(
-      `evmCredit [wallet=${walletAddress}] [amount=${amount}] [ref=${appReference}]`,
-    );
+    this.logger.log(`evmCredit [wallet=${walletAddress}] [amount=${amount}]`);
     try {
-      const tx = await this.evmContract.credit(
-        walletAddress,
-        units,
-        appReference,
-      );
+      const tx = await this.evmUsdcContract.transfer(walletAddress, units);
       const receipt = (await tx.wait(1)) as ethers.TransactionReceipt;
       const balanceAfter = await this.getEvmBalance(walletAddress);
       this.logger.log(
@@ -374,11 +472,21 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // EVM — P2P Transfer
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Transfer USDC between two users identified by @username via the factory.
+   * The factory calls fromWallet.transferToUser(toWallet, amount) atomically.
+   *
+   * Note: the contract does NOT accept an app reference — idempotency must
+   * be enforced at the application layer (blockchain_transactions table).
+   */
   async evmTransferByUsername(
     fromUsername: string,
     toUsername: string,
     amount: string,
-    appReference: string,
   ): Promise<ContractOperationResult> {
     this.requireEvm('evmTransferByUsername');
     const units = this.toUnits(amount);
@@ -386,17 +494,19 @@ export class BlockchainService implements OnModuleInit {
       `evmTransferByUsername [@${fromUsername} → @${toUsername}] [amount=${amount}]`,
     );
     try {
-      const tx = await this.evmContract.transferByUsername(
+      const tx = await this.evmFactory.transferByUsername(
         fromUsername.toLowerCase(),
         toUsername.toLowerCase(),
         units,
-        appReference,
       );
       const receipt = (await tx.wait(1)) as ethers.TransactionReceipt;
+
+      // Fetch sender balance after transfer for the response
       const senderWallet = await this.resolveEvmUsername(fromUsername);
       const balanceAfter = senderWallet
         ? await this.getEvmBalance(senderWallet)
         : '0.00000000';
+
       this.logger.log(
         `evmTransferByUsername confirmed [txHash=${receipt.hash}] [@${fromUsername} balanceAfter=${balanceAfter}]`,
       );
@@ -411,16 +521,47 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // EVM — Username resolution
+  // ─────────────────────────────────────────────────────────────────────────
+
   async resolveEvmUsername(username: string): Promise<string | null> {
     this.requireEvm('resolveEvmUsername');
     try {
-      const address: string = await this.evmContract.getWalletByUsername(
+      const address: string = await this.evmFactory.getWalletByUsername(
         username.toLowerCase(),
       );
       const zero = '0x0000000000000000000000000000000000000000';
       return address === zero ? null : ethers.getAddress(address);
     } catch (err) {
       throw this.wrapError('resolveEvmUsername', err);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EVM — Owner management (post-KYC user recovery address)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Set the recovery address on a UserWallet after the user completes KYC.
+   * Calls UserWallet.setOwner(newOwner) as the backend signer.
+   */
+  async setEvmWalletOwner(
+    walletAddress: string,
+    ownerAddress: string,
+  ): Promise<string> {
+    this.requireEvm('setEvmWalletOwner');
+    this.logger.log(
+      `setEvmWalletOwner [wallet=${walletAddress}] [owner=${ownerAddress}]`,
+    );
+    try {
+      const userWallet = this.getUserWallet(walletAddress);
+      const tx = await userWallet.setOwner(ownerAddress);
+      const receipt = (await tx.wait(1)) as ethers.TransactionReceipt;
+      this.logger.log(`setEvmWalletOwner confirmed [txHash=${receipt.hash}]`);
+      return receipt.hash;
+    } catch (err) {
+      throw this.wrapError('setEvmWalletOwner', err);
     }
   }
 
@@ -655,6 +796,54 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Stellar — inbound payment polling (deposit detection)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async fetchInboundStellarUsdc(
+    publicKey: string,
+    cursor?: string,
+  ): Promise<StellarPayment[]> {
+    this.requireStellar('fetchInboundStellarUsdc');
+
+    let builder = this.stellarServer
+      .payments()
+      .forAccount(publicKey)
+      .order('asc' as const)
+      .limit(50);
+
+    if (cursor) {
+      builder = builder.cursor(cursor);
+    }
+
+    const response = await builder.call();
+    const results: StellarPayment[] = [];
+
+    for (const record of response.records) {
+      if (record.type !== 'payment') continue;
+
+      const payment = record as any;
+
+      if (payment.asset_type !== 'credit_alphanum4') continue;
+      if (payment.asset_code !== 'USDC') continue;
+      if (payment.asset_issuer !== this.stellarUsdcIssuer) continue;
+      if (payment.to !== publicKey) continue;
+
+      results.push({
+        txHash: payment.transaction_hash,
+        from: payment.from,
+        to: payment.to,
+        amount: payment.amount,
+        assetCode: payment.asset_code,
+        assetIssuer: payment.asset_issuer,
+        createdAt: payment.created_at,
+        pagingToken: payment.paging_token,
+      });
+    }
+
+    return results;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Encryption — AES-256-GCM
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -688,17 +877,24 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // EVM helpers
+  // EVM public helpers
   // ─────────────────────────────────────────────────────────────────────────
 
   getEvmSignerAddress(): string {
     this.requireEvm('getEvmSignerAddress');
     return this.evmSigner.address;
   }
+
   getEvmContractAddress(): string {
     this.requireEvm('getEvmContractAddress');
-    return this.evmContract.target as string;
+    return this.evmFactory.target as string;
   }
+
+  getEvmUsdcAddress(): string {
+    this.requireEvm('getEvmUsdcAddress');
+    return this.evmUsdcAddress;
+  }
+
   getTokenDecimals(): number {
     this.requireEvm('getTokenDecimals');
     return this.tokenDecimals;
@@ -719,7 +915,7 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Stellar helpers
+  // Stellar public helpers
   // ─────────────────────────────────────────────────────────────────────────
 
   getStellarPlatformPublicKey(): string {
@@ -733,15 +929,55 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Device signature verification — ECDSA P-256 (secp256r1)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  verifyDeviceSignature(opts: {
+    publicKey: string;
+    signature: string;
+    message: string;
+  }): boolean {
+    try {
+      const { publicKey: rawKey, signature, message } = opts;
+
+      let keyObject: crypto.KeyObject;
+      if (rawKey.startsWith('-----BEGIN')) {
+        keyObject = crypto.createPublicKey(rawKey);
+      } else {
+        const b64 = rawKey.replace(/-/g, '+').replace(/_/g, '/');
+        keyObject = crypto.createPublicKey({
+          key: Buffer.from(b64, 'base64'),
+          format: 'der',
+          type: 'spki',
+        });
+      }
+
+      const sigBuf = Buffer.from(
+        signature.replace(/-/g, '+').replace(/_/g, '/'),
+        'base64',
+      );
+
+      return crypto.verify(
+        null,
+        Buffer.from(message, 'utf8'),
+        { key: keyObject, dsaEncoding: 'der' },
+        sigBuf,
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────
 
-  private parseEventArg(
+  private parseFactoryEventArg(
     receipt: ethers.TransactionReceipt,
     eventName: string,
     argName: string,
   ): string {
-    const iface = this.evmContract.interface;
+    const iface = this.evmFactory.interface;
     const eventTopic = iface.getEvent(eventName)!.topicHash;
     const log = receipt.logs.find((l) => l.topics[0] === eventTopic);
     if (!log)
@@ -780,12 +1016,15 @@ export class BlockchainService implements OnModuleInit {
     return this.getEvmChainId();
   }
 
-  /** @deprecated use createEvmWallet() */
+  /**
+   * @deprecated use createEvmWallet(userId, username)
+   * Note: evmAddress param is ignored — the factory no longer takes an address.
+   */
   async createWallet(
-    evmAddress: string,
+    userId: string,
     username: string,
   ): Promise<EvmWalletCreationResult> {
-    return this.createEvmWallet(evmAddress, username);
+    return this.createEvmWallet(userId, username);
   }
 
   /** @deprecated use getEvmBalance() */
@@ -798,32 +1037,41 @@ export class BlockchainService implements OnModuleInit {
     return this.resolveEvmUsername(username);
   }
 
-  /** @deprecated use evmTransferByUsername() */
+  /**
+   * @deprecated use evmTransferByUsername()
+   * Note: `ref` param is ignored — the contract does not accept a reference.
+   */
   async transferByUsername(
     from: string,
     to: string,
     amount: string,
-    ref: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _ref?: string,
   ): Promise<ContractOperationResult> {
-    return this.evmTransferByUsername(from, to, amount, ref);
+    return this.evmTransferByUsername(from, to, amount);
   }
 
-  /** @deprecated use evmDebit() */
+  /**
+   * @deprecated use evmDebit()
+   * Defaults recipient to the platform signer address.
+   */
   async debit(
     wallet: string,
     amount: string,
-    ref: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _ref?: string,
   ): Promise<ContractOperationResult> {
-    return this.evmDebit(wallet, amount, ref);
+    return this.evmDebit(wallet, amount, this.getEvmSignerAddress());
   }
 
   /** @deprecated use evmCredit() */
   async credit(
     wallet: string,
     amount: string,
-    ref: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _ref?: string,
   ): Promise<ContractOperationResult> {
-    return this.evmCredit(wallet, amount, ref);
+    return this.evmCredit(wallet, amount);
   }
 
   /** @deprecated use getStellarUsdcBalance() */
@@ -831,10 +1079,6 @@ export class BlockchainService implements OnModuleInit {
     const usdc = await this.getStellarUsdcBalance(publicKey);
     return { usdc };
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Previously stubbed methods — now properly implemented
-  // ─────────────────────────────────────────────────────────────────────────
 
   async sendUsdc(opts: {
     fromSecretEnc: string;
@@ -862,50 +1106,6 @@ export class BlockchainService implements OnModuleInit {
     return this.getEvmBalance(walletAddress);
   }
 
-  async registerUser(username: string, evmAddress: string): Promise<string> {
-    const result = await this.createEvmWallet(evmAddress, username);
-    return result.txHash;
-  }
-
-  async contractDeposit(username: string, amountUsdc: string): Promise<void> {
-    const walletAddress = await this.resolveEvmUsername(username);
-    if (!walletAddress)
-      throw new ContractCallException(
-        'contractDeposit',
-        `No EVM wallet for username: ${username}`,
-      );
-    await this.evmCredit(walletAddress, amountUsdc, `deposit:${username}`);
-  }
-
-  async contractDepositByAddress(
-    stellarAddress: string,
-    amountUsdc: string,
-  ): Promise<void> {
-    await this.evmCredit(
-      stellarAddress,
-      amountUsdc,
-      `deposit-bridge:${stellarAddress}`,
-    );
-  }
-
-  async contractWithdraw(
-    username: string,
-    amountUsdc: string,
-    toAddress: string,
-  ): Promise<void> {
-    const walletAddress = await this.resolveEvmUsername(username);
-    if (!walletAddress)
-      throw new ContractCallException(
-        'contractWithdraw',
-        `No EVM wallet for username: ${username}`,
-      );
-    await this.evmDebit(
-      walletAddress,
-      amountUsdc,
-      `withdraw:${username}:${toAddress}`,
-    );
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   // Ready state — used by schedulers to bail early if chains not configured
   // ─────────────────────────────────────────────────────────────────────────
@@ -914,104 +1114,7 @@ export class BlockchainService implements OnModuleInit {
     return this.stellarReady;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Stellar — inbound payment polling (deposit detection)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  async fetchInboundStellarUsdc(
-    publicKey: string,
-    cursor?: string,
-  ): Promise<StellarPayment[]> {
-    this.requireStellar('fetchInboundStellarUsdc');
-
-    let builder = this.stellarServer
-      .payments()
-      .forAccount(publicKey)
-      .order('asc' as const)
-      .limit(50);
-
-    if (cursor) {
-      builder = builder.cursor(cursor);
-    }
-
-    const response = await builder.call();
-    const results: StellarPayment[] = [];
-
-    for (const record of response.records) {
-      // Only process payment operations (not path_payment, etc.)
-      if (record.type !== 'payment') continue;
-
-      const payment = record as any;
-
-      // Only USDC on the configured issuer
-      if (payment.asset_type !== 'credit_alphanum4') continue;
-      if (payment.asset_code !== 'USDC') continue;
-      if (payment.asset_issuer !== this.stellarUsdcIssuer) continue;
-
-      // Only inbound — skip outgoing transfers from this address
-      if (payment.to !== publicKey) continue;
-
-      results.push({
-        txHash: payment.transaction_hash,
-        from: payment.from,
-        to: payment.to,
-        amount: payment.amount,
-        assetCode: payment.asset_code,
-        assetIssuer: payment.asset_issuer,
-        createdAt: payment.created_at,
-        pagingToken: payment.paging_token,
-      });
-    }
-
-    return results;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Device signature verification — ECDSA P-256 (secp256r1)
-  //
-  // Public key formats accepted:
-  //   • PEM  ("-----BEGIN PUBLIC KEY-----…")
-  //   • Base64 / base64url DER SubjectPublicKeyInfo
-  //
-  // Signature format: base64 or base64url DER-encoded ECDSA signature
-  // Message: the plain-text string that was signed on the client
-  // ─────────────────────────────────────────────────────────────────────────
-
-  verifyDeviceSignature(opts: {
-    publicKey: string;
-    signature: string;
-    message: string;
-  }): boolean {
-    try {
-      const { publicKey: rawKey, signature, message } = opts;
-
-      // Build a KeyObject from either PEM or base64-encoded DER
-      let keyObject: crypto.KeyObject;
-      if (rawKey.startsWith('-----BEGIN')) {
-        keyObject = crypto.createPublicKey(rawKey);
-      } else {
-        // Normalise base64url → standard base64 before decoding
-        const b64 = rawKey.replace(/-/g, '+').replace(/_/g, '/');
-        keyObject = crypto.createPublicKey({
-          key: Buffer.from(b64, 'base64'),
-          format: 'der',
-          type: 'spki',
-        });
-      }
-
-      const verify = crypto.createVerify('SHA256');
-      verify.update(message);
-
-      // Normalise signature: base64url → base64
-      const sigB64 = signature.replace(/-/g, '+').replace(/_/g, '/');
-      const sigBuf = Buffer.from(sigB64, 'base64');
-
-      return verify.verify(keyObject, sigBuf);
-    } catch (err) {
-      this.logger.warn(
-        `verifyDeviceSignature failed: ${(err as Error).message}`,
-      );
-      return false;
-    }
+  get isEvmReady(): boolean {
+    return this.evmReady;
   }
 }

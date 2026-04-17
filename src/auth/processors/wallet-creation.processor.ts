@@ -4,7 +4,6 @@ import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from 'bullmq';
-import { ethers } from 'ethers';
 import { User } from '../entities/user.entity';
 import { BlockchainService } from '../../blockchain/services/blockchain.service';
 import { WalletCreationJobData } from '../auth.service';
@@ -90,9 +89,8 @@ export class WalletCreationProcessor extends WorkerHost {
         );
       } else {
         try {
-          const evmKeypair = ethers.Wallet.createRandom();
           const evmResult = await this.blockchainService.createEvmWallet(
-            evmKeypair.address,
+            userId,
             username,
           );
           updates.evmAddress = evmResult.walletAddress;

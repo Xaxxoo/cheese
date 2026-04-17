@@ -12,6 +12,7 @@ import {
   BlockchainTxStatus,
 } from '../entities/blockchain-transaction.entity';
 import { BlockchainService } from './blockchain.service';
+import { User } from '../../auth/entities/user.entity';
 import {
   WalletNotFoundException,
   WalletAlreadyExistsException,
@@ -36,6 +37,8 @@ export class WalletService {
     private readonly walletRepo: Repository<BlockchainWallet>,
     @InjectRepository(BlockchainTransaction)
     private readonly txRepo: Repository<BlockchainTransaction>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly blockchainService: BlockchainService,
   ) {}
 
@@ -46,6 +49,9 @@ export class WalletService {
   /**
    * Create a blockchain wallet for a user.
    *
+   * Calls the UserWalletFactory.createWallet(userId, username) — the contract
+   * deploys a new UserWallet and registers the username on-chain.
+   *
    * Steps:
    *   1. Guard against duplicate wallets
    *   2. Insert a PENDING wallet row immediately (so the userId is claimed)
@@ -53,15 +59,10 @@ export class WalletService {
    *   4. Call the smart contract — this is the real money operation
    *   5. On success: update wallet to ACTIVE, update tx to CONFIRMED
    *   6. On failure: update tx to FAILED, wallet stays PENDING for scheduler retry
-   *
-   * Returning a PENDING wallet is valid — callers must check wallet.isReady
-   * before attempting debit/credit. The scheduler (BlockchainScheduler) retries
-   * PENDING wallets that have not exceeded MAX_CREATION_RETRIES.
    */
   async createWallet(
     userId: string,
     username: string,
-    evmAddress: string,
   ): Promise<WalletResponseDto> {
     const existing = await this.walletRepo.findOne({ where: { userId } });
     if (existing) throw new WalletAlreadyExistsException(userId);
@@ -78,7 +79,7 @@ export class WalletService {
         chainId,
         contractAddress,
         tokenSymbol: TokenSymbol.USDC,
-        tokenDecimals: this.blockchainService.getTokenDecimals(),
+        tokenDecimals: 6, // USDC is always 6 decimals
         status: WalletStatus.PENDING,
         retryCount: 0,
       }),
@@ -88,7 +89,7 @@ export class WalletService {
     const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
         walletId: wallet.id,
-        appReference: userId, // wallet creation keyed by userId
+        appReference: userId,
         txType: BlockchainTxType.WALLET_CREATION,
         status: BlockchainTxStatus.SUBMITTED,
         submittedAt: new Date(),
@@ -96,12 +97,11 @@ export class WalletService {
     );
 
     try {
-      const result = await this.blockchainService.createWallet(
-        evmAddress,
+      const result = await this.blockchainService.createEvmWallet(
+        userId,
         username,
       );
 
-      // Update wallet to ACTIVE
       await this.walletRepo.update(wallet.id, {
         walletAddress: result.walletAddress,
         creationTxHash: result.txHash,
@@ -109,7 +109,6 @@ export class WalletService {
         activatedAt: new Date(),
       });
 
-      // Update tx to CONFIRMED
       await this.txRepo.update(blockchainTx.id, {
         status: BlockchainTxStatus.CONFIRMED,
         txHash: result.txHash,
@@ -127,7 +126,6 @@ export class WalletService {
         await this.walletRepo.findOneOrFail({ where: { id: wallet.id } }),
       );
     } catch (err) {
-      // Contract call failed — leave wallet PENDING for scheduler retry
       await this.txRepo.update(blockchainTx.id, {
         status: BlockchainTxStatus.FAILED,
         revertReason: err instanceof Error ? err.message : String(err),
@@ -148,10 +146,7 @@ export class WalletService {
    * Retry wallet creation for a PENDING wallet.
    * Called by BlockchainScheduler — not exposed via HTTP.
    */
-  async retryWalletCreation(
-    walletId: string,
-    evmAddress: string,
-  ): Promise<void> {
+  async retryWalletCreation(walletId: string): Promise<void> {
     const wallet = await this.walletRepo.findOne({ where: { id: walletId } });
     if (!wallet || wallet.status !== WalletStatus.PENDING) return;
 
@@ -179,9 +174,8 @@ export class WalletService {
     );
 
     try {
-      const platformAddress = this.blockchainService.getSignerAddress();
-      const result = await this.blockchainService.createWallet(
-        evmAddress || platformAddress,
+      const result = await this.blockchainService.createEvmWallet(
+        wallet.userId,
         wallet.registeredUsername,
       );
 
@@ -215,45 +209,94 @@ export class WalletService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Balance
+  // Balance — combined EVM + Stellar
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Return the combined USDC balance across both chains:
+   *   - EVM: live read from UserWallet.getBalance() (usdc.balanceOf)
+   *   - Stellar: live read from Horizon ledger
+   *
+   * Either chain may be unavailable (not configured or wallet not created yet),
+   * in which case its contribution is 0 and the call still succeeds.
+   */
   async getBalance(userId: string): Promise<WalletBalanceResponseDto> {
     const wallet = await this.requireReadyWallet(userId);
 
-    const balance = await this.blockchainService.getBalance(
-      wallet.walletAddress!,
+    // EVM balance — read from the UserWallet contract
+    let evmBalance = '0.00000000';
+    try {
+      evmBalance = await this.blockchainService.getEvmBalance(
+        wallet.walletAddress!,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `getBalance: EVM balance fetch failed [userId=${userId}]: ${(err as Error).message}`,
+      );
+    }
+
+    // Stellar balance — read from Horizon (requires stellarPublicKey on the User row)
+    let stellarBalance = '0.0000000';
+    try {
+      if (this.blockchainService.isStellarReady) {
+        const user = await this.userRepo.findOne({
+          where: { id: userId },
+          select: ['stellarPublicKey'],
+        });
+        if (user?.stellarPublicKey) {
+          stellarBalance = await this.blockchainService.getStellarUsdcBalance(
+            user.stellarPublicKey,
+          );
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `getBalance: Stellar balance fetch failed [userId=${userId}]: ${(err as Error).message}`,
+      );
+    }
+
+    const total = (parseFloat(evmBalance) + parseFloat(stellarBalance)).toFixed(
+      8,
     );
 
     return {
       userId,
       walletAddress: wallet.walletAddress!,
       tokenSymbol: wallet.tokenSymbol,
-      balance,
+      evmBalance,
+      stellarBalance,
+      totalBalance: total,
+      // backward-compat alias
+      balance: total,
       fetchedAt: new Date().toISOString(),
     };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Debit
+  // Debit — withdraw USDC from the UserWallet
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
-   * Debit USDC/USDT from a user's on-chain wallet.
+   * Debit USDC from a user's on-chain wallet.
    *
-   * Execution order:
-   *   1. Validate wallet is ACTIVE
-   *   2. Record a SUBMITTED blockchain_transaction row
-   *   3. Call smart contract — this is the irreversible money movement
-   *   4. On success: update tx to CONFIRMED, return result
-   *   5. On failure: update tx to FAILED, re-throw for caller to handle
+   * Calls UserWallet.withdraw(amount, recipientAddress). The recipient is
+   * typically the platform's collection address for bank cashouts, or an
+   * external EOA for on-chain withdrawals.
+   *
+   * If recipientAddress is omitted, defaults to the platform signer address
+   * (used for internal fund collection before NGN payout).
    */
   async debit(
     userId: string,
     amount: string,
     appReference: string,
+    recipientAddress?: string,
   ): Promise<{ txHash: string; balanceAfter: string; blockchainTxId: string }> {
     const wallet = await this.requireReadyWallet(userId);
+
+    // Default recipient = platform signer (funds collected before bank payout)
+    const toAddress =
+      recipientAddress ?? this.blockchainService.getEvmSignerAddress();
 
     const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
@@ -263,15 +306,16 @@ export class WalletService {
         status: BlockchainTxStatus.SUBMITTED,
         amount,
         amountRaw: this.blockchainService.toUnits(amount).toString(),
+        toAddress,
         submittedAt: new Date(),
       }),
     );
 
     try {
-      const result = await this.blockchainService.debit(
+      const result = await this.blockchainService.evmDebit(
         wallet.walletAddress!,
         amount,
-        appReference,
+        toAddress,
       );
 
       await this.txRepo.update(blockchainTx.id, {
@@ -298,9 +342,16 @@ export class WalletService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Credit
+  // Credit — send USDC into the UserWallet
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Credit USDC into a user's on-chain wallet.
+   *
+   * Calls evmCredit which does an ERC-20 transfer from the platform signer
+   * directly to the UserWallet address. Any USDC landing in that address
+   * (from any sender or chain bridge) is captured by getBalance().
+   */
   async credit(
     userId: string,
     amount: string,
@@ -322,10 +373,9 @@ export class WalletService {
     );
 
     try {
-      const result = await this.blockchainService.credit(
+      const result = await this.blockchainService.evmCredit(
         wallet.walletAddress!,
         amount,
-        appReference,
       );
 
       await this.txRepo.update(blockchainTx.id, {
@@ -355,6 +405,13 @@ export class WalletService {
   // Transfer by username
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * P2P USDC transfer via the factory.
+   *
+   * Note: the contract does not accept an app reference. Idempotency is
+   * enforced at the DB layer via the blockchain_transactions.app_reference
+   * unique constraint.
+   */
   async transferByUsername(
     fromUserId: string,
     toUsername: string,
@@ -363,8 +420,8 @@ export class WalletService {
   ): Promise<{ txHash: string; balanceAfter: string; blockchainTxId: string }> {
     const senderWallet = await this.requireReadyWallet(fromUserId);
 
-    // Resolve recipient wallet address for the tx record
-    const toAddress = await this.blockchainService.resolveUsername(toUsername);
+    const toAddress =
+      await this.blockchainService.resolveEvmUsername(toUsername);
 
     const blockchainTx = await this.txRepo.save(
       this.txRepo.create({
@@ -374,18 +431,17 @@ export class WalletService {
         status: BlockchainTxStatus.SUBMITTED,
         amount,
         amountRaw: this.blockchainService.toUnits(amount).toString(),
-        toAddress: toAddress ?? toUsername, // store address or username if unresolved
+        toAddress: toAddress ?? toUsername,
         submittedAt: new Date(),
         metadata: { toUsername, fromUsername: senderWallet.registeredUsername },
       }),
     );
 
     try {
-      const result = await this.blockchainService.transferByUsername(
+      const result = await this.blockchainService.evmTransferByUsername(
         senderWallet.registeredUsername,
         toUsername,
         amount,
-        appReference,
       );
 
       await this.txRepo.update(blockchainTx.id, {
@@ -423,7 +479,7 @@ export class WalletService {
     username: string,
   ): Promise<{ walletAddress: string | null; isRegistered: boolean }> {
     const walletAddress =
-      await this.blockchainService.resolveUsername(username);
+      await this.blockchainService.resolveEvmUsername(username);
     return { walletAddress, isRegistered: walletAddress !== null };
   }
 
@@ -499,17 +555,13 @@ export class WalletService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Internal helpers (used by scheduler and other services)
+  // Internal helpers (used by scheduler)
   // ─────────────────────────────────────────────────────────────────────────
 
   async findPendingWallets(): Promise<BlockchainWallet[]> {
     return this.walletRepo.find({ where: { status: WalletStatus.PENDING } });
   }
 
-  /**
-   * Validate wallet exists, is ACTIVE, and has a confirmed on-chain address.
-   * Throws a typed exception otherwise.
-   */
   async requireReadyWallet(userId: string): Promise<BlockchainWallet> {
     const wallet = await this.walletRepo.findOne({ where: { userId } });
 

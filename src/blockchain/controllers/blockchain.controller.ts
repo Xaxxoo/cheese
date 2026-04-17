@@ -42,11 +42,7 @@ export class BlockchainController {
   @Throttle({ default: { ttl: 600_000, limit: 3 } })
   @HttpCode(HttpStatus.CREATED)
   createWallet(@Body() dto: CreateWalletDto) {
-    return this.walletService.createWallet(
-      dto.userId,
-      dto.username,
-      dto.evmAddress,
-    );
+    return this.walletService.createWallet(dto.userId, dto.username);
   }
 
   /**

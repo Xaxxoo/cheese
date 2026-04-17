@@ -8,11 +8,12 @@ import { WalletService } from './services/wallet.service';
 import { BlockchainTransactionService } from './services/blockchain-transaction.service';
 import { BlockchainScheduler } from './scheduler/blockchain.scheduler';
 import { BlockchainController } from './controllers/blockchain.controller';
+import { User } from '../auth/entities/user.entity';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    TypeOrmModule.forFeature([BlockchainWallet, BlockchainTransaction]),
+    TypeOrmModule.forFeature([BlockchainWallet, BlockchainTransaction, User]),
   ],
   controllers: [BlockchainController],
   providers: [

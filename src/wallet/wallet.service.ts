@@ -51,7 +51,7 @@ export class WalletService {
 
     const [stellarRaw, evmRaw, rate] = await Promise.all([
       user.stellarPublicKey
-        ? this.blockchainService.getContractBalance(user.username)
+        ? this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey)
         : Promise.resolve('0.0000000'),
       user.evmAddress
         ? this.blockchainService.getEvmBalance(user.evmAddress)
@@ -148,19 +148,12 @@ export class WalletService {
     return { stellarPublicKey: wallet.publicKey, alreadyExisted: false };
   }
 
-  async registerOnChain(user: User): Promise<void> {
-    if (!user.stellarPublicKey) return;
-    try {
-      const txHash = await this.blockchainService.registerUser(
-        user.username,
-        user.stellarPublicKey,
-      );
-      this.logger.log(`On-chain registration: @${user.username} — ${txHash}`);
-    } catch (err) {
-      this.logger.error(
-        `On-chain registration failed for @${user.username}: ${(err as Error).message}`,
-      );
-    }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async registerOnChain(_user: User): Promise<void> {
+    // No-op: the Stellar smart-contract registration layer has been removed.
+    // EVM wallet creation is handled by BlockchainService.createEvmWallet() at
+    // signup time; Stellar wallets are self-sovereign and require no on-chain
+    // registration beyond the trustline set up by createStellarWallet().
   }
 
   async creditDepositByUsername(
@@ -169,8 +162,8 @@ export class WalletService {
     txHash: string,
     userId: string,
   ): Promise<void> {
-    await this.blockchainService.contractDeposit(username, amountUsdc);
-
+    // Deposit arrives on-chain automatically — no contract call needed.
+    // We just record the transaction in the database.
     const rate = await this.ratesService.getCurrentRate();
     const ngnEq = (
       parseFloat(amountUsdc) * parseFloat(rate.effectiveRate)
@@ -209,11 +202,7 @@ export class WalletService {
       return;
     }
 
-    await this.blockchainService.contractDepositByAddress(
-      stellarAddress,
-      amountUsdc,
-    );
-
+    // Deposit arrives on-chain automatically — no contract call needed.
     const rate = await this.ratesService.getCurrentRate();
     const ngnEq = (
       parseFloat(amountUsdc) * parseFloat(rate.effectiveRate)
@@ -264,15 +253,12 @@ export class WalletService {
     });
 
     try {
-      await this.blockchainService.contractWithdraw(
-        username,
-        amountUsdc,
-        toAddress,
-      );
-
       const user = await this.userRepo.findOne({ where: { id: userId } });
       if (!user?.stellarSecretEnc) throw new Error('Custodial key not found');
 
+      // Execute the Stellar send — this is the actual on-chain withdrawal.
+      // The user's spendable balance is EVM + Stellar combined; withdrawals
+      // route through Stellar since that is the custodial chain for outbound sends.
       const txHash = await this.blockchainService.sendUsdc({
         fromSecretEnc: user.stellarSecretEnc,
         toAddress,

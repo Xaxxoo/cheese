@@ -15,7 +15,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as bcrypt from 'bcrypt';
-import { ethers } from 'ethers';
 import { createHash, timingSafeEqual } from 'crypto';
 import { Repository } from 'typeorm';
 import { OtpService } from '../otp/otp.service';
@@ -203,15 +202,10 @@ export class AuthService {
       // user.stellarPublicKey / stellarSecretEnc remain null — retried by job
     }
 
-    // EVM — generate a custodial keypair for the user, then register it on the contract
+    // EVM — register the user with the factory contract (factory deploys a UserWallet per user)
     try {
-      // For custodial EVM wallets: the platform generates a fresh keypair.
-      // The user's EVM address is derived from this keypair.
-      // In a non-custodial flow the user would provide their own address.
-      const evmKeypair = ethers.Wallet.createRandom();
-
       const evmResult = await this.blockchainService.createEvmWallet(
-        evmKeypair.address,
+        user.id,
         dto.username,
       );
 
