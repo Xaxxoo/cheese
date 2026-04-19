@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
   X, ArrowLeft, CheckCircle2, AlertCircle,
-  AtSign, Wallet, ChevronRight, Loader2, Building2, User,
+  AtSign, Wallet, ChevronRight, Loader2, Building2, User, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
@@ -20,7 +20,8 @@ import type { Transaction } from '@/types'
 // Types
 // ─────────────────────────────────────────────────────────
 type SendMode = 'username' | 'usdc' | 'bank'
-type SendStep = 'mode' | 'recipient' | 'amount' | 'bank_details' | 'bank_amount' | 'pin' | 'success' | 'error'
+type UsdcType = 'stellar' | 'evm'
+type SendStep = 'mode' | 'usdc_network' | 'recipient' | 'amount' | 'bank_details' | 'bank_amount' | 'pin' | 'success' | 'error'
 
 interface ResolvedRecipient {
   display: string
@@ -35,6 +36,15 @@ interface BankRecipient {
   accountName: string
 }
 
+const EVM_CHAINS = [
+  { id: 'arbitrum',  label: 'Arbitrum',  free: true  },
+  { id: 'base',      label: 'BASE',      free: false },
+  { id: 'celo',      label: 'Celo',      free: false },
+  { id: 'polygon',   label: 'Polygon',   free: false },
+  { id: 'lisk',      label: 'Lisk',      free: false },
+  { id: 'optimism',  label: 'Optimism',  free: false },
+]
+
 const NIGERIAN_BANKS = [
   'Access Bank', 'GTBank', 'First Bank', 'Zenith Bank', 'UBA',
   'Stanbic IBTC', 'Fidelity Bank', 'Sterling Bank', 'Union Bank',
@@ -46,6 +56,10 @@ const NIGERIAN_BANKS = [
 // ─────────────────────────────────────────────────────────
 function isStellarAddress(s: string) {
   return /^G[A-Z0-9]{55}$/.test(s.trim())
+}
+
+function isEvmAddress(s: string) {
+  return /^0x[0-9a-fA-F]{40}$/.test(s.trim())
 }
 
 function truncateAddress(addr: string) {
@@ -104,6 +118,163 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
           <ChevronRight size={16} className="text-white/25 shrink-0" />
         </button>
       ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// USDC Network selector (Stellar vs EVM)
+// ─────────────────────────────────────────────────────────
+function UsdcNetworkStep({
+  onStellar,
+  onEvm,
+}: {
+  onStellar: () => void
+  onEvm: (chain: string) => void
+}) {
+  const [evmOpen, setEvmOpen]   = useState(false)
+  const [chain,   setChain]     = useState('')
+
+  return (
+    <div className="flex flex-col gap-3 flex-1">
+      <p className="text-sm text-white/40 mb-1">Choose USDC network</p>
+
+      {/* Stellar card — immediate navigation */}
+      <button
+        type="button"
+        onClick={onStellar}
+        className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-white/4 hover:bg-white/8 hover:border-white/20 transition-all text-left"
+      >
+        <div className="w-11 h-11 rounded-2xl bg-[#d4a843]/12 flex items-center justify-center shrink-0">
+          <Wallet size={22} className="text-[#d4a843]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white">Stellar USDC</p>
+          <p className="text-xs text-white/40 mt-0.5">Fast, low-fee transfers on Stellar</p>
+        </div>
+        <ChevronRight size={16} className="text-white/25 shrink-0" />
+      </button>
+
+      {/* EVM card — expands inline chain picker */}
+      <div className={cn(
+        'rounded-2xl border overflow-hidden transition-all duration-150',
+        evmOpen ? 'border-[#d4a843]/30' : 'border-white/10',
+      )}>
+        <button
+          type="button"
+          onClick={() => { setEvmOpen(!evmOpen); setChain('') }}
+          className={cn(
+            'flex items-center gap-4 p-4 w-full text-left transition-colors',
+            evmOpen ? 'bg-[#d4a843]/8' : 'bg-white/4 hover:bg-white/8',
+          )}
+        >
+          <div className="w-11 h-11 rounded-2xl bg-[#d4a843]/12 flex items-center justify-center shrink-0">
+            <Layers size={22} className="text-[#d4a843]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white">EVM USDC</p>
+            <p className="text-xs text-white/40 mt-0.5">Arbitrum, Base, Celo and more</p>
+          </div>
+          <ChevronRight size={16} className={cn('text-white/25 shrink-0 transition-transform duration-150', evmOpen && 'rotate-90')} />
+        </button>
+
+        {evmOpen && (
+          <div className="border-t border-white/8">
+            {EVM_CHAINS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setChain(c.id === chain ? '' : c.id)}
+                className={cn(
+                  'flex items-center justify-between w-full px-4 py-3 text-sm transition-colors border-b border-white/5 last:border-0',
+                  chain === c.id ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white/90',
+                )}
+              >
+                <span className="font-medium">{c.label}</span>
+                <div className="flex items-center gap-2.5">
+                  {c.free && (
+                    <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                      free
+                    </span>
+                  )}
+                  {chain === c.id && <CheckCircle2 size={14} className="text-[#d4a843]" />}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {evmOpen && chain && (
+        <div className="mt-auto">
+          <Button fullWidth size="lg" onClick={() => onEvm(chain)}>
+            Continue with {EVM_CHAINS.find((c) => c.id === chain)?.label}
+            <ChevronRight size={16} />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// EVM address input
+// ─────────────────────────────────────────────────────────
+function EvmAddressInput({
+  value,
+  onChange,
+  onResolved,
+  onClear,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onResolved: (r: ResolvedRecipient | null) => void
+  onClear: () => void
+}) {
+  const valid = isEvmAddress(value)
+
+  useEffect(() => {
+    if (valid) {
+      onResolved({
+        display: `${value.slice(0, 6)}…${value.slice(-4)}`,
+        address: value.trim(),
+        type: 'address',
+        raw: value.trim(),
+      })
+    } else {
+      onResolved(null)
+    }
+  }, [value, valid, onResolved])
+
+  return (
+    <div>
+      <div className={cn(
+        'flex items-center gap-3 min-h-14 px-4 py-3 rounded-2xl border transition-all duration-150 bg-white/6',
+        valid             ? 'border-emerald-500/40' :
+        value.length > 10 ? 'border-red-500/30'     :
+        'border-white/10 focus-within:border-[#d4a843]/50',
+      )}>
+        <Layers size={17} className="text-white/30 shrink-0 mt-0.5" />
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value.replace(/\s/g, ''))}
+          placeholder="0x… EVM address"
+          rows={2}
+          autoCapitalize="none"
+          spellCheck={false}
+          className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none resize-none font-mono leading-relaxed"
+        />
+        {valid && <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />}
+        {value && (
+          <button type="button" onClick={onClear} className="text-white/25 hover:text-white/50 transition-colors shrink-0 mt-0.5">
+            <X size={16} />
+          </button>
+        )}
+      </div>
+      {value.length > 10 && !valid && (
+        <p className="text-xs text-red-400 mt-1.5 px-1">Enter a valid EVM address (starts with 0x…)</p>
+      )}
     </div>
   )
 }
@@ -532,12 +703,14 @@ function AmountStep({
 function PinStep({
   recipient,
   amount,
+  network,
   onBack,
   onSuccess,
   onError,
 }: {
   recipient: ResolvedRecipient
   amount: string
+  network: string
   onBack: () => void
   onSuccess: (tx: Transaction) => void
   onError: (msg: string) => void
@@ -590,7 +763,7 @@ function PinStep({
         : await sendToAddress({
             address:         recipient.address,
             amountUsdc:      amount,
-            network:         'stellar',
+            network,
             pin:             pinHash,
             deviceSignature: sigResult.deviceSignature,
             deviceId,
@@ -609,7 +782,7 @@ function PinStep({
     } finally {
       setLoading(false)
     }
-  }, [user, deviceId, recipient, amount, onSuccess, onError])
+  }, [user, deviceId, recipient, amount, network, onSuccess, onError])
 
   useEffect(() => {
     if (pin.length === 6 && !loading) {
@@ -625,6 +798,14 @@ function PinStep({
           <span className="text-xs text-white/40 uppercase tracking-wide">To</span>
           <span className="text-sm text-white/80 font-medium">{recipient.display}</span>
         </div>
+        {recipient.type === 'address' && (
+          <div className="flex items-center justify-between py-2 border-b border-white/6">
+            <span className="text-xs text-white/40 uppercase tracking-wide">Network</span>
+            <span className="text-sm text-white/80 font-medium">
+              {EVM_CHAINS.find((c) => c.id === network)?.label ?? 'Stellar'}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between py-2 border-b border-white/6">
           <span className="text-xs text-white/40 uppercase tracking-wide">Amount</span>
           <div className="text-right">
@@ -931,6 +1112,8 @@ export default function SendPage() {
 
   const [mode,          setMode]          = useState<SendMode | null>(null)
   const [step,          setStep]          = useState<SendStep>('mode')
+  const [usdcType,      setUsdcType]      = useState<UsdcType | null>(null)
+  const [evmChain,      setEvmChain]      = useState('')
   const [username,      setUsername]      = useState('')
   const [address,       setAddress]       = useState('')
   const [recipient,     setRecipient]     = useState<ResolvedRecipient | null>(null)
@@ -942,12 +1125,14 @@ export default function SendPage() {
 
   function handleModeSelect(m: SendMode) {
     setMode(m)
+    setUsdcType(null)
+    setEvmChain('')
     setUsername('')
     setAddress('')
     setRecipient(null)
     setBankRecipient(null)
     setBankAmount('')
-    setStep(m === 'bank' ? 'bank_details' : 'recipient')
+    setStep(m === 'bank' ? 'bank_details' : m === 'usdc' ? 'usdc_network' : 'recipient')
   }
 
   function resetRecipient() {
@@ -959,6 +1144,8 @@ export default function SendPage() {
   function reset() {
     setMode(null)
     setStep('mode')
+    setUsdcType(null)
+    setEvmChain('')
     setUsername('')
     setAddress('')
     setRecipient(null)
@@ -970,11 +1157,16 @@ export default function SendPage() {
   }
 
   const isBankFlow = mode === 'bank'
+  const network    = usdcType === 'evm' ? evmChain : 'stellar'
+
+  const chainLabel = EVM_CHAINS.find((c) => c.id === evmChain)?.label ?? ''
+
   const showHeader = step !== 'success' && step !== 'error'
 
   const headerTitle =
     step === 'mode'         ? 'Send' :
-    step === 'recipient'    ? (mode === 'username' ? 'Send by Username' : 'Send USDC') :
+    step === 'usdc_network' ? 'Send USDC' :
+    step === 'recipient'    ? (mode === 'username' ? 'Send by Username' : usdcType === 'evm' ? `${chainLabel} USDC` : 'Stellar USDC') :
     step === 'amount'       ? 'Enter amount' :
     step === 'bank_details' ? 'Bank Transfer' :
     step === 'bank_amount'  ? 'Enter amount' :
@@ -982,7 +1174,8 @@ export default function SendPage() {
 
   const headerBack =
     step === 'mode'         ? () => router.back() :
-    step === 'recipient'    ? () => setStep('mode') :
+    step === 'usdc_network' ? () => setStep('mode') :
+    step === 'recipient'    ? () => { if (mode === 'usdc') setStep('usdc_network'); else setStep('mode') } :
     step === 'amount'       ? () => setStep('recipient') :
     step === 'bank_details' ? () => setStep('mode') :
     step === 'bank_amount'  ? () => setStep('bank_details') :
@@ -1010,13 +1203,28 @@ export default function SendPage() {
         <ModeSelector onSelect={handleModeSelect} />
       )}
 
-      {/* Recipient step (username or USDC address) */}
+      {/* USDC network selection — Stellar vs EVM */}
+      {step === 'usdc_network' && (
+        <UsdcNetworkStep
+          onStellar={() => { setUsdcType('stellar'); setStep('recipient') }}
+          onEvm={(chain) => { setUsdcType('evm'); setEvmChain(chain); setStep('recipient') }}
+        />
+      )}
+
+      {/* Recipient step (username, Stellar, or EVM) */}
       {step === 'recipient' && (
         <div className="flex flex-col gap-5 flex-1">
           {mode === 'username' ? (
             <UsernameInput
               value={username}
               onChange={setUsername}
+              onResolved={setRecipient}
+              onClear={resetRecipient}
+            />
+          ) : usdcType === 'evm' ? (
+            <EvmAddressInput
+              value={address}
+              onChange={setAddress}
               onResolved={setRecipient}
               onClear={resetRecipient}
             />
@@ -1033,13 +1241,15 @@ export default function SendPage() {
             <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
               <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
                 {recipient.type === 'username'
-                  ? <AtSign size={16} className="text-emerald-400" />
+                  ? <AtSign  size={16} className="text-emerald-400" />
+                  : usdcType === 'evm'
+                  ? <Layers  size={16} className="text-emerald-400" />
                   : <Wallet  size={16} className="text-emerald-400" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white">{recipient.display}</p>
                 <p className="text-xs text-white/35 truncate font-mono mt-0.5">
-                  {truncateAddress(recipient.address)}
+                  {recipient.address}
                 </p>
               </div>
               <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
@@ -1090,6 +1300,7 @@ export default function SendPage() {
         <PinStep
           recipient={recipient}
           amount={amount}
+          network={network}
           onBack={() => setStep('amount')}
           onSuccess={(tx) => { setSentTx(tx); setStep('success') }}
           onError={(msg) => { setErrMsg(msg); setStep('error') }}
