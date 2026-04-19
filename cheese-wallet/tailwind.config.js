@@ -18,6 +18,12 @@ module.exports = {
         body:    ['var(--font-body)', 'sans-serif'],
         mono:    ['var(--font-mono)', 'monospace'],
       },
+      spacing: {
+        'safe': 'env(safe-area-inset-bottom, 0px)',
+      },
+      padding: {
+        'safe': 'env(safe-area-inset-bottom, 0px)',
+      },
       animation: {
         'fade-up':    'fadeUp 0.6s ease-out forwards',
         'fade-in':    'fadeIn 0.3s ease-out forwards',

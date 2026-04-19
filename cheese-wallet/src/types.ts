@@ -21,12 +21,17 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  phone: string
+  fullName?: string
+  phone?: string
   username: string
   profileImage?: string
+  tier?: 'silver' | 'gold' | 'black'
+  kycStatus?: 'none' | 'pending' | 'verified' | 'rejected'
   createdAt: string
-  emailVerified: boolean
-  phoneVerified: boolean
+  emailVerified?: boolean
+  phoneVerified?: boolean
+  stellarPublicKey?: string | null
+  evmAddress?: string | null
 }
 
 export interface AuthTokens {
@@ -36,45 +41,54 @@ export interface AuthTokens {
 }
 
 export interface DeviceKey {
-  id: string
+  deviceId: string
   publicKey: string
-  createdAt: string
+  deviceName?: string
+  registeredAt?: string
+  createdAt?: string
 }
 
 export interface LoginPayload {
-  email: string
+  identifier: string   // email or username
   password: string
   deviceId: string
   deviceSignature: string
 }
 
 export interface SignupPayload {
+  fullName: string
   email: string
+  phone: string
+  username: string
   password: string
-  firstName: string
-  lastName: string
+  devicePublicKey: string
   deviceId: string
-  deviceSignature: string
   referralCode?: string
 }
 
 export interface OtpVerifyPayload {
   email: string
   otp: string
-  type: 'email_verification' | 'password_reset' | 'login'
+  type: 'signup' | 'forgot-password'
 }
 
 export interface ResetPasswordPayload {
   email: string
-  newPassword: string
   otp: string
+  newPassword: string
 }
 
 // ── Wallet Types ──────────────────────────────────────────
 export interface WalletBalance {
-  totalUSDC: string
-  totalUSD: string
-  lastSync: string
+  stellarUsdc: string
+  stellarUsdcDisplay: string
+  evmUsdc: string
+  evmUsdcDisplay: string
+  totalUsdc: string
+  totalUsdcDisplay: string
+  ngnEquivalent: string
+  ngnRate: number
+  lastUpdated: string
 }
 
 export interface WalletAddress {
