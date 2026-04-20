@@ -1,29 +1,262 @@
 'use client'
 
-import { ArrowLeft } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
+import {
+  ArrowLeft, ArrowUpRight, ArrowDownLeft, Building2,
+  RefreshCw, TrendingUp, ChevronDown,
+} from 'lucide-react'
+import { cn } from '@/lib/cn'
+import { getTransactions } from '@/lib/api/wallet'
+import { QUERY_KEYS, STALE_TIMES } from '@/constants'
+import type { Transaction } from '@/types'
 
-export default function ComingSoonPage() {
-  const router = useRouter()
+type TxType = Transaction['type']
+
+// ── Skeleton ───────────────────────────────────────────────
+function Skeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-white/8 rounded-xl animate-pulse', className)} />
+}
+
+// ── Tx row ─────────────────────────────────────────────────
+const TX_ICON_CFG: Record<TxType, { icon: React.ElementType; color: string }> = {
+  send:       { icon: ArrowUpRight,  color: 'text-white/60' },
+  receive:    { icon: ArrowDownLeft, color: 'text-emerald-400' },
+  withdrawal: { icon: Building2,     color: 'text-sky-400' },
+  deposit:    { icon: ArrowDownLeft, color: 'text-emerald-400' },
+}
+
+const TX_LABELS: Record<TxType, string> = {
+  send:       'Sent',
+  receive:    'Received',
+  withdrawal: 'Bank Transfer',
+  deposit:    'Deposit',
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-amber-400/15 text-amber-400',
+  failed:  'bg-red-400/15 text-red-400',
+}
+
+function TxRow({ tx }: { tx: Transaction }) {
+  const isIn = tx.type === 'receive' || tx.type === 'deposit'
+  const amountColor = isIn ? 'text-emerald-400' : 'text-white'
+  const cfg = TX_ICON_CFG[tx.type] ?? TX_ICON_CFG.send
+  const Icon = cfg.icon
+  const subtitle = tx.to ?? tx.from ?? null
+
   return (
-    <div className="flex flex-col flex-1 px-6 py-8">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-10"
-      >
-        <ArrowLeft size={18} />
-        <span className="text-sm">Back</span>
-      </button>
-      <div className="flex flex-col items-center gap-4 pt-16 text-center">
-        <div className="w-16 h-16 rounded-full bg-[#d4a843]/10 border border-[#d4a843]/20 flex items-center justify-center">
-          <span className="text-2xl">🧀</span>
-        </div>
-        <div>
-          <p className="text-lg font-semibold text-white mb-1">Coming soon</p>
-          <p className="text-sm text-white/40">This feature is being built. Check back soon.</p>
+    <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 transition-colors rounded-2xl">
+      <div className={cn('w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0', cfg.color)}>
+        <Icon size={18} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white font-medium truncate">
+          {TX_LABELS[tx.type] ?? tx.type}
+          {subtitle && <span className="text-white/40 font-normal"> · {subtitle}</span>}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-xs text-white/35">
+            {new Date(tx.timestamp).toLocaleDateString('en-NG', {
+              month: 'short', day: 'numeric', year: 'numeric',
+            })}
+          </p>
+          {tx.status !== 'completed' && STATUS_COLORS[tx.status] && (
+            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', STATUS_COLORS[tx.status])}>
+              {tx.status}
+            </span>
+          )}
         </div>
       </div>
+      <p className={cn('text-sm font-semibold tabular-nums shrink-0', amountColor)}>
+        {isIn ? '+' : '-'}${parseFloat(tx.amountUSD).toFixed(2)}
+      </p>
+    </div>
+  )
+}
+
+// ── Filters ────────────────────────────────────────────────
+type Filter = 'all' | 'sent' | 'received' | 'withdrawal'
+
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: 'all',        label: 'All' },
+  { id: 'sent',       label: 'Sent' },
+  { id: 'received',   label: 'Received' },
+  { id: 'withdrawal', label: 'Bank' },
+]
+
+function applyFilter(txs: Transaction[], filter: Filter): Transaction[] {
+  switch (filter) {
+    case 'sent':       return txs.filter(t => t.type === 'send')
+    case 'received':   return txs.filter(t => t.type === 'receive' || t.type === 'deposit')
+    case 'withdrawal': return txs.filter(t => t.type === 'withdrawal')
+    default:           return txs
+  }
+}
+
+function groupByDate(txs: Transaction[]): { date: string; txs: Transaction[] }[] {
+  const groups: { date: string; txs: Transaction[] }[] = []
+  for (const tx of txs) {
+    const d = new Date(tx.timestamp).toLocaleDateString('en-NG', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    })
+    const last = groups[groups.length - 1]
+    if (last?.date === d) last.txs.push(tx)
+    else groups.push({ date: d, txs: [tx] })
+  }
+  return groups
+}
+
+// ── Page ───────────────────────────────────────────────────
+export default function HistoryPage() {
+  const [filter,      setFilter]      = useState<Filter>('all')
+  const [allTxs,      setAllTxs]      = useState<Transaction[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore,     setHasMore]     = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const txQ = useQuery({
+    queryKey: QUERY_KEYS.TRANSACTIONS(1),
+    queryFn:  () => getTransactions(1, 20),
+    staleTime: STALE_TIMES.TRANSACTIONS,
+    retry: 1,
+  })
+
+  useEffect(() => {
+    if (txQ.data) {
+      setAllTxs(txQ.data.transactions)
+      setHasMore(txQ.data.hasMore)
+      setCurrentPage(1)
+    }
+  }, [txQ.data])
+
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const next = currentPage + 1
+      const res  = await getTransactions(next, 20)
+      setAllTxs(prev => [...prev, ...res.transactions])
+      setHasMore(res.hasMore)
+      setCurrentPage(next)
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const displayed = applyFilter(allTxs, filter)
+  const grouped   = groupByDate(displayed)
+
+  return (
+    <div className="flex flex-col pb-8">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-5 pb-3">
+        <Link
+          href="/dashboard"
+          className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/12 transition-all"
+        >
+          <ArrowLeft size={16} />
+        </Link>
+        <h1 className="text-base font-semibold text-white">Transaction History</h1>
+      </div>
+
+      {/* Filter pills */}
+      <div className="flex gap-2 px-4 pb-4 overflow-x-auto">
+        {FILTERS.map(f => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setFilter(f.id)}
+            className={cn(
+              'shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-all',
+              filter === f.id
+                ? 'bg-[#d4a843] text-black'
+                : 'bg-white/8 text-white/50 hover:bg-white/12 hover:text-white',
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Loading skeleton */}
+      {txQ.isLoading && (
+        <div className="flex flex-col gap-1 px-2">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <div className="flex-1 flex flex-col gap-1.5">
+                <Skeleton className="h-3.5 w-36 rounded" />
+                <Skeleton className="h-2.5 w-24 rounded" />
+              </div>
+              <Skeleton className="h-4 w-16 rounded" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error state */}
+      {txQ.isError && (
+        <div className="flex flex-col items-center gap-3 py-16 text-center px-6">
+          <p className="text-sm text-white/30">Could not load transactions</p>
+          <button
+            type="button"
+            onClick={() => txQ.refetch()}
+            className="text-xs text-[#d4a843]/70 hover:text-[#d4a843] flex items-center gap-1.5 transition-colors"
+          >
+            <RefreshCw size={12} />
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {txQ.isSuccess && displayed.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-16 text-center px-6">
+          <div className="w-14 h-14 rounded-full bg-white/6 flex items-center justify-center">
+            <TrendingUp size={22} className="text-white/25" />
+          </div>
+          <div>
+            <p className="text-sm text-white/40 font-medium">
+              {filter === 'all' ? 'No transactions yet' : `No ${filter} transactions`}
+            </p>
+            {filter === 'all' && (
+              <p className="text-xs text-white/25 mt-1">Send or receive USDC to get started</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tx list grouped by date */}
+      {txQ.isSuccess && displayed.length > 0 && (
+        <div className="flex flex-col px-2">
+          {grouped.map(({ date, txs }) => (
+            <div key={date}>
+              <p className="text-xs text-white/30 font-medium px-4 pt-4 pb-1.5">{date}</p>
+              {txs.map(tx => <TxRow key={tx.id} tx={tx} />)}
+            </div>
+          ))}
+
+          {hasMore && filter === 'all' && (
+            <div className="flex justify-center mt-5 px-4">
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-white/8 text-white/60 text-sm hover:bg-white/12 hover:text-white transition-all disabled:opacity-40"
+              >
+                {loadingMore
+                  ? <RefreshCw size={14} className="animate-spin" />
+                  : <ChevronDown size={14} />
+                }
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

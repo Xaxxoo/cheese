@@ -1,28 +1,316 @@
 'use client'
 
-import { ArrowLeft } from 'lucide-react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  ArrowLeft, LogOut, Copy, CheckCheck, ChevronRight,
+  Shield, Smartphone, RefreshCw, Trash2, User, Gift,
+  BadgeCheck, AlertCircle, Clock,
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+import { cn } from '@/lib/cn'
+import { useAuthStore } from '@/store/authStore'
+import { getReferralInfo, listDevices, revokeDevice } from '@/lib/api/wallet'
+import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 
-export default function ComingSoonPage() {
-  const router = useRouter()
+// ── Skeleton ───────────────────────────────────────────────
+function Skeleton({ className }: { className?: string }) {
+  return <div className={cn('bg-white/8 rounded-xl animate-pulse', className)} />
+}
+
+// ── Tier badge ─────────────────────────────────────────────
+const TIER_CFG = {
+  silver: { label: 'Silver', bg: 'bg-gray-400/15', text: 'text-gray-300' },
+  gold:   { label: 'Gold',   bg: 'bg-[#d4a843]/15', text: 'text-[#d4a843]' },
+  black:  { label: 'Black',  bg: 'bg-white/10',     text: 'text-white' },
+}
+
+// ── KYC badge ──────────────────────────────────────────────
+const KYC_CFG = {
+  none:     { icon: AlertCircle,  label: 'Not started', bg: 'bg-white/8',        text: 'text-white/40' },
+  pending:  { icon: Clock,        label: 'Pending',     bg: 'bg-amber-400/15',   text: 'text-amber-400' },
+  verified: { icon: BadgeCheck,   label: 'Verified',    bg: 'bg-emerald-400/15', text: 'text-emerald-400' },
+  rejected: { icon: AlertCircle,  label: 'Rejected',    bg: 'bg-red-400/15',     text: 'text-red-400' },
+}
+
+// ── Row helper ─────────────────────────────────────────────
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col flex-1 px-6 py-8">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-10"
-      >
-        <ArrowLeft size={18} />
-        <span className="text-sm">Back</span>
-      </button>
-      <div className="flex flex-col items-center gap-4 pt-16 text-center">
-        <div className="w-16 h-16 rounded-full bg-[#d4a843]/10 border border-[#d4a843]/20 flex items-center justify-center">
-          <span className="text-2xl">🧀</span>
+    <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/5 last:border-0">
+      <span className="text-xs text-white/40">{label}</span>
+      <span className="text-xs text-white font-medium">{value}</span>
+    </div>
+  )
+}
+
+// ── Referral section ───────────────────────────────────────
+function ReferralCard() {
+  const [copied, setCopied] = useState(false)
+
+  const refQ = useQuery({
+    queryKey: QUERY_KEYS.REFERRAL,
+    queryFn:  getReferralInfo,
+    staleTime: STALE_TIMES.PROFILE,
+    retry: 1,
+  })
+
+  async function copyCode() {
+    const code = refQ.data?.code
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('Could not copy code')
+    }
+  }
+
+  return (
+    <div className="mx-4 mt-2 rounded-2xl border border-white/8" style={{ background: 'rgba(212,168,67,0.04)' }}>
+      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+        <Gift size={15} className="text-[#d4a843]" />
+        <span className="text-sm font-semibold text-white">Referrals</span>
+      </div>
+
+      {refQ.isLoading && (
+        <div className="px-4 pb-4 flex flex-col gap-2">
+          <Skeleton className="h-8 rounded-xl" />
+          <Skeleton className="h-4 w-40 rounded" />
         </div>
-        <div>
-          <p className="text-lg font-semibold text-white mb-1">Coming soon</p>
-          <p className="text-sm text-white/40">This feature is being built. Check back soon.</p>
+      )}
+
+      {refQ.data && (
+        <div className="px-4 pb-4 flex flex-col gap-3">
+          {/* Code copy */}
+          <button
+            type="button"
+            onClick={copyCode}
+            className="flex items-center justify-between w-full bg-white/6 rounded-xl px-4 py-3 hover:bg-white/10 transition-colors"
+          >
+            <div>
+              <p className="text-[10px] text-white/30 mb-0.5">Your referral code</p>
+              <p className="text-base font-semibold text-[#d4a843] tracking-widest">{refQ.data.code}</p>
+            </div>
+            {copied
+              ? <CheckCheck size={16} className="text-emerald-400" />
+              : <Copy size={14} className="text-white/30" />
+            }
+          </button>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Referred', value: refQ.data.totalReferrals.toString() },
+              { label: 'Pending', value: `$${refQ.data.pendingReward.toFixed(2)}` },
+              { label: 'Earned',  value: `$${refQ.data.paidReward.toFixed(2)}` },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-white/5 rounded-xl px-3 py-2.5 text-center">
+                <p className="text-sm font-semibold text-white">{value}</p>
+                <p className="text-[10px] text-white/35 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Devices section ────────────────────────────────────────
+function DevicesCard({ currentDeviceId }: { currentDeviceId: string }) {
+  const qc = useQueryClient()
+
+  const devQ = useQuery({
+    queryKey: QUERY_KEYS.DEVICES,
+    queryFn:  listDevices,
+    staleTime: STALE_TIMES.PROFILE,
+    retry: 1,
+  })
+
+  const revokeMut = useMutation({
+    mutationFn: (id: string) => revokeDevice(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.DEVICES })
+      toast.success('Device removed')
+    },
+    onError: () => toast.error('Could not remove device'),
+  })
+
+  function formatLastSeen(iso: string) {
+    const d = new Date(iso)
+    const diff = Date.now() - d.getTime()
+    if (diff < 60_000)   return 'Just now'
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+    return d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })
+  }
+
+  return (
+    <div className="mx-4 mt-2 rounded-2xl border border-white/8" style={{ background: 'rgba(255,255,255,0.02)' }}>
+      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+        <Smartphone size={15} className="text-white/50" />
+        <span className="text-sm font-semibold text-white">Trusted Devices</span>
+      </div>
+
+      {devQ.isLoading && (
+        <div className="px-4 pb-4 flex flex-col gap-2">
+          {[1, 2].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}
+        </div>
+      )}
+
+      {devQ.isError && (
+        <div className="px-4 pb-4 flex items-center gap-2">
+          <p className="text-xs text-white/30">Could not load devices</p>
+          <button
+            type="button"
+            onClick={() => devQ.refetch()}
+            className="text-xs text-[#d4a843]/70 hover:text-[#d4a843] flex items-center gap-1 transition-colors"
+          >
+            <RefreshCw size={11} />
+            Retry
+          </button>
+        </div>
+      )}
+
+      {devQ.data && (
+        <div className="px-4 pb-4 flex flex-col gap-2">
+          {devQ.data.map(device => (
+            <div
+              key={device.id}
+              className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-3"
+            >
+              <div className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center shrink-0">
+                <Smartphone size={14} className="text-white/50" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-white font-medium truncate">
+                  {device.deviceName}
+                  {device.isCurrent && (
+                    <span className="ml-1.5 text-[10px] text-emerald-400/80">(this device)</span>
+                  )}
+                </p>
+                <p className="text-[10px] text-white/30 mt-0.5">
+                  {device.location ? `${device.location} · ` : ''}
+                  {formatLastSeen(device.lastSeen)}
+                </p>
+              </div>
+              {!device.isCurrent && (
+                <button
+                  type="button"
+                  onClick={() => revokeMut.mutate(device.id)}
+                  disabled={revokeMut.isPending}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Page ───────────────────────────────────────────────────
+export default function ProfilePage() {
+  const router  = useRouter()
+  const { user, signOut, deviceId } = useAuthStore()
+
+  function handleSignOut() {
+    signOut()
+    router.replace('/login')
+  }
+
+  const tier   = user?.tier ?? 'silver'
+  const kyc    = user?.kycStatus ?? 'none'
+  const tCfg   = TIER_CFG[tier]
+  const kCfg   = KYC_CFG[kyc]
+  const KycIcon = kCfg.icon
+
+  return (
+    <div className="flex flex-col pb-8">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-5 pb-4">
+        <Link
+          href="/dashboard"
+          className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/12 transition-all"
+        >
+          <ArrowLeft size={16} />
+        </Link>
+        <h1 className="text-base font-semibold text-white">Profile</h1>
+      </div>
+
+      {/* Avatar + name */}
+      <div className="flex flex-col items-center gap-3 pt-2 pb-6">
+        <div className="w-20 h-20 rounded-full bg-[#d4a843]/15 border-2 border-[#d4a843]/30 flex items-center justify-center">
+          <User size={34} className="text-[#d4a843]/70" />
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-white">{user?.fullName ?? '—'}</p>
+          <p className="text-sm text-white/40 mt-0.5">@{user?.username ?? '—'}</p>
+        </div>
+
+        {/* Tier + KYC badges */}
+        <div className="flex items-center gap-2">
+          <span className={cn('text-xs px-3 py-1 rounded-full font-medium', tCfg.bg, tCfg.text)}>
+            {tCfg.label}
+          </span>
+          <span className={cn('flex items-center gap-1 text-xs px-3 py-1 rounded-full font-medium', kCfg.bg, kCfg.text)}>
+            <KycIcon size={11} />
+            KYC {kCfg.label}
+          </span>
+        </div>
+      </div>
+
+      {/* Account info */}
+      <div className="mx-4 rounded-2xl border border-white/8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <InfoRow label="Email"    value={user?.email ?? '—'} />
+        <InfoRow label="Phone"    value={user?.phone ?? '—'} />
+        <InfoRow label="Username" value={`@${user?.username ?? '—'}`} />
+        <InfoRow label="Member since" value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' }) : '—'} />
+      </div>
+
+      {/* Quick actions */}
+      <div className="mx-4 mt-3 rounded-2xl border border-white/8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        {[
+          { label: 'Security Settings', icon: Shield, href: '/security' },
+        ].map(({ label, icon: Icon, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="flex items-center justify-between px-4 py-4 border-b border-white/5 last:border-0 hover:bg-white/4 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center">
+                <Icon size={14} className="text-white/50" />
+              </div>
+              <span className="text-sm text-white">{label}</span>
+            </div>
+            <ChevronRight size={15} className="text-white/25" />
+          </Link>
+        ))}
+      </div>
+
+      {/* Referral */}
+      <ReferralCard />
+
+      {/* Devices */}
+      <DevicesCard currentDeviceId={deviceId} />
+
+      {/* Sign out */}
+      <div className="mx-4 mt-5">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-red-400/20 text-red-400 text-sm font-medium hover:bg-red-400/10 transition-all"
+        >
+          <LogOut size={15} />
+          Sign out
+        </button>
       </div>
     </div>
   )
