@@ -628,7 +628,7 @@ function AmountStep({
   })
 
   const amount  = parseFloat(raw) || 0
-  const ngnRate = rate ? parseFloat(rate.rate) : 0
+  const ngnRate = rate ? parseFloat(rate.effectiveRate) : 0
   const ngnEq   = amount > 0 && ngnRate > 0 ? formatNgn(amount, ngnRate) : null
   const fee     = amount > 0 ? (amount * 0.001).toFixed(6) : '0'
 
@@ -728,7 +728,7 @@ function PinStep({
     retry: 1,
   })
 
-  const ngnRate = rate ? parseFloat(rate.rate) : 0
+  const ngnRate = rate ? parseFloat(rate.effectiveRate) : 0
   const ngnEq   = parseFloat(amount) > 0 && ngnRate > 0
     ? formatNgn(parseFloat(amount), ngnRate) : null
 
@@ -992,7 +992,7 @@ function SuccessScreen({
           { label: 'To',     value: recipient.display },
           { label: 'Amount', value: `$${parseFloat(amount).toFixed(2)} USDC` },
           { label: 'Status', value: tx.status === 'pending' ? '⏳ Pending' : '✓ Confirmed' },
-          ...(tx.hash ? [{ label: 'Tx hash', value: `${tx.hash.slice(0, 10)}…` }] : []),
+          ...(tx.txHash ? [{ label: 'Tx hash', value: `${tx.txHash.slice(0, 10)}…` }] : []),
         ] as { label: string; value: string }[]).map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
             <span className="text-xs text-white/35 uppercase tracking-wide">{label}</span>

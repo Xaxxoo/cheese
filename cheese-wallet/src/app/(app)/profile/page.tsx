@@ -29,10 +29,10 @@ const TIER_CFG = {
 
 // ── KYC badge ──────────────────────────────────────────────
 const KYC_CFG = {
-  none:     { icon: AlertCircle,  label: 'Not started', bg: 'bg-white/8',        text: 'text-white/40' },
-  pending:  { icon: Clock,        label: 'Pending',     bg: 'bg-amber-400/15',   text: 'text-amber-400' },
-  verified: { icon: BadgeCheck,   label: 'Verified',    bg: 'bg-emerald-400/15', text: 'text-emerald-400' },
-  rejected: { icon: AlertCircle,  label: 'Rejected',    bg: 'bg-red-400/15',     text: 'text-red-400' },
+  pending:   { icon: Clock,        label: 'Pending',    bg: 'bg-amber-400/15',   text: 'text-amber-400' },
+  submitted: { icon: Clock,        label: 'Submitted',  bg: 'bg-amber-400/15',   text: 'text-amber-400' },
+  verified:  { icon: BadgeCheck,   label: 'Verified',   bg: 'bg-emerald-400/15', text: 'text-emerald-400' },
+  rejected:  { icon: AlertCircle,  label: 'Rejected',   bg: 'bg-red-400/15',     text: 'text-red-400' },
 }
 
 // ── Row helper ─────────────────────────────────────────────
@@ -226,7 +226,7 @@ export default function ProfilePage() {
   }
 
   const tier   = user?.tier ?? 'silver'
-  const kyc    = user?.kycStatus ?? 'none'
+  const kyc    = user?.kycStatus ?? 'pending'
   const tCfg   = TIER_CFG[tier]
   const kCfg   = KYC_CFG[kyc]
   const KycIcon = kCfg.icon

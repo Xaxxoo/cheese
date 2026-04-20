@@ -21,30 +21,43 @@ function Skeleton({ className }: { className?: string }) {
 
 // ── Tx row ─────────────────────────────────────────────────
 const TX_ICON_CFG: Record<TxType, { icon: React.ElementType; color: string }> = {
-  send:       { icon: ArrowUpRight,  color: 'text-white/60' },
-  receive:    { icon: ArrowDownLeft, color: 'text-emerald-400' },
-  withdrawal: { icon: Building2,     color: 'text-sky-400' },
-  deposit:    { icon: ArrowDownLeft, color: 'text-emerald-400' },
+  send_username:  { icon: ArrowUpRight,  color: 'text-white/60' },
+  send_address:   { icon: ArrowUpRight,  color: 'text-white/60' },
+  bank_transfer:  { icon: Building2,     color: 'text-sky-400' },
+  withdrawal:     { icon: Building2,     color: 'text-sky-400' },
+  deposit:        { icon: ArrowDownLeft, color: 'text-emerald-400' },
+  yield_credit:   { icon: ArrowDownLeft, color: 'text-emerald-400' },
+  referral_bonus: { icon: ArrowDownLeft, color: 'text-emerald-400' },
+  card_payment:   { icon: ArrowUpRight,  color: 'text-white/60' },
+  fee:            { icon: ArrowUpRight,  color: 'text-white/60' },
+  pay_request:    { icon: ArrowUpRight,  color: 'text-white/60' },
 }
 
 const TX_LABELS: Record<TxType, string> = {
-  send:       'Sent',
-  receive:    'Received',
-  withdrawal: 'Bank Transfer',
-  deposit:    'Deposit',
+  send_username:  'Sent',
+  send_address:   'Sent',
+  bank_transfer:  'Bank Transfer',
+  withdrawal:     'Withdrawal',
+  deposit:        'Deposit',
+  yield_credit:   'Yield',
+  referral_bonus: 'Referral Bonus',
+  card_payment:   'Card Payment',
+  fee:            'Fee',
+  pay_request:    'Pay Request',
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-400/15 text-amber-400',
-  failed:  'bg-red-400/15 text-red-400',
+  pending:  'bg-amber-400/15 text-amber-400',
+  failed:   'bg-red-400/15 text-red-400',
+  reversed: 'bg-orange-400/15 text-orange-400',
 }
 
 function TxRow({ tx }: { tx: Transaction }) {
-  const isIn = tx.type === 'receive' || tx.type === 'deposit'
+  const isIn = tx.type === 'deposit' || tx.type === 'yield_credit' || tx.type === 'referral_bonus'
   const amountColor = isIn ? 'text-emerald-400' : 'text-white'
-  const cfg = TX_ICON_CFG[tx.type] ?? TX_ICON_CFG.send
+  const cfg = TX_ICON_CFG[tx.type] ?? TX_ICON_CFG.deposit
   const Icon = cfg.icon
-  const subtitle = tx.to ?? tx.from ?? null
+  const subtitle = tx.recipientUsername ?? tx.recipientAddress ?? tx.bank ?? null
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 transition-colors rounded-2xl">
@@ -58,7 +71,7 @@ function TxRow({ tx }: { tx: Transaction }) {
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-white/35">
-            {new Date(tx.timestamp).toLocaleDateString('en-NG', {
+            {new Date(tx.createdAt).toLocaleDateString('en-NG', {
               month: 'short', day: 'numeric', year: 'numeric',
             })}
           </p>
@@ -70,7 +83,7 @@ function TxRow({ tx }: { tx: Transaction }) {
         </div>
       </div>
       <p className={cn('text-sm font-semibold tabular-nums shrink-0', amountColor)}>
-        {isIn ? '+' : '-'}${parseFloat(tx.amountUSD).toFixed(2)}
+        {isIn ? '+' : '-'}${parseFloat(tx.amountUsdc).toFixed(2)}
       </p>
     </div>
   )
@@ -88,9 +101,9 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 function applyFilter(txs: Transaction[], filter: Filter): Transaction[] {
   switch (filter) {
-    case 'sent':       return txs.filter(t => t.type === 'send')
-    case 'received':   return txs.filter(t => t.type === 'receive' || t.type === 'deposit')
-    case 'withdrawal': return txs.filter(t => t.type === 'withdrawal')
+    case 'sent':       return txs.filter(t => t.type === 'send_username' || t.type === 'send_address' || t.type === 'bank_transfer' || t.type === 'card_payment' || t.type === 'fee' || t.type === 'pay_request')
+    case 'received':   return txs.filter(t => t.type === 'deposit' || t.type === 'yield_credit' || t.type === 'referral_bonus')
+    case 'withdrawal': return txs.filter(t => t.type === 'withdrawal' || t.type === 'bank_transfer')
     default:           return txs
   }
 }
@@ -98,7 +111,7 @@ function applyFilter(txs: Transaction[], filter: Filter): Transaction[] {
 function groupByDate(txs: Transaction[]): { date: string; txs: Transaction[] }[] {
   const groups: { date: string; txs: Transaction[] }[] = []
   for (const tx of txs) {
-    const d = new Date(tx.timestamp).toLocaleDateString('en-NG', {
+    const d = new Date(tx.createdAt).toLocaleDateString('en-NG', {
       month: 'long', day: 'numeric', year: 'numeric',
     })
     const last = groups[groups.length - 1]
@@ -113,7 +126,7 @@ export default function HistoryPage() {
   const [filter,      setFilter]      = useState<Filter>('all')
   const [allTxs,      setAllTxs]      = useState<Transaction[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [hasMore,     setHasMore]     = useState(false)
+  const [totalPages,  setTotalPages]  = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
 
   const txQ = useQuery({
@@ -125,8 +138,8 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (txQ.data) {
-      setAllTxs(txQ.data.transactions)
-      setHasMore(txQ.data.hasMore)
+      setAllTxs(txQ.data.items)
+      setTotalPages(txQ.data.totalPages)
       setCurrentPage(1)
     }
   }, [txQ.data])
@@ -136,8 +149,8 @@ export default function HistoryPage() {
     try {
       const next = currentPage + 1
       const res  = await getTransactions(next, 20)
-      setAllTxs(prev => [...prev, ...res.transactions])
-      setHasMore(res.hasMore)
+      setAllTxs(prev => [...prev, ...res.items])
+      setTotalPages(res.totalPages)
       setCurrentPage(next)
     } catch {
       // silently fail
@@ -239,7 +252,7 @@ export default function HistoryPage() {
             </div>
           ))}
 
-          {hasMore && filter === 'all' && (
+          {currentPage < totalPages && filter === 'all' && (
             <div className="flex justify-center mt-5 px-4">
               <button
                 type="button"

@@ -37,7 +37,7 @@ function NetworkCard({ net }: { net: DepositNetwork }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-white">{net.name}</p>
-          <p className="text-xs text-white/40 mt-0.5">{net.symbol}</p>
+          <p className="text-xs text-white/40 mt-0.5">{net.asset}</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-white/60 font-medium">
@@ -73,7 +73,7 @@ export default function ReceivePage() {
   })
 
   async function copyAddress() {
-    const addr = addrQ.data?.address
+    const addr = addrQ.data?.stellarAddress
     if (!addr) return
     try {
       await navigator.clipboard.writeText(addr)
@@ -96,7 +96,7 @@ export default function ReceivePage() {
     }
   }
 
-  const addr     = addrQ.data?.address ?? ''
+  const addr     = addrQ.data?.stellarAddress ?? ''
   const username = user?.username ?? ''
 
   return (
@@ -158,7 +158,7 @@ export default function ReceivePage() {
           {/* Address display */}
           <div className="w-full rounded-2xl bg-white/5 border border-white/8 px-4 py-3.5">
             <p className="text-[10px] text-white/30 mb-1.5 tracking-widest uppercase">
-              {addrQ.data?.chain ?? 'Wallet'} address
+              {addrQ.data?.network ?? 'Stellar'} address
             </p>
             <p className="text-xs text-white/60 font-mono leading-relaxed break-all">
               {addr || '—'}

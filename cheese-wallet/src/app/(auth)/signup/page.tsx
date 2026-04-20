@@ -227,7 +227,7 @@ export default function SignupPage() {
     }
     setLoading(true)
     try {
-      await verifyOtp({ email: form.email.toLowerCase(), otp, type: 'signup' })
+      await verifyOtp({ email: form.email.toLowerCase(), otp, type: 'email_verify' })
 
       // Auto-login after OTP verification
       const deviceId = ensureDeviceId()
@@ -250,7 +250,7 @@ export default function SignupPage() {
 
   async function resendCode() {
     try {
-      await resendOtp(form.email.toLowerCase(), 'signup')
+      await resendOtp(form.email.toLowerCase(), 'email_verify')
       toast.success('Code resent — check your inbox')
     } catch {
       toast.error('Could not resend code')

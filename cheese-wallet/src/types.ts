@@ -19,14 +19,12 @@ export interface ApiError {
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
-  fullName?: string
+  fullName: string | null
   phone?: string
   username: string
   profileImage?: string
   tier?: 'silver' | 'gold' | 'black'
-  kycStatus?: 'none' | 'pending' | 'verified' | 'rejected'
+  kycStatus?: 'pending' | 'submitted' | 'verified' | 'rejected'
   createdAt: string
   emailVerified?: boolean
   phoneVerified?: boolean
@@ -69,7 +67,7 @@ export interface SignupPayload {
 export interface OtpVerifyPayload {
   email: string
   otp: string
-  type: 'signup' | 'forgot-password'
+  type: 'email_verify' | 'password_reset'
 }
 
 export interface ResetPasswordPayload {
@@ -92,43 +90,51 @@ export interface WalletBalance {
 }
 
 export interface WalletAddress {
-  address: string
-  chain: string
+  stellarAddress: string
+  evmAddress: string | null
   network: string
+  asset: string
+  memo: null
 }
 
 export interface DepositNetwork {
   id: string
   name: string
-  symbol: string
-  decimals: number
-  minAmount: string
-  maxAmount: string
+  asset: string
   fee: string
+  minDeposit: string
+  confirmations: number
   estimatedTime: string
+  note: string
 }
 
 // ── Transaction Types ─────────────────────────────────────
 export interface Transaction {
   id: string
-  type: 'deposit' | 'withdrawal' | 'send' | 'receive'
-  status: 'pending' | 'completed' | 'failed'
-  amount: string
-  amountUSD: string
-  currency: string
-  from?: string
-  to?: string
-  hash?: string
-  timestamp: string
-  description?: string
+  type: 'deposit' | 'withdrawal' | 'send_username' | 'send_address' | 'bank_transfer' | 'yield_credit' | 'referral_bonus' | 'card_payment' | 'fee' | 'pay_request'
+  status: 'pending' | 'completed' | 'failed' | 'reversed'
+  amountUsdc: string
+  amountNgn: string | null
+  fee: string
+  rateApplied: string | null
+  recipientUsername: string | null
+  recipientAddress: string | null
+  recipientName: string | null
+  bank: string | null
+  accountNumber: string | null
+  txHash: string | null
+  network: string | null
+  reference: string
+  description: string | null
+  createdAt: string
 }
 
 export interface TransactionListResponse {
-  transactions: Transaction[]
+  items: Transaction[]
   total: number
   page: number
   pageSize: number
-  hasMore: boolean
+  totalPages: number
 }
 
 // ── Bank Types ────────────────────────────────────────────
@@ -194,10 +200,12 @@ export interface VirtualCard {
 
 // ── Rates Types ───────────────────────────────────────────
 export interface ExchangeRate {
-  pair: string
-  rate: string
-  timestamp: string
+  id: string
+  usdToNgn: string
+  effectiveRate: string
+  spreadPercent: string
   source: string
+  fetchedAt: string
 }
 
 // ── Earn / Yield Types ────────────────────────────────────

@@ -42,7 +42,7 @@ function BalanceCard() {
   })
 
   async function copyAddress() {
-    const addr = addressQ.data?.address
+    const addr = addressQ.data?.stellarAddress
     if (!addr) return
     try {
       await navigator.clipboard.writeText(addr)
@@ -111,7 +111,7 @@ function BalanceCard() {
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-xs text-white/30 shrink-0">Stellar</span>
               <span className="text-xs text-white/50 font-mono truncate">
-                {addressQ.data.address.slice(0, 10)}…{addressQ.data.address.slice(-6)}
+                {addressQ.data.stellarAddress.slice(0, 10)}…{addressQ.data.stellarAddress.slice(-6)}
               </span>
             </div>
             {copied
@@ -147,22 +147,30 @@ function BalanceCard() {
 
 // ── Transaction row ───────────────────────────────────────
 function TxRow({ tx }: { tx: Transaction }) {
-  const isIn = tx.type === 'receive' || tx.type === 'deposit'
+  const isIn = tx.type === 'deposit' || tx.type === 'yield_credit' || tx.type === 'referral_bonus'
   const sign = isIn ? '+' : '-'
   const color = isIn ? 'text-emerald-400' : 'text-white'
 
   const typeLabel: Record<string, string> = {
-    send:       'Sent',
-    receive:    'Received',
-    withdrawal: 'Withdrawal',
-    deposit:    'Deposit',
+    send_username:  'Sent',
+    send_address:   'Sent',
+    bank_transfer:  'Bank Transfer',
+    withdrawal:     'Withdrawal',
+    deposit:        'Deposit',
+    yield_credit:   'Yield',
+    referral_bonus: 'Referral Bonus',
+    card_payment:   'Card Payment',
+    fee:            'Fee',
+    pay_request:    'Pay Request',
   }
 
   const statusColor: Record<string, string> = {
-    pending:   'bg-amber-400/15 text-amber-400',
-    completed: 'bg-emerald-400/10 text-emerald-400',
-    failed:    'bg-red-400/15 text-red-400',
+    pending:  'bg-amber-400/15 text-amber-400',
+    failed:   'bg-red-400/15 text-red-400',
+    reversed: 'bg-orange-400/15 text-orange-400',
   }
+
+  const subtitle = tx.recipientUsername ?? tx.recipientAddress ?? tx.bank ?? null
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 transition-colors rounded-2xl">
@@ -172,15 +180,15 @@ function TxRow({ tx }: { tx: Transaction }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white font-medium truncate">
           {typeLabel[tx.type] ?? tx.type}
-          {tx.to && (
-            <span className="text-white/40 font-normal"> · {tx.to}</span>
+          {subtitle && (
+            <span className="text-white/40 font-normal"> · {subtitle}</span>
           )}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-white/35">
-            {new Date(tx.timestamp).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
+            {new Date(tx.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
           </p>
-          {tx.status !== 'completed' && (
+          {tx.status !== 'completed' && statusColor[tx.status] && (
             <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', statusColor[tx.status])}>
               {tx.status}
             </span>
@@ -188,7 +196,7 @@ function TxRow({ tx }: { tx: Transaction }) {
         </div>
       </div>
       <p className={cn('text-sm font-semibold tabular-nums shrink-0', color)}>
-        {sign}${parseFloat(tx.amount).toFixed(2)}
+        {sign}${parseFloat(tx.amountUsdc).toFixed(2)}
       </p>
     </div>
   )
@@ -207,7 +215,7 @@ function RecentTransactions() {
     <section className="px-2 mt-6">
       <div className="flex items-center justify-between px-2 mb-3">
         <h2 className="text-sm font-semibold text-white/70 tracking-wide">Recent activity</h2>
-        {txQ.isSuccess && txQ.data.hasMore && (
+        {txQ.isSuccess && txQ.data.totalPages > 1 && (
           <Link href="/history" className="text-xs text-[#d4a843]/80 hover:text-[#d4a843] transition-colors">
             See all
           </Link>
@@ -243,7 +251,7 @@ function RecentTransactions() {
         </div>
       )}
 
-      {txQ.isSuccess && txQ.data.transactions.length === 0 && (
+      {txQ.isSuccess && txQ.data.items.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <div className="w-14 h-14 rounded-full bg-white/6 flex items-center justify-center">
             <TrendingUp size={22} className="text-white/25" />
@@ -255,9 +263,9 @@ function RecentTransactions() {
         </div>
       )}
 
-      {txQ.isSuccess && txQ.data.transactions.length > 0 && (
+      {txQ.isSuccess && txQ.data.items.length > 0 && (
         <div className="flex flex-col">
-          {txQ.data.transactions.map(tx => <TxRow key={tx.id} tx={tx} />)}
+          {txQ.data.items.map(tx => <TxRow key={tx.id} tx={tx} />)}
         </div>
       )}
     </section>
@@ -282,7 +290,7 @@ function RateTicker() {
     <div className="mx-4 mt-3 px-4 py-2.5 rounded-2xl bg-white/4 border border-white/6 flex items-center justify-between">
       <span className="text-xs text-white/40">1 USDC</span>
       <span className="text-xs text-white font-medium">
-        ₦{Number(data.rate).toLocaleString('en-NG', { minimumFractionDigits: 0 })}
+        ₦{Number(data.effectiveRate).toLocaleString('en-NG', { minimumFractionDigits: 0 })}
       </span>
       <span className="text-[10px] text-white/25">Live rate</span>
     </div>
@@ -305,7 +313,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="px-6 pt-5 pb-1">
         <p className="text-sm text-white/40">
-          {greeting}{user?.firstName ? `, ${user.firstName}` : ''}
+          {greeting}{user?.fullName ? `, ${user.fullName.split(' ')[0]}` : ''}
         </p>
       </div>
 
