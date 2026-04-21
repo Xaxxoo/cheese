@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,11 +22,13 @@ import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
 
-const PLATFORM_FEE_PCT = 0.001; // 0.1%
+const FALLBACK_FEE_RATE = 0.001; // 0.1% — used when Soroban contract is unavailable
 const MIN_USDC = 0.01;
 
 @Injectable()
 export class SendService {
+  private readonly logger = new Logger(SendService.name);
+
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Device) private readonly deviceRepo: Repository<Device>,
@@ -60,6 +63,12 @@ export class SendService {
       recipientUsername: recipient.username,
       type: TxType.SEND_USERNAME,
     });
+  }
+
+  // ── GET /send/fee-rate ────────────────────────────────────
+  async getFeeRatePublic(): Promise<{ feeRate: number; feePct: string }> {
+    const feeRate = await this.getFeeRate();
+    return { feeRate, feePct: `${(feeRate * 100).toFixed(2)}%` };
   }
 
   // ── POST /send/address ────────────────────────────────────
@@ -141,17 +150,18 @@ export class SendService {
       throw new BadRequestException(`Minimum send amount is ${MIN_USDC} USDC`);
     }
 
-    // 5. Check balance — send routes through Stellar, so we check Stellar balance.
-    //    The user's total spendable balance (EVM + Stellar combined) is surfaced
-    //    by the /wallet/balance endpoint; here we guard against the Stellar leg only.
+    // 5. Check balance — fee-inclusive: the contract deducts the fee from the
+    //    transfer amount, so the user only needs `amount` in their wallet.
     const stellarBalance = await this.blockchainService.getStellarUsdcBalance(
       sender.stellarPublicKey,
     );
-    const feeUsdc = amount * PLATFORM_FEE_PCT;
-    const totalRequired = amount + feeUsdc;
-    if (parseFloat(stellarBalance) < totalRequired) {
+    if (parseFloat(stellarBalance) < amount) {
       throw new BadRequestException('Insufficient USDC balance');
     }
+
+    // Fetch fee rate from on-chain contract (falls back to 0.1% if unavailable)
+    const feeRate = await this.getFeeRate();
+    const feeUsdc = amount * feeRate;
 
     // 6. Get NGN equivalent
     const ngnAmount = await this.ratesService.usdcToNgn(amount);
@@ -173,14 +183,22 @@ export class SendService {
       reference,
     });
 
-    // 8. Execute on-chain
+    // 8. Execute on-chain via Soroban contract (fee-inclusive).
+    //    Falls back to classic Stellar payment if contract is not yet deployed.
     try {
-      const txHash = await this.blockchainService.sendUsdc({
-        fromSecretEnc: sender.stellarSecretEnc,
-        toAddress: params.toAddress,
-        amountUsdc: params.amountUsdc,
-        memo: reference,
-      });
+      const { txHash } = this.blockchainService.isSorobanReady
+        ? await this.blockchainService.sendViaContract({
+            fromSecretEnc: sender.stellarSecretEnc,
+            toPublicKey:   params.toAddress,
+            amountUsdc:    params.amountUsdc,
+            memo:          reference,
+          })
+        : { txHash: await this.blockchainService.sendUsdc({
+              fromSecretEnc: sender.stellarSecretEnc,
+              toAddress:     params.toAddress,
+              amountUsdc:    params.amountUsdc,
+              memo:          reference,
+            }) };
 
       await this.txService.update(tx.id, {
         status: TxStatus.COMPLETED,
@@ -199,6 +217,19 @@ export class SendService {
       throw new BadRequestException(
         `Transaction failed: ${(err as Error).message}`,
       );
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  private async getFeeRate(): Promise<number> {
+    if (!this.blockchainService.isSorobanReady) return FALLBACK_FEE_RATE;
+    try {
+      return await this.blockchainService.getContractFeeRate();
+    } catch (err) {
+      this.logger.warn(
+        `Could not read fee_rate from contract — using fallback ${FALLBACK_FEE_RATE}: ${(err as Error).message}`,
+      );
+      return FALLBACK_FEE_RATE;
     }
   }
 }
