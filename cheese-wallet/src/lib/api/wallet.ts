@@ -76,6 +76,13 @@ export async function sendToUsername(payload: {
   return data.data
 }
 
+export async function getSendFeeRate(): Promise<{ feeRate: number; feePct: string }> {
+  const { data } = await apiClient.get<ApiResponse<{ feeRate: number; feePct: string }>>(
+    ENDPOINTS.SEND.FEE_RATE,
+  )
+  return data.data
+}
+
 export async function sendToAddress(payload: {
   address: string
   amountUsdc: string
