@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
-import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate } from '@/lib/api/wallet'
+import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate } from '@/lib/api/wallet'
 import { signTransaction, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction } from '@/types'
@@ -627,10 +627,19 @@ function AmountStep({
     retry: 1,
   })
 
-  const amount  = parseFloat(raw) || 0
-  const ngnRate = rate ? parseFloat(rate.effectiveRate) : 0
-  const ngnEq   = amount > 0 && ngnRate > 0 ? formatNgn(amount, ngnRate) : null
-  const fee     = amount > 0 ? (amount * 0.001).toFixed(6) : '0'
+  const { data: feeData } = useQuery({
+    queryKey: QUERY_KEYS.SEND_FEE_RATE,
+    queryFn:  getSendFeeRate,
+    staleTime: STALE_TIMES.EXCHANGE_RATE,
+    retry: 1,
+  })
+
+  const amount         = parseFloat(raw) || 0
+  const ngnRate        = rate ? parseFloat(rate.effectiveRate) : 0
+  const ngnEq          = amount > 0 && ngnRate > 0 ? formatNgn(amount, ngnRate) : null
+  const feeRate        = feeData?.feeRate ?? 0.001
+  const feeUsdc        = amount > 0 ? amount * feeRate : 0
+  const netToRecipient = amount > 0 ? amount - feeUsdc : 0
 
   function handleInput(v: string) {
     const clean = v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
@@ -684,9 +693,16 @@ function AmountStep({
       </div>
 
       {amount > 0 && (
-        <p className="text-xs text-white/25 text-center mb-4">
-          0.1% fee · ${fee} USDC
-        </p>
+        <div className="rounded-2xl bg-white/4 border border-white/6 px-4 py-3 mb-4 flex flex-col gap-1.5">
+          <div className="flex justify-between text-xs">
+            <span className="text-white/40">Fee ({feeData?.feePct ?? '…'})</span>
+            <span className="text-white/50">${feeUsdc.toFixed(4)} USDC</span>
+          </div>
+          <div className="flex justify-between text-xs border-t border-white/6 pt-1.5">
+            <span className="text-white/40">Recipient gets</span>
+            <span className="text-white font-medium">${netToRecipient.toFixed(4)} USDC</span>
+          </div>
+        </div>
       )}
 
       <Button fullWidth size="lg" onClick={submit} disabled={!amount || amount <= 0}>
@@ -728,9 +744,19 @@ function PinStep({
     retry: 1,
   })
 
-  const ngnRate = rate ? parseFloat(rate.effectiveRate) : 0
-  const ngnEq   = parseFloat(amount) > 0 && ngnRate > 0
+  const { data: feeData } = useQuery({
+    queryKey: QUERY_KEYS.SEND_FEE_RATE,
+    queryFn:  getSendFeeRate,
+    staleTime: STALE_TIMES.EXCHANGE_RATE,
+    retry: 1,
+  })
+
+  const ngnRate        = rate ? parseFloat(rate.effectiveRate) : 0
+  const ngnEq          = parseFloat(amount) > 0 && ngnRate > 0
     ? formatNgn(parseFloat(amount), ngnRate) : null
+  const feeRate        = feeData?.feeRate ?? 0.001
+  const feeUsdc        = (parseFloat(amount) * feeRate).toFixed(4)
+  const netToRecipient = (parseFloat(amount) - parseFloat(feeUsdc)).toFixed(4)
 
   const submit = useCallback(async (currentPin: string) => {
     if (submittedRef.current) return
@@ -807,7 +833,7 @@ function PinStep({
           </div>
         )}
         <div className="flex items-center justify-between py-2 border-b border-white/6">
-          <span className="text-xs text-white/40 uppercase tracking-wide">Amount</span>
+          <span className="text-xs text-white/40 uppercase tracking-wide">You send</span>
           <div className="text-right">
             <p className="text-base font-semibold text-white">
               ${parseFloat(amount).toFixed(2)} <span className="text-white/40 text-sm font-normal">USDC</span>
@@ -815,9 +841,13 @@ function PinStep({
             {ngnEq && <p className="text-xs text-white/30">≈ ₦{ngnEq}</p>}
           </div>
         </div>
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Fee ({feeData?.feePct ?? '…'})</span>
+          <span className="text-xs text-white/50">−${feeUsdc} USDC</span>
+        </div>
         <div className="flex items-center justify-between py-2">
-          <span className="text-xs text-white/40 uppercase tracking-wide">Fee</span>
-          <span className="text-xs text-white/40">${(parseFloat(amount) * 0.001).toFixed(6)} USDC</span>
+          <span className="text-xs text-white/40 uppercase tracking-wide">Recipient gets</span>
+          <span className="text-sm font-semibold text-white">${netToRecipient} USDC</span>
         </div>
       </div>
 
