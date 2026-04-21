@@ -27,6 +27,22 @@ import { SendToAddressDto, SendToUsernameDto } from './dto';
 export class SendController {
   constructor(private readonly sendService: SendService) {}
 
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get('fee-rate')
+  @ApiOperation({
+    summary: 'Get current send fee rate from on-chain contract',
+    description:
+      'Returns the fee rate read from the Soroban contract fee_rate() view function. ' +
+      'Use this to show the fee breakdown before the user confirms a transfer.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns feeRate (decimal) and feePct (human-readable string)',
+  })
+  getFeeRate() {
+    return this.sendService.getFeeRatePublic();
+  }
+
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get('resolve/:username')
   @ApiOperation({
