@@ -78,6 +78,11 @@ export class BlockchainService implements OnModuleInit {
   private stellarUsdcIssuer: string;
   private stellarReady = false;
 
+  // ── Soroban (contract layer) ───────────────────────────────────────────
+  private sorobanRpc: StellarSdk.rpc.Server;
+  private sorobanContractId: string;
+  private sorobanReady = false;
+
   // ── Encryption ─────────────────────────────────────────────────────────
   private encryptionKey: Buffer;
   private encryptionReady = false;
@@ -185,6 +190,24 @@ export class BlockchainService implements OnModuleInit {
       this.logger.warn('Stellar not configured — Stellar features disabled');
     }
 
+    // Soroban — init if contract ID and RPC URL are present
+    const contractId    = this.config.get<string>('STELLAR_CONTRACT_ID');
+    const sorobanRpcUrl = this.config.get<string>('STELLAR_SOROBAN_RPC_URL');
+
+    if (contractId && sorobanRpcUrl) {
+      try {
+        this.initSoroban(sorobanRpcUrl, contractId);
+        this.sorobanReady = true;
+      } catch (err) {
+        this.logger.error(`Soroban init failed: ${(err as Error).message}`);
+      }
+    } else {
+      this.logger.warn(
+        'Soroban not configured — contract features disabled ' +
+          '(need STELLAR_CONTRACT_ID, STELLAR_SOROBAN_RPC_URL)',
+      );
+    }
+
     // Encryption — init if key is exactly 64 hex chars
     if (encKey && encKey.length === 64) {
       try {
@@ -200,7 +223,7 @@ export class BlockchainService implements OnModuleInit {
     }
 
     this.logger.log(
-      `Blockchain init — stellar=${this.stellarReady} evm=${this.evmReady} enc=${this.encryptionReady}`,
+      `Blockchain init — stellar=${this.stellarReady} soroban=${this.sorobanReady} evm=${this.evmReady} enc=${this.encryptionReady}`,
     );
   }
 
@@ -278,6 +301,14 @@ export class BlockchainService implements OnModuleInit {
     this.logger.log('Encryption ready');
   }
 
+  private initSoroban(rpcUrl: string, contractId: string): void {
+    this.sorobanRpc = new StellarSdk.rpc.Server(rpcUrl);
+    this.sorobanContractId = contractId;
+    this.logger.log(
+      `Soroban ready [rpc=${rpcUrl}] [contract=${contractId}]`,
+    );
+  }
+
   // ── Guards ────────────────────────────────────────────────────────────────
 
   private requireEvm(operation: string): void {
@@ -303,6 +334,15 @@ export class BlockchainService implements OnModuleInit {
       throw new ContractCallException(
         operation,
         'Encryption not initialised — check SECRET_ENCRYPTION_KEY',
+      );
+    }
+  }
+
+  private requireSoroban(operation: string): void {
+    if (!this.sorobanReady) {
+      throw new ContractCallException(
+        operation,
+        'Soroban not initialised — check STELLAR_CONTRACT_ID, STELLAR_SOROBAN_RPC_URL',
       );
     }
   }
@@ -1107,6 +1147,144 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Soroban — contract interaction
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Read the fee_rate view function from the Soroban contract.
+   * Expects fee_rate() to return u32 basis points (1 bp = 0.01%).
+   * Returns a decimal fraction — e.g. 10 bp → 0.001 (0.1%).
+   */
+  async getContractFeeRate(): Promise<number> {
+    this.requireStellar('getContractFeeRate');
+    this.requireSoroban('getContractFeeRate');
+
+    const contract     = new StellarSdk.Contract(this.sorobanContractId);
+    const sourceAcct   = await this.sorobanRpc.getAccount(
+      this.stellarPlatformKeypair.publicKey(),
+    );
+
+    const tx = new StellarSdk.TransactionBuilder(sourceAcct, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: this.stellarNetwork,
+    })
+      .addOperation(contract.call('fee_rate'))
+      .setTimeout(30)
+      .build();
+
+    const sim = await this.sorobanRpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      throw new ContractCallException(
+        'getContractFeeRate',
+        (sim as StellarSdk.rpc.Api.SimulateTransactionErrorResponse).error,
+      );
+    }
+
+    const success = sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
+    // fee_rate returns u32 basis points: 10 = 0.1%, 100 = 1%
+    const bps = StellarSdk.scValToNative(success.result!.retval) as number;
+    return bps / 10_000;
+  }
+
+  /**
+   * Call transfer(from, to, amount) on the Soroban contract.
+   * The amount is fee-inclusive — the contract splits the fee internally.
+   * USDC amounts are converted to stroops (7 decimal places on Stellar).
+   */
+  async sendViaContract(opts: {
+    fromSecretEnc: string;
+    toPublicKey: string;
+    amountUsdc: string;
+    memo?: string;
+  }): Promise<StellarTransferResult> {
+    this.requireStellar('sendViaContract');
+    this.requireEncryption('sendViaContract');
+    this.requireSoroban('sendViaContract');
+
+    const { fromSecretEnc, toPublicKey, amountUsdc, memo } = opts;
+    const senderKeypair   = StellarSdk.Keypair.fromSecret(
+      this.decryptSecret(fromSecretEnc),
+    );
+    const senderPublicKey = senderKeypair.publicKey();
+    this.logger.log(
+      `sendViaContract [from=${senderPublicKey}] [to=${toPublicKey}] [amount=${amountUsdc}]`,
+    );
+
+    const contract = new StellarSdk.Contract(this.sorobanContractId);
+    // USDC on Stellar uses 7 decimal places — convert to stroops
+    const amountStroops = BigInt(
+      Math.round(parseFloat(amountUsdc) * 10_000_000),
+    );
+
+    const senderAcct = await this.sorobanRpc.getAccount(senderPublicKey);
+    const txBuilder  = new StellarSdk.TransactionBuilder(senderAcct, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: this.stellarNetwork,
+    }).addOperation(
+      contract.call(
+        'transfer',
+        StellarSdk.nativeToScVal(senderPublicKey, { type: 'address' }),
+        StellarSdk.nativeToScVal(toPublicKey,     { type: 'address' }),
+        StellarSdk.nativeToScVal(amountStroops,   { type: 'i128' }),
+      ),
+    );
+
+    if (memo) txBuilder.addMemo(StellarSdk.Memo.text(memo.slice(0, 28)));
+    const rawTx = txBuilder.setTimeout(30).build();
+
+    // Simulate to get the ledger footprint
+    const sim = await this.sorobanRpc.simulateTransaction(rawTx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      throw new ContractCallException(
+        'sendViaContract',
+        (sim as StellarSdk.rpc.Api.SimulateTransactionErrorResponse).error,
+      );
+    }
+
+    // Assemble (injects footprint + resource fees), then sign
+    const prepared = StellarSdk.rpc
+      .assembleTransaction(
+        rawTx,
+        sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse,
+      )
+      .build();
+    prepared.sign(senderKeypair);
+
+    const sendResult = await this.sorobanRpc.sendTransaction(prepared);
+    if (sendResult.status === 'ERROR') {
+      throw new ContractCallException(
+        'sendViaContract',
+        `Submit error: ${String(sendResult.errorResult ?? 'unknown')}`,
+      );
+    }
+
+    // Poll until the transaction lands in a ledger
+    let getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+    let attempts  = 0;
+    while (
+      getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
+      attempts < 20
+    ) {
+      await new Promise((r) => setTimeout(r, 1500));
+      getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+      attempts++;
+    }
+
+    if (getResult.status !== StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS) {
+      throw new ContractCallException(
+        'sendViaContract',
+        `Transaction did not confirm: status=${getResult.status}`,
+      );
+    }
+
+    const balanceAfter = await this.getStellarUsdcBalance(senderPublicKey);
+    this.logger.log(
+      `sendViaContract confirmed [hash=${sendResult.hash}] [balanceAfter=${balanceAfter}]`,
+    );
+    return { txHash: sendResult.hash, balanceAfter };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Ready state — used by schedulers to bail early if chains not configured
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -1116,5 +1294,9 @@ export class BlockchainService implements OnModuleInit {
 
   get isEvmReady(): boolean {
     return this.evmReady;
+  }
+
+  get isSorobanReady(): boolean {
+    return this.sorobanReady;
   }
 }
