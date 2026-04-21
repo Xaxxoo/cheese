@@ -46,6 +46,7 @@ export const ENDPOINTS = {
     TO_USERNAME:      '/send/username',
     TO_ADDRESS:       '/send/address',
     RESOLVE_USERNAME: (username: string) => `/send/resolve/${username}`,
+    FEE_RATE:         '/send/fee-rate',
     ESTIMATE_FEE:     '/send/estimate-fee',
   },
 
@@ -129,6 +130,7 @@ export const QUERY_KEYS = {
 
   // Send
   RESOLVE_USERNAME:     (u: string)    => ['resolve', 'username', u] as const,
+  SEND_FEE_RATE:        ['send', 'fee-rate'] as const,
 
   // Banks
   BANKS:                ['banks'] as const,
