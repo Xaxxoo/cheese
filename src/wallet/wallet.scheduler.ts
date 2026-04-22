@@ -43,13 +43,22 @@ export class WalletDepositScheduler {
     for (const user of pending) {
       try {
         const wallet = await this.blockchainService.createStellarWallet();
-        await this.userRepo.update(
-          { id: user.id },
+        // Atomic update — only write if stellarPublicKey is still null.
+        // Guards against multiple instances racing to provision the same user.
+        const result = await this.userRepo.update(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          { id: user.id, stellarPublicKey: null as any },
           {
             stellarPublicKey: wallet.publicKey,
             stellarSecretEnc: wallet.secretKeyEnc,
           },
         );
+        if (result.affected === 0) {
+          this.logger.warn(
+            `Wallet already provisioned by another instance [user=${user.username}] — skipping`,
+          );
+          continue;
+        }
         this.logger.log(
           `Wallet provisioned [user=${user.username}] [pk=${wallet.publicKey}]`,
         );
@@ -120,6 +129,18 @@ export class WalletDepositScheduler {
       this.logger.log(
         `Deposit recorded [user=${user.id}] [amount=${payment.amount} USDC] [hash=${payment.txHash}]`,
       );
+
+      // Notify the Soroban contract of the deposit (fire-and-forget).
+      // Routing is purely by destination address — memo is never used.
+      if (this.blockchainService.isSorobanReady) {
+        void this.blockchainService
+          .notifyContractDeposit(user.stellarPublicKey!, payment.amount)
+          .catch((err: Error) =>
+            this.logger.warn(
+              `notifyContractDeposit failed [user=${user.id}] [hash=${payment.txHash}]: ${err.message}`,
+            ),
+          );
+      }
     }
 
     // Advance the cursor so we don't re-process these payments next run
