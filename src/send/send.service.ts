@@ -150,6 +150,22 @@ export class SendService {
       throw new BadRequestException(`Minimum send amount is ${MIN_USDC} USDC`);
     }
 
+    // 5a. Trustline guard — external address sends only.
+    //     All Cheese Pay users already have a USDC trustline; external wallets may not.
+    //     Fail fast here so the transaction never reaches the contract and fails on-chain.
+    if (params.type === TxType.SEND_ADDRESS) {
+      const hasTrustline = await this.blockchainService.hasUsdcTrustline(
+        params.toAddress,
+      );
+      if (!hasTrustline) {
+        throw new BadRequestException(
+          "Your destination account isn't set up to receive USDC. " +
+            'The recipient needs to add a USDC trustline in their Stellar wallet ' +
+            'before you can send to that address.',
+        );
+      }
+    }
+
     // 5. Check balance — fee-inclusive: the contract deducts the fee from the
     //    transfer amount, so the user only needs `amount` in their wallet.
     const stellarBalance = await this.blockchainService.getStellarUsdcBalance(
