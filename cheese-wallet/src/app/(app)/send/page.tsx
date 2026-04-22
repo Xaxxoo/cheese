@@ -353,8 +353,12 @@ function UsernameInput({
 }
 
 // ─────────────────────────────────────────────────────────
-// Stellar address input
+// Stellar address input — with USDC trustline check
 // ─────────────────────────────────────────────────────────
+const USDC_ISSUER_MAINNET = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
+
+type TrustlineStatus = 'idle' | 'checking' | 'ok' | 'no_trustline' | 'no_account'
+
 function AddressInput({
   value,
   onChange,
@@ -366,22 +370,73 @@ function AddressInput({
   onResolved: (r: ResolvedRecipient | null) => void
   onClear: () => void
 }) {
+  const [trustlineStatus, setTrustlineStatus] = useState<TrustlineStatus>('idle')
   const valid = isStellarAddress(value)
 
   useEffect(() => {
-    if (valid) {
-      onResolved({ display: truncateAddress(value.trim()), address: value.trim(), type: 'address', raw: value.trim() })
-    } else {
+    if (!valid) {
+      setTrustlineStatus('idle')
       onResolved(null)
+      return
     }
+
+    const addr = value.trim()
+    let cancelled = false
+    setTrustlineStatus('checking')
+    onResolved(null) // block progression until check passes
+
+    void (async () => {
+      try {
+        const res = await fetch(`https://horizon.stellar.org/accounts/${addr}`)
+        if (cancelled) return
+
+        if (res.status === 404) {
+          setTrustlineStatus('no_account')
+          return
+        }
+
+        if (!res.ok) {
+          // Unknown Horizon error — pass through; backend will guard
+          setTrustlineStatus('ok')
+          onResolved({ display: truncateAddress(addr), address: addr, type: 'address', raw: addr })
+          return
+        }
+
+        const data = await res.json() as {
+          balances: Array<{ asset_type: string; asset_code?: string; asset_issuer?: string }>
+        }
+        const hasTrustline = data.balances?.some(
+          (b) => b.asset_type === 'credit_alphanum4' &&
+                 b.asset_code === 'USDC' &&
+                 b.asset_issuer === USDC_ISSUER_MAINNET
+        ) ?? false
+
+        if (cancelled) return
+
+        if (hasTrustline) {
+          setTrustlineStatus('ok')
+          onResolved({ display: truncateAddress(addr), address: addr, type: 'address', raw: addr })
+        } else {
+          setTrustlineStatus('no_trustline')
+        }
+      } catch {
+        if (cancelled) return
+        // Network failure — don't block; backend will guard
+        setTrustlineStatus('ok')
+        onResolved({ display: truncateAddress(addr), address: addr, type: 'address', raw: addr })
+      }
+    })()
+
+    return () => { cancelled = true }
   }, [value, valid, onResolved])
 
   return (
     <div>
       <div className={cn(
         'flex items-center gap-3 min-h-14 px-4 py-3 rounded-2xl border transition-all duration-150 bg-white/6',
-        valid             ? 'border-emerald-500/40' :
-        value.length > 10 ? 'border-red-500/30'     :
+        trustlineStatus === 'ok'                                               ? 'border-emerald-500/40' :
+        trustlineStatus === 'no_trustline' || trustlineStatus === 'no_account' ? 'border-red-500/30'     :
+        value.length > 10 && !valid                                            ? 'border-red-500/30'     :
         'border-white/10 focus-within:border-[#d4a843]/50',
       )}>
         <Wallet size={17} className="text-white/30 shrink-0 mt-0.5" />
@@ -394,15 +449,30 @@ function AddressInput({
           spellCheck={false}
           className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none resize-none font-mono leading-relaxed"
         />
-        {valid && <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />}
-        {value && (
+        {trustlineStatus === 'checking'    && <Loader2      size={16} className="text-white/30 animate-spin shrink-0 mt-0.5" />}
+        {trustlineStatus === 'ok'          && <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />}
+        {(trustlineStatus === 'no_trustline' || trustlineStatus === 'no_account') && (
+          <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+        )}
+        {value && trustlineStatus !== 'checking' && (
           <button type="button" onClick={onClear} className="text-white/25 hover:text-white/50 transition-colors shrink-0 mt-0.5">
             <X size={16} />
           </button>
         )}
       </div>
+
       {value.length > 10 && !valid && (
         <p className="text-xs text-red-400 mt-1.5 px-1">Enter a valid Stellar address (starts with G…)</p>
+      )}
+      {trustlineStatus === 'no_account' && (
+        <p className="text-xs text-red-400 mt-1.5 px-1">
+          This account doesn't exist on Stellar yet — the recipient must activate their wallet first.
+        </p>
+      )}
+      {trustlineStatus === 'no_trustline' && (
+        <p className="text-xs text-red-400 mt-1.5 px-1 leading-relaxed">
+          This account isn't set up to receive USDC. The recipient needs to add a USDC trustline in their Stellar wallet.
+        </p>
       )}
     </div>
   )
