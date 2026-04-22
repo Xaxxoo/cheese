@@ -700,6 +700,31 @@ export class BlockchainService implements OnModuleInit {
   // Stellar — Balance
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Returns true if the given Stellar account exists and has an active USDC trustline.
+   * Returns false if the account does not exist (404) or has no USDC trustline.
+   * Throws for unexpected errors (network, etc.).
+   */
+  async hasUsdcTrustline(publicKey: string): Promise<boolean> {
+    this.requireStellar('hasUsdcTrustline');
+    try {
+      const account = await this.stellarServer.loadAccount(publicKey);
+      return account.balances.some(
+        (b) =>
+          b.asset_type === 'credit_alphanum4' &&
+          (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>)
+            .asset_code === 'USDC' &&
+          (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>)
+            .asset_issuer === this.stellarUsdcIssuer,
+      );
+    } catch (err) {
+      // Horizon returns 404 when the account has never been funded
+      const anyErr = err as { response?: { status?: number } };
+      if (anyErr?.response?.status === 404) return false;
+      throw this.wrapError('hasUsdcTrustline', err);
+    }
+  }
+
   async getStellarUsdcBalance(publicKey: string): Promise<string> {
     this.requireStellar('getStellarUsdcBalance');
     try {
@@ -1184,6 +1209,88 @@ export class BlockchainService implements OnModuleInit {
     // fee_rate returns u32 basis points: 10 = 0.1%, 100 = 1%
     const bps = StellarSdk.scValToNative(success.result!.retval) as number;
     return bps / 10_000;
+  }
+
+  /**
+   * Notify the Soroban contract of an inbound USDC deposit.
+   * Calls deposit(recipient: address, amount: i128) signed by the platform keypair.
+   * Routing is purely by destination address — memo is never read or used.
+   */
+  async notifyContractDeposit(
+    recipientPublicKey: string,
+    amountUsdc: string,
+  ): Promise<string> {
+    this.requireStellar('notifyContractDeposit');
+    this.requireSoroban('notifyContractDeposit');
+
+    const amountStroops = BigInt(
+      Math.round(parseFloat(amountUsdc) * 10_000_000),
+    );
+
+    const contract    = new StellarSdk.Contract(this.sorobanContractId);
+    const platformKey = this.stellarPlatformKeypair.publicKey();
+    const platformAcct = await this.sorobanRpc.getAccount(platformKey);
+
+    const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
+      fee: StellarSdk.BASE_FEE,
+      networkPassphrase: this.stellarNetwork,
+    })
+      .addOperation(
+        contract.call(
+          'deposit',
+          StellarSdk.nativeToScVal(recipientPublicKey, { type: 'address' }),
+          StellarSdk.nativeToScVal(amountStroops, { type: 'i128' }),
+        ),
+      )
+      .setTimeout(30)
+      .build();
+
+    const sim = await this.sorobanRpc.simulateTransaction(rawTx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      throw new ContractCallException(
+        'notifyContractDeposit',
+        (sim as StellarSdk.rpc.Api.SimulateTransactionErrorResponse).error,
+      );
+    }
+
+    const prepared = StellarSdk.rpc
+      .assembleTransaction(
+        rawTx,
+        sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse,
+      )
+      .build();
+    prepared.sign(this.stellarPlatformKeypair);
+
+    const sendResult = await this.sorobanRpc.sendTransaction(prepared);
+    if (sendResult.status === 'ERROR') {
+      throw new ContractCallException(
+        'notifyContractDeposit',
+        `Submit error: ${String(sendResult.errorResult ?? 'unknown')}`,
+      );
+    }
+
+    let getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+    let attempts  = 0;
+    while (
+      getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
+      attempts < 20
+    ) {
+      await new Promise((r) => setTimeout(r, 1500));
+      getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+      attempts++;
+    }
+
+    if (getResult.status !== StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS) {
+      throw new ContractCallException(
+        'notifyContractDeposit',
+        `Transaction did not confirm: status=${getResult.status}`,
+      );
+    }
+
+    this.logger.log(
+      `notifyContractDeposit confirmed [recipient=${recipientPublicKey}] [amount=${amountUsdc}] [hash=${sendResult.hash}]`,
+    );
+    return sendResult.hash;
   }
 
   /**
