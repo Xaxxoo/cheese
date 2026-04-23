@@ -205,16 +205,18 @@ export class SendService {
       const { txHash } = this.blockchainService.isSorobanReady
         ? await this.blockchainService.sendViaContract({
             fromSecretEnc: sender.stellarSecretEnc,
-            toPublicKey:   params.toAddress,
-            amountUsdc:    params.amountUsdc,
-            memo:          reference,
+            toPublicKey: params.toAddress,
+            amountUsdc: params.amountUsdc,
+            memo: reference,
           })
-        : { txHash: await this.blockchainService.sendUsdc({
+        : {
+            txHash: await this.blockchainService.sendUsdc({
               fromSecretEnc: sender.stellarSecretEnc,
-              toAddress:     params.toAddress,
-              amountUsdc:    params.amountUsdc,
-              memo:          reference,
-            }) };
+              toAddress: params.toAddress,
+              amountUsdc: params.amountUsdc,
+              memo: reference,
+            }),
+          };
 
       await this.txService.update(tx.id, {
         status: TxStatus.COMPLETED,
