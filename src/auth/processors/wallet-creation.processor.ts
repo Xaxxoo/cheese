@@ -53,26 +53,55 @@ export class WalletCreationProcessor extends WorkerHost {
       return;
     }
 
-    const updates: Partial<User> = {};
+    const evmUpdates: Partial<User> = {};
     const stillFailing: string[] = [];
 
     // ── Stellar ──────────────────────────────────────────────────────────
+    // Two-phase approach: generate keypair → atomic DB write → THEN fund.
+    // Prevents double-spending if the cron and this processor run concurrently.
     if (chains.includes('stellar')) {
       if (user.stellarPublicKey) {
-        // Already created (maybe by a concurrent job or manual fix)
+        // Already created (maybe by the cron or a concurrent job).
+        // If stellarWalletStatus is still PENDING the cron's Phase B will
+        // retry the activation — nothing more to do here.
         this.logger.debug(
           `Stellar wallet already exists for user ${userId} — skipping`,
         );
       } else {
         try {
-          const stellarWallet =
-            await this.blockchainService.createStellarWallet();
-          updates.stellarPublicKey = stellarWallet.publicKey;
-          updates.stellarSecretEnc = stellarWallet.secretKeyEnc;
-          updates.stellarWalletStatus = WalletStatus.ACTIVE;
-          this.logger.log(
-            `Stellar wallet created on retry [userId=${userId}] [pk=${stellarWallet.publicKey}]`,
+          // Phase 1: generate keypair — free, no XLM spent
+          const generated = this.blockchainService.generateStellarKeypair();
+
+          // Phase 2: atomic DB write — only write if key is still null.
+          // Prevents a race with the provisioning cron.
+
+          const result = await this.userRepo.update(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            { id: userId, stellarPublicKey: null as any },
+            {
+              stellarPublicKey: generated.publicKey,
+              stellarSecretEnc: generated.secretKeyEnc,
+            },
           );
+
+          if (result.affected === 0) {
+            // Cron (or another instance) already claimed this slot — skip funding.
+            this.logger.debug(
+              `Stellar key already claimed for user ${userId} — skipping`,
+            );
+          } else {
+            // Phase 3: fund + trustline — XLM spent only after DB write confirmed.
+            await this.blockchainService.activateStellarAccount(
+              generated.secretKeyEnc,
+            );
+            await this.userRepo.update(
+              { id: userId },
+              { stellarWalletStatus: WalletStatus.ACTIVE },
+            );
+            this.logger.log(
+              `Stellar wallet created on retry [userId=${userId}] [pk=${generated.publicKey}]`,
+            );
+          }
         } catch (err) {
           this.logger.error(
             `Stellar wallet retry failed [userId=${userId}]: ${(err as Error).message}`,
@@ -94,7 +123,7 @@ export class WalletCreationProcessor extends WorkerHost {
             userId,
             username,
           );
-          updates.evmAddress = evmResult.walletAddress;
+          evmUpdates.evmAddress = evmResult.walletAddress;
           this.logger.log(
             `EVM wallet created on retry [userId=${userId}] [wallet=${evmResult.walletAddress}]`,
           );
@@ -107,11 +136,11 @@ export class WalletCreationProcessor extends WorkerHost {
       }
     }
 
-    // Persist whatever succeeded
-    if (Object.keys(updates).length > 0) {
-      await this.userRepo.update({ id: userId }, updates);
+    // Persist EVM updates
+    if (Object.keys(evmUpdates).length > 0) {
+      await this.userRepo.update({ id: userId }, evmUpdates);
       this.logger.log(
-        `Wallet fields updated [userId=${userId}] [fields=${Object.keys(updates).join(',')}]`,
+        `Wallet fields updated [userId=${userId}] [fields=${Object.keys(evmUpdates).join(',')}]`,
       );
     }
 
