@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User, WalletStatus } from '../auth/entities/user.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
@@ -21,50 +21,99 @@ export class WalletDepositScheduler {
   ) {}
 
   // ── Auto-provision missing Stellar wallets ────────────────────────────────
-  // Runs every 2 minutes. Finds users with no stellarPublicKey and creates
-  // wallets for them. Handles users who signed up before Stellar was ready.
+  // Runs every 2 minutes. Two-phase approach:
+  //   Phase A — users with no key: generate key → write DB → THEN fund.
+  //             Money is only spent after the DB write succeeds, eliminating
+  //             double-spends from concurrent instances or failed DB writes.
+  //   Phase B — users with a saved key but PENDING status: retry activation
+  //             (handles the rare case where funding failed after the key was
+  //             persisted to the DB on a previous run).
   @Cron('*/2 * * * *')
   async provisionMissingWallets() {
     if (!this.blockchainService.isStellarReady) return;
 
-    const pending = await this.userRepo.find({
+    // ── Phase A: provision users who have no Stellar key yet ───────────────
+    const needsKey = await this.userRepo.find({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       where: { stellarPublicKey: null as any },
       select: ['id', 'username'],
-      take: 20, // process at most 20 per run
+      take: 20,
     });
 
-    if (pending.length === 0) return;
+    if (needsKey.length > 0) {
+      this.logger.log(
+        `Auto-provisioning Stellar wallets for ${needsKey.length} user(s)`,
+      );
+    }
 
-    this.logger.log(
-      `Auto-provisioning Stellar wallets for ${pending.length} user(s)`,
-    );
-
-    for (const user of pending) {
+    for (const user of needsKey) {
       try {
-        const wallet = await this.blockchainService.createStellarWallet();
-        // Atomic update — only write if stellarPublicKey is still null.
-        // Guards against multiple instances racing to provision the same user.
+        // Step 1: Generate keypair — free, no network call, no XLM spent.
+        const generated = this.blockchainService.generateStellarKeypair();
+
+        // Step 2: Atomic DB write — claim the slot BEFORE spending any XLM.
+        // Guards against concurrent instances provisioning the same user.
+
         const result = await this.userRepo.update(
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           { id: user.id, stellarPublicKey: null as any },
           {
-            stellarPublicKey: wallet.publicKey,
-            stellarSecretEnc: wallet.secretKeyEnc,
+            stellarPublicKey: generated.publicKey,
+            stellarSecretEnc: generated.secretKeyEnc,
           },
         );
+
         if (result.affected === 0) {
           this.logger.warn(
             `Wallet already provisioned by another instance [user=${user.username}] — skipping`,
           );
           continue;
         }
+
+        // Step 3: Fund + trustline — XLM is spent only after DB write confirmed.
+        await this.blockchainService.activateStellarAccount(
+          generated.secretKeyEnc,
+        );
+        await this.userRepo.update(
+          { id: user.id },
+          { stellarWalletStatus: WalletStatus.ACTIVE },
+        );
+
         this.logger.log(
-          `Wallet provisioned [user=${user.username}] [pk=${wallet.publicKey}]`,
+          `Wallet provisioned [user=${user.username}] [pk=${generated.publicKey}]`,
         );
       } catch (err) {
         this.logger.error(
           `Auto-provision failed [user=${user.username}]: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // ── Phase B: retry activation for users whose key was saved but funding
+    //            failed on a previous run (stellarPublicKey set, status PENDING)
+    const needsActivation = await this.userRepo.find({
+      where: {
+        stellarWalletStatus: WalletStatus.PENDING,
+        stellarPublicKey: Not(IsNull()),
+      },
+      select: ['id', 'username', 'stellarSecretEnc'],
+      take: 20,
+    });
+
+    for (const user of needsActivation) {
+      if (!user.stellarSecretEnc) continue;
+      try {
+        await this.blockchainService.activateStellarAccount(
+          user.stellarSecretEnc,
+        );
+        await this.userRepo.update(
+          { id: user.id },
+          { stellarWalletStatus: WalletStatus.ACTIVE },
+        );
+        this.logger.log(`Wallet activated [user=${user.username}]`);
+      } catch (err) {
+        this.logger.error(
+          `Wallet activation retry failed [user=${user.username}]: ${(err as Error).message}`,
         );
       }
     }

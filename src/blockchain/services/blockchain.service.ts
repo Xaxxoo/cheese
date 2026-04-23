@@ -191,7 +191,7 @@ export class BlockchainService implements OnModuleInit {
     }
 
     // Soroban — init if contract ID and RPC URL are present
-    const contractId    = this.config.get<string>('STELLAR_CONTRACT_ID');
+    const contractId = this.config.get<string>('STELLAR_CONTRACT_ID');
     const sorobanRpcUrl = this.config.get<string>('STELLAR_SOROBAN_RPC_URL');
 
     if (contractId && sorobanRpcUrl) {
@@ -304,9 +304,7 @@ export class BlockchainService implements OnModuleInit {
   private initSoroban(rpcUrl: string, contractId: string): void {
     this.sorobanRpc = new StellarSdk.rpc.Server(rpcUrl);
     this.sorobanContractId = contractId;
-    this.logger.log(
-      `Soroban ready [rpc=${rpcUrl}] [contract=${contractId}]`,
-    );
+    this.logger.log(`Soroban ready [rpc=${rpcUrl}] [contract=${contractId}]`);
   }
 
   // ── Guards ────────────────────────────────────────────────────────────────
@@ -628,6 +626,52 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
+  /**
+   * Phase 1 of two-phase Stellar provisioning.
+   * Generates a keypair and encrypts the secret — no network calls, no XLM spent.
+   * Persist the returned values to the DB before calling activateStellarAccount().
+   */
+  generateStellarKeypair(): { publicKey: string; secretKeyEnc: string } {
+    this.requireEncryption('generateStellarKeypair');
+    const keypair = StellarSdk.Keypair.random();
+    const secretKeyEnc = this.encryptSecret(keypair.secret());
+    return { publicKey: keypair.publicKey(), secretKeyEnc };
+  }
+
+  /**
+   * Phase 2 of two-phase Stellar provisioning.
+   * Funds the account (if not already on-chain) and establishes the USDC trustline.
+   * Only call this after the keypair has been persisted to the DB.
+   * Idempotent: safe to call on an already-funded account.
+   */
+  async activateStellarAccount(secretKeyEnc: string): Promise<void> {
+    this.requireStellar('activateStellarAccount');
+    this.requireEncryption('activateStellarAccount');
+    const keypair = StellarSdk.Keypair.fromSecret(
+      this.decryptSecret(secretKeyEnc),
+    );
+    const publicKey = keypair.publicKey();
+
+    // Check if the account already exists on-chain before spending XLM
+    let accountExists = false;
+    try {
+      await this.stellarServer.loadAccount(publicKey);
+      accountExists = true;
+    } catch (err) {
+      const anyErr = err as { response?: { status?: number } };
+      if (anyErr?.response?.status !== 404) {
+        throw this.wrapError('activateStellarAccount', err);
+      }
+      // 404 → not yet funded, proceed below
+    }
+
+    if (!accountExists) {
+      await this.fundStellarAccount(publicKey);
+    }
+    await this.ensureTrustline(keypair);
+    this.logger.log(`activateStellarAccount complete [publicKey=${publicKey}]`);
+  }
+
   private async fundStellarAccount(newPublicKey: string): Promise<void> {
     this.logger.log(`fundStellarAccount [target=${newPublicKey}]`);
     const platformAccount = await this.stellarServer.loadAccount(
@@ -712,10 +756,8 @@ export class BlockchainService implements OnModuleInit {
       return account.balances.some(
         (b) =>
           b.asset_type === 'credit_alphanum4' &&
-          (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>)
-            .asset_code === 'USDC' &&
-          (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>)
-            .asset_issuer === this.stellarUsdcIssuer,
+          b.asset_code === 'USDC' &&
+          b.asset_issuer === this.stellarUsdcIssuer,
       );
     } catch (err) {
       // Horizon returns 404 when the account has never been funded
@@ -1184,8 +1226,8 @@ export class BlockchainService implements OnModuleInit {
     this.requireStellar('getContractFeeRate');
     this.requireSoroban('getContractFeeRate');
 
-    const contract     = new StellarSdk.Contract(this.sorobanContractId);
-    const sourceAcct   = await this.sorobanRpc.getAccount(
+    const contract = new StellarSdk.Contract(this.sorobanContractId);
+    const sourceAcct = await this.sorobanRpc.getAccount(
       this.stellarPlatformKeypair.publicKey(),
     );
 
@@ -1199,13 +1241,11 @@ export class BlockchainService implements OnModuleInit {
 
     const sim = await this.sorobanRpc.simulateTransaction(tx);
     if (StellarSdk.rpc.Api.isSimulationError(sim)) {
-      throw new ContractCallException(
-        'getContractFeeRate',
-        (sim as StellarSdk.rpc.Api.SimulateTransactionErrorResponse).error,
-      );
+      throw new ContractCallException('getContractFeeRate', sim.error);
     }
 
-    const success = sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
+    const success =
+      sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
     // fee_rate returns u32 basis points: 10 = 0.1%, 100 = 1%
     const bps = StellarSdk.scValToNative(success.result!.retval) as number;
     return bps / 10_000;
@@ -1227,7 +1267,7 @@ export class BlockchainService implements OnModuleInit {
       Math.round(parseFloat(amountUsdc) * 10_000_000),
     );
 
-    const contract    = new StellarSdk.Contract(this.sorobanContractId);
+    const contract = new StellarSdk.Contract(this.sorobanContractId);
     const platformKey = this.stellarPlatformKeypair.publicKey();
     const platformAcct = await this.sorobanRpc.getAccount(platformKey);
 
@@ -1247,10 +1287,7 @@ export class BlockchainService implements OnModuleInit {
 
     const sim = await this.sorobanRpc.simulateTransaction(rawTx);
     if (StellarSdk.rpc.Api.isSimulationError(sim)) {
-      throw new ContractCallException(
-        'notifyContractDeposit',
-        (sim as StellarSdk.rpc.Api.SimulateTransactionErrorResponse).error,
-      );
+      throw new ContractCallException('notifyContractDeposit', sim.error);
     }
 
     const prepared = StellarSdk.rpc
@@ -1270,7 +1307,7 @@ export class BlockchainService implements OnModuleInit {
     }
 
     let getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
-    let attempts  = 0;
+    let attempts = 0;
     while (
       getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
       attempts < 20
@@ -1309,7 +1346,7 @@ export class BlockchainService implements OnModuleInit {
     this.requireSoroban('sendViaContract');
 
     const { fromSecretEnc, toPublicKey, amountUsdc, memo } = opts;
-    const senderKeypair   = StellarSdk.Keypair.fromSecret(
+    const senderKeypair = StellarSdk.Keypair.fromSecret(
       this.decryptSecret(fromSecretEnc),
     );
     const senderPublicKey = senderKeypair.publicKey();
@@ -1324,15 +1361,15 @@ export class BlockchainService implements OnModuleInit {
     );
 
     const senderAcct = await this.sorobanRpc.getAccount(senderPublicKey);
-    const txBuilder  = new StellarSdk.TransactionBuilder(senderAcct, {
+    const txBuilder = new StellarSdk.TransactionBuilder(senderAcct, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.stellarNetwork,
     }).addOperation(
       contract.call(
         'transfer',
         StellarSdk.nativeToScVal(senderPublicKey, { type: 'address' }),
-        StellarSdk.nativeToScVal(toPublicKey,     { type: 'address' }),
-        StellarSdk.nativeToScVal(amountStroops,   { type: 'i128' }),
+        StellarSdk.nativeToScVal(toPublicKey, { type: 'address' }),
+        StellarSdk.nativeToScVal(amountStroops, { type: 'i128' }),
       ),
     );
 
@@ -1342,10 +1379,7 @@ export class BlockchainService implements OnModuleInit {
     // Simulate to get the ledger footprint
     const sim = await this.sorobanRpc.simulateTransaction(rawTx);
     if (StellarSdk.rpc.Api.isSimulationError(sim)) {
-      throw new ContractCallException(
-        'sendViaContract',
-        (sim as StellarSdk.rpc.Api.SimulateTransactionErrorResponse).error,
-      );
+      throw new ContractCallException('sendViaContract', sim.error);
     }
 
     // Assemble (injects footprint + resource fees), then sign
@@ -1367,7 +1401,7 @@ export class BlockchainService implements OnModuleInit {
 
     // Poll until the transaction lands in a ledger
     let getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
-    let attempts  = 0;
+    let attempts = 0;
     while (
       getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
       attempts < 20

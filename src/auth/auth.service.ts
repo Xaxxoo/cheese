@@ -33,7 +33,7 @@ import {
 import { EmailService } from '../email/email.service';
 import { WaitlistService } from '../waitlist/waitlist.service';
 import { RefreshToken } from './entities/refresh-token.entity';
-import { User } from './entities/user.entity';
+import { User, WalletStatus } from './entities/user.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import {
   WaitlistEntry,
@@ -191,6 +191,7 @@ export class AuthService {
       const stellarWallet = await this.blockchainService.createStellarWallet();
       user.stellarPublicKey = stellarWallet.publicKey;
       user.stellarSecretEnc = stellarWallet.secretKeyEnc;
+      user.stellarWalletStatus = WalletStatus.ACTIVE;
       this.logger.log(
         `Stellar wallet created [user=${dto.username}] [pk=${stellarWallet.publicKey}]`,
       );

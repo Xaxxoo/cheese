@@ -4,7 +4,7 @@ import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from 'bullmq';
-import { User } from '../entities/user.entity';
+import { User, WalletStatus } from '../entities/user.entity';
 import { BlockchainService } from '../../blockchain/services/blockchain.service';
 import { WalletCreationJobData } from '../auth.service';
 
@@ -69,6 +69,7 @@ export class WalletCreationProcessor extends WorkerHost {
             await this.blockchainService.createStellarWallet();
           updates.stellarPublicKey = stellarWallet.publicKey;
           updates.stellarSecretEnc = stellarWallet.secretKeyEnc;
+          updates.stellarWalletStatus = WalletStatus.ACTIVE;
           this.logger.log(
             `Stellar wallet created on retry [userId=${userId}] [pk=${stellarWallet.publicKey}]`,
           );
