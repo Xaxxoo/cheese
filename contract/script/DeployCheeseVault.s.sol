@@ -50,8 +50,10 @@ contract DeployCheeseVault is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy CheeseVault
-        CheeseVault vault = new CheeseVault(usdcAddress, initialFee, minDeposit);
+        // Deploy CheeseVault with token array (USDC-only for Polygon legacy script)
+        address[] memory tokens = new address[](1);
+        tokens[0] = usdcAddress;
+        CheeseVault vault = new CheeseVault(tokens, initialFee, minDeposit);
 
         // If testnet, grant all roles to deployer for testing
         if (isTestnet) {
