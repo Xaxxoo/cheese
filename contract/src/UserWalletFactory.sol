@@ -16,7 +16,7 @@ import "./UserWallet.sol";
  *
  *     userId   — internal platform ID (e.g. email address). Hashed to bytes32
  *                before storage so no PII lives on-chain.
- *     username — the @handle users see. Lowercased and hashed for lookup.
+ *     username — the display handle users see. Lowercased and hashed for lookup.
  *                Used for P2P transfers and displayed in the app.
  *
  *   Mappings:
@@ -26,11 +26,10 @@ import "./UserWallet.sol";
  *
  * ── P2P transfers ────────────────────────────────────────────────────────────
  *
- *   transferByUsername(fromUsername, toUsername, amount)
- *     — resolves both usernames to wallet addresses
- *     — calls sender.transferToUser(recipientWallet, amount)
- *     — USDC moves directly wallet → wallet (no vault involvement)
- *     — emits Transfer event for both wallets
+ *   transferByUsername(fromUsername, toUsername, amount, token)
+ *     Resolves both usernames to wallet addresses, calls
+ *     sender.transferToUser(token, recipientWallet, amount).
+ *     Tokens move directly wallet-to-wallet (no vault involvement).
  *
  * ── Access ───────────────────────────────────────────────────────────────────
  *
@@ -43,7 +42,10 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
 
     address public backend;
     address public vault;
-    address public usdc;
+
+    // Supported tokens — all new wallets are initialised with this list
+    address[] public supportedTokens;
+    mapping(address => bool) public isTokenSupported;
 
     // userId (hashed) → wallet address
     mapping(bytes32 => address) public userWallets;
@@ -52,14 +54,14 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
     mapping(bytes32 => address) public usernameWallets;
 
     // wallet address → display username (original casing)
-    mapping(address => string)  public walletUsername;
+    mapping(address => string) public walletUsername;
 
     // quick membership check
-    mapping(address => bool)    public isWallet;
+    mapping(address => bool) public isWallet;
 
     // iteration
-    address[]  public allWallets;
-    uint256    public totalWallets;
+    address[] public allWallets;
+    uint256   public totalWallets;
 
     // ========== EVENTS ==========
 
@@ -74,6 +76,7 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
     event Transfer(
         address indexed fromWallet,
         address indexed toWallet,
+        address indexed token,
         string  fromUsername,
         string  toUsername,
         uint256 amount,
@@ -82,6 +85,8 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
 
     event BackendUpdated(address indexed oldBackend, address indexed newBackend);
     event VaultUpdated(address indexed oldVault, address indexed newVault);
+    event TokenAdded(address indexed token);
+    event TokenRemoved(address indexed token);
 
     // ========== MODIFIERS ==========
 
@@ -92,16 +97,29 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
 
     // ========== CONSTRUCTOR ==========
 
-    constructor(address _backend, address _vault, address _usdc)
+    /**
+     * @param _backend        Platform EOA address
+     * @param _vault          CheeseVault address
+     * @param _initialTokens  Supported ERC-20 tokens (e.g. [USDC, USDT])
+     */
+    constructor(address _backend, address _vault, address[] memory _initialTokens)
         Ownable(msg.sender)
     {
         require(_backend != address(0), "Invalid backend");
         require(_vault   != address(0), "Invalid vault");
-        require(_usdc    != address(0), "Invalid USDC");
 
         backend = _backend;
         vault   = _vault;
-        usdc    = _usdc;
+
+        for (uint256 i = 0; i < _initialTokens.length; i++) {
+            address t = _initialTokens[i];
+            require(t != address(0), "Invalid token address");
+            if (!isTokenSupported[t]) {
+                isTokenSupported[t] = true;
+                supportedTokens.push(t);
+                emit TokenAdded(t);
+            }
+        }
     }
 
     // ========== FACTORY FUNCTIONS ==========
@@ -128,17 +146,17 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
         bytes32 userIdHash   = keccak256(abi.encodePacked(userId));
         bytes32 usernameHash = keccak256(abi.encodePacked(_toLower(username)));
 
-        require(userWallets[userIdHash]     == address(0), "Wallet already exists");
+        require(userWallets[userIdHash]       == address(0), "Wallet already exists");
         require(usernameWallets[usernameHash] == address(0), "Username already taken");
 
         // Deploy — pass address(this) as factory so the wallet can validate
         // factory-initiated calls (e.g. transferByUsername).
         UserWallet newWallet = new UserWallet(
             backend,
-            address(this), // factory
+            address(this),  // factory
             vault,
-            usdc,
-            address(0)     // owner — set later via setOwner() after KYC
+            supportedTokens,
+            address(0)      // owner — set later via setOwner() after KYC
         );
 
         wallet = address(newWallet);
@@ -161,20 +179,22 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
     // ========== TRANSFER ==========
 
     /**
-     * @notice Transfer USDC between two users identified by username.
+     * @notice Transfer tokens between two users identified by username.
      *
-     * The sender's UserWallet calls usdc.transfer(recipientWallet, amount)
+     * The sender's UserWallet calls token.safeTransfer(recipientWallet, amount)
      * directly — no vault involvement. The factory is authorised by both
      * wallets via the onlyBackendOrFactory modifier.
      *
      * @param  fromUsername  Sender's @handle (case-insensitive)
      * @param  toUsername    Recipient's @handle (case-insensitive)
-     * @param  amount        USDC amount in token units (6 decimals)
+     * @param  amount        Token amount in token units (6 decimals)
+     * @param  token         ERC-20 token address (USDC or USDT)
      */
     function transferByUsername(
         string memory fromUsername,
         string memory toUsername,
-        uint256 amount
+        uint256 amount,
+        address token
     )
         external
         onlyBackend
@@ -182,6 +202,7 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
         whenNotPaused
     {
         require(amount > 0, "Amount must be > 0");
+        require(isTokenSupported[token], "Unsupported token");
 
         bytes32 fromHash = keccak256(abi.encodePacked(_toLower(fromUsername)));
         bytes32 toHash   = keccak256(abi.encodePacked(_toLower(toUsername)));
@@ -194,11 +215,12 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
         require(fromWallet != toWallet,   "Cannot transfer to self");
 
         // Execute — UserWallet.transferToUser has onlyBackendOrFactory
-        UserWallet(fromWallet).transferToUser(toWallet, amount);
+        UserWallet(fromWallet).transferToUser(token, toWallet, amount);
 
         emit Transfer(
             fromWallet,
             toWallet,
+            token,
             fromUsername,
             toUsername,
             amount,
@@ -235,7 +257,46 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
         return allWallets[index];
     }
 
+    /// @notice Return the full list of supported tokens.
+    function getSupportedTokens() external view returns (address[] memory) {
+        return supportedTokens;
+    }
+
     // ========== ADMIN FUNCTIONS ==========
+
+    /**
+     * @notice Add a new supported token. New wallets created after this will
+     *         include it. Existing wallets must be updated individually via
+     *         UserWallet.addSupportedToken().
+     */
+    function addSupportedToken(address token) external onlyOwner {
+        require(token != address(0), "Invalid token address");
+        if (!isTokenSupported[token]) {
+            isTokenSupported[token] = true;
+            supportedTokens.push(token);
+            emit TokenAdded(token);
+        }
+    }
+
+    /**
+     * @notice Remove a token from the supported list (stops new wallets from
+     *         including it). Does not affect existing wallets.
+     */
+    function removeSupportedToken(address token) external onlyOwner {
+        require(isTokenSupported[token], "Token not supported");
+        isTokenSupported[token] = false;
+
+        // Remove from array (order not preserved)
+        uint256 len = supportedTokens.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (supportedTokens[i] == token) {
+                supportedTokens[i] = supportedTokens[len - 1];
+                supportedTokens.pop();
+                break;
+            }
+        }
+        emit TokenRemoved(token);
+    }
 
     function updateBackend(address newBackend) external onlyOwner {
         require(newBackend != address(0), "Invalid backend");
@@ -257,7 +318,7 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
     /// @dev ASCII-only lowercase conversion for username normalisation.
     ///      Usernames are expected to contain only a-z, 0-9, _ and . characters.
     function _toLower(string memory str) internal pure returns (string memory) {
-        bytes memory bStr  = bytes(str);
+        bytes memory bStr   = bytes(str);
         bytes memory bLower = new bytes(bStr.length);
         for (uint256 i = 0; i < bStr.length; i++) {
             bLower[i] = (bStr[i] >= 0x41 && bStr[i] <= 0x5A)
