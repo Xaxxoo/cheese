@@ -8,9 +8,29 @@ optimizer_runs = 200
 via_ir = false
 
 [rpc_endpoints]
-polygon = "${POLYGON_RPC_URL}"
-polygon_amoy = "${POLYGON_AMOY_RPC_URL}"
+ethereum         = "${ETHEREUM_RPC_URL}"
+ethereum_sepolia = "${ETHEREUM_SEPOLIA_RPC_URL}"
+arbitrum         = "${ARBITRUM_RPC_URL}"
+arbitrum_sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
+base             = "${BASE_RPC_URL}"
+base_sepolia     = "${BASE_SEPOLIA_RPC_URL}"
+celo             = "${CELO_RPC_URL}"
+celo_alfajores   = "${CELO_ALFAJORES_RPC_URL}"
+polygon          = "${POLYGON_RPC_URL}"
+polygon_amoy     = "${POLYGON_AMOY_RPC_URL}"
+lisk             = "${LISK_RPC_URL}"
+lisk_sepolia     = "${LISK_SEPOLIA_RPC_URL}"
 
 [etherscan]
-polygon = { key = "${POLYGONSCAN_API_KEY}" }
-amoy = { key = "${POLYGONSCAN_API_KEY}" }
+ethereum         = { key = "${ETHERSCAN_API_KEY}" }
+ethereum_sepolia = { key = "${ETHERSCAN_API_KEY}" }
+arbitrum         = { key = "${ARBISCAN_API_KEY}", url = "https://api.arbiscan.io/api" }
+arbitrum_sepolia = { key = "${ARBISCAN_API_KEY}", url = "https://api-sepolia.arbiscan.io/api" }
+base             = { key = "${BASESCAN_API_KEY}", url = "https://api.basescan.org/api" }
+base_sepolia     = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
+celo             = { key = "${CELOSCAN_API_KEY}", url = "https://api.celoscan.io/api" }
+celo_alfajores   = { key = "${CELOSCAN_API_KEY}", url = "https://api-alfajores.celoscan.io/api" }
+polygon          = { key = "${POLYGONSCAN_API_KEY}" }
+amoy             = { key = "${POLYGONSCAN_API_KEY}" }
+lisk             = { key = "${LISK_EXPLORER_API_KEY}", url = "https://blockscout.lisk.com/api" }
+lisk_sepolia     = { key = "${LISK_EXPLORER_API_KEY}", url = "https://sepolia-blockscout.lisk.com/api" }
