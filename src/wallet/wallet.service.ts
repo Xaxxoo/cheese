@@ -10,7 +10,7 @@ import { Repository } from 'typeorm';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
-import { User } from '../auth/entities/user.entity';
+import { User, WalletStatus } from '../auth/entities/user.entity';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -93,6 +93,18 @@ export class WalletService {
   }
 
   getDepositNetworks() {
+    const evmChains = this.blockchainService.getConfiguredEvmChains();
+    const evmEntries = evmChains.map(({ chainId, name }) => ({
+      id: `evm-${chainId}`,
+      name: `${name.charAt(0).toUpperCase() + name.slice(1)} (EVM)`,
+      asset: 'USDC',
+      fee: 'Network gas',
+      minDeposit: '1.00',
+      confirmations: 12,
+      estimatedTime: '~15 seconds',
+      note: `Send USDC to your wallet address on ${name}.`,
+    }));
+
     return [
       {
         id: 'stellar',
@@ -104,16 +116,7 @@ export class WalletService {
         estimatedTime: '~5 seconds',
         note: 'Send USDC to your Stellar address. No memo required.',
       },
-      {
-        id: 'evm',
-        name: 'EVM (Base / Arbitrum / Polygon)',
-        asset: 'USDC',
-        fee: 'Network gas',
-        minDeposit: '1.00',
-        confirmations: 12,
-        estimatedTime: '~15 seconds',
-        note: 'Send USDC to your EVM address via the Cheese EVM contract.',
-      },
+      ...evmEntries,
     ];
   }
 
@@ -133,19 +136,43 @@ export class WalletService {
       );
     }
 
-    const wallet = await this.blockchainService.createStellarWallet();
-    await this.userRepo.update(
-      { id: userId },
+    // Phase 1: Generate keypair — free, no network calls, no XLM spent.
+    const generated = this.blockchainService.generateStellarKeypair();
+
+    // Phase 2: Atomic DB write BEFORE spending any XLM.
+    // WHERE stellar_public_key IS NULL ensures only one concurrent caller
+    // can claim the slot — any racing call will see affected=0.
+    const result = await this.userRepo.update(
+      { id: userId, stellarPublicKey: null as any },
       {
-        stellarPublicKey: wallet.publicKey,
-        stellarSecretEnc: wallet.secretKeyEnc,
+        stellarPublicKey: generated.publicKey,
+        stellarSecretEnc: generated.secretKeyEnc,
       },
     );
 
-    this.logger.log(
-      `Wallet provisioned on-demand [userId=${userId}] [pk=${wallet.publicKey}]`,
+    if (result.affected === 0) {
+      // Another concurrent call already provisioned this wallet — return it.
+      const updated = await this.userRepo.findOne({ where: { id: userId } });
+      return {
+        stellarPublicKey: updated!.stellarPublicKey!,
+        alreadyExisted: true,
+      };
+    }
+
+    // Phase 3: Fund the account and set up USDC trustline.
+    // activateStellarAccount is idempotent — if this throws, the scheduler's
+    // Phase B recovery will retry it on the next 2-minute run.
+    await this.blockchainService.activateStellarAccount(generated.secretKeyEnc);
+
+    await this.userRepo.update(
+      { id: userId },
+      { stellarWalletStatus: WalletStatus.ACTIVE },
     );
-    return { stellarPublicKey: wallet.publicKey, alreadyExisted: false };
+
+    this.logger.log(
+      `Wallet provisioned on-demand [userId=${userId}] [pk=${generated.publicKey}]`,
+    );
+    return { stellarPublicKey: generated.publicKey, alreadyExisted: false };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

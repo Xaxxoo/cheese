@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
-  ArrowLeft, Copy, CheckCheck, RefreshCw, Download,
+  ArrowLeft, Copy, CheckCheck, RefreshCw, Download, AlertTriangle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/cn'
@@ -50,11 +50,60 @@ function NetworkCard({ net }: { net: DepositNetwork }) {
   )
 }
 
+// ── Chain type ─────────────────────────────────────────────
+type ChainType = 'stellar' | 'evm'
+
+// ── Network selector tabs ──────────────────────────────────
+function ChainSelector({
+  selected,
+  onSelect,
+}: {
+  selected: ChainType
+  onSelect: (c: ChainType) => void
+}) {
+  return (
+    <div className="flex gap-1 w-full p-1 rounded-2xl bg-white/6">
+      {(['stellar', 'evm'] as const).map((c) => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => onSelect(c)}
+          className={cn(
+            'flex-1 py-2 rounded-xl text-xs font-medium transition-all',
+            selected === c
+              ? 'bg-[#d4a843] text-black'
+              : 'text-white/50 hover:text-white',
+          )}
+        >
+          {c === 'stellar' ? 'Stellar' : 'EVM (Arbitrum, Base…)'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Warning banner ─────────────────────────────────────────
+function NetworkWarning({ chain }: { chain: ChainType }) {
+  return (
+    <div className="w-full flex gap-2.5 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
+      <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+      <p className="text-xs text-amber-200/80 leading-relaxed">
+        Only send USDC on the{' '}
+        <span className="font-semibold text-amber-300">
+          {chain === 'stellar' ? 'Stellar network' : 'EVM network (Arbitrum, Base, etc.)'}
+        </span>{' '}
+        to this address. Sending on the wrong network will result in permanent loss of funds.
+      </p>
+    </div>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────
 export default function ReceivePage() {
   const [copiedAddr, setCopiedAddr] = useState(false)
   const [copiedUser, setCopiedUser] = useState(false)
   const [activeTab, setActiveTab]   = useState<'address' | 'username'>('address')
+  const [chain, setChain]           = useState<ChainType>('stellar')
 
   const { user } = useAuthStore()
 
@@ -72,11 +121,15 @@ export default function ReceivePage() {
     retry: 1,
   })
 
+  const stellarAddr = addrQ.data?.stellarAddress ?? ''
+  const evmAddr     = addrQ.data?.evmAddress ?? null
+  const activeAddr  = chain === 'stellar' ? stellarAddr : (evmAddr ?? '')
+  const username    = user?.username ?? ''
+
   async function copyAddress() {
-    const addr = addrQ.data?.stellarAddress
-    if (!addr) return
+    if (!activeAddr) return
     try {
-      await navigator.clipboard.writeText(addr)
+      await navigator.clipboard.writeText(activeAddr)
       setCopiedAddr(true)
       setTimeout(() => setCopiedAddr(false), 2000)
     } catch {
@@ -85,7 +138,6 @@ export default function ReceivePage() {
   }
 
   async function copyUsername() {
-    const username = user?.username
     if (!username) return
     try {
       await navigator.clipboard.writeText(`@${username}`)
@@ -96,8 +148,10 @@ export default function ReceivePage() {
     }
   }
 
-  const addr     = addrQ.data?.stellarAddress ?? ''
-  const username = user?.username ?? ''
+  function handleChainSelect(c: ChainType) {
+    setChain(c)
+    setCopiedAddr(false)
+  }
 
   return (
     <div className="flex flex-col pb-8">
@@ -134,6 +188,9 @@ export default function ReceivePage() {
       {/* Address tab */}
       {activeTab === 'address' && (
         <div className="flex flex-col items-center px-4 gap-5">
+          {/* Chain selector */}
+          <ChainSelector selected={chain} onSelect={handleChainSelect} />
+
           {/* QR */}
           <div className="rounded-3xl overflow-hidden border border-white/8 bg-[#1a1a1a] p-4 flex items-center justify-center">
             {addrQ.isLoading && (
@@ -152,24 +209,41 @@ export default function ReceivePage() {
                 </button>
               </div>
             )}
-            {addrQ.data && <QrCode value={addr} />}
+            {addrQ.data && chain === 'stellar' && stellarAddr && (
+              <QrCode value={stellarAddr} />
+            )}
+            {addrQ.data && chain === 'evm' && evmAddr && (
+              <QrCode value={evmAddr} />
+            )}
+            {addrQ.data && chain === 'evm' && !evmAddr && (
+              <div className="w-[180px] h-[180px] flex flex-col items-center justify-center gap-3 text-center px-4">
+                <RefreshCw size={20} className="text-white/20 animate-spin" />
+                <p className="text-xs text-white/30 leading-relaxed">
+                  EVM wallet is being set up. Check back shortly.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Address display */}
           <div className="w-full rounded-2xl bg-white/5 border border-white/8 px-4 py-3.5">
             <p className="text-[10px] text-white/30 mb-1.5 tracking-widest uppercase">
-              {addrQ.data?.network ?? 'Stellar'} address
+              {chain === 'stellar' ? 'Stellar' : 'EVM'} address
             </p>
-            <p className="text-xs text-white/60 font-mono leading-relaxed break-all">
-              {addr || '—'}
-            </p>
+            {chain === 'evm' && !evmAddr && !addrQ.isLoading ? (
+              <p className="text-xs text-white/30 italic">Setting up your EVM wallet…</p>
+            ) : (
+              <p className="text-xs text-white/60 font-mono leading-relaxed break-all">
+                {activeAddr || '—'}
+              </p>
+            )}
           </div>
 
           {/* Copy button */}
           <button
             type="button"
             onClick={copyAddress}
-            disabled={!addr}
+            disabled={!activeAddr}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors disabled:opacity-40"
           >
             {copiedAddr
@@ -178,10 +252,8 @@ export default function ReceivePage() {
             }
           </button>
 
-          <p className="text-xs text-white/25 text-center px-4">
-            Only send USDC or supported assets to this address.
-            Sending unsupported assets may result in permanent loss.
-          </p>
+          {/* Network warning */}
+          <NetworkWarning chain={chain} />
         </div>
       )}
 
@@ -214,9 +286,15 @@ export default function ReceivePage() {
             }
           </button>
 
-          <p className="text-xs text-white/25 text-center px-4">
-            Anyone on Cheese Pay can send you USDC using your username.
-          </p>
+          {/* Warning */}
+          <div className="w-full flex gap-2.5 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
+            <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-200/80 leading-relaxed">
+              Username transfers only work between{' '}
+              <span className="font-semibold text-amber-300">Cheese Pay users</span>.
+              Make sure the sender is sending from a Cheese Pay account.
+            </p>
+          </div>
         </div>
       )}
 

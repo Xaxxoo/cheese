@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
-  X, ArrowLeft, CheckCircle2, AlertCircle,
+  X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle,
   AtSign, Wallet, ChevronRight, Loader2, Building2, User, Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -21,7 +21,7 @@ import type { Transaction } from '@/types'
 // ─────────────────────────────────────────────────────────
 type SendMode = 'username' | 'usdc' | 'bank'
 type UsdcType = 'stellar' | 'evm'
-type SendStep = 'mode' | 'usdc_network' | 'recipient' | 'amount' | 'bank_details' | 'bank_amount' | 'pin' | 'success' | 'error'
+type SendStep = 'mode' | 'usdc_network' | 'username_network' | 'recipient' | 'amount' | 'bank_details' | 'bank_amount' | 'pin' | 'success' | 'error'
 
 interface ResolvedRecipient {
   display: string
@@ -128,16 +128,18 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
 function UsdcNetworkStep({
   onStellar,
   onEvm,
+  heading = 'Choose USDC network',
 }: {
   onStellar: () => void
   onEvm: (chain: string) => void
+  heading?: string
 }) {
   const [evmOpen, setEvmOpen]   = useState(false)
   const [chain,   setChain]     = useState('')
 
   return (
     <div className="flex flex-col gap-3 flex-1">
-      <p className="text-sm text-white/40 mb-1">Choose USDC network</p>
+      <p className="text-sm text-white/40 mb-1">{heading}</p>
 
       {/* Stellar card — immediate navigation */}
       <button
@@ -921,6 +923,20 @@ function PinStep({
         </div>
       </div>
 
+      {/* Network warning */}
+      <div className="flex gap-2.5 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3 mb-2">
+        <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+        <p className="text-xs text-amber-200/80 leading-relaxed">
+          Make sure the recipient address is correct and supports{' '}
+          <span className="font-semibold text-amber-300">
+            {recipient.type === 'address'
+              ? (EVM_CHAINS.find((c) => c.id === network)?.label ?? 'Stellar')
+              : 'Cheese Pay'}
+          </span>{' '}
+          transfers. Crypto transactions cannot be reversed.
+        </p>
+      </div>
+
       <div className="flex-1 flex items-center justify-center">
         {loading ? (
           <div className="flex flex-col items-center gap-4">
@@ -1232,7 +1248,7 @@ export default function SendPage() {
     setRecipient(null)
     setBankRecipient(null)
     setBankAmount('')
-    setStep(m === 'bank' ? 'bank_details' : m === 'usdc' ? 'usdc_network' : 'recipient')
+    setStep(m === 'bank' ? 'bank_details' : m === 'usdc' ? 'usdc_network' : m === 'username' ? 'username_network' : 'recipient')
   }
 
   function resetRecipient() {
@@ -1264,22 +1280,24 @@ export default function SendPage() {
   const showHeader = step !== 'success' && step !== 'error'
 
   const headerTitle =
-    step === 'mode'         ? 'Send' :
-    step === 'usdc_network' ? 'Send USDC' :
-    step === 'recipient'    ? (mode === 'username' ? 'Send by Username' : usdcType === 'evm' ? `${chainLabel} USDC` : 'Stellar USDC') :
-    step === 'amount'       ? 'Enter amount' :
-    step === 'bank_details' ? 'Bank Transfer' :
-    step === 'bank_amount'  ? 'Enter amount' :
-    step === 'pin'          ? 'Confirm transfer' : ''
+    step === 'mode'             ? 'Send' :
+    step === 'usdc_network'     ? 'Send USDC' :
+    step === 'username_network' ? 'Send by Username' :
+    step === 'recipient'        ? (mode === 'username' ? 'Send by Username' : usdcType === 'evm' ? `${chainLabel} USDC` : 'Stellar USDC') :
+    step === 'amount'           ? 'Enter amount' :
+    step === 'bank_details'     ? 'Bank Transfer' :
+    step === 'bank_amount'      ? 'Enter amount' :
+    step === 'pin'              ? 'Confirm transfer' : ''
 
   const headerBack =
-    step === 'mode'         ? () => router.back() :
-    step === 'usdc_network' ? () => setStep('mode') :
-    step === 'recipient'    ? () => { if (mode === 'usdc') setStep('usdc_network'); else setStep('mode') } :
-    step === 'amount'       ? () => setStep('recipient') :
-    step === 'bank_details' ? () => setStep('mode') :
-    step === 'bank_amount'  ? () => setStep('bank_details') :
-    step === 'pin'          ? () => { if (isBankFlow) setStep('bank_amount'); else setStep('amount') } :
+    step === 'mode'             ? () => router.back() :
+    step === 'usdc_network'     ? () => setStep('mode') :
+    step === 'username_network' ? () => setStep('mode') :
+    step === 'recipient'        ? () => { if (mode === 'usdc') setStep('usdc_network'); else if (mode === 'username') setStep('username_network'); else setStep('mode') } :
+    step === 'amount'           ? () => setStep('recipient') :
+    step === 'bank_details'     ? () => setStep('mode') :
+    step === 'bank_amount'      ? () => setStep('bank_details') :
+    step === 'pin'              ? () => { if (isBankFlow) setStep('bank_amount'); else setStep('amount') } :
     () => {}
 
   return (
@@ -1306,6 +1324,15 @@ export default function SendPage() {
       {/* USDC network selection — Stellar vs EVM */}
       {step === 'usdc_network' && (
         <UsdcNetworkStep
+          onStellar={() => { setUsdcType('stellar'); setStep('recipient') }}
+          onEvm={(chain) => { setUsdcType('evm'); setEvmChain(chain); setStep('recipient') }}
+        />
+      )}
+
+      {/* Username network selection — Stellar vs EVM */}
+      {step === 'username_network' && (
+        <UsdcNetworkStep
+          heading="Choose network for this username send"
           onStellar={() => { setUsdcType('stellar'); setStep('recipient') }}
           onEvm={(chain) => { setUsdcType('evm'); setEvmChain(chain); setStep('recipient') }}
         />

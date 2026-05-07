@@ -22,7 +22,9 @@
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts",
     "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seeds.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds.ts",
+    "recover:xlm:plan": "ts-node -r tsconfig-paths/register scripts/recover-xlm.ts",
+    "recover:xlm:execute": "ts-node -r tsconfig-paths/register scripts/recover-xlm.ts --execute"
   },
   "dependencies": {
     "@nestjs-modules/ioredis": "^2.0.2",
