@@ -27,6 +27,13 @@ export enum Tier {
   BLACK = 'black',
 }
 
+export enum AdminRole {
+  SUPER_ADMIN = 'super_admin',
+  OPERATOR = 'operator',
+  TREASURER = 'treasurer',
+  SUPPORT = 'support',
+}
+
 export enum WalletStatus {
   PENDING = 'pending', // creation in progress / retry job running
   ACTIVE = 'active', // wallet exists and is ready
@@ -154,6 +161,13 @@ export class User {
   /** True while document is submitted and awaiting admin approval for Black tier. */
   @Column({ name: 'pending_black_approval', default: false })
   pendingBlackApproval: boolean;
+
+  // ── Admin access ─────────────────────────────────────────────────────────
+  @Column({ name: 'is_admin', default: false })
+  isAdmin: boolean;
+
+  @Column({ name: 'admin_role', type: 'varchar', nullable: true })
+  adminRole: AdminRole | null;
 
   // ── Timestamps ───────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })

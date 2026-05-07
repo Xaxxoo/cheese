@@ -45,6 +45,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ProfileModule } from './profile/profile.module';
 // Phase 7
 import { ReferralModule } from './referral/referral.module';
+// Admin
+import { AdminAuthModule } from './admin-auth/admin-auth.module';
 // Email + Waitlist + PayLink
 import { EmailModule } from './email/email.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
@@ -258,6 +260,7 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
     LeaderboardModule,
     AgentsModule,
     KycModule,
+    AdminAuthModule,
     // PayLinkModule,
   ],
   providers: [
