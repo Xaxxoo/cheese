@@ -53,7 +53,7 @@ export class WalletService {
       user.stellarPublicKey
         ? this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey)
         : Promise.resolve('0.0000000'),
-      user.evmAddress
+      user.evmAddress && this.blockchainService.isEvmReady
         ? this.blockchainService.getEvmBalance(user.evmAddress)
         : Promise.resolve('0.00000000'),
       this.ratesService.getCurrentRate(),
