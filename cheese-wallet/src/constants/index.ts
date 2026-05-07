@@ -31,6 +31,12 @@ export const ENDPOINTS = {
     ADMIN_ID:   (id: string) => `/admin/auth/admins/${id}`,
   },
 
+  // ── Admin Rates ───────────────────────────────────────
+  ADMIN_RATES: {
+    CURRENT:  '/admin/rates',
+    SET:      '/admin/rates',
+  },
+
   // ── Device ────────────────────────────────────────────
   DEVICE: {
     REGISTER:         '/devices/register',

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getAdminRate } from '@/lib/api/admin';
 import {
   c,
   IcoHome, IcoUsers, IcoShield, IcoFile, IcoSend, IcoBank, IcoCard,
@@ -75,11 +76,12 @@ const NAV_GROUPS = [
     { label: 'Admins',        Icon: IcoShield, href: '/admin/admins'       },
   ]},
   { label: 'Finance', items: [
-    { label: 'Transactions',  Icon: IcoFile,   href: '/admin/transactions' },
-    { label: 'Transfers',     Icon: IcoSend,   href: '/admin/transfers'    },
-    { label: 'Bank Payouts',  Icon: IcoBank,   href: '/admin/bank'         },
-    { label: 'Cards',         Icon: IcoCard,   href: '/admin/cards'        },
-    { label: 'Pay Links',     Icon: IcoLink,   href: '/admin/paylinks'     },
+    { label: 'Transactions',  Icon: IcoFile,     href: '/admin/transactions' },
+    { label: 'Transfers',     Icon: IcoSend,     href: '/admin/transfers'    },
+    { label: 'Bank Payouts',  Icon: IcoBank,     href: '/admin/bank'         },
+    { label: 'Cards',         Icon: IcoCard,     href: '/admin/cards'        },
+    { label: 'Pay Links',     Icon: IcoLink,     href: '/admin/paylinks'     },
+    { label: 'Exchange Rate', Icon: IcoSettings, href: '/admin/rates'        },
   ]},
   { label: 'Infrastructure', items: [
     { label: 'Wallets',       Icon: IcoWallet, href: '/admin/wallets'      },
@@ -109,7 +111,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname         = usePathname();
   const router           = useRouter();
   const { admin, isAuthenticated, logout, restoreSession, canAccess } = useAdminAuthStore();
-  const [clock, setClock] = useState('');
+  const [clock,       setClock]       = useState('');
+  const [liveRate,    setLiveRate]    = useState<string | null>(null);
 
   // ── Session restore + expired listener ────────────────────────────────────
   useEffect(() => {
@@ -135,6 +138,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const id = setInterval(() => setClock(fmt()), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  const fetchLiveRate = useCallback(async () => {
+    try {
+      const r = await getAdminRate();
+      const val = parseFloat(r.effectiveRate);
+      setLiveRate(val.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
+    } catch { /* show nothing on failure */ }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchLiveRate();
+      const id = setInterval(fetchLiveRate, 60_000);
+      return () => clearInterval(id);
+    }
+  }, [isAuthenticated, fetchLiveRate]);
 
   // ── Login page — render without sidebar ───────────────────────────────────
   if (pathname === '/admin/login') {
@@ -310,9 +329,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Right cluster */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <div style={{ fontSize: 11, color: c.textMid, background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`, padding: '4px 11px', borderRadius: 99, fontWeight: 500 }}>
-                ₦1,612 <span style={{ opacity: 0.4 }}>/</span> USD
-              </div>
+              {liveRate && (
+                <div style={{ fontSize: 11, color: c.textMid, background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`, padding: '4px 11px', borderRadius: 99, fontWeight: 500 }}>
+                  ₦{liveRate} <span style={{ opacity: 0.4 }}>/</span> USD
+                </div>
+              )}
               {clock && (
                 <div style={{ fontSize: 11.5, color: c.textDim, fontVariantNumeric: 'tabular-nums', minWidth: 34, textAlign: 'right' }}>{clock}</div>
               )}

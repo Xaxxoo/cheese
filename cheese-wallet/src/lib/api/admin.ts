@@ -81,3 +81,31 @@ export async function updateAdminRole(id: string, adminRole: AdminRole): Promise
 export async function revokeAdmin(id: string): Promise<void> {
   await adminApiClient.delete(ENDPOINTS.ADMIN_AUTH.ADMIN_ID(id))
 }
+
+// ── Exchange rate ─────────────────────────────────────────
+export interface ExchangeRateRecord {
+  id:            string
+  usdToNgn:      string
+  effectiveRate: string
+  spreadPercent: string
+  source:        string
+  fetchedAt:     string
+}
+
+export async function getAdminRate(): Promise<ExchangeRateRecord> {
+  const { data } = await adminApiClient.get<ApiResponse<ExchangeRateRecord>>(
+    ENDPOINTS.ADMIN_RATES.CURRENT,
+  )
+  return data.data
+}
+
+export async function setAdminRate(
+  usdToNgn: number,
+  spreadPercent?: number,
+): Promise<ExchangeRateRecord> {
+  const { data } = await adminApiClient.patch<ApiResponse<ExchangeRateRecord>>(
+    ENDPOINTS.ADMIN_RATES.SET,
+    { usdToNgn, ...(spreadPercent !== undefined && { spreadPercent }) },
+  )
+  return data.data
+}

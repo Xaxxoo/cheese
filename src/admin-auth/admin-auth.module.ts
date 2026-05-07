@@ -7,14 +7,17 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
+import { AdminRatesController } from './admin-rates.controller';
+import { RatesModule } from '../rates/rates.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, RefreshToken]),
     PassportModule,
     JwtModule.register({}),
+    RatesModule,
   ],
-  controllers: [AdminAuthController],
+  controllers: [AdminAuthController, AdminRatesController],
   providers: [AdminAuthService, AdminJwtStrategy],
   exports: [AdminJwtStrategy],
 })
