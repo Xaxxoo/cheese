@@ -27,7 +27,7 @@ export class RatesService {
     }
 
     // No rate in DB — seed with default
-    return this.setRate(1390, 0);
+    return this.setRate(1390, 1.5);
   }
 
   // ── Admin: set rate manually ──────────────────────────────
