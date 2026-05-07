@@ -192,9 +192,9 @@ export class BlockchainService implements OnModuleInit {
       const usdcAddr = this.config.get<string>(`${def.envPrefix}_USDC_ADDRESS`);
       const usdtAddr = this.config.get<string>(`${def.envPrefix}_USDT_ADDRESS`) ?? null;
 
-      if (rpcUrl && privateKey && factoryAddr && usdcAddr) {
+      if (rpcUrl && privateKey && ethers.isAddress(factoryAddr) && ethers.isAddress(usdcAddr)) {
         try {
-          const ctx = await this.initEvmChain(def.chainId, def.name, rpcUrl, privateKey, factoryAddr, usdcAddr, usdtAddr);
+          const ctx = await this.initEvmChain(def.chainId, def.name, rpcUrl, privateKey, factoryAddr, usdcAddr, usdtAddr && ethers.isAddress(usdtAddr) ? usdtAddr : null);
           this.evmChains.set(def.chainId, ctx);
         } catch (err) {
           this.logger.error(`EVM chain ${def.name} (${def.chainId}) init failed: ${(err as Error).message}`);
@@ -209,13 +209,13 @@ export class BlockchainService implements OnModuleInit {
       const factoryAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
       const usdcAddr = this.config.get<string>('USDC_CONTRACT_ADDRESS');
       const usdtAddr = this.config.get<string>('USDT_CONTRACT_ADDRESS') ?? null;
-      if (rpcUrl && privateKey && factoryAddr && usdcAddr) {
+      if (rpcUrl && privateKey && ethers.isAddress(factoryAddr) && ethers.isAddress(usdcAddr)) {
         try {
           const tempProvider = new ethers.JsonRpcProvider(rpcUrl);
           const network = await tempProvider.getNetwork();
           const chainId = Number(network.chainId);
           const name = EVM_CHAIN_DEFINITIONS.find(d => d.chainId === chainId)?.name ?? `chain-${chainId}`;
-          const ctx = await this.initEvmChain(chainId, name, rpcUrl, privateKey, factoryAddr, usdcAddr, usdtAddr);
+          const ctx = await this.initEvmChain(chainId, name, rpcUrl, privateKey, factoryAddr, usdcAddr, usdtAddr && ethers.isAddress(usdtAddr) ? usdtAddr : null);
           this.evmChains.set(chainId, ctx);
         } catch (err) {
           this.logger.error(`EVM (legacy) init failed: ${(err as Error).message}`);
