@@ -203,24 +203,26 @@ export class AuthService {
       // user.stellarPublicKey / stellarSecretEnc remain null — retried by job
     }
 
-    // EVM — register the user with the factory contract (factory deploys a UserWallet per user)
-    try {
-      const evmResult = await this.blockchainService.createEvmWallet(
-        user.id,
-        dto.username,
-      );
+    // EVM — only attempt if EVM chains are configured; skip silently otherwise
+    if (this.blockchainService.isEvmReady) {
+      try {
+        const evmResult = await this.blockchainService.createEvmWallet(
+          user.id,
+          dto.username,
+        );
 
-      user.evmAddress = evmResult.walletAddress; // contract-managed wallet address
-      this.logger.log(
-        `EVM wallet created [user=${dto.username}]` +
-          ` [contractWallet=${evmResult.walletAddress}] [txHash=${evmResult.txHash}]`,
-      );
-    } catch (err) {
-      this.logger.error(
-        `EVM wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
-      );
-      failedChains.push('evm');
-      // user.evmAddress remains null — retried by job
+        user.evmAddress = evmResult.walletAddress; // contract-managed wallet address
+        this.logger.log(
+          `EVM wallet created [user=${dto.username}]` +
+            ` [contractWallet=${evmResult.walletAddress}] [txHash=${evmResult.txHash}]`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `EVM wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
+        );
+        failedChains.push('evm');
+        // user.evmAddress remains null — retried by job
+      }
     }
 
     await this.userRepo.save(user);

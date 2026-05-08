@@ -113,7 +113,11 @@ export class WalletCreationProcessor extends WorkerHost {
 
     // ── EVM ───────────────────────────────────────────────────────────────
     if (chains.includes('evm')) {
-      if (user.evmAddress) {
+      if (!this.blockchainService.isEvmReady) {
+        this.logger.debug(
+          `EVM not configured — skipping EVM wallet retry for user ${userId}`,
+        );
+      } else if (user.evmAddress) {
         this.logger.debug(
           `EVM wallet already exists for user ${userId} — skipping`,
         );
