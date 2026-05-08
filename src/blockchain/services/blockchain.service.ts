@@ -366,6 +366,15 @@ export class BlockchainService implements OnModuleInit {
           ` [platform=${this.stellarPlatformKeypair.publicKey()}]` +
           ` [xlm=${xlmBalance?.balance ?? '?'}]`,
       );
+
+      // Ensure the platform wallet has a USDC trustline so it can receive
+      // USDC from users during bank transfers. Fire-and-forget — a failure
+      // here is logged but does not block startup.
+      this.ensureTrustline(this.stellarPlatformKeypair).catch((err: Error) =>
+        this.logger.warn(
+          `Platform USDC trustline setup failed — bank transfers will not work until resolved: ${err.message}`,
+        ),
+      );
     } catch (err) {
       const msg = (err as Error).message ?? String(err);
       this.logger.warn(
