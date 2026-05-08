@@ -3,10 +3,11 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { adminLogin, adminMe, adminLogout, adminChangePassword } from '@/lib/api/admin'
+import type { AdminRole as AdminRoleType } from '@/lib/api/admin'
 
 // ─── Role types ───────────────────────────────────────────────────────────────
 
-export type AdminRole = 'super_admin' | 'operator' | 'treasurer' | 'support'
+export type AdminRole = AdminRoleType
 
 export interface AdminUser {
   id:                 string

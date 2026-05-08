@@ -4,7 +4,9 @@
 
 import adminApiClient, { adminTokenStore } from './adminClient'
 import { ENDPOINTS } from '@/constants'
-import type { AdminRole } from '@/store/adminAuthStore'
+
+// Inline to avoid circular dependency with adminAuthStore
+export type AdminRole = 'super_admin' | 'operator' | 'treasurer' | 'support'
 
 export interface AdminUser {
   id:                  string
