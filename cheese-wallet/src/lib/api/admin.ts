@@ -3,10 +3,22 @@
 // ─────────────────────────────────────────────────────────
 
 import adminApiClient, { adminTokenStore } from './adminClient'
-import { ENDPOINTS } from '@/constants'
 
 // Inline to avoid circular dependency with adminAuthStore
 export type AdminRole = 'super_admin' | 'operator' | 'treasurer' | 'support'
+
+// Inline paths — avoids any module resolution edge cases in production builds
+const A = {
+  LOGIN:           '/admin/auth/login',
+  LOGOUT:          '/admin/auth/logout',
+  ME:              '/admin/auth/me',
+  ADMINS:          '/admin/auth/admins',
+  ADMIN_ROLE:      (id: string) => `/admin/auth/admins/${id}/role`,
+  ADMIN_ID:        (id: string) => `/admin/auth/admins/${id}`,
+  CHANGE_PASSWORD: '/admin/auth/change-password',
+  RATES_CURRENT:   '/admin/rates',
+  RATES_SET:       '/admin/rates',
+}
 
 export interface AdminUser {
   id:                  string
@@ -28,7 +40,7 @@ export async function adminLogin(
   password: string,
 ): Promise<{ admin: AdminUser; accessToken: string }> {
   const { data } = await adminApiClient.post<ApiResponse<{ admin: AdminUser; accessToken: string }>>(
-    ENDPOINTS.ADMIN_AUTH.LOGIN,
+    A.LOGIN,
     { email, password },
   )
   adminTokenStore.set(data.data.accessToken)
@@ -38,7 +50,7 @@ export async function adminLogin(
 // ── Me (session restore) ──────────────────────────────────
 export async function adminMe(): Promise<AdminUser> {
   const { data } = await adminApiClient.get<ApiResponse<{ admin: AdminUser }>>(
-    ENDPOINTS.ADMIN_AUTH.ME,
+    A.ME,
   )
   return data.data.admin
 }
@@ -48,19 +60,19 @@ export async function adminChangePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<void> {
-  await adminApiClient.patch(ENDPOINTS.ADMIN_AUTH.CHANGE_PASSWORD, { currentPassword, newPassword })
+  await adminApiClient.patch(A.CHANGE_PASSWORD, { currentPassword, newPassword })
 }
 
 // ── Logout ────────────────────────────────────────────────
 export async function adminLogout(): Promise<void> {
-  await adminApiClient.post(ENDPOINTS.ADMIN_AUTH.LOGOUT)
+  await adminApiClient.post(A.LOGOUT)
   adminTokenStore.clear()
 }
 
 // ── List admins ───────────────────────────────────────────
 export async function listAdmins(): Promise<AdminListItem[]> {
   const { data } = await adminApiClient.get<ApiResponse<{ admins: AdminListItem[] }>>(
-    ENDPOINTS.ADMIN_AUTH.ADMINS,
+    A.ADMINS,
   )
   return data.data.admins
 }
@@ -73,7 +85,7 @@ export async function createAdmin(payload: {
   adminRole: AdminRole
 }): Promise<AdminUser> {
   const { data } = await adminApiClient.post<ApiResponse<{ admin: AdminUser }>>(
-    ENDPOINTS.ADMIN_AUTH.ADMINS,
+    A.ADMINS,
     payload,
   )
   return data.data.admin
@@ -82,7 +94,7 @@ export async function createAdmin(payload: {
 // ── Update admin role ─────────────────────────────────────
 export async function updateAdminRole(id: string, adminRole: AdminRole): Promise<AdminUser> {
   const { data } = await adminApiClient.patch<ApiResponse<{ admin: AdminUser }>>(
-    ENDPOINTS.ADMIN_AUTH.ADMIN_ROLE(id),
+    A.ADMIN_ROLE(id),
     { adminRole },
   )
   return data.data.admin
@@ -90,7 +102,7 @@ export async function updateAdminRole(id: string, adminRole: AdminRole): Promise
 
 // ── Revoke admin ──────────────────────────────────────────
 export async function revokeAdmin(id: string): Promise<void> {
-  await adminApiClient.delete(ENDPOINTS.ADMIN_AUTH.ADMIN_ID(id))
+  await adminApiClient.delete(A.ADMIN_ID(id))
 }
 
 // ── Exchange rate ─────────────────────────────────────────
@@ -105,7 +117,7 @@ export interface ExchangeRateRecord {
 
 export async function getAdminRate(): Promise<ExchangeRateRecord> {
   const { data } = await adminApiClient.get<ApiResponse<ExchangeRateRecord>>(
-    ENDPOINTS.ADMIN_RATES.CURRENT,
+    A.RATES_CURRENT,
   )
   return data.data
 }
@@ -115,7 +127,7 @@ export async function setAdminRate(
   spreadPercent?: number,
 ): Promise<ExchangeRateRecord> {
   const { data } = await adminApiClient.patch<ApiResponse<ExchangeRateRecord>>(
-    ENDPOINTS.ADMIN_RATES.SET,
+    A.RATES_SET,
     { usdToNgn, ...(spreadPercent !== undefined && { spreadPercent }) },
   )
   return data.data

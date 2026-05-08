@@ -5,7 +5,9 @@
 // ─────────────────────────────────────────────────────────
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
-import { API_URL, ENDPOINTS } from '@/constants'
+import { API_URL } from '@/constants'
+
+const ADMIN_REFRESH_PATH = '/admin/auth/refresh'
 
 // ── In-memory admin access token ─────────────────────────
 let _adminToken: string | null = null
@@ -51,7 +53,7 @@ adminApiClient.interceptors.response.use(
         if (!_refreshPromise) {
           _refreshPromise = axios
             .post<{ data: { accessToken: string } }>(
-              `${API_URL}${ENDPOINTS.ADMIN_AUTH.REFRESH}`,
+              `${API_URL}${ADMIN_REFRESH_PATH}`,
               {},
               { withCredentials: true },
             )
