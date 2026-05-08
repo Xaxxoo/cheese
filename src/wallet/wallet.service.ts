@@ -6,7 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -143,7 +143,7 @@ export class WalletService {
     // WHERE stellar_public_key IS NULL ensures only one concurrent caller
     // can claim the slot — any racing call will see affected=0.
     const result = await this.userRepo.update(
-      { id: userId, stellarPublicKey: null as any },
+      { id: userId, stellarPublicKey: IsNull() },
       {
         stellarPublicKey: generated.publicKey,
         stellarSecretEnc: generated.secretKeyEnc,

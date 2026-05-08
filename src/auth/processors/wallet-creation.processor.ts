@@ -2,7 +2,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Job } from 'bullmq';
 import { User, WalletStatus } from '../entities/user.entity';
 import { BlockchainService } from '../../blockchain/services/blockchain.service';
@@ -76,8 +76,7 @@ export class WalletCreationProcessor extends WorkerHost {
           // Prevents a race with the provisioning cron.
 
           const result = await this.userRepo.update(
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            { id: userId, stellarPublicKey: null as any },
+            { id: userId, stellarPublicKey: IsNull() },
             {
               stellarPublicKey: generated.publicKey,
               stellarSecretEnc: generated.secretKeyEnc,
