@@ -2,17 +2,18 @@
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { adminLogin, adminMe, adminLogout } from '@/lib/api/admin'
+import { adminLogin, adminMe, adminLogout, adminChangePassword } from '@/lib/api/admin'
 
 // ─── Role types ───────────────────────────────────────────────────────────────
 
 export type AdminRole = 'super_admin' | 'operator' | 'treasurer' | 'support'
 
 export interface AdminUser {
-  id:        string
-  email:     string
-  name:      string
-  adminRole: AdminRole
+  id:                 string
+  email:              string
+  name:               string
+  adminRole:          AdminRole
+  mustChangePassword: boolean
 }
 
 // Nav hrefs each role is permitted to access
@@ -47,6 +48,7 @@ interface AdminAuthStore {
   logout:         () => Promise<void>
   restoreSession: () => Promise<void>
   canAccess:      (href: string) => boolean
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>
 }
 
 export const useAdminAuthStore = create<AdminAuthStore>()(
@@ -77,6 +79,16 @@ export const useAdminAuthStore = create<AdminAuthStore>()(
           set({ admin, isAuthenticated: true })
         } catch {
           set({ admin: null, isAuthenticated: false })
+        }
+      },
+
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        try {
+          await adminChangePassword(currentPassword, newPassword)
+          set(state => ({ admin: state.admin ? { ...state.admin, mustChangePassword: false } : null }))
+          return { ok: true }
+        } catch (err) {
+          return { ok: false, error: (err as Error).message ?? 'Failed to change password.' }
         }
       },
 

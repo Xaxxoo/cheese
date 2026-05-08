@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cheese Pay — UI Preview</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { background: #0f0f0f; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .phone {
+    width: 390px; min-height: 780px;
+    background: #111; border-radius: 44px;
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden; position: relative;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  }
+  .phone-inner { padding: 0; overflow-y: auto; max-height: 780px; }
+  .section-label {
+    color: rgba(255,255,255,0.25); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 600; margin-bottom: 16px;
+  }
+  .gold { color: #d4a843; }
+  .bg-gold { background: #d4a843; }
+  .border-gold { border-color: rgba(212,168,67,0.2); }
+  .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; }
+  .pill-active { background: #d4a843; color: #000; font-weight: 600; border-radius: 12px; }
+  .pill-inactive { color: rgba(255,255,255,0.4); border-radius: 12px; }
+  .nav-bar {
+    position: sticky; bottom: 0; background: rgba(17,17,17,0.95);
+    backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.06);
+    display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 0 20px;
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; color: rgba(255,255,255,0.35); }
+  .nav-item.active .nav-label { color: #d4a843; }
+  .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+  .amber-warn {
+    display: flex; gap: 10px; border-radius: 16px;
+    border: 1px solid rgba(251,191,36,0.2); background: rgba(251,191,36,0.06);
+    padding: 12px 16px;
+  }
+  .amber-warn-icon { color: #fbbf24; font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .amber-warn-text { font-size: 11px; color: rgba(253,230,138,0.8); line-height: 1.5; }
+  .amber-warn-text strong { color: #fcd34d; }
+  .chain-selector {
+    display: flex; gap: 4px; padding: 4px;
+    background: rgba(255,255,255,0.06); border-radius: 16px;
+    width: 100%;
+  }
+  .chain-btn {
+    flex: 1; padding: 8px; border-radius: 12px;
+    font-size: 11px; font-weight: 500; text-align: center; cursor: pointer; transition: all 0.15s;
+  }
+  .chain-btn.active { background: #d4a843; color: #000; }
+  .chain-btn.inactive { color: rgba(255,255,255,0.4); }
+  ::-webkit-scrollbar { width: 0; }
+
+  /* nav tabs at top */
+  .page-tabs { display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,0.06); overflow-x: auto; scrollbar-width: none; }
+  .page-tab {
+    flex-shrink: 0; padding: 10px 18px; font-size: 12px; font-weight: 500;
+    color: rgba(255,255,255,0.35); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .page-tab.active { color: #d4a843; border-bottom-color: #d4a843; }
+  .page-content { display: none; }
+  .page-content.active { display: block; }
+
+  /* auth layout */
+  .auth-wrap {
+    min-height: 780px; display: flex; flex-direction: column;
+    padding: 60px 24px 32px;
+    background: linear-gradient(160deg, #111 0%, #0d0d0d 100%);
+  }
+  input-mock {
+    display: block; width: 100%; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+    padding: 14px 16px; color: rgba(255,255,255,0.5); font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Page navigator -->
+<div style="background:#0a0a0a; padding: 20px 24px 0; position: sticky; top:0; z-index:100; border-bottom: 1px solid rgba(255,255,255,0.06);">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+    <div style="width:28px;height:28px;background:#d4a843;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">🧀</div>
+    <span style="color:#fff;font-size:14px;font-weight:600;">Cheese Pay</span>
+    <span style="color:rgba(255,255,255,0.25);font-size:11px;margin-left:4px;">UI Preview</span>
+  </div>
+  <div class="page-tabs" id="tabs">
+    <div class="page-tab active" onclick="showPage('login')">Login</div>
+    <div class="page-tab" onclick="showPage('signup')">Sign Up</div>
+    <div class="page-tab" onclick="showPage('dashboard')">Dashboard</div>
+    <div class="page-tab" onclick="showPage('receive')">Receive</div>
+    <div class="page-tab" onclick="showPage('send')">Send</div>
+    <div class="page-tab" onclick="showPage('history')">History</div>
+    <div class="page-tab" onclick="showPage('profile')">Profile</div>
+    <div class="page-tab" onclick="showPage('waitlist')">Waitlist</div>
+  </div>
+</div>
+
+<!-- Phones container -->
+<div style="padding: 40px 24px; display:flex; flex-wrap:wrap; gap:40px; justify-content:center;">
+
+<!-- ── LOGIN ───────────────────────────────────────── -->
+<div id="page-login" class="page-content active">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">Auth · Login</div>
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="auth-wrap">
+        <!-- Logo -->
+        <div style="display:flex;justify-content:center;margin-bottom:40px;">
+          <div style="width:56px;height:56px;background:rgba(212,168,67,0.12);border:1px solid rgba(212,168,67,0.25);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:26px;">🧀</div>
+        </div>
+        <h1 style="font-size:24px;font-weight:600;color:#fff;margin-bottom:4px;">Welcome back</h1>
+        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:32px;">Sign in to your Cheese account</p>
+
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px;">Email or username</label>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">you@example.com or @username</div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px;">Password</label>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">••••••••</div>
+          </div>
+          <div style="text-align:right;margin-top:-4px;">
+            <span style="font-size:12px;color:rgba(212,168,67,0.8);">Forgot password?</span>
+          </div>
+          <div style="background:#d4a843;border-radius:16px;padding:16px;text-align:center;font-size:14px;font-weight:600;color:#000;margin-top:4px;">Sign in</div>
+        </div>
+
+        <p style="font-size:13px;color:rgba(255,255,255,0.35);text-align:center;margin-top:32px;">
+          Don't have an account? <span style="color:#d4a843;">Create account</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SIGNUP ───────────────────────────────────────── -->
+<div id="page-signup" class="page-content">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">Auth · Sign Up</div>
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="auth-wrap">
+        <h1 style="font-size:24px;font-weight:600;color:#fff;margin-bottom:4px;">Create account</h1>
+        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:28px;">Join Cheese Pay today</p>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px;">Full name</label>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">John Doe</div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px;">Email address</label>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">you@example.com</div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px;">Phone number</label>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">+234 800 000 0000</div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px;">Username</label>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">@johndoe</div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px;">Password</label>
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">••••••••</div>
+          </div>
+          <div style="background:#d4a843;border-radius:16px;padding:16px;text-align:center;font-size:14px;font-weight:600;color:#000;margin-top:6px;">Create account</div>
+        </div>
+
+        <p style="font-size:13px;color:rgba(255,255,255,0.35);text-align:center;margin-top:24px;">
+          Already have an account? <span style="color:#d4a843;">Sign in</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DASHBOARD ───────────────────────────────────────── -->
+<div id="page-dashboard" class="page-content">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">App · Dashboard</div>
+  <div class="phone">
+    <div class="phone-inner" style="background:#111;">
+      <!-- Greeting -->
+      <div style="padding: 20px 24px 4px;">
+        <p style="font-size:13px;color:rgba(255,255,255,0.35);">Good afternoon, Dijha</p>
+      </div>
+
+      <!-- Balance card -->
+      <div style="margin:12px 16px 0;border-radius:24px;overflow:hidden;background:linear-gradient(135deg,#1a1a1a 0%,#141414 50%,#1c1a12 100%);border:1px solid rgba(212,168,67,0.12);">
+        <div style="padding:24px 24px 16px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
+            <div>
+              <p style="font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">Total Balance</p>
+              <p style="font-size:32px;font-weight:600;color:#fff;line-height:1;">$1,240.50 <span style="font-size:15px;color:rgba(255,255,255,0.35);font-weight:400;">USDC</span></p>
+              <p style="font-size:13px;color:rgba(255,255,255,0.35);margin-top:4px;">₦ 1,984,800</p>
+            </div>
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">👁</div>
+          </div>
+
+          <!-- Address copy bar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+              <span style="font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;">Stellar</span>
+              <span class="mono" style="font-size:11px;color:rgba(255,255,255,0.45);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">GA5ZSEI…K4KZVN</span>
+            </div>
+            <span style="color:rgba(255,255,255,0.25);font-size:14px;">⧉</span>
+          </div>
+        </div>
+
+        <!-- Action row -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(255,255,255,0.06);">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:#d4a843;">↗</div>
+            <span style="font-size:11px;color:rgba(255,255,255,0.45);">Send</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:#34d399;">↙</div>
+            <span style="font-size:11px;color:rgba(255,255,255,0.45);">Receive</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:#38bdf8;">🏦</div>
+            <span style="font-size:11px;color:rgba(255,255,255,0.45);">Withdraw</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rate ticker -->
+      <div style="margin:10px 16px 0;padding:10px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:11px;color:rgba(255,255,255,0.35);">1 USDC</span>
+        <span style="font-size:12px;color:#fff;font-weight:500;">₦1,600</span>
+        <span style="font-size:10px;color:rgba(255,255,255,0.2);">Live rate</span>
+      </div>
+
+      <!-- Recent activity -->
+      <div style="padding:24px 8px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 8px;margin-bottom:12px;">
+          <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);">Recent activity</p>
+          <span style="font-size:11px;color:rgba(212,168,67,0.7);">See all</span>
+        </div>
+
+        <!-- TX rows -->
+        <div style="display:flex;flex-direction:column;gap:0;">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(52,211,153,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;color:#34d399;">↓</div>
+            <div style="flex:1;">
+              <p style="font-size:13px;color:#fff;font-weight:500;">Deposit</p>
+              <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">May 1</p>
+            </div>
+            <p style="font-size:13px;font-weight:600;color:#34d399;">+$500.00</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.5);">↑</div>
+            <div style="flex:1;">
+              <p style="font-size:13px;color:#fff;font-weight:500;">Sent <span style="color:rgba(255,255,255,0.35);font-weight:400;">· @ada</span></p>
+              <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Apr 30</p>
+            </div>
+            <p style="font-size:13px;font-weight:600;color:#fff;">-$50.00</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.5);">↑</div>
+            <div style="flex:1;">
+              <p style="font-size:13px;color:#fff;font-weight:500;">Bank Transfer</p>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <p style="font-size:11px;color:rgba(255,255,255,0.3);">Apr 29</p>
+                <span style="font-size:10px;background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:99px;font-weight:500;">pending</span>
+              </div>
+            </div>
+            <p style="font-size:13px;font-weight:600;color:#fff;">-$200.00</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(212,168,67,0.1);display:flex;align-items:center;justify-content:center;font-size:16px;color:#d4a843;">↓</div>
+            <div style="flex:1;">
+              <p style="font-size:13px;color:#fff;font-weight:500;">Yield</p>
+              <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Apr 28</p>
+            </div>
+            <p style="font-size:13px;font-weight:600;color:#34d399;">+$1.20</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nav bar -->
+      <div class="nav-bar">
+        <div class="nav-item active">
+          <div class="nav-icon" style="color:#d4a843;">⊞</div>
+          <div class="nav-label" style="color:#d4a843;">Home</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">📋</div>
+          <div class="nav-label">History</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">🔔</div>
+          <div class="nav-label">Alerts</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">👤</div>
+          <div class="nav-label">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECEIVE ───────────────────────────────────────── -->
+<div id="page-receive" class="page-content">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">App · Receive — showing both Stellar &amp; EVM tabs with warnings</div>
+
+  <!-- Two phones side by side: Stellar selected vs EVM selected -->
+  <div style="display:flex;gap:24px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;padding-left:24px;padding-right:24px;">
+
+    <!-- Stellar selected -->
+    <div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:10px;">Stellar selected</p>
+      <div class="phone" style="min-height:700px;">
+        <div class="phone-inner" style="padding:0 0 24px;">
+          <!-- Header -->
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+            <h1 style="font-size:15px;font-weight:600;color:#fff;">Receive</h1>
+          </div>
+
+          <!-- Tab: Address / Username -->
+          <div style="display:flex;gap:4px;margin:0 16px 20px;padding:4px;background:rgba(255,255,255,0.06);border-radius:16px;">
+            <div class="chain-btn active" style="font-size:12px;">Wallet Address</div>
+            <div class="chain-btn inactive" style="font-size:12px;">Username</div>
+          </div>
+
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:16px;align-items:center;">
+            <!-- Chain selector -->
+            <div class="chain-selector">
+              <div class="chain-btn active">Stellar</div>
+              <div class="chain-btn inactive">EVM (Arbitrum, Base…)</div>
+            </div>
+
+            <!-- QR -->
+            <div style="border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#1a1a1a;padding:16px;display:inline-flex;">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?data=GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN&size=180x180&bgcolor=1a1a1a&color=d4a843&margin=12&format=png" width="180" height="180" style="border-radius:14px;" alt="QR" />
+            </div>
+
+            <!-- Address box -->
+            <div style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px 16px;">
+              <p style="font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Stellar address</p>
+              <p class="mono" style="font-size:11px;color:rgba(255,255,255,0.55);line-height:1.6;word-break:break-all;">GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN</p>
+            </div>
+
+            <!-- Copy btn -->
+            <div style="width:100%;background:#d4a843;border-radius:16px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:#000;">
+              ⧉ Copy Address
+            </div>
+
+            <!-- Warning -->
+            <div class="amber-warn" style="width:100%;">
+              <div class="amber-warn-icon">⚠</div>
+              <div class="amber-warn-text">Only send USDC on the <strong>Stellar network</strong> to this address. Sending on the wrong network will result in permanent loss of funds.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVM selected -->
+    <div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:10px;">EVM selected</p>
+      <div class="phone" style="min-height:700px;">
+        <div class="phone-inner" style="padding:0 0 24px;">
+          <!-- Header -->
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+            <h1 style="font-size:15px;font-weight:600;color:#fff;">Receive</h1>
+          </div>
+
+          <!-- Tabs -->
+          <div style="display:flex;gap:4px;margin:0 16px 20px;padding:4px;background:rgba(255,255,255,0.06);border-radius:16px;">
+            <div class="chain-btn active" style="font-size:12px;">Wallet Address</div>
+            <div class="chain-btn inactive" style="font-size:12px;">Username</div>
+          </div>
+
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:16px;align-items:center;">
+            <!-- Chain selector -->
+            <div class="chain-selector">
+              <div class="chain-btn inactive">Stellar</div>
+              <div class="chain-btn active">EVM (Arbitrum, Base…)</div>
+            </div>
+
+            <!-- QR -->
+            <div style="border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#1a1a1a;padding:16px;display:inline-flex;">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?data=0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2&size=180x180&bgcolor=1a1a1a&color=d4a843&margin=12&format=png" width="180" height="180" style="border-radius:14px;" alt="QR" />
+            </div>
+
+            <!-- Address box -->
+            <div style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px 16px;">
+              <p style="font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">EVM address</p>
+              <p class="mono" style="font-size:11px;color:rgba(255,255,255,0.55);line-height:1.6;word-break:break-all;">0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2</p>
+            </div>
+
+            <!-- Copy btn -->
+            <div style="width:100%;background:#d4a843;border-radius:16px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:#000;">
+              ⧉ Copy Address
+            </div>
+
+            <!-- Warning -->
+            <div class="amber-warn" style="width:100%;">
+              <div class="amber-warn-icon">⚠</div>
+              <div class="amber-warn-text">Only send USDC on the <strong>EVM network (Arbitrum, Base, etc.)</strong> to this address. Sending on the wrong network will result in permanent loss of funds.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Username tab -->
+    <div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:10px;">Username tab</p>
+      <div class="phone" style="min-height:700px;">
+        <div class="phone-inner" style="padding:0 0 24px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+            <h1 style="font-size:15px;font-weight:600;color:#fff;">Receive</h1>
+          </div>
+          <div style="display:flex;gap:4px;margin:0 16px 20px;padding:4px;background:rgba(255,255,255,0.06);border-radius:16px;">
+            <div class="chain-btn inactive" style="font-size:12px;">Wallet Address</div>
+            <div class="chain-btn active" style="font-size:12px;">Username</div>
+          </div>
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:16px;align-items:center;">
+            <div style="border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#1a1a1a;padding:16px;display:inline-flex;">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?data=cheesepay:dijha&size=180x180&bgcolor=1a1a1a&color=d4a843&margin=12&format=png" width="180" height="180" style="border-radius:14px;" alt="QR" />
+            </div>
+            <div style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px;text-align:center;">
+              <p style="font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">Cheese Pay Username</p>
+              <p style="font-size:22px;font-weight:600;color:#fff;">@dijha</p>
+            </div>
+            <div style="width:100%;background:#d4a843;border-radius:16px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:#000;">
+              ⧉ Copy Username
+            </div>
+            <div class="amber-warn" style="width:100%;">
+              <div class="amber-warn-icon">⚠</div>
+              <div class="amber-warn-text">Username transfers only work between <strong>Cheese Pay users</strong>. Make sure the sender is sending from a Cheese Pay account.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end flex -->
+</div>
+
+<!-- ── SEND ───────────────────────────────────────── -->
+<div id="page-send" class="page-content">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">App · Send — multi-step flow (scroll right to see all steps →)</div>
+  <div style="display:flex;gap:24px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:16px;padding-left:24px;padding-right:24px;">
+
+    <!-- Step 1: Mode select -->
+    <div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:10px;">Step 1 — Mode</p>
+      <div class="phone" style="min-height:700px;">
+        <div class="phone-inner" style="padding:0 0 24px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+            <h1 style="font-size:15px;font-weight:600;color:#fff;">Send</h1>
+          </div>
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border-radius:50%;background:rgba(212,168,67,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;">@</div>
+              <div>
+                <p style="font-size:14px;font-weight:600;color:#fff;">By Username</p>
+                <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">Send to a Cheese Pay user</p>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border-radius:50%;background:rgba(212,168,67,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;">◎</div>
+              <div>
+                <p style="font-size:14px;font-weight:600;color:#fff;">Send USDC</p>
+                <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">To any wallet address</p>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border-radius:50%;background:rgba(212,168,67,0.12);display:flex;align-items:center;justify-content:center;font-size:20px;">🏦</div>
+              <div>
+                <p style="font-size:14px;font-weight:600;color:#fff;">Bank Transfer</p>
+                <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">Withdraw to Nigerian bank</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1b: Username network select -->
+    <div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:10px;">Step 2 — Username network</p>
+      <div class="phone" style="min-height:700px;">
+        <div class="phone-inner" style="padding:0 0 24px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+            <h1 style="font-size:15px;font-weight:600;color:#fff;">Send by Username</h1>
+          </div>
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:12px;margin-top:4px;">
+            <p style="font-size:13px;color:rgba(255,255,255,0.35);margin-bottom:4px;">Choose network for this username send</p>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border-radius:50%;background:rgba(212,168,67,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;">✦</div>
+              <div style="flex:1;">
+                <p style="font-size:14px;font-weight:600;color:#fff;">Stellar USDC</p>
+                <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">Fast, low-fee transfers on Stellar</p>
+              </div>
+              <span style="color:rgba(255,255,255,0.25);">›</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,168,67,0.3);border-radius:20px;overflow:hidden;">
+              <div style="padding:20px;display:flex;align-items:center;gap:14px;background:rgba(212,168,67,0.06);">
+                <div style="width:44px;height:44px;border-radius:50%;background:rgba(212,168,67,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;">⬡</div>
+                <div style="flex:1;">
+                  <p style="font-size:14px;font-weight:600;color:#fff;">EVM USDC</p>
+                  <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">Arbitrum, Base, Celo and more</p>
+                </div>
+                <span style="color:rgba(255,255,255,0.25);transform:rotate(90deg);display:inline-block;">›</span>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,0.08);">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.08);">
+                  <span style="font-size:13px;font-weight:500;color:#fff;">Arbitrum</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:11px;color:#34d399;font-weight:600;">● free</span>
+                    <span style="color:#d4a843;font-size:13px;">✓</span>
+                  </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <span style="font-size:13px;color:rgba(255,255,255,0.55);">BASE</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <span style="font-size:13px;color:rgba(255,255,255,0.55);">Celo</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:12px 16px;">
+                  <span style="font-size:13px;color:rgba(255,255,255,0.55);">Polygon</span>
+                </div>
+              </div>
+            </div>
+            <div style="background:#d4a843;border-radius:16px;padding:14px;text-align:center;font-size:13px;font-weight:600;color:#000;margin-top:4px;">
+              Continue with Arbitrum ›
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2b: Address Network select -->
+    <div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:10px;">Step 2 — Address network</p>
+      <div class="phone" style="min-height:700px;">
+        <div class="phone-inner" style="padding:0 0 24px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+            <h1 style="font-size:15px;font-weight:600;color:#fff;">Send USDC</h1>
+          </div>
+          <div style="padding:0 16px;display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border-radius:50%;background:rgba(212,168,67,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;">✦</div>
+              <div>
+                <p style="font-size:14px;font-weight:600;color:#fff;">Stellar USDC</p>
+                <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">Fast, low-fee transfers on Stellar</p>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:20px;">
+              <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:rgba(212,168,67,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;">⬡</div>
+                <div>
+                  <p style="font-size:14px;font-weight:600;color:#fff;">EVM USDC</p>
+                  <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">Arbitrum, Base, Celo and more</p>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 12px;font-size:12px;color:rgba(255,255,255,0.6);">Arbitrum <span style="color:#34d399;font-size:10px;">Free</span></div>
+                <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 12px;font-size:12px;color:rgba(255,255,255,0.6);">BASE</div>
+                <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 12px;font-size:12px;color:rgba(255,255,255,0.6);">Celo</div>
+                <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 12px;font-size:12px;color:rgba(255,255,255,0.6);">Polygon</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Confirm + Warning -->
+    <div>
+      <p style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:10px;">Step 5 — Confirm (PIN)</p>
+      <div class="phone" style="min-height:700px;">
+        <div class="phone-inner" style="padding:0 0 24px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+            <h1 style="font-size:15px;font-weight:600;color:#fff;">Confirm transfer</h1>
+          </div>
+          <div style="padding:0 16px;">
+            <!-- Summary -->
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:20px;margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;">To</span>
+                <span style="font-size:13px;color:rgba(255,255,255,0.75);font-weight:500;">0xAb84…35cb2</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;">Network</span>
+                <span style="font-size:13px;color:rgba(255,255,255,0.75);font-weight:500;">Arbitrum</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;">You send</span>
+                <div style="text-align:right;">
+                  <p style="font-size:15px;font-weight:600;color:#fff;">$100.00 <span style="color:rgba(255,255,255,0.35);font-weight:400;font-size:13px;">USDC</span></p>
+                  <p style="font-size:11px;color:rgba(255,255,255,0.25);">≈ ₦160,000</p>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;">Fee (0.1%)</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.45);">−$0.1000 USDC</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;">
+                <span style="font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.08em;">Recipient gets</span>
+                <span style="font-size:13px;font-weight:600;color:#fff;">$99.9000 USDC</span>
+              </div>
+            </div>
+
+            <!-- Warning -->
+            <div class="amber-warn" style="margin-bottom:20px;">
+              <div class="amber-warn-icon">⚠</div>
+              <div class="amber-warn-text">Make sure the recipient address is correct and supports <strong>Arbitrum</strong> transfers. Crypto transactions cannot be reversed.</div>
+            </div>
+
+            <!-- PIN pad -->
+            <p style="font-size:12px;color:rgba(255,255,255,0.35);text-align:center;margin-bottom:12px;">Enter your PIN to confirm</p>
+            <div style="display:flex;justify-content:center;gap:12px;margin-bottom:24px;">
+              <div style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
+              <div style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
+              <div style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
+              <div style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
+              <div style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
+              <div style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">1</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">2</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">3</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">4</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">5</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">6</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">7</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">8</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">9</div>
+              <div></div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:20px;font-weight:300;color:#fff;">0</div>
+              <div style="background:rgba(255,255,255,0.06);border-radius:16px;padding:16px;text-align:center;font-size:16px;color:rgba(255,255,255,0.5);">⌫</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── HISTORY ───────────────────────────────────────── -->
+<div id="page-history" class="page-content">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">App · Transaction History</div>
+  <div class="phone">
+    <div class="phone-inner" style="background:#111;">
+      <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+        <h1 style="font-size:15px;font-weight:600;color:#fff;">History</h1>
+      </div>
+
+      <div style="padding:0 8px;">
+        <!-- Deposit -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(52,211,153,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;color:#34d399;">↓</div>
+          <div style="flex:1;">
+            <p style="font-size:13px;color:#fff;font-weight:500;">Deposit</p>
+            <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">May 1 · Stellar</p>
+          </div>
+          <p style="font-size:13px;font-weight:600;color:#34d399;">+$500.00</p>
+        </div>
+        <!-- Send -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);">↑</div>
+          <div style="flex:1;">
+            <p style="font-size:13px;color:#fff;font-weight:500;">Sent <span style="color:rgba(255,255,255,0.35);font-weight:400;">· @ada</span></p>
+            <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Apr 30 · Stellar</p>
+          </div>
+          <p style="font-size:13px;font-weight:600;color:#fff;">-$50.00</p>
+        </div>
+        <!-- Bank transfer pending -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);">↑</div>
+          <div style="flex:1;">
+            <p style="font-size:13px;color:#fff;font-weight:500;">Bank Transfer</p>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
+              <p style="font-size:11px;color:rgba(255,255,255,0.3);">Apr 29</p>
+              <span style="font-size:10px;background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 7px;border-radius:99px;font-weight:500;">pending</span>
+            </div>
+          </div>
+          <p style="font-size:13px;font-weight:600;color:#fff;">-$200.00</p>
+        </div>
+        <!-- EVM send -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.4);">↑</div>
+          <div style="flex:1;">
+            <p style="font-size:13px;color:#fff;font-weight:500;">Sent <span class="mono" style="color:rgba(255,255,255,0.35);font-weight:400;font-size:11px;">· 0xAb84…cb2</span></p>
+            <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Apr 28 · Arbitrum</p>
+          </div>
+          <p style="font-size:13px;font-weight:600;color:#fff;">-$100.00</p>
+        </div>
+        <!-- Yield -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(212,168,67,0.1);display:flex;align-items:center;justify-content:center;font-size:16px;color:#d4a843;">↓</div>
+          <div style="flex:1;">
+            <p style="font-size:13px;color:#fff;font-weight:500;">Yield</p>
+            <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Apr 27</p>
+          </div>
+          <p style="font-size:13px;font-weight:600;color:#34d399;">+$1.20</p>
+        </div>
+        <!-- Failed -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-radius:16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(248,113,113,0.1);display:flex;align-items:center;justify-content:center;font-size:16px;color:#f87171;">↑</div>
+          <div style="flex:1;">
+            <p style="font-size:13px;color:#fff;font-weight:500;">Sent</p>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
+              <p style="font-size:11px;color:rgba(255,255,255,0.3);">Apr 26</p>
+              <span style="font-size:10px;background:rgba(248,113,113,0.15);color:#f87171;padding:1px 7px;border-radius:99px;font-weight:500;">failed</span>
+            </div>
+          </div>
+          <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.4);">-$25.00</p>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <div class="nav-item"><div class="nav-icon">⊞</div><div class="nav-label">Home</div></div>
+        <div class="nav-item active"><div class="nav-icon" style="color:#d4a843;">📋</div><div class="nav-label" style="color:#d4a843;">History</div></div>
+        <div class="nav-item"><div class="nav-icon">🔔</div><div class="nav-label">Alerts</div></div>
+        <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PROFILE ───────────────────────────────────────── -->
+<div id="page-profile" class="page-content">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">App · Profile</div>
+  <div class="phone">
+    <div class="phone-inner" style="background:#111;">
+      <div style="display:flex;align-items:center;gap:12px;padding:20px 16px 16px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);">←</div>
+        <h1 style="font-size:15px;font-weight:600;color:#fff;">Profile</h1>
+      </div>
+
+      <!-- Avatar -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0 24px;">
+        <div style="width:80px;height:80px;border-radius:50%;background:rgba(212,168,67,0.12);border:2px solid rgba(212,168,67,0.3);display:flex;align-items:center;justify-content:center;font-size:32px;">👤</div>
+        <div style="text-align:center;">
+          <p style="font-size:17px;font-weight:600;color:#fff;">Dijha Umar</p>
+          <p style="font-size:13px;color:rgba(255,255,255,0.35);margin-top:2px;">@dijha</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <span style="font-size:11px;background:rgba(212,168,67,0.12);color:#d4a843;padding:4px 12px;border-radius:99px;font-weight:500;">Gold</span>
+          <span style="font-size:11px;background:rgba(52,211,153,0.12);color:#34d399;padding:4px 12px;border-radius:99px;font-weight:500;display:flex;align-items:center;gap:4px;">✓ KYC Verified</span>
+        </div>
+      </div>
+
+      <!-- Info rows -->
+      <div style="margin:0 16px;border-radius:20px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;background:rgba(255,255,255,0.02);">
+        <div style="display:flex;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);">Email</span>
+          <span style="font-size:12px;color:#fff;font-weight:500;">dijha@example.com</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);">Phone</span>
+          <span style="font-size:12px;color:#fff;font-weight:500;">+234 800 000 0000</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);">Username</span>
+          <span style="font-size:12px;color:#fff;font-weight:500;">@dijha</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:14px 16px;">
+          <span style="font-size:12px;color:rgba(255,255,255,0.35);">Member since</span>
+          <span style="font-size:12px;color:#fff;font-weight:500;">January 2025</span>
+        </div>
+      </div>
+
+      <!-- Referral -->
+      <div style="margin:12px 16px 0;border-radius:20px;border:1px solid rgba(255,255,255,0.08);background:rgba(212,168,67,0.03);padding:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="color:#d4a843;">🎁</span>
+          <span style="font-size:13px;font-weight:600;color:#fff;">Referrals</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div>
+            <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-bottom:2px;">Your referral code</p>
+            <p style="font-size:16px;font-weight:700;color:#d4a843;letter-spacing:0.15em;">CHEESE2X</p>
+          </div>
+          <span style="color:rgba(255,255,255,0.25);">⧉</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;text-align:center;">
+            <p style="font-size:15px;font-weight:600;color:#fff;">3</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;">Referred</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;text-align:center;">
+            <p style="font-size:15px;font-weight:600;color:#fff;">$5.00</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;">Pending</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:10px;text-align:center;">
+            <p style="font-size:15px;font-weight:600;color:#fff;">$10.00</p>
+            <p style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;">Earned</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sign out -->
+      <div style="margin:16px 16px 0;">
+        <div style="border:1px solid rgba(248,113,113,0.2);border-radius:18px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;color:#f87171;font-size:13px;font-weight:500;">
+          ↩ Sign out
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <div class="nav-item"><div class="nav-icon">⊞</div><div class="nav-label">Home</div></div>
+        <div class="nav-item"><div class="nav-icon">📋</div><div class="nav-label">History</div></div>
+        <div class="nav-item"><div class="nav-icon">🔔</div><div class="nav-label">Alerts</div></div>
+        <div class="nav-item active"><div class="nav-icon" style="color:#d4a843;">👤</div><div class="nav-label" style="color:#d4a843;">Profile</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── WAITLIST ───────────────────────────────────────── -->
+<div id="page-waitlist" class="page-content">
+  <div class="section-label" style="text-align:center;margin-bottom:24px;">Marketing · Waitlist</div>
+  <div class="phone">
+    <div class="phone-inner" style="background:linear-gradient(160deg,#0f0f0f 0%,#0d0c08 100%);padding:48px 24px 40px;min-height:780px;display:flex;flex-direction:column;">
+      <div style="display:flex;justify-content:center;margin-bottom:32px;">
+        <div style="width:64px;height:64px;background:rgba(212,168,67,0.1);border:1px solid rgba(212,168,67,0.25);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:30px;">🧀</div>
+      </div>
+      <h1 style="font-size:28px;font-weight:700;color:#fff;text-align:center;margin-bottom:8px;">Cheese Pay</h1>
+      <p style="font-size:14px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:32px;line-height:1.6;">Send, receive and convert USDC to NGN instantly.</p>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px;">Full name</label>
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">Your name</div>
+        </div>
+        <div>
+          <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:6px;">Email address</label>
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 16px;color:rgba(255,255,255,0.25);font-size:13px;">you@example.com</div>
+        </div>
+        <div style="background:#d4a843;border-radius:16px;padding:16px;text-align:center;font-size:14px;font-weight:600;color:#000;margin-top:4px;">Join the waitlist</div>
+      </div>
+
+      <div style="display:flex;justify-content:center;gap:24px;margin-top:32px;">
+        <div style="text-align:center;">
+          <p style="font-size:20px;font-weight:700;color:#d4a843;">2,400+</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">On waitlist</p>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.06);"></div>
+        <div style="text-align:center;">
+          <p style="font-size:20px;font-weight:700;color:#d4a843;">₦1,600</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">per USDC</p>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.06);"></div>
+        <div style="text-align:center;">
+          <p style="font-size:20px;font-weight:700;color:#d4a843;">&lt;1s</p>
+          <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;">Transfers</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end phones container -->
+
+<script>
+function showPage(id) {
+  document.querySelectorAll('.page-content').forEach(el => el.classList.remove('active'))
+  document.querySelectorAll('.page-tab').forEach(el => el.classList.remove('active'))
+  document.getElementById('page-' + id).classList.add('active')
+  event.target.classList.add('active')
+}
+</script>
+</body>
+</html>

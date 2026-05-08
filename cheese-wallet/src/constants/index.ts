@@ -22,13 +22,14 @@ export const ENDPOINTS = {
 
   // ── Admin Auth ────────────────────────────────────────
   ADMIN_AUTH: {
-    LOGIN:      '/admin/auth/login',
-    LOGOUT:     '/admin/auth/logout',
-    REFRESH:    '/admin/auth/refresh',
-    ME:         '/admin/auth/me',
-    ADMINS:     '/admin/auth/admins',
-    ADMIN_ROLE: (id: string) => `/admin/auth/admins/${id}/role`,
-    ADMIN_ID:   (id: string) => `/admin/auth/admins/${id}`,
+    LOGIN:           '/admin/auth/login',
+    LOGOUT:          '/admin/auth/logout',
+    REFRESH:         '/admin/auth/refresh',
+    ME:              '/admin/auth/me',
+    ADMINS:          '/admin/auth/admins',
+    ADMIN_ROLE:      (id: string) => `/admin/auth/admins/${id}/role`,
+    ADMIN_ID:        (id: string) => `/admin/auth/admins/${id}`,
+    CHANGE_PASSWORD: '/admin/auth/change-password',
   },
 
   // ── Admin Rates ───────────────────────────────────────

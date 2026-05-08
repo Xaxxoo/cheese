@@ -107,6 +107,7 @@ export class AdminAuthService {
       email: user.email,
       name: user.fullName ?? user.email.split('@')[0],
       adminRole: user.adminRole,
+      mustChangePassword: user.mustChangePassword ?? false,
     };
   }
 
@@ -168,6 +169,7 @@ export class AdminAuthService {
       adminRole: dto.adminRole,
       emailVerified: true,
       isActive: true,
+      mustChangePassword: true,
     });
 
     const saved = await this.userRepo.save(user);
@@ -225,6 +227,23 @@ export class AdminAuthService {
 
     // Revoke all active refresh tokens
     await this.rtRepo.update({ userId: targetId }, { isRevoked: true });
+  }
+
+  // ── Change password ───────────────────────────────────────────────────────
+
+  async changePassword(
+    user: User,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    if (!user.passwordHash) throw new UnauthorizedException('Invalid credentials');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Current password is incorrect');
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    user.mustChangePassword = false;
+    await this.userRepo.save(user);
   }
 
   // ── Private ───────────────────────────────────────────────────────────────

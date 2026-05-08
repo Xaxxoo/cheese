@@ -5,3 +5,4 @@ dist
 # Ignore environment variable files, but keep the example files
 .env*
 !.env.example
+PulseMFB - External API Dev.postman_collection.json

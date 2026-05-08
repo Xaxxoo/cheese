@@ -129,8 +129,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isAuthenticated && pathname !== '/admin/login') {
       router.replace('/admin/login');
+    } else if (
+      isAuthenticated && admin?.mustChangePassword &&
+      pathname !== '/admin/change-password'
+    ) {
+      router.replace('/admin/change-password');
     }
-  }, [isAuthenticated, pathname, router]);
+  }, [isAuthenticated, admin, pathname, router]);
 
   useEffect(() => {
     const fmt = () => new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
@@ -162,13 +167,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // ── Waiting for redirect if not authed ────────────────────────────────────
   if (!isAuthenticated || !admin) return null;
+  const effectiveAdmin = admin;
 
   const activeLabel =
     NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === pathname)?.label ?? 'Overview';
 
-  const roleCol     = ROLE_COLORS[admin.adminRole];
-  const roleLabel   = ROLE_LABELS[admin.adminRole];
-  const initials    = admin.name.slice(0, 2).toUpperCase();
+  const roleCol     = ROLE_COLORS[effectiveAdmin.adminRole];
+  const roleLabel   = ROLE_LABELS[effectiveAdmin.adminRole];
+  const initials    = effectiveAdmin.name.slice(0, 2).toUpperCase();
 
   return (
     <>
@@ -272,9 +278,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 fontSize: 11, fontWeight: 700, color: roleCol.text, flexShrink: 0,
               }}>{initials}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{admin.name}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{effectiveAdmin.name}</div>
                 <div style={{ fontSize: 10, color: c.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {admin.email}
+                  {effectiveAdmin.email}
                 </div>
               </div>
             </div>

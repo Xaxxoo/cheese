@@ -23,6 +23,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
+import { ChangeAdminPasswordDto } from './dto/change-admin-password.dto';
 
 const REFRESH_COOKIE = 'admin_refresh_token';
 
@@ -158,6 +159,24 @@ export class AdminAuthController {
     return {
       admin: await this.adminAuthService.updateAdminRole(id, dto, requester),
     };
+  }
+
+  // ── PATCH /admin/auth/change-password ─────────────────────────────────────
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth()
+  @Patch('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change own admin password' })
+  async changePassword(
+    @Body() dto: ChangeAdminPasswordDto,
+    @CurrentUser() user: User,
+  ) {
+    await this.adminAuthService.changePassword(
+      user,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return { message: 'Password updated' };
   }
 
   // ── DELETE /admin/auth/admins/:id ──────────────────────────────────────────

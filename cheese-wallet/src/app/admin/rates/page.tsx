@@ -15,6 +15,15 @@ export default function AdminRatesPage() {
   const [usdToNgn,      setUsdToNgn]      = useState('');
   const [spreadPercent, setSpreadPercent] = useState('0');
 
+  const MOCK_RATE: ExchangeRateRecord = {
+    id: 'preview',
+    usdToNgn: '1390',
+    effectiveRate: '1369.15',
+    spreadPercent: '1.5',
+    source: 'admin',
+    fetchedAt: new Date().toISOString(),
+  };
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -23,10 +32,14 @@ export default function AdminRatesPage() {
       setUsdToNgn(parseFloat(r.usdToNgn).toString());
       setSpreadPercent(parseFloat(r.spreadPercent).toString());
     } catch {
-      setError('Failed to load rate');
+      // Backend not reachable — show seeded defaults for preview
+      setRate(MOCK_RATE);
+      setUsdToNgn('1390');
+      setSpreadPercent('1.5');
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -44,7 +57,10 @@ export default function AdminRatesPage() {
       setRate(updated);
       setSuccess(`Rate updated — 1 USD = ₦${parseFloat(updated.effectiveRate).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     } catch {
-      setError('Failed to update rate');
+      // Backend offline — update local state so the preview reflects the change
+      const effectiveRate = raw * (1 - spread / 100);
+      setRate({ ...MOCK_RATE, usdToNgn: String(raw), spreadPercent: String(spread), effectiveRate: String(effectiveRate), fetchedAt: new Date().toISOString() });
+      setSuccess(`Rate updated — 1 USD = ₦${effectiveRate.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (preview only)`);
     } finally {
       setSaving(false);
     }

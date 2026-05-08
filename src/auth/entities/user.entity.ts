@@ -169,6 +169,9 @@ export class User {
   @Column({ name: 'admin_role', type: 'varchar', nullable: true })
   adminRole: AdminRole | null;
 
+  @Column({ name: 'must_change_password', default: false })
+  mustChangePassword: boolean;
+
   // ── Timestamps ───────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

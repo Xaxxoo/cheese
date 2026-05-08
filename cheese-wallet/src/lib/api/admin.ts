@@ -40,6 +40,14 @@ export async function adminMe(): Promise<AdminUser> {
   return data.data.admin
 }
 
+// ── Change password ───────────────────────────────────────
+export async function adminChangePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  await adminApiClient.patch(ENDPOINTS.ADMIN_AUTH.CHANGE_PASSWORD, { currentPassword, newPassword })
+}
+
 // ── Logout ────────────────────────────────────────────────
 export async function adminLogout(): Promise<void> {
   await adminApiClient.post(ENDPOINTS.ADMIN_AUTH.LOGOUT)
