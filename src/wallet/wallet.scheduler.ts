@@ -35,7 +35,7 @@ export class WalletDepositScheduler {
     // ── Phase A: provision users who have no Stellar key yet ───────────────
     const needsKey = await this.userRepo.find({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      where: { stellarPublicKey: null as any },
+      where: { stellarPublicKey: IsNull() },
       select: ['id', 'username'],
       take: 20,
     });
@@ -55,8 +55,7 @@ export class WalletDepositScheduler {
         // Guards against concurrent instances provisioning the same user.
 
         const result = await this.userRepo.update(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          { id: user.id, stellarPublicKey: null as any },
+          { id: user.id, stellarPublicKey: IsNull() },
           {
             stellarPublicKey: generated.publicKey,
             stellarSecretEnc: generated.secretKeyEnc,
