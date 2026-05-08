@@ -18,8 +18,9 @@ export class RatesService {
   async getCurrentRate(): Promise<ExchangeRate> {
     if (this.cachedRate) return this.cachedRate;
 
-    const latest = await this.rateRepo.findOne({
+    const [latest] = await this.rateRepo.find({
       order: { fetchedAt: 'DESC' },
+      take: 1,
     });
     if (latest) {
       this.cachedRate = latest;
