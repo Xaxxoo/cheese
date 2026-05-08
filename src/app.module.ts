@@ -34,8 +34,8 @@ import { OtpModule } from './otp/otp.module';
 import { WalletModule } from './wallet/wallet.module';
 import { RatesModule } from './rates/rates.module';
 import { TransactionsModule } from './transactions/transactions.module';
-// Phase 3 — enable once STELLAR_PLATFORM_SECRET_KEY is set
-// import { SendModule } from './send/send.module';
+// Phase 3
+import { SendModule } from './send/send.module';
 // Phase 4
 import { BanksModule } from './banks/banks.module';
 // Phase 5
@@ -243,8 +243,8 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
     WalletModule,
     RatesModule,
     TransactionsModule,
-    // Phase 3 — enable once STELLAR_PLATFORM_SECRET_KEY is set
-    // SendModule,
+    // Phase 3
+    SendModule,
     // Phase 4
     BanksModule,
     // Phase 5
