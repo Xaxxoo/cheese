@@ -32,6 +32,9 @@ const USERS = [
   { name: 'Folake Adekunle',   username: '@folake_a',     tier: 'Black',  kyc: 'Verified',  wallet: 'Active',   balance: '$21,300.00', txns: 441, joined: 'Apr 5, 2026'  },
 ];
 
+type TierFilter = 'All' | 'Silver' | 'Gold' | 'Black';
+type KycFilter  = 'All' | 'Verified' | 'Pending' | 'Reviewing' | 'Failed';
+
 const TOTAL = 12481;
 
 // ─── Users page ───────────────────────────────────────────────────────────────
