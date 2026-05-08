@@ -36,8 +36,8 @@ import { RatesModule } from './rates/rates.module';
 import { TransactionsModule } from './transactions/transactions.module';
 // Phase 3 — enable once STELLAR_PLATFORM_SECRET_KEY is set
 // import { SendModule } from './send/send.module';
-// Phase 4 — enable once PulseMFB KYB is complete
-// import { BanksModule } from './banks/banks.module';
+// Phase 4
+import { BanksModule } from './banks/banks.module';
 // Phase 5
 // import { CardsModule } from './cards/cards.module';
 // Phase 6
@@ -245,8 +245,8 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
     TransactionsModule,
     // Phase 3 — enable once STELLAR_PLATFORM_SECRET_KEY is set
     // SendModule,
-    // Phase 4 — enable once PulseMFB KYB is complete
-    // BanksModule,
+    // Phase 4
+    BanksModule,
     // Phase 5
     // CardsModule,
     // Phase 6
