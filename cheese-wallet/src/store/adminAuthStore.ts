@@ -13,7 +13,7 @@ export interface AdminUser {
   email:              string
   name:               string
   adminRole:          AdminRole
-  mustChangePassword: boolean
+  mustChangePassword: boolean | undefined
 }
 
 // Nav hrefs each role is permitted to access

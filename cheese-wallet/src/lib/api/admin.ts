@@ -7,10 +7,11 @@ import { ENDPOINTS } from '@/constants'
 import type { AdminRole } from '@/store/adminAuthStore'
 
 export interface AdminUser {
-  id:        string
-  email:     string
-  name:      string
-  adminRole: AdminRole
+  id:                  string
+  email:               string
+  name:                string
+  adminRole:           AdminRole
+  mustChangePassword:  boolean
 }
 
 export interface AdminListItem extends AdminUser {
