@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAdminRate } from '@/lib/api/admin';
+import { getAdminRate, getAdminHealth, type AdminHealth } from '@/lib/api/admin';
 import {
   c,
   IcoHome, IcoUsers, IcoShield, IcoFile, IcoSend, IcoBank, IcoCard,
@@ -95,17 +95,6 @@ const NAV_GROUPS = [
   ]},
 ];
 
-const SERVICES = [
-  { name: 'Stellar Horizon', ok: true  },
-  { name: 'EVM RPC',         ok: true  },
-  { name: 'PulseMFB API',    ok: false },
-  { name: 'Dojah KYC',       ok: true  },
-  { name: 'Redis / BullMQ',  ok: true  },
-  { name: 'PostgreSQL',      ok: true  },
-];
-
-const servicesDegraded = SERVICES.filter((s) => !s.ok).length;
-
 // ─── Layout ───────────────────────────────────────────────────────────────────
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname         = usePathname();
@@ -113,6 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { admin, isAuthenticated, logout, restoreSession, canAccess } = useAdminAuthStore();
   const [clock,       setClock]       = useState('');
   const [liveRate,    setLiveRate]    = useState<string | null>(null);
+  const [health,      setHealth]      = useState<AdminHealth | null>(null);
 
   // ── Session restore + expired listener ────────────────────────────────────
   useEffect(() => {
@@ -160,6 +150,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isAuthenticated, fetchLiveRate]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchHealth = () => getAdminHealth().then(setHealth).catch(console.error);
+    fetchHealth();
+    const id = setInterval(fetchHealth, 60_000);
+    return () => clearInterval(id);
+  }, [isAuthenticated]);
+
   // ── Login page — render without sidebar ───────────────────────────────────
   if (pathname === '/admin/login') {
     return <>{children}</>;
@@ -168,6 +166,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // ── Waiting for redirect if not authed ────────────────────────────────────
   if (!isAuthenticated || !admin) return null;
   const effectiveAdmin = admin;
+
+  const services = health ? [
+    { name: 'Stellar Horizon', ok: health.stellar  },
+    { name: 'EVM RPC',         ok: health.evm      },
+    { name: 'PulseMFB API',    ok: health.pulsemfb },
+    { name: 'Redis / BullMQ',  ok: health.redis    },
+    { name: 'PostgreSQL',      ok: health.database },
+  ] : [];
+  const servicesDegraded = services.filter((s) => !s.ok).length;
 
   const activeLabel =
     NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === pathname)?.label ?? 'Overview';
@@ -257,7 +264,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </span>
               )}
             </div>
-            {SERVICES.map((svc) => (
+            {services.map((svc) => (
               <div key={svc.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: svc.ok ? c.textDim : c.textMid }}>{svc.name}</span>
                 <span
@@ -345,19 +352,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               )}
               <button className="topbar-icon" style={{ position: 'relative', color: c.textMid }}>
                 <IcoBell />
-                <span style={{
-                  position: 'absolute', top: 5, right: 5,
-                  width: 14, height: 14, borderRadius: '50%',
-                  background: c.red, color: '#fff',
-                  fontSize: 8, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `2px solid ${c.bg}`, lineHeight: 1,
-                }}>5</span>
+                {servicesDegraded > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 5, right: 5,
+                    width: 14, height: 14, borderRadius: '50%',
+                    background: c.red, color: '#fff',
+                    fontSize: 8, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: `2px solid ${c.bg}`, lineHeight: 1,
+                  }}>{servicesDegraded}</span>
+                )}
               </button>
               {servicesDegraded > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: c.amberDim, border: `1px solid ${c.amberBrd}`, borderRadius: 99, padding: '4px 11px' }}>
                   <span className="pulse-amber" style={{ width: 5, height: 5, borderRadius: '50%', background: c.amber, display: 'inline-block' }} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: c.amber }}>1 service degraded</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: c.amber }}>{servicesDegraded} service{servicesDegraded !== 1 ? 's' : ''} degraded</span>
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: c.greenDim, border: `1px solid rgba(34,197,94,0.18)`, borderRadius: 99, padding: '4px 11px' }}>
