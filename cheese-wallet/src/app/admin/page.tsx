@@ -1,78 +1,13 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import {
   c,
   IcoChevDown, IcoArrowUp, IcoArrowDn,
   IcoUsers, IcoShield, IcoWallet, IcoFile, IcoBank, IcoAlert,
   Dot, FeedLabel, greeting,
 } from './_shared';
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const VOLUME_30D = [
-  42, 38, 51, 67, 58, 72, 45, 39, 63, 79,
-  84, 71, 55, 48, 92, 108, 95, 83, 76, 61,
-  53, 87, 103, 118, 99, 112, 95, 78, 134, 142,
-].map((v) => v * 1000);
-
-const KPI = [
-  {
-    label: 'Total Users',   value: '12,481', change: '+8.2%',    up: true,
-    sub: 'vs last month',  color: c.amber,  cls: 'kpi-amber',
-    spark: [80, 85, 88, 92, 95, 98, 102, 105, 108, 112, 118, 124],
-  },
-  {
-    label: 'USDC Volume',   value: '$847K',  change: '+14.1%',   up: true,
-    sub: 'vs last month',  color: c.green,  cls: 'kpi-green',
-    spark: [60, 65, 70, 62, 75, 80, 85, 78, 90, 95, 105, 110],
-  },
-  {
-    label: 'Transactions',  value: '38,912', change: '+5.3%',    up: true,
-    sub: 'vs last month',  color: c.blue,   cls: 'kpi-blue',
-    spark: [200, 220, 210, 240, 250, 230, 270, 260, 290, 300, 320, 341],
-  },
-  {
-    label: 'Flagged Items', value: '34',     change: '-2 today', up: false,
-    sub: '14 fraud · 12 KYC',  color: c.red, cls: 'kpi-red',
-    spark: [10, 15, 18, 22, 20, 28, 25, 30, 32, 30, 35, 34],
-  },
-];
-
-const FEED = [
-  { dot: c.red,   label: 'Critical', msg: 'Black tier doc submitted — needs admin sign-off', sub: '@adaeze · 2 min ago'         },
-  { dot: c.red,   label: 'Critical', msg: 'Bank transfer failed — NGN reserve insufficient',  sub: '@emeka_fx · 4 min ago'      },
-  { dot: c.amber, label: 'Warning',  msg: 'EVM wallet stuck — retry attempt 3/5',             sub: 'userId: a3f12b · 12 min ago' },
-  { dot: c.green, label: 'Info',     msg: 'New user onboarded, Stellar wallet provisioned',   sub: '@chiamaka22 · 18 min ago'    },
-  { dot: c.amber, label: 'Warning',  msg: 'PulseMFB webhook returning 503',                   sub: 'System · 24 min ago'         },
-];
-
-const MODULES = [
-  { icon: IcoUsers,  label: 'Users',           value: '12,481', note: 'Registered',       alert: false, color: c.blue,  trend: [85,  90,  95, 100, 104, 110, 112] },
-  { icon: IcoShield, label: 'KYC & Tiers',     value: '12',     note: 'Pending review',   alert: true,  color: c.red,   trend: [4,   7,   6,  10,  14,  11,  12 ] },
-  { icon: IcoFile,   label: 'Transactions',    value: '38,912', note: 'All time',         alert: false, color: c.green, trend: [280, 295, 310, 290, 315, 330, 341] },
-  { icon: IcoBank,   label: 'Bank Transfers',  value: '3',      note: 'Failed today',     alert: true,  color: c.red,   trend: [0,   1,   0,   2,   1,   0,   3 ] },
-  { icon: IcoWallet, label: 'Stellar Wallets', value: '11,204', note: 'Active',           alert: false, color: c.amber, trend: [88,  91,  93,  96,  99, 102, 104] },
-  { icon: IcoAlert,  label: 'Fraud',           value: '14',     note: 'Flagged accounts', alert: true,  color: c.red,   trend: [8,   10,  12,  11,  13,  12,  14 ] },
-];
-
-const CHART_META = {
-  '7D': {
-    total: '$278K', trend: '↑ 11.2% vs prev week', sub: 'Last 7 days',
-    stats: [
-      { label: 'Peak day',  value: 'Wed · $59K'  },
-      { label: 'Daily avg', value: '$39.7K'       },
-      { label: 'This week', value: '~$278K total' },
-    ],
-  },
-  '30D': {
-    total: '$849K', trend: '↑ 18.4% vs last month', sub: '30-day transaction volume',
-    stats: [
-      { label: 'Peak day',     value: 'Day 30 · $142K' },
-      { label: 'Daily avg',    value: '$28.3K'          },
-      { label: 'Transactions', value: '38,912 total'    },
-    ],
-  },
-} as const;
+import { getAdminStats, type AdminStats } from '@/lib/api/admin';
 
 // ─── SVG Components ───────────────────────────────────────────────────────────
 function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
@@ -155,9 +90,69 @@ function BarMini({ data, color }: { data: number[]; color: string }) {
 export default function AdminDashboard() {
   const [chartRange, setChartRange] = useState<'7D' | '30D'>('30D');
   const [alertOpen, setAlertOpen]   = useState(true);
+  const [stats, setStats]           = useState<AdminStats | null>(null);
 
-  const chartData = chartRange === '7D' ? VOLUME_30D.slice(-7) : VOLUME_30D;
-  const chartMeta = CHART_META[chartRange];
+  useEffect(() => {
+    getAdminStats().then(setStats).catch(console.error);
+    const id = setInterval(() => getAdminStats().then(setStats).catch(console.error), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const n = (v: number | undefined) => (v ?? 0).toLocaleString();
+
+  const kpi = [
+    {
+      label: 'Total Users',   value: stats ? n(stats.totalUsers)        : '—',
+      change: stats ? `${n(stats.verifiedUsers)} verified`              : '—',
+      up: true,  sub: 'registered',  color: c.amber, cls: 'kpi-amber',
+      spark: Array(12).fill(stats?.totalUsers ?? 1),
+    },
+    {
+      label: 'USDC Volume',   value: stats ? `$${n(Math.floor(stats.totalVolumeUsdc))}` : '—',
+      change: stats ? `${n(stats.totalTransactions)} transactions`      : '—',
+      up: true,  sub: 'all time',    color: c.green, cls: 'kpi-green',
+      spark: Array(12).fill(stats?.totalVolumeUsdc ?? 1),
+    },
+    {
+      label: 'Transactions',  value: stats ? n(stats.totalTransactions) : '—',
+      change: stats ? `${n(stats.activeWallets)} active wallets`        : '—',
+      up: true,  sub: 'all time',    color: c.blue,  cls: 'kpi-blue',
+      spark: Array(12).fill(stats?.totalTransactions ?? 1),
+    },
+    {
+      label: 'Flagged Items', value: stats ? n((stats.flaggedUsers) + (stats.pendingKyc)) : '—',
+      change: stats ? `${n(stats.flaggedUsers)} fraud · ${n(stats.pendingKyc)} KYC`       : '—',
+      up: false, sub: 'need review',  color: c.red,   cls: 'kpi-red',
+      spark: Array(12).fill(stats?.flaggedUsers ?? 1),
+    },
+  ];
+
+  const modules = [
+    { icon: IcoUsers,  label: 'Users',           value: stats ? n(stats.totalUsers)               : '—', note: 'Registered',       alert: false,                                    color: c.blue,  trend: Array(7).fill(stats?.totalUsers               ?? 0) },
+    { icon: IcoShield, label: 'KYC & Tiers',     value: stats ? n(stats.pendingKyc)               : '—', note: 'Pending review',   alert: (stats?.pendingKyc               ?? 0) > 0, color: c.red,   trend: Array(7).fill(stats?.pendingKyc               ?? 0) },
+    { icon: IcoFile,   label: 'Transactions',    value: stats ? n(stats.totalTransactions)         : '—', note: 'All time',         alert: false,                                    color: c.green, trend: Array(7).fill(stats?.totalTransactions         ?? 0) },
+    { icon: IcoBank,   label: 'Bank Transfers',  value: stats ? n(stats.failedBankTransfersToday) : '—', note: 'Failed today',     alert: (stats?.failedBankTransfersToday ?? 0) > 0, color: c.red,   trend: Array(7).fill(stats?.failedBankTransfersToday ?? 0) },
+    { icon: IcoWallet, label: 'Stellar Wallets', value: stats ? n(stats.activeWallets)            : '—', note: 'Active',           alert: false,                                    color: c.amber, trend: Array(7).fill(stats?.activeWallets            ?? 0) },
+    { icon: IcoAlert,  label: 'Fraud',           value: stats ? n(stats.flaggedUsers)             : '—', note: 'Flagged accounts', alert: (stats?.flaggedUsers             ?? 0) > 0, color: c.red,   trend: Array(7).fill(stats?.flaggedUsers             ?? 0) },
+  ];
+
+  const alertItems = stats ? [
+    stats.pendingKyc > 0              && { msg: `${n(stats.pendingKyc)} KYC submission${stats.pendingKyc > 1 ? 's' : ''} awaiting approval`,          color: c.red   },
+    stats.flaggedUsers > 0            && { msg: `${n(stats.flaggedUsers)} account${stats.flaggedUsers > 1 ? 's' : ''} flagged for review`,             color: c.red   },
+    stats.failedBankTransfersToday > 0 && { msg: `${n(stats.failedBankTransfersToday)} bank transfer${stats.failedBankTransfersToday > 1 ? 's' : ''} failed today`, color: c.amber },
+  ].filter(Boolean) as { msg: string; color: string }[] : [];
+
+  const chartData = Array(chartRange === '7D' ? 7 : 30).fill(Math.max(1, stats?.totalTransactions ?? 0));
+  const chartMeta = {
+    total: stats ? `$${n(Math.floor(stats.totalVolumeUsdc))}` : '—',
+    trend: 'All time',
+    sub:   chartRange === '7D' ? 'Last 7 days' : '30-day view',
+    stats: [
+      { label: 'Total users',    value: stats ? n(stats.totalUsers)        : '—' },
+      { label: 'Active wallets', value: stats ? n(stats.activeWallets)     : '—' },
+      { label: 'Transactions',   value: stats ? n(stats.totalTransactions) : '—' },
+    ],
+  };
 
   const card: CSSProperties = {
     background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14,
@@ -177,49 +172,45 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Alert banner ────────────────────────────────────────────────── */}
-      <div style={{ ...card, overflow: 'hidden' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '11px 18px',
-          borderBottom: alertOpen ? `1px solid ${c.border}` : 'none',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="pulse-red" style={{ width: 6, height: 6, borderRadius: '50%', background: c.red, display: 'inline-block', flexShrink: 0 }} />
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>Action Required</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, padding: '1px 6px', borderRadius: 99 }}>5</span>
-          </div>
-          <button className="alert-toggle" onClick={() => setAlertOpen((v) => !v)} style={{ color: c.textDim }}>
-            <span style={{ transform: alertOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-flex' }}>
-              <IcoChevDown />
-            </span>
-          </button>
-        </div>
-        {alertOpen && [
-          { msg: '12 Black tier KYC docs awaiting approval',   color: c.red   },
-          { msg: '14 accounts flagged for fraud review',        color: c.red   },
-          { msg: '7 EVM wallets stuck in pending',             color: c.amber },
-          { msg: '3 bank transfers failed — reversal needed',  color: c.amber },
-          { msg: 'PulseMFB API returning degraded responses',  color: c.amber },
-        ].map((a, i, arr) => (
-          <div key={i} className="row-hover"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px 18px', gap: 12, cursor: 'pointer',
-              borderBottom: i < arr.length - 1 ? `1px solid ${c.border}` : 'none',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 2.5, height: 14, borderRadius: 99, background: a.color, flexShrink: 0, display: 'inline-block' }} />
-              <span style={{ fontSize: 12.5, color: c.text }}>{a.msg}</span>
+      {alertItems.length > 0 && (
+        <div style={{ ...card, overflow: 'hidden' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '11px 18px',
+            borderBottom: alertOpen ? `1px solid ${c.border}` : 'none',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="pulse-red" style={{ width: 6, height: 6, borderRadius: '50%', background: c.red, display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>Action Required</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, padding: '1px 6px', borderRadius: 99 }}>{alertItems.length}</span>
             </div>
-            <span style={{ fontSize: 11, color: c.textDim, flexShrink: 0 }}>Review →</span>
+            <button className="alert-toggle" onClick={() => setAlertOpen((v) => !v)} style={{ color: c.textDim }}>
+              <span style={{ transform: alertOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-flex' }}>
+                <IcoChevDown />
+              </span>
+            </button>
           </div>
-        ))}
-      </div>
+          {alertOpen && alertItems.map((a, i, arr) => (
+            <div key={i} className="row-hover"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 18px', gap: 12, cursor: 'pointer',
+                borderBottom: i < arr.length - 1 ? `1px solid ${c.border}` : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 2.5, height: 14, borderRadius: 99, background: a.color, flexShrink: 0, display: 'inline-block' }} />
+                <span style={{ fontSize: 12.5, color: c.text }}>{a.msg}</span>
+              </div>
+              <span style={{ fontSize: 11, color: c.textDim, flexShrink: 0 }}>Review →</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── KPI cards ───────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-        {KPI.map((k) => (
+        {kpi.map((k) => (
           <div key={k.label} className={`kpi-card ${k.cls}`} style={{ ...card, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
               <span style={{ fontSize: 11, color: c.textMid, fontWeight: 500 }}>{k.label}</span>
@@ -276,28 +267,28 @@ export default function AdminDashboard() {
         {/* Live feed */}
         <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '14px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Live Activity</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9.5, fontWeight: 600, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.18)`, padding: '2px 8px', borderRadius: 99 }}>
-              <span className="pulse-green" style={{ width: 4, height: 4, borderRadius: '50%', background: c.green, display: 'inline-block' }} />
-              LIVE
-            </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>System Status</span>
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {FEED.map((f, i) => (
+            {alertItems.length === 0 ? (
+              <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+                <div style={{ fontSize: 12, color: c.green, fontWeight: 600, marginBottom: 4 }}>All clear</div>
+                <div style={{ fontSize: 11, color: c.textDim }}>No items need attention</div>
+              </div>
+            ) : alertItems.map((f, i) => (
               <div key={i} className="row-hover"
                 style={{
                   padding: '11px 14px',
-                  borderBottom: i < FEED.length - 1 ? `1px solid ${c.border}` : 'none',
+                  borderBottom: i < alertItems.length - 1 ? `1px solid ${c.border}` : 'none',
                   display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'default',
                 }}
               >
-                <div style={{ paddingTop: 3 }}><Dot color={f.dot} /></div>
+                <div style={{ paddingTop: 3 }}><Dot color={f.color} /></div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                    <FeedLabel label={f.label} />
+                    <FeedLabel label={f.color === c.red ? 'Critical' : 'Warning'} />
                   </div>
                   <div style={{ fontSize: 12, color: c.text, lineHeight: 1.4 }}>{f.msg}</div>
-                  <div style={{ fontSize: 10, color: c.textDim, marginTop: 2 }}>{f.sub}</div>
                 </div>
               </div>
             ))}
@@ -309,10 +300,12 @@ export default function AdminDashboard() {
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Modules</span>
-          <span style={{ fontSize: 11, color: c.textDim }}>3 need attention</span>
+          {modules.filter((m) => m.alert).length > 0 && (
+            <span style={{ fontSize: 11, color: c.textDim }}>{modules.filter((m) => m.alert).length} need attention</span>
+          )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {MODULES.map((m) => (
+          {modules.map((m) => (
             <div key={m.label}
               className={m.alert ? 'mod-card mod-alert' : 'mod-card'}
               style={{
