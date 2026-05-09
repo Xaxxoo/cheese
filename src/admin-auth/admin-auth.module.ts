@@ -4,20 +4,23 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { Transaction } from '../transactions/entities/transaction.entity';
+import { BankTransfer } from '../banks/entities/bank-transfer.entity';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
 import { AdminRatesController } from './admin-rates.controller';
+import { AdminDashboardController } from './admin-dashboard.controller';
 import { RatesModule } from '../rates/rates.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken]),
+    TypeOrmModule.forFeature([User, RefreshToken, Transaction, BankTransfer]),
     PassportModule,
     JwtModule.register({}),
     RatesModule,
   ],
-  controllers: [AdminAuthController, AdminRatesController],
+  controllers: [AdminAuthController, AdminRatesController, AdminDashboardController],
   providers: [AdminAuthService, AdminJwtStrategy],
   exports: [AdminJwtStrategy],
 })
