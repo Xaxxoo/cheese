@@ -9,11 +9,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, MoreThanOrEqual, Repository } from 'typeorm';
 import { createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { User, AdminRole } from '../auth/entities/user.entity';
+import { User, AdminRole, KycStatus, Tier, WalletStatus } from '../auth/entities/user.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { Transaction, TxStatus } from '../transactions/entities/transaction.entity';
+import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfer.entity';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
@@ -26,6 +28,12 @@ export class AdminAuthService {
 
     @InjectRepository(RefreshToken)
     private readonly rtRepo: Repository<RefreshToken>,
+
+    @InjectRepository(Transaction)
+    private readonly txRepo: Repository<Transaction>,
+
+    @InjectRepository(BankTransfer)
+    private readonly bankTransferRepo: Repository<BankTransfer>,
 
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -244,6 +252,128 @@ export class AdminAuthService {
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.mustChangePassword = false;
     await this.userRepo.save(user);
+  }
+
+  // ── Dashboard stats ───────────────────────────────────────────────────────
+
+  async getStats() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalUsers,
+      verifiedUsers,
+      premiumUsers,
+      pendingKyc,
+      totalTransactions,
+      activeWallets,
+      failedBankTransfersToday,
+      flaggedUsers,
+      volumeResult,
+    ] = await Promise.all([
+      this.userRepo.count({ where: { isAdmin: false } }),
+      this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.VERIFIED } }),
+      this.userRepo.count({ where: { isAdmin: false, tier: In([Tier.GOLD, Tier.BLACK]) } }),
+      this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.SUBMITTED } }),
+      this.txRepo.count(),
+      this.userRepo.count({ where: { isAdmin: false, stellarWalletStatus: WalletStatus.ACTIVE } }),
+      this.bankTransferRepo.count({ where: { status: BankTransferStatus.FAILED, createdAt: MoreThanOrEqual(today) } }),
+      this.userRepo.count({ where: { isAdmin: false, isFlagged: true } }),
+      this.txRepo
+        .createQueryBuilder('t')
+        .select('SUM(CAST(t.amount_usdc AS DECIMAL(20,6)))', 'total')
+        .where('t.status = :s', { s: TxStatus.COMPLETED })
+        .getRawOne<{ total: string }>(),
+    ]);
+
+    return {
+      totalUsers,
+      verifiedUsers,
+      premiumUsers,
+      pendingKyc,
+      totalTransactions,
+      activeWallets,
+      failedBankTransfersToday,
+      flaggedUsers,
+      totalVolumeUsdc: parseFloat(volumeResult?.total ?? '0') || 0,
+    };
+  }
+
+  // ── User listing ──────────────────────────────────────────────────────────
+
+  async listUsers(query: {
+    page: number;
+    limit: number;
+    search?: string;
+    tier?: string;
+    kyc?: string;
+  }) {
+    const { page, limit, search, tier, kyc } = query;
+
+    const kycMap: Record<string, string> = {
+      reviewing: KycStatus.SUBMITTED,
+      failed:    KycStatus.REJECTED,
+    };
+
+    const qb = this.userRepo
+      .createQueryBuilder('u')
+      .where('u.is_admin = :isAdmin', { isAdmin: false })
+      .orderBy('u.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (search) {
+      qb.andWhere(
+        '(LOWER(u.username) LIKE :q OR LOWER(u.full_name) LIKE :q OR LOWER(u.email) LIKE :q)',
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+    if (tier && tier.toLowerCase() !== 'all') {
+      qb.andWhere('u.tier = :tier', { tier: tier.toLowerCase() });
+    }
+    if (kyc && kyc.toLowerCase() !== 'all') {
+      const mapped = kycMap[kyc.toLowerCase()] ?? kyc.toLowerCase();
+      qb.andWhere('u.kyc_status = :kyc', { kyc: mapped });
+    }
+
+    const [users, total] = await qb.getManyAndCount();
+
+    const kycDisplay: Record<string, string> = {
+      [KycStatus.PENDING]:   'Pending',
+      [KycStatus.SUBMITTED]: 'Reviewing',
+      [KycStatus.VERIFIED]:  'Verified',
+      [KycStatus.REJECTED]:  'Failed',
+    };
+
+    return {
+      users: users.map((u) => ({
+        id:           u.id,
+        name:         u.fullName || u.username,
+        username:     `@${u.username}`,
+        email:        u.email,
+        tier:         u.tier.charAt(0).toUpperCase() + u.tier.slice(1),
+        kycStatus:    kycDisplay[u.kycStatus] ?? u.kycStatus,
+        walletStatus: u.stellarWalletStatus.charAt(0).toUpperCase() + u.stellarWalletStatus.slice(1),
+        isFlagged:    u.isFlagged,
+        createdAt:    u.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── Health check ──────────────────────────────────────────────────────────
+
+  getHealth() {
+    const cfg = this.config;
+    return {
+      stellar:  !!cfg.get('STELLAR_HORIZON_URL'),
+      evm:      !!(cfg.get('ARBITRUM_RPC_URL') || cfg.get('BLOCKCHAIN_RPC_URL')),
+      pulsemfb: !!cfg.get('PULSE_MFB_PUBLIC_KEY'),
+      database: true,
+      redis:    !!cfg.get('REDIS_URL'),
+    };
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
