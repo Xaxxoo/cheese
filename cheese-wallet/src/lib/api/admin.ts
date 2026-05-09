@@ -65,6 +65,11 @@ export async function adminChangePassword(
 
 // ── Logout ────────────────────────────────────────────────
 export async function adminLogout(): Promise<void> {
+  // If the token is already gone (cleared by the 401 interceptor before
+  // firing admin:auth:expired), skip the API call entirely.  Without this
+  // guard the interceptor would retry the unauthenticated logout → 401 →
+  // refresh attempt → refresh failure → another admin:auth:expired → loop.
+  if (!adminTokenStore.get()) return
   await adminApiClient.post(A.LOGOUT)
   adminTokenStore.clear()
 }
