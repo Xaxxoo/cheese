@@ -1,67 +1,89 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import {
   c,
   IcoSearch, IcoMore, IcoPlus, IcoChevDown,
   Pill,
   tierStyle, kycStyle, walletStyle,
 } from '../_shared';
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const USERS = [
-  { name: 'Chiamaka Obi',      username: '@chiamaka22',   tier: 'Gold',   kyc: 'Verified',  wallet: 'Active',   balance: '$1,204.50',  txns: 43,  joined: 'Apr 22, 2026' },
-  { name: 'Emeka Nwachukwu',   username: '@emeka_fx',     tier: 'Silver', kyc: 'Pending',   wallet: 'Active',   balance: '$88.00',     txns: 5,   joined: 'Apr 22, 2026' },
-  { name: 'Adaeze Nwosu',      username: '@adaeze',       tier: 'Black',  kyc: 'Reviewing', wallet: 'Active',   balance: '$4,780.00',  txns: 127, joined: 'Apr 22, 2026' },
-  { name: 'Babatunde Fola',    username: '@babatunde',    tier: 'Silver', kyc: 'Verified',  wallet: 'Active',   balance: '$342.10',    txns: 18,  joined: 'Apr 22, 2026' },
-  { name: 'Ngozi Kalu',        username: '@ngozi_k',      tier: 'Gold',   kyc: 'Verified',  wallet: 'Active',   balance: '$2,100.00',  txns: 76,  joined: 'Apr 21, 2026' },
-  { name: 'Tunde Adeyemi',     username: '@tunde_pays',   tier: 'Silver', kyc: 'Verified',  wallet: 'Pending',  balance: '$0.00',      txns: 0,   joined: 'Apr 21, 2026' },
-  { name: 'Kemi Adesanya',     username: '@kemi_a',       tier: 'Gold',   kyc: 'Verified',  wallet: 'Active',   balance: '$892.75',    txns: 55,  joined: 'Apr 20, 2026' },
-  { name: 'Chukwuemeka Eze',   username: '@chukwu_e',     tier: 'Black',  kyc: 'Verified',  wallet: 'Active',   balance: '$12,440.00', txns: 312, joined: 'Apr 20, 2026' },
-  { name: 'Fatima Abubakar',   username: '@fatima_fx',    tier: 'Silver', kyc: 'Failed',    wallet: 'Inactive', balance: '$0.00',      txns: 0,   joined: 'Apr 19, 2026' },
-  { name: 'Olumide Bakare',    username: '@olumide_b',    tier: 'Silver', kyc: 'Verified',  wallet: 'Active',   balance: '$514.20',    txns: 29,  joined: 'Apr 19, 2026' },
-  { name: 'Amina Sule',        username: '@amina_s',      tier: 'Gold',   kyc: 'Verified',  wallet: 'Active',   balance: '$3,210.00',  txns: 88,  joined: 'Apr 18, 2026' },
-  { name: 'Obinna Okafor',     username: '@obinna_ok',    tier: 'Silver', kyc: 'Reviewing', wallet: 'Pending',  balance: '$0.00',      txns: 2,   joined: 'Apr 17, 2026' },
-  { name: 'Yewande Adeleke',   username: '@yewande',      tier: 'Black',  kyc: 'Verified',  wallet: 'Active',   balance: '$8,900.00',  txns: 204, joined: 'Apr 16, 2026' },
-  { name: 'Ibrahim Musa',      username: '@ibrahim_m',    tier: 'Silver', kyc: 'Pending',   wallet: 'Pending',  balance: '$0.00',      txns: 0,   joined: 'Apr 15, 2026' },
-  { name: 'Chidinma Okonkwo',  username: '@chidinma_ok',  tier: 'Gold',   kyc: 'Verified',  wallet: 'Active',   balance: '$1,750.30',  txns: 62,  joined: 'Apr 14, 2026' },
-  { name: 'Segun Ogunyemi',    username: '@segun_pays',   tier: 'Silver', kyc: 'Verified',  wallet: 'Active',   balance: '$287.00',    txns: 14,  joined: 'Apr 13, 2026' },
-  { name: 'Nkechi Obi',        username: '@nkechi_o',     tier: 'Silver', kyc: 'Verified',  wallet: 'Active',   balance: '$620.00',    txns: 31,  joined: 'Apr 12, 2026' },
-  { name: 'Aisha Mohammed',    username: '@aisha_m',      tier: 'Gold',   kyc: 'Verified',  wallet: 'Active',   balance: '$4,100.00',  txns: 95,  joined: 'Apr 10, 2026' },
-  { name: 'Uche Obi',          username: '@uche_ob',      tier: 'Silver', kyc: 'Failed',    wallet: 'Inactive', balance: '$0.00',      txns: 3,   joined: 'Apr 8, 2026'  },
-  { name: 'Folake Adekunle',   username: '@folake_a',     tier: 'Black',  kyc: 'Verified',  wallet: 'Active',   balance: '$21,300.00', txns: 441, joined: 'Apr 5, 2026'  },
-];
+import { listAdminUsers, getAdminStats, type AdminUserItem, type AdminStats } from '@/lib/api/admin';
 
 type TierFilter = 'All' | 'Silver' | 'Gold' | 'Black';
 type KycFilter  = 'All' | 'Verified' | 'Pending' | 'Reviewing' | 'Failed';
 
-const TOTAL = 12481;
+const LIMIT = 20;
+
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // ─── Users page ───────────────────────────────────────────────────────────────
 export default function UsersPage() {
   const [search,     setSearch]     = useState('');
   const [tierFilter, setTierFilter] = useState<TierFilter>('All');
   const [kycFilter,  setKycFilter]  = useState<KycFilter>('All');
+  const [page,       setPage]       = useState(1);
+  const [users,      setUsers]      = useState<AdminUserItem[]>([]);
+  const [total,      setTotal]      = useState(0);
+  const [loading,    setLoading]    = useState(true);
+  const [stats,      setStats]      = useState<AdminStats | null>(null);
 
-  const filtered = USERS.filter((u) => {
-    if (search) {
-      const q = search.toLowerCase();
-      if (!u.name.toLowerCase().includes(q) && !u.username.toLowerCase().includes(q)) return false;
-    }
-    if (tierFilter !== 'All' && u.tier !== tierFilter) return false;
-    if (kycFilter  !== 'All' && u.kyc  !== kycFilter)  return false;
-    return true;
-  });
+  // Header chips — fetch once
+  useEffect(() => {
+    getAdminStats().then(setStats).catch(console.error);
+  }, []);
+
+  // Users list — debounce search, reset page on filter change
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const delay = search ? 350 : 0;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await listAdminUsers({
+          page,
+          limit: LIMIT,
+          search:  search || undefined,
+          tier:    tierFilter !== 'All' ? tierFilter : undefined,
+          kyc:     kycFilter  !== 'All' ? kycFilter  : undefined,
+        });
+        if (!cancelled) { setUsers(result.users); setTotal(result.total); }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, delay);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [page, search, tierFilter, kycFilter]);
+
+  // Handlers — reset page on filter change
+  const handleSearch = (s: string)      => { setSearch(s);     setPage(1); };
+  const handleTier   = (t: TierFilter)  => { setTierFilter(t); setPage(1); };
+  const handleKyc    = (k: KycFilter)   => { setKycFilter(k);  setPage(1); };
+
+  const n = (v: number) => v.toLocaleString();
+  const totalPages = Math.ceil(total / LIMIT);
+
+  const pageButtons = (): (number | '···')[] => {
+    if (totalPages <= 7) return Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1);
+    if (page <= 4)               return [1, 2, 3, 4, 5, '···', totalPages];
+    if (page >= totalPages - 3)  return [1, '···', totalPages-4, totalPages-3, totalPages-2, totalPages-1, totalPages];
+    return [1, '···', page-1, page, page+1, '···', totalPages];
+  };
 
   const card: CSSProperties = {
     background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14,
   };
 
-  const TIERS:  TierFilter[] = ['All', 'Silver', 'Gold', 'Black'];
-  const KYCS:   KycFilter[]  = ['All', 'Verified', 'Pending', 'Reviewing', 'Failed'];
+  const TIERS: TierFilter[] = ['All', 'Silver', 'Gold', 'Black'];
+  const KYCS:  KycFilter[]  = ['All', 'Verified', 'Pending', 'Reviewing', 'Failed'];
 
-  const COLS = ['User', 'Tier', 'KYC', 'Wallet', 'Balance', 'Txns', 'Joined', ''];
-  const COL_GRID = '2.4fr 80px 90px 90px 90px 60px 100px 36px';
+  const COLS     = ['User', 'Tier', 'KYC', 'Wallet', 'Email', 'Joined', ''];
+  const COL_GRID = '2.4fr 80px 90px 90px 1.4fr 100px 36px';
+
+  const from = total === 0 ? 0 : (page - 1) * LIMIT + 1;
+  const to   = Math.min(page * LIMIT, total);
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -73,11 +95,11 @@ export default function UsersPage() {
             Users
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            {[
-              { label: '12,481 total',    color: c.textMid, bg: 'rgba(255,255,255,0.06)', brd: c.border },
-              { label: '9,860 verified',  color: c.green,   bg: c.greenDim,               brd: 'rgba(34,197,94,0.2)' },
-              { label: '4,868 premium',   color: c.amber,   bg: c.amberDim,               brd: c.amberBrd },
-              { label: '34 flagged',      color: c.red,     bg: c.redDim,                 brd: 'rgba(239,68,68,0.2)' },
+            {stats ? [
+              { label: `${n(stats.totalUsers)} total`,     color: c.textMid, bg: 'rgba(255,255,255,0.06)', brd: c.border },
+              { label: `${n(stats.verifiedUsers)} verified`, color: c.green, bg: c.greenDim, brd: 'rgba(34,197,94,0.2)' },
+              { label: `${n(stats.premiumUsers)} premium`,   color: c.amber, bg: c.amberDim, brd: c.amberBrd },
+              { label: `${n(stats.flaggedUsers)} flagged`,   color: c.red,   bg: c.redDim,   brd: 'rgba(239,68,68,0.2)' },
             ].map((chip) => (
               <span key={chip.label} style={{
                 fontSize: 11, fontWeight: 600, color: chip.color,
@@ -86,7 +108,9 @@ export default function UsersPage() {
               }}>
                 {chip.label}
               </span>
-            ))}
+            )) : (
+              <span style={{ fontSize: 11, color: c.textDim }}>Loading stats…</span>
+            )}
           </div>
         </div>
         <button className="invite-btn" style={{
@@ -115,7 +139,7 @@ export default function UsersPage() {
             className="user-search-input"
             placeholder="Search by name or @username…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
 
@@ -126,7 +150,7 @@ export default function UsersPage() {
           <span style={{ fontSize: 10.5, color: c.textDim, fontWeight: 500, flexShrink: 0 }}>Tier</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {TIERS.map((t) => (
-              <button key={t} className="filter-btn" onClick={() => setTierFilter(t)}
+              <button key={t} className="filter-btn" onClick={() => handleTier(t)}
                 style={{
                   background: tierFilter === t ? 'rgba(255,255,255,0.1)' : 'transparent',
                   color:      tierFilter === t ? c.text                  : c.textDim,
@@ -145,7 +169,7 @@ export default function UsersPage() {
           <span style={{ fontSize: 10.5, color: c.textDim, fontWeight: 500, flexShrink: 0 }}>KYC</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {KYCS.map((k) => (
-              <button key={k} className="filter-btn" onClick={() => setKycFilter(k)}
+              <button key={k} className="filter-btn" onClick={() => handleKyc(k)}
                 style={{
                   background: kycFilter === k ? 'rgba(255,255,255,0.1)' : 'transparent',
                   color:      kycFilter === k ? c.text                  : c.textDim,
@@ -159,7 +183,7 @@ export default function UsersPage() {
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11.5, color: c.textDim }}>
-            {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+            {loading ? 'Loading…' : `${n(total)} result${total !== 1 ? 's' : ''}`}
           </span>
           <button className="action-btn" style={{ padding: '5px 10px', color: c.textMid, border: `1px solid ${c.border}`, fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 5 }}>
             <IcoChevDown /> Export
@@ -185,23 +209,27 @@ export default function UsersPage() {
 
         {/* Rows */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          {filtered.length === 0 ? (
+          {loading && users.length === 0 ? (
+            <div style={{ padding: '60px 22px', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: c.textDim }}>Loading users…</div>
+            </div>
+          ) : users.length === 0 ? (
             <div style={{ padding: '60px 22px', textAlign: 'center' }}>
               <div style={{ fontSize: 14, color: c.textMid, fontWeight: 500, marginBottom: 6 }}>No users found</div>
               <div style={{ fontSize: 12, color: c.textDim }}>Try adjusting your search or filters.</div>
             </div>
           ) : (
-            filtered.map((u, i) => {
-              const initials = u.name.split(' ').map((n) => n[0]).join('').slice(0, 2);
+            users.map((u, i) => {
+              const initials = u.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
               const ts = tierStyle(u.tier);
-              const ks = kycStyle(u.kyc);
-              const ws = walletStyle(u.wallet);
+              const ks = kycStyle(u.kycStatus);
+              const ws = walletStyle(u.walletStatus);
               return (
-                <div key={i} className="row-hover"
+                <div key={u.id} className="row-hover"
                   style={{
                     display: 'grid', gridTemplateColumns: COL_GRID,
                     padding: '11px 22px', alignItems: 'center', cursor: 'default',
-                    borderBottom: i < filtered.length - 1 ? `1px solid ${c.border}` : 'none',
+                    borderBottom: i < users.length - 1 ? `1px solid ${c.border}` : 'none',
                   }}
                 >
                   {/* User */}
@@ -215,34 +243,36 @@ export default function UsersPage() {
                       {initials}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {u.name}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {u.name}
+                        </div>
+                        {u.isFlagged && (
+                          <span style={{ fontSize: 9, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, padding: '1px 5px', borderRadius: 99, fontWeight: 700, flexShrink: 0 }}>
+                            Flagged
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: 10.5, color: c.textDim }}>{u.username}</div>
                     </div>
                   </div>
 
                   {/* Tier */}
-                  <Pill label={u.tier}   color={ts.color} bg={ts.bg} brd={ts.brd} />
+                  <Pill label={u.tier}        color={ts.color} bg={ts.bg} brd={ts.brd} />
 
                   {/* KYC */}
-                  <Pill label={u.kyc}    color={ks.color} bg={ks.bg} brd={ks.brd} />
+                  <Pill label={u.kycStatus}   color={ks.color} bg={ks.bg} brd={ks.brd} />
 
                   {/* Wallet */}
-                  <Pill label={u.wallet} color={ws.color} bg={ws.bg} brd={ws.brd} />
+                  <Pill label={u.walletStatus} color={ws.color} bg={ws.bg} brd={ws.brd} />
 
-                  {/* Balance */}
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: u.balance === '$0.00' ? c.textDim : c.text, fontVariantNumeric: 'tabular-nums' }}>
-                    {u.balance}
-                  </div>
-
-                  {/* Txns */}
-                  <div style={{ fontSize: 12.5, color: u.txns === 0 ? c.textDim : c.text, fontVariantNumeric: 'tabular-nums' }}>
-                    {u.txns}
+                  {/* Email */}
+                  <div style={{ fontSize: 12, color: c.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.email}
                   </div>
 
                   {/* Joined */}
-                  <div style={{ fontSize: 11.5, color: c.textDim }}>{u.joined}</div>
+                  <div style={{ fontSize: 11.5, color: c.textDim }}>{fmtDate(u.createdAt)}</div>
 
                   {/* Actions */}
                   <button className="action-btn" style={{
@@ -264,28 +294,65 @@ export default function UsersPage() {
         padding: '12px 4px', flexShrink: 0,
       }}>
         <span style={{ fontSize: 12, color: c.textDim }}>
-          Showing <span style={{ color: c.text, fontWeight: 500 }}>1–20</span> of{' '}
-          <span style={{ color: c.text, fontWeight: 500 }}>{TOTAL.toLocaleString()}</span> users
+          {total === 0 ? 'No users' : (
+            <>
+              Showing <span style={{ color: c.text, fontWeight: 500 }}>{from}–{to}</span> of{' '}
+              <span style={{ color: c.text, fontWeight: 500 }}>{n(total)}</span> users
+            </>
+          )}
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
-          {['← Prev', '1', '2', '3', '···', '625', 'Next →'].map((label, i) => {
-            const isActive = label === '1';
-            const isDisabled = label === '← Prev';
+          <button
+            className="action-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            style={{
+              minWidth: 30, height: 30, padding: '0 8px',
+              fontSize: 12, color: page <= 1 ? c.textDim : c.textMid,
+              borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
+              cursor: page <= 1 ? 'default' : 'pointer',
+            }}
+          >
+            ← Prev
+          </button>
+          {pageButtons().map((label, i) => {
+            const isActive   = label === page;
+            const isEllipsis = label === '···';
             return (
-              <button key={i} className="action-btn"
+              <button
+                key={`${label}-${i}`}
+                className="action-btn"
+                disabled={isEllipsis}
+                onClick={() => typeof label === 'number' && setPage(label)}
                 style={{
                   minWidth: 30, height: 30, padding: '0 8px',
                   fontSize: 12, fontWeight: isActive ? 700 : 400,
-                  color: isActive ? c.text : isDisabled ? c.textDim : c.textMid,
+                  color: isActive ? c.text : c.textMid,
                   background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
                   border: isActive ? `1px solid rgba(255,255,255,0.15)` : `1px solid transparent`,
                   borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  opacity: isDisabled ? 0.4 : 1, cursor: isDisabled ? 'default' : 'pointer',
-                }}>
+                  cursor: isEllipsis ? 'default' : 'pointer',
+                }}
+              >
                 {label}
               </button>
             );
           })}
+          <button
+            className="action-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            style={{
+              minWidth: 30, height: 30, padding: '0 8px',
+              fontSize: 12, color: page >= totalPages ? c.textDim : c.textMid,
+              borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
+              cursor: page >= totalPages ? 'default' : 'pointer',
+            }}
+          >
+            Next →
+          </button>
         </div>
       </div>
 
