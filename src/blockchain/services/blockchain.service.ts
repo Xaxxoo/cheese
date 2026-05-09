@@ -81,8 +81,10 @@ interface EvmChainContext {
 const EVM_CHAIN_DEFINITIONS = [
   { chainId: 42161, name: 'arbitrum', envPrefix: 'ARBITRUM' },
   { chainId: 8453,  name: 'base',     envPrefix: 'BASE'     },
+  { chainId: 42220, name: 'celo',     envPrefix: 'CELO'     },
   { chainId: 137,   name: 'polygon',  envPrefix: 'POLYGON'  },
   { chainId: 10,    name: 'optimism', envPrefix: 'OPTIMISM' },
+  { chainId: 1135,  name: 'lisk',     envPrefix: 'LISK'     },
   { chainId: 1,     name: 'ethereum', envPrefix: 'ETHEREUM' },
 ] as const;
 
