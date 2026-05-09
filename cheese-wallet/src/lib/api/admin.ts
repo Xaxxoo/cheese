@@ -132,3 +132,64 @@ export async function setAdminRate(
   )
   return data.data
 }
+
+// ── Dashboard stats ───────────────────────────────────────────────────────
+export interface AdminStats {
+  totalUsers:               number
+  verifiedUsers:            number
+  premiumUsers:             number
+  pendingKyc:               number
+  totalTransactions:        number
+  activeWallets:            number
+  failedBankTransfersToday: number
+  flaggedUsers:             number
+  totalVolumeUsdc:          number
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+  const { data } = await adminApiClient.get<ApiResponse<AdminStats>>('/admin/stats')
+  return data.data
+}
+
+// ── User listing ──────────────────────────────────────────────────────────
+export interface AdminUserItem {
+  id:           string
+  name:         string
+  username:     string
+  email:        string
+  tier:         string
+  kycStatus:    string
+  walletStatus: string
+  isFlagged:    boolean
+  createdAt:    string
+}
+
+export async function listAdminUsers(params?: {
+  page?:   number
+  limit?:  number
+  search?: string
+  tier?:   string
+  kyc?:    string
+}): Promise<{ users: AdminUserItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    users: AdminUserItem[]
+    total: number
+    page:  number
+    limit: number
+  }>>('/admin/users', { params })
+  return data.data
+}
+
+// ── Health check ──────────────────────────────────────────────────────────
+export interface AdminHealth {
+  stellar:  boolean
+  evm:      boolean
+  pulsemfb: boolean
+  database: boolean
+  redis:    boolean
+}
+
+export async function getAdminHealth(): Promise<AdminHealth> {
+  const { data } = await adminApiClient.get<ApiResponse<AdminHealth>>('/admin/health')
+  return data.data
+}
