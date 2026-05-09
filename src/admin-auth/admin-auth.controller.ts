@@ -31,7 +31,7 @@ const COOKIE_OPTS = (maxAge: number) => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
-  path: '/admin/auth',
+  path: '/v1/admin/auth',   // must match the global prefix so browser sends cookie on refresh
   maxAge,
 });
 
@@ -112,7 +112,7 @@ export class AdminAuthController {
 
     if (token) await this.adminAuthService.logout(token);
 
-    res.clearCookie(REFRESH_COOKIE, { path: '/admin/auth' });
+    res.clearCookie(REFRESH_COOKIE, { path: '/v1/admin/auth' });
     return { message: 'Logged out' };
   }
 
