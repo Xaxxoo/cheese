@@ -104,14 +104,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [liveRate,    setLiveRate]    = useState<string | null>(null);
   const [health,      setHealth]      = useState<AdminHealth | null>(null);
 
-  // ── Session restore + expired listener ────────────────────────────────────
+  // ── Auth-expired listener — always registered so token expiry is handled ────
   useEffect(() => {
-    if (pathname === '/admin/login') return;
-    restoreSession();
-
     const onExpired = () => { logout(); router.replace('/admin/login'); };
     window.addEventListener('admin:auth:expired', onExpired);
     return () => window.removeEventListener('admin:auth:expired', onExpired);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Session restore — validate stored session against backend on mount ──────
+  useEffect(() => {
+    if (pathname === '/admin/login') return;
+    restoreSession();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
