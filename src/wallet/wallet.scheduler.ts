@@ -166,13 +166,20 @@ export class WalletDepositScheduler {
       // Skip internal platform payments (refunds, credits, etc.)
       if (payment.from === platformPublicKey) continue;
 
-      // Skip if we've already recorded this payment
-      const exists = await this.txService.existsByTxHash(payment.txHash);
-      if (exists) continue;
+      // A missing txHash means we cannot deduplicate this payment — skip it
+      // rather than risk recording it multiple times (nulls bypass UNIQUE constraint).
+      if (!payment.txHash) {
+        this.logger.warn(
+          `Skipping Stellar payment with no txHash [user=${user.id}] [paging=${payment.pagingToken}]`,
+        );
+        continue;
+      }
 
       const reference = `CW-DEP-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
 
-      await this.txService.create({
+      // Atomic INSERT ... ON CONFLICT (tx_hash) DO NOTHING — safe under concurrent
+      // cron instances. Returns false when another instance already inserted it.
+      const inserted = await this.txService.createDeposit({
         userId: user.id,
         type: TxType.DEPOSIT,
         status: TxStatus.COMPLETED,
@@ -182,6 +189,8 @@ export class WalletDepositScheduler {
         reference,
         description: `USDC deposit from ${payment.from}`,
       });
+
+      if (!inserted) continue; // already recorded by a concurrent instance
 
       this.logger.log(
         `Deposit recorded [user=${user.id}] [amount=${payment.amount} USDC] [hash=${payment.txHash}]`,

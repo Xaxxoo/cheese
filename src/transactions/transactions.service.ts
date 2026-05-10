@@ -54,6 +54,22 @@ export class TransactionsService {
     return this.txRepo.existsBy({ txHash });
   }
 
+  /**
+   * Attempt an atomic INSERT ... ON CONFLICT (tx_hash) DO NOTHING.
+   * Returns true if the row was inserted, false if it already existed.
+   * Requires txHash to be non-null — callers must guard before calling.
+   */
+  async createDeposit(data: Partial<Transaction>): Promise<boolean> {
+    const result = await this.txRepo
+      .createQueryBuilder()
+      .insert()
+      .into(Transaction)
+      .values(data)
+      .orIgnore()
+      .execute();
+    return result.identifiers.length > 0;
+  }
+
   // ── Limit & milestone queries ─────────────────────────────
 
   /** Total USDC sent outbound today (crypto sends only). */
