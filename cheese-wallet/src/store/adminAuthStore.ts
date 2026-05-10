@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { adminLogin, adminMe, adminLogout, adminChangePassword } from '@/lib/api/admin'
 import type { AdminRole as AdminRoleType } from '@/lib/api/admin'
+import { adminTokenStore } from '@/lib/api/adminClient'
 
 // ─── Role types ───────────────────────────────────────────────────────────────
 
@@ -73,13 +74,21 @@ export const useAdminAuthStore = create<AdminAuthStore>()(
         set({ admin: null, isAuthenticated: false })
       },
 
-      // Called on layout mount to verify the stored session is still valid
+      // Called on layout mount to verify the stored session is still valid.
+      // Only clears the session when the token was genuinely revoked (the
+      // refresh interceptor sets the token to null on auth failure).
+      // Network errors and 5xx responses do NOT log the user out — the
+      // admin:auth:expired event handles genuine token expiry separately.
       restoreSession: async () => {
         try {
           const admin = await adminMe()
           set({ admin, isAuthenticated: true })
         } catch {
-          set({ admin: null, isAuthenticated: false })
+          if (!adminTokenStore.get()) {
+            // Token was cleared by the interceptor — genuine auth failure.
+            set({ admin: null, isAuthenticated: false })
+          }
+          // else: network/server error — keep existing session state.
         }
       },
 
