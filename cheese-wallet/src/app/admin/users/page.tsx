@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, type CSSProperties } from 'react';
+import Link from 'next/link';
 import {
   c,
   IcoSearch, IcoMore, IcoPlus, IcoChevDown,
@@ -225,11 +226,12 @@ export default function UsersPage() {
               const ks = kycStyle(u.kycStatus);
               const ws = walletStyle(u.walletStatus);
               return (
-                <div key={u.id} className="row-hover"
+                <Link key={u.id} href={`/admin/users/${u.id}`} className="row-hover"
                   style={{
                     display: 'grid', gridTemplateColumns: COL_GRID,
-                    padding: '11px 22px', alignItems: 'center', cursor: 'default',
+                    padding: '11px 22px', alignItems: 'center', cursor: 'pointer',
                     borderBottom: i < users.length - 1 ? `1px solid ${c.border}` : 'none',
+                    textDecoration: 'none', color: 'inherit',
                   }}
                 >
                   {/* User */}
@@ -275,13 +277,13 @@ export default function UsersPage() {
                   <div style={{ fontSize: 11.5, color: c.textDim }}>{fmtDate(u.createdAt)}</div>
 
                   {/* Actions */}
-                  <button className="action-btn" style={{
+                  <button className="action-btn" onClick={(e) => e.preventDefault()} style={{
                     width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: c.textDim, borderRadius: 6,
                   }}>
                     <IcoMore />
                   </button>
-                </div>
+                </Link>
               );
             })
           )}
