@@ -363,6 +363,148 @@ export class AdminAuthService {
     };
   }
 
+  // ── Transfers listing ─────────────────────────────────────────────────────
+
+  async listTransfers(query: {
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+    userId?: string;
+  }) {
+    const { page, limit, status, search, userId } = query;
+
+    const qb = this.bankTransferRepo
+      .createQueryBuilder('bt')
+      .leftJoinAndSelect('bt.user', 'u')
+      .orderBy('bt.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status && status !== 'all') {
+      qb.andWhere('bt.status = :status', { status });
+    }
+    if (userId) {
+      qb.andWhere('bt.user_id = :userId', { userId });
+    }
+    if (search) {
+      qb.andWhere(
+        '(LOWER(bt.reference) LIKE :q OR LOWER(bt.account_name) LIKE :q OR LOWER(bt.bank_name) LIKE :q OR LOWER(u.username) LIKE :q)',
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [transfers, total] = await qb.getManyAndCount();
+
+    return {
+      transfers: transfers.map((bt) => ({
+        id:            bt.id,
+        reference:     bt.reference,
+        username:      bt.user?.username ?? '—',
+        userId:        bt.userId,
+        bankName:      bt.bankName,
+        accountName:   bt.accountName,
+        accountNumber: bt.accountNumber,
+        amountNgn:     bt.amountNgn,
+        amountUsdc:    bt.amountUsdc,
+        status:        bt.status,
+        failureReason: bt.failureReason,
+        createdAt:     bt.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── User detail ───────────────────────────────────────────────────────────
+
+  async getUserDetail(id: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const [txCount, failedTransferCount, recentTxs, recentTransfers] =
+      await Promise.all([
+        this.txRepo.count({ where: { userId: id } }),
+        this.bankTransferRepo.count({
+          where: { userId: id, status: BankTransferStatus.FAILED },
+        }),
+        this.txRepo.find({
+          where: { userId: id },
+          order: { createdAt: 'DESC' },
+          take: 5,
+        }),
+        this.bankTransferRepo.find({
+          where: { userId: id },
+          order: { createdAt: 'DESC' },
+          take: 5,
+        }),
+      ]);
+
+    const kycDisplay: Record<string, string> = {
+      [KycStatus.PENDING]:   'Pending',
+      [KycStatus.SUBMITTED]: 'Reviewing',
+      [KycStatus.VERIFIED]:  'Verified',
+      [KycStatus.REJECTED]:  'Failed',
+    };
+
+    return {
+      id:               user.id,
+      name:             user.fullName || user.username,
+      username:         user.username,
+      email:            user.email,
+      phone:            user.phone,
+      tier:             user.tier.charAt(0).toUpperCase() + user.tier.slice(1),
+      kycStatus:        kycDisplay[user.kycStatus] ?? user.kycStatus,
+      walletStatus:     user.stellarWalletStatus.charAt(0).toUpperCase() + user.stellarWalletStatus.slice(1),
+      evmWalletStatus:  user.evmWalletStatus.charAt(0).toUpperCase() + user.evmWalletStatus.slice(1),
+      stellarPublicKey: user.stellarPublicKey,
+      evmAddress:       user.evmAddress,
+      isActive:         user.isActive,
+      isFlagged:        user.isFlagged,
+      emailVerified:    user.emailVerified,
+      referralCode:     user.referralCode,
+      points:           user.points,
+      createdAt:        user.createdAt,
+      txCount,
+      failedTransferCount,
+      recentTransactions: recentTxs.map((tx) => ({
+        id:         tx.id,
+        type:       tx.type,
+        status:     tx.status,
+        amountUsdc: tx.amountUsdc,
+        createdAt:  tx.createdAt,
+      })),
+      recentTransfers: recentTransfers.map((bt) => ({
+        id:            bt.id,
+        bankName:      bt.bankName,
+        accountName:   bt.accountName,
+        amountNgn:     bt.amountNgn,
+        status:        bt.status,
+        failureReason: bt.failureReason,
+        createdAt:     bt.createdAt,
+      })),
+    };
+  }
+
+  // ── User actions ──────────────────────────────────────────────────────────
+
+  async flagUser(id: string, flag: boolean) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+    user.isFlagged = flag;
+    await this.userRepo.save(user);
+    return { id: user.id, isFlagged: user.isFlagged };
+  }
+
+  async setUserActive(id: string, isActive: boolean) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+    user.isActive = isActive;
+    await this.userRepo.save(user);
+    return { id: user.id, isActive: user.isActive };
+  }
+
   // ── Health check ──────────────────────────────────────────────────────────
 
   getHealth() {

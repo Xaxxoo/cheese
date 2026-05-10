@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminAuthService } from './admin-auth.service';
@@ -45,5 +45,53 @@ export class AdminDashboardController {
   @ApiOperation({ summary: 'Service health status' })
   getHealth() {
     return this.adminAuthService.getHealth();
+  }
+
+  // ── GET /admin/transfers ───────────────────────────────────────────────────
+  @Get('transfers')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List bank transfers (paginated, filterable)' })
+  listTransfers(
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.adminAuthService.listTransfers({
+      page:   Math.max(1, parseInt(page  ?? '1',  10)),
+      limit:  Math.min(100, parseInt(limit ?? '20', 10)),
+      status,
+      search,
+      userId,
+    });
+  }
+
+  // ── GET /admin/users/:id ───────────────────────────────────────────────────
+  @Get('users/:id')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get detailed user profile' })
+  getUserDetail(@Param('id') id: string) {
+    return this.adminAuthService.getUserDetail(id);
+  }
+
+  // ── PATCH /admin/users/:id/flag ────────────────────────────────────────────
+  @Patch('users/:id/flag')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Flag or unflag a user' })
+  flagUser(@Param('id') id: string, @Body('flag') flag: boolean) {
+    return this.adminAuthService.flagUser(id, flag);
+  }
+
+  // ── PATCH /admin/users/:id/status ─────────────────────────────────────────
+  @Patch('users/:id/status')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Activate or deactivate a user account' })
+  setUserStatus(@Param('id') id: string, @Body('isActive') isActive: boolean) {
+    return this.adminAuthService.setUserActive(id, isActive);
   }
 }
