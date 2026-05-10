@@ -152,10 +152,19 @@ export class WalletDepositScheduler {
 
     if (payments.length === 0) return;
 
+    // Payments sent from the platform's own wallet are internal operations
+    // (bank-transfer refunds, yield credits, etc.) and must not be recorded
+    // as user deposits — they are already accounted for by the originating service.
+    const platformPublicKey =
+      this.blockchainService.getStellarPlatformPublicKey();
+
     let latestCursor = user.stellarDepositCursor;
 
     for (const payment of payments) {
       latestCursor = payment.pagingToken;
+
+      // Skip internal platform payments (refunds, credits, etc.)
+      if (payment.from === platformPublicKey) continue;
 
       // Skip if we've already recorded this payment
       const exists = await this.txService.existsByTxHash(payment.txHash);
