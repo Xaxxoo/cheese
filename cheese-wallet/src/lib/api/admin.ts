@@ -185,6 +185,87 @@ export async function listAdminUsers(params?: {
   return data.data
 }
 
+// ── Transfers listing ─────────────────────────────────────────────────────
+export interface AdminTransferItem {
+  id:            string
+  reference:     string
+  username:      string
+  userId:        string
+  bankName:      string
+  accountName:   string
+  accountNumber: string
+  amountNgn:     string
+  amountUsdc:    string
+  status:        string
+  failureReason: string | null
+  createdAt:     string
+}
+
+export async function listAdminTransfers(params?: {
+  page?:   number
+  limit?:  number
+  status?: string
+  search?: string
+  userId?: string
+}): Promise<{ transfers: AdminTransferItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    transfers: AdminTransferItem[]
+    total: number
+    page:  number
+    limit: number
+  }>>('/admin/transfers', { params })
+  return data.data
+}
+
+// ── User detail ───────────────────────────────────────────────────────────
+export interface AdminUserDetail {
+  id:               string
+  name:             string
+  username:         string
+  email:            string
+  phone:            string | null
+  tier:             string
+  kycStatus:        string
+  walletStatus:     string
+  evmWalletStatus:  string
+  stellarPublicKey: string | null
+  evmAddress:       string | null
+  isActive:         boolean
+  isFlagged:        boolean
+  emailVerified:    boolean
+  referralCode:     string | null
+  points:           number
+  createdAt:        string
+  txCount:          number
+  failedTransferCount: number
+  recentTransactions: Array<{
+    id: string; type: string; status: string; amountUsdc: string | null; createdAt: string
+  }>
+  recentTransfers: Array<{
+    id: string; bankName: string; accountName: string; amountNgn: string;
+    status: string; failureReason: string | null; createdAt: string
+  }>
+}
+
+export async function getAdminUserDetail(id: string): Promise<AdminUserDetail> {
+  const { data } = await adminApiClient.get<ApiResponse<AdminUserDetail>>(`/admin/users/${id}`)
+  return data.data
+}
+
+export async function flagAdminUser(id: string, flag: boolean): Promise<{ id: string; isFlagged: boolean }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; isFlagged: boolean }>>(
+    `/admin/users/${id}/flag`, { flag },
+  )
+  return data.data
+}
+
+export async function setAdminUserStatus(id: string, isActive: boolean): Promise<{ id: string; isActive: boolean }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; isActive: boolean }>>(
+    `/admin/users/${id}/status`, { isActive },
+  )
+  return data.data
+}
+
 // ── Health check ──────────────────────────────────────────────────────────
 export interface AdminHealth {
   stellar:  boolean
