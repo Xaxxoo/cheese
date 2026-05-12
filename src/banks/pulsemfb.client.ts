@@ -99,7 +99,7 @@ export class PulseMfbClient implements OnModuleInit {
 
   // ── Initiate Transfer ───────────────────────────────────────────────────────
   async initiateTransfer(params: {
-  debitAccountNumber: string;
+  debitAccount: string;
   beneficiaryAccountNumber: string;
   beneficiaryBankCode: string;
   beneficiaryBankName: string;
@@ -111,7 +111,7 @@ export class PulseMfbClient implements OnModuleInit {
     const data = await this.post<{ data: PulseMfbTransferResult }>(
       '/api/v1/external-api/transfers',
       {
-       debit_account_number: params.debitAccountNumber,
+       debit_account_number: params.debitAccount,
       beneficiary_account_number: params.beneficiaryAccountNumber,
       beneficiary_bank_code: params.beneficiaryBankCode,
       beneficiary_bank_name: params.beneficiaryBankName,

@@ -455,7 +455,7 @@ export class BanksService {
     //     If the provider call fails we MUST refund the USDC immediately.
     try {
       const providerRef = await this.initiateBankingTransfer({
-        debitAccountNumber: this.pulseMfb.platformDebitAccount,
+        debitAccount: this.pulseMfb.platformDebitAccount,
         accountNumber: dto.accountNumber,
         bankCode: dto.bankCode,
         bankName,
@@ -664,7 +664,7 @@ export class BanksService {
 
   // ── PulseMFB transfer ─────────────────────────────────────────────────────
   private async initiateBankingTransfer(params: {
-    debitAccountNumber: string;
+    debitAccount: string;
     accountNumber: string;
     bankCode: string;
     bankName: string;
@@ -673,7 +673,7 @@ export class BanksService {
     reference: string;
   }): Promise<string> {
     const result = await this.pulseMfb.initiateTransfer({
-      debitAccountNumber: params.debitAccountNumber,
+      debitAccount: params.debitAccount,
       beneficiaryAccountNumber: params.accountNumber,
       beneficiaryBankCode: params.bankCode,
       beneficiaryBankName: params.bankName,
