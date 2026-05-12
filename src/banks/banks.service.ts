@@ -27,14 +27,24 @@ import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_NGN_LIMIT, formatNgnLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
 
+type BankDirectoryEntry = {
+  code: string;
+  name: string;
+  shortName: string;
+  color: string;
+  nipEnabled: boolean;
+  type: 'commercial' | 'microfinance' | 'fintech' | 'merchant';
+};
+
 // ── Nigerian banks (NIP-enabled) ─────────────────────────────────────────────
-const NIGERIAN_BANKS = [
+const NIGERIAN_BANKS: BankDirectoryEntry[] = [
   {
     code: '044',
     name: 'Access Bank',
     shortName: 'Access',
     color: '#E30813',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '063',
@@ -42,6 +52,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Diamond',
     color: '#004C97',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '035A',
@@ -49,6 +60,7 @@ const NIGERIAN_BANKS = [
     shortName: 'ALAT',
     color: '#5A2D82',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '401',
@@ -56,6 +68,7 @@ const NIGERIAN_BANKS = [
     shortName: 'ASO',
     color: '#006400',
     nipEnabled: false,
+    type: 'microfinance',
   },
   {
     code: '023',
@@ -63,6 +76,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Citibank',
     color: '#003B70',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '050',
@@ -70,6 +84,7 @@ const NIGERIAN_BANKS = [
     shortName: 'EcoBank',
     color: '#008000',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '562',
@@ -77,6 +92,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Ekondo',
     color: '#FF6600',
     nipEnabled: false,
+    type: 'microfinance',
   },
   {
     code: '070',
@@ -84,6 +100,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Fidelity',
     color: '#00703C',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '011',
@@ -91,6 +108,7 @@ const NIGERIAN_BANKS = [
     shortName: 'First Bank',
     color: '#01579B',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '214',
@@ -98,6 +116,7 @@ const NIGERIAN_BANKS = [
     shortName: 'FCMB',
     color: '#00008B',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '058',
@@ -105,6 +124,7 @@ const NIGERIAN_BANKS = [
     shortName: 'GTBank',
     color: '#F36F21',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '030',
@@ -112,6 +132,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Heritage',
     color: '#8B0000',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '301',
@@ -119,6 +140,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Jaiz',
     color: '#006400',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '082',
@@ -126,6 +148,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Keystone',
     color: '#1E3A5F',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '526',
@@ -133,6 +156,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Parallex',
     color: '#00A651',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '076',
@@ -140,6 +164,15 @@ const NIGERIAN_BANKS = [
     shortName: 'Polaris',
     color: '#D32F2F',
     nipEnabled: true,
+    type: 'commercial',
+  },
+  {
+    code: '090713',
+    name: 'Pulse Microfinance Bank',
+    shortName: 'Pulse MFB',
+    color: '#0F7B52',
+    nipEnabled: true,
+    type: 'microfinance',
   },
   {
     code: '101',
@@ -147,6 +180,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Providus',
     color: '#004080',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '221',
@@ -154,6 +188,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Stanbic',
     color: '#009EE0',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '068',
@@ -161,6 +196,7 @@ const NIGERIAN_BANKS = [
     shortName: 'StanChart',
     color: '#0072AA',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '232',
@@ -168,6 +204,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Sterling',
     color: '#CC0000',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '100',
@@ -175,6 +212,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Suntrust',
     color: '#FF8C00',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '302',
@@ -182,6 +220,7 @@ const NIGERIAN_BANKS = [
     shortName: 'TAJ',
     color: '#006400',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '102',
@@ -189,6 +228,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Titan',
     color: '#1B3A6B',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '032',
@@ -196,6 +236,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Union',
     color: '#003366',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '033',
@@ -203,6 +244,7 @@ const NIGERIAN_BANKS = [
     shortName: 'UBA',
     color: '#D0021B',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '215',
@@ -210,6 +252,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Unity',
     color: '#006400',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '035',
@@ -217,6 +260,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Wema',
     color: '#5A2D82',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '057',
@@ -224,6 +268,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Zenith',
     color: '#C8102E',
     nipEnabled: true,
+    type: 'commercial',
   },
   {
     code: '120001',
@@ -231,6 +276,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Opay',
     color: '#008751',
     nipEnabled: true,
+    type: 'fintech',
   },
   {
     code: '120002',
@@ -238,6 +284,7 @@ const NIGERIAN_BANKS = [
     shortName: 'PalmPay',
     color: '#00A859',
     nipEnabled: true,
+    type: 'fintech',
   },
   {
     code: '120003',
@@ -245,6 +292,7 @@ const NIGERIAN_BANKS = [
     shortName: 'Moniepoint',
     color: '#004B87',
     nipEnabled: true,
+    type: 'fintech',
   },
   {
     code: '120004',
@@ -252,12 +300,51 @@ const NIGERIAN_BANKS = [
     shortName: 'Kuda',
     color: '#40196D',
     nipEnabled: true,
+    type: 'fintech',
   },
 ];
 
 const TRANSFER_FEE_NGN = 50; // flat ₦50 per withdrawal
 const MIN_TRANSFER_NGN = 100;
 const MAX_TRANSFER_NGN = 10_000_000; // Black tier ceiling — daily limit enforced per-tier above
+
+function normalizeAccountName(value: string): string {
+  return value.replace(/[^a-z0-9]/gi, '').toUpperCase();
+}
+
+function extractProviderFailureReason(
+  data: Record<string, unknown>,
+): string | undefined {
+  const candidateKeys = [
+    'failure_reason',
+    'failureReason',
+    'responseMessage',
+    'message',
+    'reason',
+  ] as const;
+
+  for (const key of candidateKeys) {
+    const value = data[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function canonicalizeSignaturePayload(
+  payload: Record<string, string>,
+): string {
+  const sortedPayload = Object.keys(payload)
+    .sort()
+    .reduce<Record<string, string>>((acc, key) => {
+      acc[key] = payload[key];
+      return acc;
+    }, {});
+
+  return JSON.stringify(sortedPayload);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -282,13 +369,18 @@ export class BanksService {
 
   // ── GET /banks ────────────────────────────────────────────────────────────
   getBanks() {
-    return NIGERIAN_BANKS.map((b) => ({ ...b, type: 'commercial' }));
+    return NIGERIAN_BANKS;
   }
 
   // ── POST /banks/resolve ───────────────────────────────────────────────────
   async resolveAccount(
     dto: ResolveAccountDto,
-  ): Promise<{ accountName: string; accountNumber: string; bankCode: string }> {
+  ): Promise<{
+    accountName: string;
+    accountNumber: string;
+    bankCode: string;
+    bankName: string;
+  }> {
     const result = await this.pulseMfb.nameEnquiry(
       dto.accountNumber,
       dto.bankCode,
@@ -304,6 +396,7 @@ export class BanksService {
       accountName: result.accountName,
       accountNumber: result.accountNumber,
       bankCode: dto.bankCode,
+      bankName: this.findBankByCode(dto.bankCode)?.name ?? dto.bankCode,
     };
   }
 
@@ -336,10 +429,11 @@ export class BanksService {
 
     // 4. Verify PIN
     if (!user.pinHash) throw new BadRequestException('PIN not set');
-    const pinOk = timingSafeEqual(
-      Buffer.from(user.pinHash),
-      Buffer.from(dto.pinHash),
-    );
+    const storedPinHash = Buffer.from(user.pinHash);
+    const providedPinHash = Buffer.from(dto.pinHash);
+    const pinOk =
+      storedPinHash.length === providedPinHash.length &&
+      timingSafeEqual(storedPinHash, providedPinHash);
     if (!pinOk) throw new ForbiddenException('Incorrect PIN');
 
     // 3. Verify device & device signature
@@ -347,10 +441,14 @@ export class BanksService {
       where: { deviceId: dto.deviceId, userId, isActive: true },
     });
     if (!device) throw new ForbiddenException('Device not recognised');
+    const deviceSignatureMessage = this.buildBankTransferSignatureMessage(
+      userId,
+      dto,
+    );
     const sigValid = this.blockchainService.verifyDeviceSignature({
       publicKey: device.publicKey,
       signature: dto.deviceSignature,
-      message: dto.deviceId,
+      message: deviceSignatureMessage,
     });
     if (!sigValid && this.config.get('app.nodeEnv') === 'production') {
       throw new ForbiddenException('Invalid device signature');
@@ -383,9 +481,21 @@ export class BanksService {
       throw new BadRequestException('Insufficient USDC balance');
     }
 
-    // 7. Resolve bank name
-    const bank = NIGERIAN_BANKS.find((b) => b.code === dto.bankCode);
+    // 7. Resolve bank + confirm beneficiary name
+    const bank = this.findBankByCode(dto.bankCode);
     const bankName = bank?.name ?? dto.bankCode;
+    const resolvedAccount = await this.resolveAccount({
+      accountNumber: dto.accountNumber,
+      bankCode: dto.bankCode,
+    });
+    if (
+      normalizeAccountName(resolvedAccount.accountName) !==
+      normalizeAccountName(dto.accountName)
+    ) {
+      throw new BadRequestException(
+        `Account name mismatch. Resolved name is "${resolvedAccount.accountName}".`,
+      );
+    }
 
     // 8. Create PENDING records — both start as PENDING before any money moves
     const reference = `CW-NGN-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
@@ -396,7 +506,7 @@ export class BanksService {
         accountNumber: dto.accountNumber,
         bankCode: dto.bankCode,
         bankName,
-        accountName: dto.accountName,
+        accountName: resolvedAccount.accountName,
         amountNgn: dto.amountNgn,
         amountUsdc,
         feeUsdc,
@@ -414,11 +524,11 @@ export class BanksService {
       amountNgn: dto.amountNgn,
       feeUsdc,
       rateApplied: rate.effectiveRate,
-      recipientName: dto.accountName,
+      recipientName: resolvedAccount.accountName,
       accountNumber: dto.accountNumber,
       bankName,
       reference,
-      description: `Withdrawal to ${dto.accountName} — ${bankName}`,
+      description: `Withdrawal to ${resolvedAccount.accountName} — ${bankName}`,
     });
 
     // 9. Deduct USDC — send to the platform wallet which funds the NGN payout.
@@ -458,8 +568,7 @@ export class BanksService {
         debitAccount: this.pulseMfb.platformDebitAccount,
         accountNumber: dto.accountNumber,
         bankCode: dto.bankCode,
-        bankName,
-        accountName: dto.accountName,
+        accountName: resolvedAccount.accountName,
         amountNgn,
         reference,
       });
@@ -516,7 +625,7 @@ export class BanksService {
       amountUsdc,
       rateApplied: rate.effectiveRate,
       fee: String(TRANSFER_FEE_NGN),
-      recipientName: dto.accountName,
+      recipientName: resolvedAccount.accountName,
       bankName,
       stellarTxHash,
       createdAt: transfer.createdAt,
@@ -642,9 +751,17 @@ export class BanksService {
       return { processed: false, reason: 'missing reference' };
     }
 
-    // Map PulseMFB event names to our internal webhook events
-    const internalEvent =
-      event === 'transfer.completed' ? 'transfer.success' : 'transfer.failed';
+    let internalEvent: 'transfer.success' | 'transfer.failed';
+    if (event === 'transfer.completed') {
+      internalEvent = 'transfer.success';
+    } else if (event === 'transfer.failed') {
+      internalEvent = 'transfer.failed';
+    } else {
+      this.logger.log(
+        `PulseMFB webhook [event=${event}] [ref=${reference}] — ignored (unsupported transfer event)`,
+      );
+      return { processed: false, event };
+    }
 
     this.logger.log(
       `PulseMFB webhook [event=${event}] [ref=${reference}] → processing as ${internalEvent}`,
@@ -653,12 +770,8 @@ export class BanksService {
     // Reuse the existing processWebhook logic
     return this.processWebhook({
       reference,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      event: internalEvent as any,
-
-      failureReason: (data as Record<string, unknown>)['narration'] as
-        | string
-        | undefined,
+      event: internalEvent,
+      failureReason: extractProviderFailureReason(data) ?? event,
     });
   }
 
@@ -667,7 +780,6 @@ export class BanksService {
     debitAccount: string;
     accountNumber: string;
     bankCode: string;
-    bankName: string;
     accountName: string;
     amountNgn: number;
     reference: string;
@@ -676,7 +788,6 @@ export class BanksService {
       debitAccount: params.debitAccount,
       beneficiaryAccountNumber: params.accountNumber,
       beneficiaryBankCode: params.bankCode,
-      beneficiaryBankName: params.bankName,
       beneficiaryName: params.accountName,
       amount: params.amountNgn,
       narration: `Cheese Pay withdrawal [${params.reference}]`,
@@ -723,5 +834,36 @@ export class BanksService {
           (err as Error).message,
       );
     }
+  }
+
+  private buildBankTransferSignatureMessage(
+    userId: string,
+    dto: BankTransferDto,
+  ): string {
+    const hasTimestamp = !!dto.timestamp;
+    const hasNonce = !!dto.nonce;
+
+    if (hasTimestamp !== hasNonce) {
+      throw new BadRequestException(
+        'device signature timestamp and nonce must be provided together',
+      );
+    }
+
+    if (!hasTimestamp || !hasNonce) {
+      return dto.deviceId;
+    }
+
+    return canonicalizeSignaturePayload({
+      action: 'bank_transfer',
+      amount: dto.amountNgn,
+      nonce: dto.nonce!,
+      recipient: `${dto.bankCode}:${dto.accountNumber}`,
+      timestamp: dto.timestamp!,
+      userId,
+    });
+  }
+
+  private findBankByCode(bankCode: string): BankDirectoryEntry | undefined {
+    return NIGERIAN_BANKS.find((bank) => bank.code === bankCode);
   }
 }

@@ -65,14 +65,19 @@ export class PulseMfbClient implements OnModuleInit {
     this.privateKey = this.config.get<string>('pulsemfb.privateKey') ?? '';
     this.debitAccount = this.config.get<string>('pulsemfb.debitAccount') ?? '';
 
-    if (this.publicKey && this.privateKey && this.debitAccount) {
+    if (this.publicKey && this.privateKey) {
       this.ready = true;
       this.logger.log(
-        `PulseMFB client ready [env=${this.config.get('app.nodeEnv')}] [account=${this.debitAccount}]`,
+        `PulseMFB client ready [env=${this.config.get('app.nodeEnv')}] [account=${this.debitAccount || 'not-configured'}]`,
       );
+      if (!this.debitAccount) {
+        this.logger.warn(
+          'PULSE_MFB_DEBIT_ACCOUNT not set — account resolution and status lookups will work, but transfer initiation is disabled',
+        );
+      }
     } else {
       this.logger.warn(
-        'PulseMFB not configured — set PULSE_MFB_PUBLIC_KEY, PULSE_MFB_PRIVATE_KEY, PULSE_MFB_DEBIT_ACCOUNT',
+        'PulseMFB not configured — set PULSE_MFB_PUBLIC_KEY and PULSE_MFB_PRIVATE_KEY',
       );
     }
   }
@@ -82,6 +87,11 @@ export class PulseMfbClient implements OnModuleInit {
   }
 
   get platformDebitAccount(): string {
+    if (!this.debitAccount) {
+      throw new BadRequestException(
+        'Banking provider transfer account not configured',
+      );
+    }
     return this.debitAccount;
   }
 
@@ -99,26 +109,24 @@ export class PulseMfbClient implements OnModuleInit {
 
   // ── Initiate Transfer ───────────────────────────────────────────────────────
   async initiateTransfer(params: {
-  debitAccount: string;
-  beneficiaryAccountNumber: string;
-  beneficiaryBankCode: string;
-  beneficiaryBankName: string;
-  beneficiaryName: string;
-  amount: number;
-  narration: string;
-  reference: string;
-}): Promise<PulseMfbTransferResult> {
+    debitAccount: string;
+    beneficiaryAccountNumber: string;
+    beneficiaryBankCode: string;
+    beneficiaryName: string;
+    amount: number;
+    narration: string;
+    reference: string;
+  }): Promise<PulseMfbTransferResult> {
     const data = await this.post<{ data: PulseMfbTransferResult }>(
       '/api/v1/external-api/transfers',
       {
-       debit_account_number: params.debitAccount,
-      beneficiary_account_number: params.beneficiaryAccountNumber,
-      beneficiary_bank_code: params.beneficiaryBankCode,
-      beneficiary_bank_name: params.beneficiaryBankName,
-      beneficiary_name: params.beneficiaryName,
-      amount: params.amount,
-      narration: params.narration,
-      reference: params.reference,
+        debit_account_number: params.debitAccount,
+        beneficiary_account_number: params.beneficiaryAccountNumber,
+        beneficiary_bank_code: params.beneficiaryBankCode,
+        beneficiary_name: params.beneficiaryName,
+        amount: params.amount,
+        narration: params.narration,
+        reference: params.reference,
       },
     );
     return data.data;

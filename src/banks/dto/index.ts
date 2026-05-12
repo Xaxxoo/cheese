@@ -20,6 +20,7 @@ export class ResolveAccountDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsNumberString()
   @MinLength(10)
   @MaxLength(10)
   accountNumber: string;
@@ -40,6 +41,7 @@ export class BankTransferDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsNumberString()
   @MinLength(10)
   @MaxLength(10)
   accountNumber: string;
@@ -79,7 +81,8 @@ export class BankTransferDto {
 
   @ApiProperty({
     example: 'base64-ecdsa-signature-here',
-    description: 'ECDSA P-256 device signature of the transaction payload',
+    description:
+      'ECDSA P-256 device signature. Preferred payload is the canonical bank transfer payload; legacy clients may still sign the deviceId.',
   })
   @IsString()
   @IsNotEmpty()
@@ -92,6 +95,26 @@ export class BankTransferDto {
   @IsString()
   @IsNotEmpty()
   deviceId: string;
+
+  @ApiPropertyOptional({
+    example: '1703673600000',
+    description:
+      'Timestamp used when signing the canonical bank transfer payload. Must be supplied together with nonce.',
+  })
+  @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  timestamp?: string;
+
+  @ApiPropertyOptional({
+    example: 'b64url-random-nonce',
+    description:
+      'Nonce used when signing the canonical bank transfer payload. Must be supplied together with timestamp.',
+  })
+  @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  nonce?: string;
 }
 
 export type WebhookEvent =
