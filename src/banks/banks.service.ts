@@ -454,14 +454,15 @@ export class BanksService {
     //     USDC has already moved at this point.
     //     If the provider call fails we MUST refund the USDC immediately.
     try {
-     const providerRef = await this.initiateBankingTransfer({
-  accountNumber: dto.accountNumber,
-  bankCode: dto.bankCode,
-  bankName,
-  accountName: dto.accountName,
-  amountNgn,
-  reference,
-});
+      const providerRef = await this.initiateBankingTransfer({
+        debitAccountNumber: this.pulseMfb.platformDebitAccount,
+        accountNumber: dto.accountNumber,
+        bankCode: dto.bankCode,
+        bankName,
+        accountName: dto.accountName,
+        amountNgn,
+        reference,
+      });
 
       // Mark PROCESSING — awaiting final settlement confirmation via webhook
       await this.transferRepo.update(
@@ -663,23 +664,23 @@ export class BanksService {
 
   // ── PulseMFB transfer ─────────────────────────────────────────────────────
   private async initiateBankingTransfer(params: {
-  accountNumber: string;
-  bankCode: string;
-  bankName: string;
-  accountName: string;
-  amountNgn: number;
-  reference: string;
-}): Promise<string> {
+    debitAccountNumber: string;
+    accountNumber: string;
+    bankCode: string;
+    bankName: string;
+    accountName: string;
+    amountNgn: number;
+    reference: string;
+  }): Promise<string> {
     const result = await this.pulseMfb.initiateTransfer({
-  beneficiaryAccountNumber: params.accountNumber,
-  beneficiaryBankCode: params.bankCode,
-  beneficiaryBankName: params.bankName,
-  beneficiaryName: params.accountName,
-
-  amount: params.amountNgn,
-
-  narration: `Cheese Pay withdrawal [${params.reference}]`,
-  reference: params.reference,
+      debitAccountNumber: params.debitAccountNumber,
+      beneficiaryAccountNumber: params.accountNumber,
+      beneficiaryBankCode: params.bankCode,
+      beneficiaryBankName: params.bankName,
+      beneficiaryName: params.accountName,
+      amount: params.amountNgn,
+      narration: `Cheese Pay withdrawal [${params.reference}]`,
+      reference: params.reference,
     });
 
     this.logger.log(
