@@ -11,9 +11,10 @@ export default function MerchantConsoleLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { session, hydrated } = useMerchantAuthStore((state) => ({
+  const { session, hydrated, signOut } = useMerchantAuthStore((state) => ({
     session: state.session,
     hydrated: state.hydrated,
+    signOut: state.signOut,
   }));
 
   useEffect(() => {
@@ -21,6 +22,16 @@ export default function MerchantConsoleLayout({
       router.replace('/merchant/sign-in');
     }
   }, [hydrated, router, session]);
+
+  // When the refresh token is also expired/revoked, clear session and redirect
+  useEffect(() => {
+    function handleAuthExpired() {
+      signOut();
+      router.replace('/merchant/sign-in');
+    }
+    window.addEventListener('merchant:auth:expired', handleAuthExpired);
+    return () => window.removeEventListener('merchant:auth:expired', handleAuthExpired);
+  }, [router, signOut]);
 
   if (!hydrated || !session) {
     return (
