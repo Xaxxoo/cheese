@@ -11,10 +11,11 @@ import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
-import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate } from '@/lib/api/wallet'
+import { useQueryClient } from '@tanstack/react-query'
+import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer } from '@/lib/api/wallet'
 import { signTransaction, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
-import type { Transaction } from '@/types'
+import type { Transaction, NigerianBank } from '@/types'
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -31,6 +32,7 @@ interface ResolvedRecipient {
 }
 
 interface BankRecipient {
+  bankCode: string
   bankName: string
   accountNumber: string
   accountName: string
@@ -488,31 +490,45 @@ function BankDetailsStep({
 }: {
   onNext: (recipient: BankRecipient) => void
 }) {
-  const [bank, setBank]             = useState('')
-  const [acctNum, setAcctNum]       = useState('')
-  const [acctName, setAcctName]     = useState('')
-  const [verifying, setVerifying]   = useState(false)
-  const [verified, setVerified]     = useState(false)
-  const [bankOpen, setBankOpen]     = useState(false)
+  const [selectedBank, setSelectedBank] = useState<NigerianBank | null>(null)
+  const [acctNum, setAcctNum]           = useState('')
+  const [acctName, setAcctName]         = useState('')
+  const [verifying, setVerifying]       = useState(false)
+  const [verified, setVerified]         = useState(false)
+  const [bankOpen, setBankOpen]         = useState(false)
+  const [verifyError, setVerifyError]   = useState('')
+
+  const banksQ = useQuery({
+    queryKey: QUERY_KEYS.BANKS,
+    queryFn:  getBanks,
+    staleTime: STALE_TIMES.PROFILE,
+  })
+  const banks: NigerianBank[] = banksQ.data ?? []
 
   function handleAcctNum(v: string) {
     const clean = v.replace(/\D/g, '').slice(0, 10)
     setAcctNum(clean)
     setVerified(false)
     setAcctName('')
+    setVerifyError('')
   }
 
   async function verify() {
-    if (!bank || acctNum.length !== 10) return
+    if (!selectedBank || acctNum.length !== 10) return
     setVerifying(true)
-    // TODO: replace with real NIP/NIBSS account name lookup
-    await new Promise<void>((resolve) => setTimeout(resolve, 1200))
-    setAcctName('Emeka Okafor')
-    setVerified(true)
-    setVerifying(false)
+    setVerifyError('')
+    try {
+      const result = await resolveAccount({ bankCode: selectedBank.code, accountNumber: acctNum })
+      setAcctName(result.accountName)
+      setVerified(true)
+    } catch (err) {
+      setVerifyError((err as Error).message ?? 'Could not verify account')
+    } finally {
+      setVerifying(false)
+    }
   }
 
-  const canContinue = verified && !!acctName
+  const canContinue = verified && !!acctName && !!selectedBank
 
   return (
     <div className="flex flex-col gap-5 flex-1">
@@ -525,23 +541,23 @@ function BankDetailsStep({
             onClick={() => setBankOpen(!bankOpen)}
             className={cn(
               'flex items-center gap-3 h-14 px-4 rounded-2xl border w-full bg-white/6 text-left',
-              bank ? 'border-white/15 text-white' : 'border-white/10 text-white/30',
+              selectedBank ? 'border-white/15 text-white' : 'border-white/10 text-white/30',
             )}
           >
             <Building2 size={17} className="text-white/30 shrink-0" />
-            <span className="flex-1 text-sm">{bank || 'Select bank'}</span>
+            <span className="flex-1 text-sm">{selectedBank?.name ?? (banksQ.isLoading ? 'Loading banks…' : 'Select bank')}</span>
             <ChevronRight size={16} className={cn('text-white/25 transition-transform duration-150', bankOpen && 'rotate-90')} />
           </button>
           {bankOpen && (
             <div className="absolute top-full mt-1 left-0 right-0 bg-[#141414] border border-white/10 rounded-2xl overflow-hidden z-10 max-h-52 overflow-y-auto">
-              {NIGERIAN_BANKS.map((b) => (
+              {banks.map((b) => (
                 <button
-                  key={b}
+                  key={b.code}
                   type="button"
-                  onClick={() => { setBank(b); setBankOpen(false) }}
+                  onClick={() => { setSelectedBank(b); setBankOpen(false); setVerified(false); setAcctName('') }}
                   className="w-full text-left px-4 py-3 text-sm text-white/70 hover:bg-white/8 hover:text-white transition-colors border-b border-white/5 last:border-0"
                 >
-                  {b}
+                  {b.name}
                 </button>
               ))}
             </div>
@@ -570,12 +586,17 @@ function BankDetailsStep({
       </div>
 
       {/* Verify button */}
-      {acctNum.length === 10 && bank && !verified && (
+      {acctNum.length === 10 && selectedBank && !verified && (
         <Button fullWidth onClick={verify} disabled={verifying}>
           {verifying
             ? <><Loader2 size={14} className="animate-spin mr-1.5" />Verifying…</>
             : 'Verify Account'}
         </Button>
+      )}
+
+      {/* Verify error */}
+      {verifyError && (
+        <p className="text-xs text-red-400 text-center">{verifyError}</p>
       )}
 
       {/* Resolved account name */}
@@ -586,7 +607,7 @@ function BankDetailsStep({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white">{acctName}</p>
-            <p className="text-xs text-white/35 mt-0.5">{bank} · {acctNum}</p>
+            <p className="text-xs text-white/35 mt-0.5">{selectedBank?.name} · {acctNum}</p>
           </div>
           <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
         </div>
@@ -596,7 +617,7 @@ function BankDetailsStep({
         <Button
           fullWidth
           size="lg"
-          onClick={() => canContinue && onNext({ bankName: bank, accountNumber: acctNum, accountName: acctName })}
+          onClick={() => canContinue && selectedBank && onNext({ bankCode: selectedBank.code, bankName: selectedBank.name, accountNumber: acctNum, accountName: acctName })}
           disabled={!canContinue}
         >
           Continue
@@ -985,6 +1006,7 @@ function BankPinStep({
   onError: (msg: string) => void
 }) {
   const { user, deviceId } = useAuthStore()
+  const queryClient         = useQueryClient()
   const [pin, setPin]           = useState('')
   const [loading, setLoading]   = useState(false)
   const [pinError, setPinError] = useState('')
@@ -999,9 +1021,28 @@ function BankPinStep({
     setPinError('')
 
     try {
-      // TODO: await sendToBank({ ...recipient, amountNgn, pin: await hashPin(currentPin, deviceId), deviceId })
-      await hashPin(currentPin, deviceId) // validates PIN locally until API is ready
-      await new Promise<void>((resolve) => setTimeout(resolve, 1500))
+      const pinHash = await hashPin(currentPin, deviceId)
+      const sig = await signTransaction({
+        action:    'bank_transfer',
+        userId:    user.id,
+        deviceId,
+        amount:    amountNgn,
+        recipient: recipient.accountNumber,
+      })
+      await bankTransfer({
+        bankCode:        recipient.bankCode,
+        accountNumber:   recipient.accountNumber,
+        accountName:     recipient.accountName,
+        amountNgn,
+        pinHash,
+        deviceSignature: sig.deviceSignature,
+        deviceId:        sig.deviceId,
+        timestamp:       String(sig.timestamp),
+        nonce:           sig.nonce,
+      })
+      // Invalidate balance so the dashboard shows the updated USDC amount
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BALANCE })
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(1) })
       onSuccess()
     } catch (err) {
       submittedRef.current = false
@@ -1015,7 +1056,7 @@ function BankPinStep({
     } finally {
       setLoading(false)
     }
-  }, [user, deviceId, recipient, amountNgn, onSuccess, onError])
+  }, [user, deviceId, queryClient, recipient, amountNgn, onSuccess, onError])
 
   useEffect(() => {
     if (pin.length === 6 && !loading) {

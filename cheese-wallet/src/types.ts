@@ -160,12 +160,13 @@ export interface BankTransferPayload {
   bankCode: string
   accountNumber: string
   accountName: string
-  amount: string
-  amountUSD: string
+  amountNgn: string
   narration?: string
-  pin: string
+  pinHash: string
   deviceSignature: string
   deviceId: string
+  timestamp?: string
+  nonce?: string
 }
 
 export interface BankTransferResponse {
