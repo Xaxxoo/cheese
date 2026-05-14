@@ -90,14 +90,12 @@ export default function MerchantSignUpPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--merchant-muted)]">
-                Country
-              </span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[color:var(--merchant-soft-text)]">Country</span>
               <select
                 value={form.country}
                 onChange={(event) => update('country', event.target.value)}
-                className="h-12 rounded-2xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] px-4 text-sm text-[color:var(--merchant-text)] outline-none"
+                className="h-9 w-full rounded-lg border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] px-3 text-sm text-[color:var(--merchant-text)] outline-none transition-colors focus:border-[color:var(--merchant-strong-border)] focus:bg-[color:var(--merchant-panel-strong)]"
               >
                 <option>Nigeria</option>
                 <option>United Kingdom</option>
@@ -105,14 +103,12 @@ export default function MerchantSignUpPage() {
                 <option>Kenya</option>
               </select>
             </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--merchant-muted)]">
-                Base currency
-              </span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[color:var(--merchant-soft-text)]">Base currency</span>
               <select
                 value={form.baseCurrency}
                 onChange={(event) => update('baseCurrency', event.target.value)}
-                className="h-12 rounded-2xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] px-4 text-sm text-[color:var(--merchant-text)] outline-none"
+                className="h-9 w-full rounded-lg border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] px-3 text-sm text-[color:var(--merchant-text)] outline-none transition-colors focus:border-[color:var(--merchant-strong-border)] focus:bg-[color:var(--merchant-panel-strong)]"
               >
                 <option value="NGN">NGN</option>
                 <option value="USD">USD</option>
@@ -120,16 +116,14 @@ export default function MerchantSignUpPage() {
                 <option value="GBP">GBP</option>
               </select>
             </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--merchant-muted)]">
-                Settlement preference
-              </span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[color:var(--merchant-soft-text)]">Settlement preference</span>
               <select
                 value={form.settlementMode}
                 onChange={(event) =>
                   update('settlementMode', event.target.value as typeof form.settlementMode)
                 }
-                className="h-12 rounded-2xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] px-4 text-sm text-[color:var(--merchant-text)] outline-none"
+                className="h-9 w-full rounded-lg border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] px-3 text-sm text-[color:var(--merchant-text)] outline-none transition-colors focus:border-[color:var(--merchant-strong-border)] focus:bg-[color:var(--merchant-panel-strong)]"
               >
                 <option value="instant_fiat">Instant fiat settlement</option>
                 <option value="hold_usdc">Hold as digital dollar</option>
