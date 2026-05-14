@@ -333,13 +333,19 @@ export class MerchantService {
   }
 
   private buildTimeline(p: MerchantPayment) {
-    const events = [
+    const events: Array<{
+      id: string;
+      label: string;
+      description: string;
+      at: string;
+      status: 'done' | 'failed' | 'current';
+    }> = [
       {
         id: 'created',
         label: 'Request created',
         description: 'Merchant generated a new payment request.',
         at: p.createdAt.toISOString(),
-        status: 'done' as const,
+        status: 'done',
       },
     ];
 
@@ -395,7 +401,7 @@ export class MerchantService {
   }
 
   private async buildRevenueSeries(merchantId: string, currency: string, days: number) {
-    const series = [];
+    const series: Array<{ label: string; gross: number; settled: number }> = [];
     const now = new Date();
 
     for (let i = days - 1; i >= 0; i--) {
