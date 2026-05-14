@@ -6,17 +6,21 @@ import type { PayoutAccount, PayoutSchedule, SettlementMode } from '../../types'
 import { MerchantButton, SectionCard } from '../shared/primitives';
 
 export function SettlementScheduleCard({
-  payoutAccounts,
-  currentRate,
-  arrivalNote,
+  payoutAccounts = [],
+  currentRate = '—',
+  arrivalNote = '~15 seconds',
+  currentMode = 'instant_fiat',
+  currentSchedule = 'instant',
 }: {
-  payoutAccounts: PayoutAccount[];
-  currentRate: string;
-  arrivalNote: string;
+  payoutAccounts?: PayoutAccount[];
+  currentRate?: string;
+  arrivalNote?: string;
+  currentMode?: SettlementMode;
+  currentSchedule?: PayoutSchedule;
 }) {
   const [settlementMode, setSettlementMode] =
-    useState<SettlementMode>('instant_fiat');
-  const [schedule, setSchedule] = useState<PayoutSchedule>('daily');
+    useState<SettlementMode>(currentMode);
+  const [schedule, setSchedule] = useState<PayoutSchedule>(currentSchedule);
 
   return (
     <SectionCard

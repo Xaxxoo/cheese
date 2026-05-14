@@ -28,7 +28,7 @@ export function useMerchantDashboard() {
 export function useMerchantPayments() {
   return useQuery({
     queryKey: merchantQueryKeys.payments,
-    queryFn: listMerchantPayments,
+    queryFn: () => listMerchantPayments(),
     staleTime: 10_000,
   });
 }

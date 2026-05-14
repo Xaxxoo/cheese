@@ -47,6 +47,7 @@ import { ProfileModule } from './profile/profile.module';
 import { ReferralModule } from './referral/referral.module';
 // Admin
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
+import { MerchantModule } from './merchant/merchant.module';
 // Email + Waitlist + PayLink
 import { EmailModule } from './email/email.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
@@ -76,6 +77,13 @@ import { BankTransfer } from './banks/entities/bank-transfer.entity';
 import { Referral } from './referral/entities/referral.entity';
 import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
+import { Merchant } from './merchant/entities/merchant.entity';
+import { MerchantUser } from './merchant/entities/merchant-user.entity';
+import { MerchantRefreshToken } from './merchant/entities/merchant-refresh-token.entity';
+import { MerchantStore } from './merchant/entities/merchant-store.entity';
+import { MerchantPayment } from './merchant/entities/merchant-payment.entity';
+import { MerchantSettlement } from './merchant/entities/merchant-settlement.entity';
+import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-account.entity';
 
 @Module({
   controllers: [AppController],
@@ -158,6 +166,13 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
                 KycAttempt,
                 // VirtualCard,
                 // PaymentRequest,
+                Merchant,
+                MerchantUser,
+                MerchantRefreshToken,
+                MerchantStore,
+                MerchantPayment,
+                MerchantSettlement,
+                MerchantPayoutAccount,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -194,6 +209,13 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
                 KycAttempt,
                 // VirtualCard,
                 // PaymentRequest,
+                Merchant,
+                MerchantUser,
+                MerchantRefreshToken,
+                MerchantStore,
+                MerchantPayment,
+                MerchantSettlement,
+                MerchantPayoutAccount,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -227,6 +249,13 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
             // VirtualCard,
             // Referral,
             // PaymentRequest,
+            Merchant,
+            MerchantUser,
+            MerchantRefreshToken,
+            MerchantStore,
+            MerchantPayment,
+            MerchantSettlement,
+            MerchantPayoutAccount,
           ],
           synchronize: config.get<string>('app.nodeEnv') !== 'production',
           logging: config.get<string>('app.nodeEnv') === 'development',
@@ -261,6 +290,7 @@ import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
     AgentsModule,
     KycModule,
     AdminAuthModule,
+    MerchantModule,
     // PayLinkModule,
   ],
   providers: [

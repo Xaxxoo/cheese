@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { MerchantSession } from '../types';
+import { merchantTokenStore } from '../lib/merchant-client';
 
 type PendingAuthIntent = 'sign-in' | 'sign-up' | null;
 
@@ -31,12 +32,17 @@ export const useMerchantAuthStore = create<MerchantAuthStore>()(
           pendingEmail: email.toLowerCase(),
           pendingIntent: intent,
         }),
-      completeChallenge: (session) =>
+      completeChallenge: (session) => {
+        // Restore the in-memory token when session is set (e.g. after page reload)
+        if (session.accessToken) {
+          merchantTokenStore.set(session.accessToken);
+        }
         set({
           session,
           pendingEmail: null,
           pendingIntent: null,
-        }),
+        });
+      },
       completeOnboarding: (sessionPatch) =>
         set((state) => ({
           session: state.session
@@ -50,12 +56,14 @@ export const useMerchantAuthStore = create<MerchantAuthStore>()(
               }
             : null,
         })),
-      signOut: () =>
+      signOut: () => {
+        merchantTokenStore.clear();
         set({
           session: null,
           pendingEmail: null,
           pendingIntent: null,
-        }),
+        });
+      },
     }),
     {
       name: 'cheese-merchant-auth',
@@ -76,6 +84,10 @@ export const useMerchantAuthStore = create<MerchantAuthStore>()(
         pendingIntent: state.pendingIntent,
       }),
       onRehydrateStorage: () => (state) => {
+        // Restore token into in-memory store on page load
+        if (state?.session?.accessToken) {
+          merchantTokenStore.set(state.session.accessToken);
+        }
         state?.setHydrated(true);
       },
     },

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Copy, Link2, QrCode, ReceiptText } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { previewPaymentRequest } from '../../lib/merchant-api';
+import { previewPaymentRequest, createMerchantPayment } from '../../lib/merchant-api';
 import type { PaymentRequestDraft, PaymentRequestPreview } from '../../types';
 import { MerchantButton, MerchantInput, SectionCard } from '../shared/primitives';
 import { settlementModeLabel } from '../../lib/format';
@@ -21,10 +21,15 @@ const defaultDraft: PaymentRequestDraft = {
   metadata: '{"orderId":"ORD-2201"}',
 };
 
-export function PaymentRequestBuilder() {
+interface PaymentRequestBuilderProps {
+  onCreated?: () => void;
+}
+
+export function PaymentRequestBuilder({ onCreated }: PaymentRequestBuilderProps = {}) {
   const [draft, setDraft] = useState<PaymentRequestDraft>(defaultDraft);
   const [preview, setPreview] = useState<PaymentRequestPreview | null>(null);
   const [building, setBuilding] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   async function buildPreview() {
     setBuilding(true);
@@ -35,6 +40,21 @@ export function PaymentRequestBuilder() {
       toast.error(error instanceof Error ? error.message : 'Could not build payment request');
     } finally {
       setBuilding(false);
+    }
+  }
+
+  async function handleCreate() {
+    setCreating(true);
+    try {
+      const result = await createMerchantPayment(draft);
+      toast.success(`Payment created: ${result.reference}`);
+      setDraft(defaultDraft);
+      setPreview(null);
+      onCreated?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not create payment request');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -191,6 +211,11 @@ export function PaymentRequestBuilder() {
           <MerchantButton onClick={buildPreview} loading={building}>
             Build preview
           </MerchantButton>
+          {preview && (
+            <MerchantButton variant="primary" onClick={handleCreate} loading={creating}>
+              Create payment
+            </MerchantButton>
+          )}
           <MerchantButton
             variant="secondary"
             onClick={() => {
