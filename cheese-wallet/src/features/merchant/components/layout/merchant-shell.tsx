@@ -16,6 +16,7 @@ import {
   Sparkles,
   SunMedium,
 } from 'lucide-react';
+import { useShallow } from 'zustand/shallow';
 import { useMerchantRealtime } from '../../hooks/use-merchant-realtime';
 import { useMerchantAuthStore } from '../../store/merchant-auth-store';
 import { useMerchantUiStore } from '../../store/merchant-ui-store';
@@ -49,17 +50,17 @@ function MerchantRealtimeBridge() {
 export function MerchantShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { session, signOut } = useMerchantAuthStore((state) => ({
+  const { session, signOut } = useMerchantAuthStore(useShallow((state) => ({
     session: state.session,
     signOut: state.signOut,
-  }));
+  })));
   const { theme, toggleTheme, mobileNavOpen, setMobileNavOpen } =
-    useMerchantUiStore((state) => ({
+    useMerchantUiStore(useShallow((state) => ({
       theme: state.theme,
       toggleTheme: state.toggleTheme,
       mobileNavOpen: state.mobileNavOpen,
       setMobileNavOpen: state.setMobileNavOpen,
-    }));
+    })));
 
   const merchantName = session?.merchant.displayName ?? 'CheesePay Merchant';
   const activeTitle =

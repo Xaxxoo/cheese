@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useShallow } from 'zustand/shallow';
 import { MerchantShell } from '@/features/merchant/components/layout/merchant-shell';
 import { useMerchantAuthStore } from '@/features/merchant/store/merchant-auth-store';
 
@@ -11,11 +12,11 @@ export default function MerchantConsoleLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { session, hydrated, signOut } = useMerchantAuthStore((state) => ({
+  const { session, hydrated, signOut } = useMerchantAuthStore(useShallow((state) => ({
     session: state.session,
     hydrated: state.hydrated,
     signOut: state.signOut,
-  }));
+  })));
 
   useEffect(() => {
     if (hydrated && !session) {
