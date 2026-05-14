@@ -77,6 +77,15 @@ export class AdminDashboardController {
     return this.adminAuthService.getUserDetail(id);
   }
 
+  // ── PATCH /admin/transfers/:id/complete ───────────────────────────────────
+  @Patch('transfers/:id/complete')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Manually mark a bank transfer as completed' })
+  completeTransfer(@Param('id') id: string) {
+    return this.adminAuthService.completeTransfer(id);
+  }
+
   // ── PATCH /admin/users/:id/flag ────────────────────────────────────────────
   @Patch('users/:id/flag')
   @UseGuards(AdminJwtGuard)

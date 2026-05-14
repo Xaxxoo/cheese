@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle } from '../../_shared';
 import {
-  getAdminUserDetail, flagAdminUser, setAdminUserStatus,
+  getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
   type AdminUserDetail,
 } from '@/lib/api/admin';
 
@@ -54,6 +54,26 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     try {
       const result = await setAdminUserStatus(user.id, !user.isActive);
       setUser((u) => u ? { ...u, isActive: result.isActive } : u);
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
+  };
+
+  const handleCompleteTransfer = async (transferId: string) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await completeAdminTransfer(transferId);
+      setUser((u) => u ? {
+        ...u,
+        recentTransfers: u.recentTransfers.map((bt) =>
+          bt.id === transferId ? { ...bt, status: 'completed' } : bt,
+        ),
+        recentTransactions: u.recentTransactions.map((tx) =>
+          tx.type === 'bank_transfer' && tx.status === 'pending'
+            ? { ...tx, status: 'completed' }
+            : tx,
+        ),
+      } : u);
     } catch { /* ignore */ }
     finally { setSaving(false); }
   };
@@ -348,11 +368,27 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                       <div style={{ fontSize: 10.5, color: c.textDim }}>
                         {bt.bankName} · {fmtDate(bt.createdAt)}
                       </div>
-                      <div style={{
-                        fontSize: 10.5,
-                        color: bt.status === 'failed' ? c.red : bt.status === 'completed' ? c.green : c.amber,
-                      }}>
-                        {bt.status}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          fontSize: 10.5,
+                          color: bt.status === 'failed' ? c.red : bt.status === 'completed' ? c.green : c.amber,
+                        }}>
+                          {bt.status}
+                        </div>
+                        {(bt.status === 'pending' || bt.status === 'processing') && (
+                          <button
+                            onClick={() => handleCompleteTransfer(bt.id)}
+                            disabled={saving}
+                            style={{
+                              fontSize: 10, padding: '2px 8px', borderRadius: 6, cursor: saving ? 'default' : 'pointer',
+                              background: c.greenDim, border: '1px solid rgba(34,197,94,0.25)',
+                              color: c.green, fontFamily: 'inherit', fontWeight: 600,
+                              opacity: saving ? 0.55 : 1,
+                            }}
+                          >
+                            Mark complete
+                          </button>
+                        )}
                       </div>
                     </div>
                     {bt.failureReason && (

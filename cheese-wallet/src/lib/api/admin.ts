@@ -260,6 +260,13 @@ export async function flagAdminUser(id: string, flag: boolean): Promise<{ id: st
   return data.data
 }
 
+export async function completeAdminTransfer(id: string): Promise<{ id: string; status: string }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; status: string }>>(
+    `/admin/transfers/${id}/complete`,
+  )
+  return data.data
+}
+
 export async function setAdminUserStatus(id: string, isActive: boolean): Promise<{ id: string; isActive: boolean }> {
   const { data } = await adminApiClient.patch<ApiResponse<{ id: string; isActive: boolean }>>(
     `/admin/users/${id}/status`, { isActive },

@@ -517,6 +517,23 @@ export class AdminAuthService {
     return { id: user.id, isActive: user.isActive };
   }
 
+  // ── Transfer actions ──────────────────────────────────────────────────────
+
+  async completeTransfer(id: string) {
+    const transfer = await this.bankTransferRepo.findOne({ where: { id } });
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.status === BankTransferStatus.COMPLETED) {
+      return { id, status: BankTransferStatus.COMPLETED };
+    }
+    await this.bankTransferRepo.update({ id }, { status: BankTransferStatus.COMPLETED });
+    // Sync the linked transaction row
+    const tx = await this.txRepo.findOne({ where: { reference: transfer.reference } });
+    if (tx) {
+      await this.txRepo.update({ id: tx.id }, { status: TxStatus.COMPLETED });
+    }
+    return { id, status: BankTransferStatus.COMPLETED };
+  }
+
   // ── Health check ──────────────────────────────────────────────────────────
 
   getHealth() {
