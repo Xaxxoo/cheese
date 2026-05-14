@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdminAuthStore, ROLE_LABELS, ROLE_COLORS } from '@/store/adminAuthStore';
+import { useAdminAuthStore } from '@/store/adminAuthStore';
 import { c } from '../_shared';
 
 const LOGIN_STYLES = `
@@ -189,46 +189,6 @@ export default function AdminLoginPage() {
             </form>
           </div>
 
-          {/* Dev hint */}
-          <div style={{
-            marginTop: 20,
-            background: 'rgba(167,139,250,0.06)',
-            border: '1px solid rgba(167,139,250,0.15)',
-            borderRadius: 10,
-            padding: '12px 16px',
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(167,139,250,0.7)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-              Dev — role test emails
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {(['super_admin', 'operator', 'treasurer', 'support'] as const).map((role) => {
-                const col = ROLE_COLORS[role];
-                return (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => setEmail(`${role}@cheese.app`)}
-                    style={{
-                      background: col.bg,
-                      border: `1px solid ${col.border}`,
-                      color: col.text,
-                      borderRadius: 6,
-                      padding: '3px 9px',
-                      fontSize: 11,
-                      fontWeight: 500,
-                      fontFamily: 'inherit',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {ROLE_LABELS[role]}
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ fontSize: 10.5, color: c.textDim, marginTop: 8 }}>
-              Fill email only — enter the real password for this account.
-            </div>
-          </div>
 
         </div>
       </div>

@@ -14,8 +14,8 @@ export default function MerchantSignInPage() {
     session: state.session,
     beginChallenge: state.beginChallenge,
   }));
-  const [email, setEmail] = useState('ops@lumena.market');
-  const [password, setPassword] = useState('merchant-demo');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 

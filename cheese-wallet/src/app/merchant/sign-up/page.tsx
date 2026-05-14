@@ -12,10 +12,10 @@ export default function MerchantSignUpPage() {
   const router = useRouter();
   const beginChallenge = useMerchantAuthStore((state) => state.beginChallenge);
   const [form, setForm] = useState({
-    fullName: 'Amaka Eze',
-    email: 'ops@lumena.market',
-    password: 'merchant-demo',
-    businessName: 'Lumena Market',
+    fullName: '',
+    email: '',
+    password: '',
+    businessName: '',
     country: 'Nigeria',
     baseCurrency: 'NGN',
     settlementMode: 'instant_fiat' as const,

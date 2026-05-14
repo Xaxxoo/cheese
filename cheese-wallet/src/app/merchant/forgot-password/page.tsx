@@ -7,7 +7,7 @@ import { MerchantButton, MerchantInput } from '@/features/merchant/components/sh
 import { requestMerchantPasswordReset } from '@/features/merchant/lib/merchant-api';
 
 export default function MerchantForgotPasswordPage() {
-  const [email, setEmail] = useState('ops@lumena.market');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
