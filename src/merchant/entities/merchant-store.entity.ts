@@ -7,7 +7,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Merchant, SettlementMode } from './merchant.entity';
+import { Merchant } from './merchant.entity';
+import type { SettlementMode } from './merchant.entity';
 
 @Entity('merchant_stores')
 export class MerchantStore {
@@ -36,7 +37,7 @@ export class MerchantStore {
   @Column({
     name: 'settlement_mode',
     type: 'varchar',
-    default: SettlementMode.INSTANT_FIAT,
+    default: 'instant_fiat',
   })
   settlementMode: SettlementMode;
 
