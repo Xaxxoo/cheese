@@ -236,6 +236,7 @@ export interface AdminUserDetail {
   referralCode:     string | null
   points:           number
   createdAt:        string
+  usdcBalance:      string | null
   txCount:          number
   failedTransferCount: number
   recentTransactions: Array<{

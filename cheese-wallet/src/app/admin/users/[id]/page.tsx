@@ -194,7 +194,14 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
 
           {/* Wallets */}
           <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: c.textMid, marginBottom: 16 }}>Wallets</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: c.textMid }}>Wallets</div>
+              {user.usdcBalance !== null && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.green }}>
+                  ${parseFloat(user.usdcBalance).toFixed(4)} <span style={{ fontSize: 10, fontWeight: 500, color: c.textDim }}>USDC</span>
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Stellar */}
