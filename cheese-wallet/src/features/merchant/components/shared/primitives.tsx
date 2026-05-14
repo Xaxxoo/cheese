@@ -4,42 +4,67 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
+/* ─── Button ──────────────────────────────────────────── */
+
 export function MerchantButton({
   className,
   children,
   variant = 'primary',
   loading = false,
+  size = 'md',
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }) {
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition duration-200',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        variant === 'primary' &&
-          'bg-[#0f172a] text-white shadow-[0_18px_60px_rgba(15,23,42,0.16)] hover:-translate-y-0.5 hover:bg-[#111c33]',
-        variant === 'secondary' &&
-          'border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] text-[color:var(--merchant-text)] hover:border-[color:var(--merchant-strong-border)] hover:bg-[color:var(--merchant-panel-strong)]',
-        variant === 'ghost' &&
-          'text-[color:var(--merchant-muted)] hover:bg-[color:var(--merchant-panel-strong)] hover:text-[color:var(--merchant-text)]',
+        'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 select-none',
+        'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(212,168,67,0.5)] focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--merchant-bg)]',
+        size === 'sm' && 'h-7 rounded-md px-2.5 text-xs',
+        size === 'md' && 'h-9 rounded-lg px-3.5 text-sm',
+        size === 'lg' && 'h-11 rounded-xl px-5 text-sm',
+        variant === 'primary' && [
+          'bg-[color:var(--merchant-action-bg)] text-[color:var(--merchant-action-fg)]',
+          'hover:bg-[color:var(--merchant-action-hover)]',
+          'active:scale-[0.98]',
+        ],
+        variant === 'secondary' && [
+          'border border-[color:var(--merchant-border)] bg-transparent text-[color:var(--merchant-text)]',
+          'hover:bg-[color:var(--merchant-panel-strong)] hover:border-[color:var(--merchant-strong-border)]',
+          'active:scale-[0.98]',
+        ],
+        variant === 'ghost' && [
+          'bg-transparent text-[color:var(--merchant-soft-text)]',
+          'hover:bg-[color:var(--merchant-panel-strong)] hover:text-[color:var(--merchant-text)]',
+          'active:scale-[0.98]',
+        ],
+        variant === 'danger' && [
+          'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+          'hover:bg-rose-500/16 hover:border-rose-500/30',
+          'active:scale-[0.98]',
+        ],
         className,
       )}
       {...props}
     >
-      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+      {loading && <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" />}
       {children}
     </button>
   );
 }
+
+/* ─── Input ───────────────────────────────────────────── */
 
 export function MerchantInput({
   label,
   hint,
   error,
   suffix,
+  prefix,
   className,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & {
@@ -47,40 +72,52 @@ export function MerchantInput({
   hint?: string;
   error?: string;
   suffix?: ReactNode;
+  prefix?: ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-2">
+    <label className="flex flex-col gap-1.5">
       {label && (
-        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--merchant-muted)]">
+        <span className="text-xs font-medium text-[color:var(--merchant-soft-text)]">
           {label}
         </span>
       )}
       <span className="relative flex items-center">
+        {prefix && (
+          <span className="pointer-events-none absolute left-3.5 text-[color:var(--merchant-muted)]">
+            {prefix}
+          </span>
+        )}
         <input
           className={cn(
-            'h-12 w-full rounded-2xl border bg-[color:var(--merchant-panel)] px-4 text-sm text-[color:var(--merchant-text)] outline-none transition duration-200',
-            'border-[color:var(--merchant-border)] placeholder:text-[color:var(--merchant-soft-text)]',
+            'h-9 w-full rounded-lg border text-sm outline-none transition-all duration-150',
+            'bg-[color:var(--merchant-panel)] text-[color:var(--merchant-text)]',
+            'border-[color:var(--merchant-border)] placeholder:text-[color:var(--merchant-muted)]',
             'focus:border-[color:var(--merchant-strong-border)] focus:bg-[color:var(--merchant-panel-strong)]',
-            suffix && 'pr-12',
-            error && 'border-rose-400/60',
+            prefix && 'pl-9',
+            suffix && 'pr-10',
+            !prefix && 'px-3.5',
+            error && 'border-rose-500/40 focus:border-rose-500/60',
+            props.readOnly && 'opacity-60 cursor-default',
             className,
           )}
           {...props}
         />
         {suffix && (
-          <span className="pointer-events-none absolute right-4 text-xs font-medium text-[color:var(--merchant-muted)]">
+          <span className="pointer-events-none absolute right-3.5 text-xs font-medium text-[color:var(--merchant-muted)]">
             {suffix}
           </span>
         )}
       </span>
       {error ? (
-        <span className="text-xs text-rose-500">{error}</span>
+        <span className="text-xs text-rose-400">{error}</span>
       ) : hint ? (
-        <span className="text-xs text-[color:var(--merchant-soft-text)]">{hint}</span>
+        <span className="text-xs text-[color:var(--merchant-muted)]">{hint}</span>
       ) : null}
     </label>
   );
 }
+
+/* ─── Section Card ────────────────────────────────────── */
 
 export function SectionCard({
   title,
@@ -88,37 +125,52 @@ export function SectionCard({
   action,
   children,
   className,
+  noPadding = false,
 }: {
-  title: string;
+  title?: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  noPadding?: boolean;
 }) {
+  const hasHeader = title || description || action;
   return (
     <section
       className={cn(
-        'merchant-panel rounded-[28px] p-6 md:p-7',
+        'rounded-xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)]',
+        !noPadding && 'p-5',
         className,
       )}
     >
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-[color:var(--merchant-text)]">
-            {title}
-          </h2>
-          {description && (
-            <p className="max-w-2xl text-sm leading-6 text-[color:var(--merchant-muted)]">
-              {description}
-            </p>
+      {hasHeader && (
+        <div
+          className={cn(
+            'flex items-start justify-between gap-4',
+            !noPadding && (title || description) ? 'mb-5' : '',
           )}
+        >
+          <div className="min-w-0">
+            {title && (
+              <h2 className="text-sm font-semibold text-[color:var(--merchant-text)]">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p className="mt-0.5 text-xs leading-5 text-[color:var(--merchant-muted)]">
+                {description}
+              </p>
+            )}
+          </div>
+          {action && <div className="flex-shrink-0">{action}</div>}
         </div>
-        {action}
-      </div>
+      )}
       {children}
     </section>
   );
 }
+
+/* ─── Metric Card ─────────────────────────────────────── */
 
 export function MetricCard({
   label,
@@ -132,41 +184,60 @@ export function MetricCard({
   tone: 'positive' | 'neutral' | 'warning';
 }) {
   return (
-    <article className="merchant-panel rounded-[24px] p-5">
-      <p className="text-sm font-medium text-[color:var(--merchant-muted)]">{label}</p>
-      <p className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[color:var(--merchant-text)]">
+    <article className="group rounded-xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] p-4 transition-colors hover:bg-[color:var(--merchant-panel-strong)]">
+      <p className="text-xs font-medium text-[color:var(--merchant-muted)] truncate">{label}</p>
+      <p className="mt-2.5 font-merchant-serif text-2xl font-semibold tracking-tight text-[color:var(--merchant-text)]">
         {amount}
       </p>
       <p
         className={cn(
-          'mt-3 text-sm',
-          tone === 'positive' && 'text-emerald-600 dark:text-emerald-400',
-          tone === 'neutral' && 'text-[color:var(--merchant-muted)]',
-          tone === 'warning' && 'text-amber-600 dark:text-amber-300',
+          'mt-2 inline-flex items-center gap-1 text-xs font-medium',
+          tone === 'positive' && 'text-emerald-500',
+          tone === 'neutral'  && 'text-[color:var(--merchant-muted)]',
+          tone === 'warning'  && 'text-amber-500',
         )}
       >
+        {tone === 'positive' && (
+          <svg viewBox="0 0 12 12" fill="currentColor" className="h-3 w-3">
+            <path d="M6 2l4 4H7v4H5V6H2l4-4z" />
+          </svg>
+        )}
+        {tone === 'warning' && (
+          <svg viewBox="0 0 12 12" fill="currentColor" className="h-3 w-3">
+            <path d="M6 10L2 6h3V2h2v4h3L6 10z" />
+          </svg>
+        )}
         {trend}
       </p>
     </article>
   );
 }
 
+/* ─── Empty State ─────────────────────────────────────── */
+
 export function EmptyState({
   title,
   description,
   action,
+  icon,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  icon?: ReactNode;
 }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel-soft)] px-6 py-10 text-center">
-      <h3 className="text-lg font-semibold text-[color:var(--merchant-text)]">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[color:var(--merchant-muted)]">
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      {icon && (
+        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--merchant-border)] text-[color:var(--merchant-muted)]">
+          {icon}
+        </div>
+      )}
+      <h3 className="text-sm font-semibold text-[color:var(--merchant-text)]">{title}</h3>
+      <p className="mt-1 max-w-xs text-xs leading-5 text-[color:var(--merchant-muted)]">
         {description}
       </p>
-      {action && <div className="mt-5 flex justify-center">{action}</div>}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
