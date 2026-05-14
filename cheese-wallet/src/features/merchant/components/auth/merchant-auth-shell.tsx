@@ -1,5 +1,20 @@
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+
+const FEATURES = [
+  {
+    title: 'Instant settlement',
+    body: 'Convert confirmed payments to local currency and push to your bank the moment they clear.',
+  },
+  {
+    title: 'Developer-grade rails',
+    body: 'Issue checkout sessions, invoices and QR-backed requests from a clean payment API.',
+  },
+  {
+    title: 'Enterprise controls',
+    body: 'Roles, audit trails, webhook delivery and secure payout policies — all in one workspace.',
+  },
+] as const;
 
 export function MerchantAuthShell({
   eyebrow,
@@ -13,82 +28,79 @@ export function MerchantAuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="merchant-theme min-h-screen bg-[color:var(--merchant-bg)] text-[color:var(--merchant-text)]" data-theme="light">
-      <div className="relative min-h-screen overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(29,78,216,0.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(15,118,110,0.12),transparent_26%)]" />
-        <div className="mx-auto grid min-h-screen w-full max-w-[1440px] gap-10 px-4 py-6 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:px-12 lg:py-10">
-          <section className="merchant-panel relative overflow-hidden rounded-[36px] px-6 py-8 md:px-8 md:py-10">
-            <div className="absolute inset-x-0 top-0 h-32 bg-[linear-gradient(180deg,rgba(29,78,216,0.08),transparent)]" />
-            <div className="relative flex h-full flex-col">
-              <Link
-                href="/merchant/sign-in"
-                className="inline-flex items-center gap-3 text-sm font-semibold text-[color:var(--merchant-text)]"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0f172a] text-white shadow-[0_18px_60px_rgba(15,23,42,0.18)]">
-                  <Sparkles className="h-5 w-5" />
+    <div
+      className="merchant-theme min-h-screen bg-[color:var(--merchant-bg)] text-[color:var(--merchant-text)]"
+      data-theme="dark"
+    >
+      <div className="relative flex min-h-screen">
+        {/* ── Left panel (editorial) ── */}
+        <div className="hidden flex-col justify-between border-r border-[color:var(--merchant-border)] bg-[color:var(--merchant-side)] px-10 py-10 lg:flex lg:w-[480px] xl:w-[520px]">
+          {/* Logo */}
+          <Link
+            href="/merchant/sign-in"
+            className="inline-flex items-center gap-2.5 text-sm font-semibold text-[color:var(--merchant-text)]"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D4A843] text-[#09090C]">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            CheesePay
+          </Link>
+
+          {/* Hero copy */}
+          <div className="space-y-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#D4A843]">
+              {eyebrow}
+            </p>
+            <h1 className="font-merchant-serif text-4xl font-semibold leading-[1.18] tracking-tight text-[color:var(--merchant-text)] xl:text-[44px]">
+              {title}
+            </h1>
+            <p className="max-w-sm text-sm leading-7 text-[color:var(--merchant-soft-text)]">
+              {description}
+            </p>
+          </div>
+
+          {/* Feature list */}
+          <div className="space-y-5">
+            {FEATURES.map((f) => (
+              <div key={f.title} className="flex gap-3">
+                <span className="mt-0.5 h-5 w-5 flex-shrink-0 rounded-md bg-[#D4A843]/10 flex items-center justify-center">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#D4A843]" />
                 </span>
-                <span>
-                  CheesePay Merchant
-                  <span className="block text-xs font-medium text-[color:var(--merchant-muted)]">
-                    Crypto-to-fiat settlement infrastructure
-                  </span>
-                </span>
-              </Link>
-
-              <div className="mt-14 max-w-xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--merchant-muted)]">
-                  {eyebrow}
-                </p>
-                <h1 className="mt-5 text-5xl font-semibold tracking-[-0.06em] text-[color:var(--merchant-text)] sm:text-6xl">
-                  {title}
-                </h1>
-                <p className="mt-5 max-w-lg text-base leading-8 text-[color:var(--merchant-muted)]">
-                  {description}
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-[color:var(--merchant-text)]">{f.title}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-[color:var(--merchant-muted)]">{f.body}</p>
+                </div>
               </div>
+            ))}
+          </div>
 
-              <div className="mt-12 grid gap-4 md:grid-cols-3">
-                {[
-                  {
-                    title: 'Instant payout',
-                    body: 'Settle confirmed customer payments directly to local bank accounts.',
-                    icon: Zap,
-                  },
-                  {
-                    title: 'Developer rails',
-                    body: 'Issue payment links, sessions, and callbacks from a clean merchant API.',
-                    icon: ArrowRight,
-                  },
-                  {
-                    title: 'Enterprise controls',
-                    body: 'Operate with roles, audit trails, and secure payout policies.',
-                    icon: ShieldCheck,
-                  },
-                ].map((item) => (
-                  <article
-                    key={item.title}
-                    className="rounded-[24px] border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel-soft)] p-4"
-                  >
-                    <item.icon className="h-5 w-5 text-[#1d4ed8]" />
-                    <h2 className="mt-4 text-base font-semibold">{item.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-[color:var(--merchant-muted)]">
-                      {item.body}
-                    </p>
-                  </article>
-                ))}
-              </div>
+          {/* Footer */}
+          <p className="text-[11px] text-[color:var(--merchant-muted)]">
+            © {new Date().getFullYear()} CheesePay · Crypto-to-fiat settlement infrastructure
+          </p>
+        </div>
 
-              <div className="mt-auto pt-12 text-sm text-[color:var(--merchant-soft-text)]">
-                Accept digital dollars. Settle like modern commerce software.
-              </div>
-            </div>
-          </section>
+        {/* ── Right panel (form) ── */}
+        <div className="flex flex-1 flex-col">
+          {/* Mobile logo */}
+          <div className="flex items-center justify-between border-b border-[color:var(--merchant-border)] px-5 py-4 lg:hidden">
+            <Link
+              href="/merchant/sign-in"
+              className="inline-flex items-center gap-2 text-sm font-semibold"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#D4A843] text-[#09090C]">
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>
+              CheesePay
+            </Link>
+          </div>
 
-          <section className="flex items-center lg:justify-end">
-            <div className="w-full max-w-[560px] rounded-[32px] border border-[color:var(--merchant-border)] bg-[color:var(--merchant-header)]/92 p-6 shadow-[0_36px_120px_rgba(15,23,42,0.12)] backdrop-blur-xl md:p-8">
+          {/* Form area */}
+          <div className="flex flex-1 items-center justify-center px-5 py-10 sm:px-8">
+            <div className="w-full max-w-[400px]">
               {children}
             </div>
-          </section>
+          </div>
         </div>
       </div>
     </div>
