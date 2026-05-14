@@ -9,14 +9,10 @@ import { useMerchantAuthStore } from '@/features/merchant/store/merchant-auth-st
 
 export default function MerchantTwoFactorPage() {
   const router = useRouter();
-  const { pendingEmail, pendingIntent, completeChallenge } = useMerchantAuthStore(
-    (state) => ({
-      pendingEmail: state.pendingEmail,
-      pendingIntent: state.pendingIntent,
-      completeChallenge: state.completeChallenge,
-    }),
-  );
-  const [code, setCode] = useState('104288');
+  const pendingEmail      = useMerchantAuthStore((s) => s.pendingEmail);
+  const pendingIntent     = useMerchantAuthStore((s) => s.pendingIntent);
+  const completeChallenge = useMerchantAuthStore((s) => s.completeChallenge);
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -73,7 +69,7 @@ export default function MerchantTwoFactorPage() {
             inputMode="numeric"
             value={code}
             onChange={(event) => setCode(event.target.value)}
-            hint="Authenticator demo code is prefilled for the local build."
+            hint="Enter the 6-digit code from your authenticator app."
           />
           {error && <p className="text-sm text-rose-500">{error}</p>}
           <MerchantButton type="submit" className="w-full h-12" loading={loading}>
