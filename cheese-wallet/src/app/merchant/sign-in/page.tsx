@@ -10,10 +10,8 @@ import { useMerchantAuthStore } from '@/features/merchant/store/merchant-auth-st
 
 export default function MerchantSignInPage() {
   const router = useRouter();
-  const { session, beginChallenge } = useMerchantAuthStore((state) => ({
-    session: state.session,
-    beginChallenge: state.beginChallenge,
-  }));
+  const session       = useMerchantAuthStore((s) => s.session);
+  const beginChallenge = useMerchantAuthStore((s) => s.beginChallenge);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
