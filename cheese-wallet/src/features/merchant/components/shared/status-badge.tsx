@@ -2,6 +2,22 @@ import { cn } from '@/lib/cn';
 import { statusTone } from '../../lib/format';
 import type { PaymentStatus, SettlementStatus } from '../../types';
 
+const TONE_STYLES = {
+  emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  amber:   'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  blue:    'bg-sky-500/10 text-sky-400 border-sky-500/20',
+  slate:   'bg-[color:var(--merchant-panel-strong)] text-[color:var(--merchant-soft-text)] border-[color:var(--merchant-border)]',
+  rose:    'bg-rose-500/10 text-rose-400 border-rose-500/20',
+} as const;
+
+const DOT_STYLES = {
+  emerald: 'bg-emerald-500',
+  amber:   'bg-amber-500',
+  blue:    'bg-sky-400',
+  slate:   'bg-[color:var(--merchant-muted)]',
+  rose:    'bg-rose-400',
+} as const;
+
 export function StatusBadge({
   status,
 }: {
@@ -12,14 +28,11 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize',
-        tone === 'emerald' && 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-300',
-        tone === 'amber' && 'bg-amber-500/14 text-amber-700 dark:text-amber-200',
-        tone === 'blue' && 'bg-sky-500/12 text-sky-700 dark:text-sky-200',
-        tone === 'slate' && 'bg-slate-900/8 text-slate-600 dark:bg-slate-100/8 dark:text-slate-300',
-        tone === 'rose' && 'bg-rose-500/12 text-rose-600 dark:text-rose-300',
+        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize',
+        TONE_STYLES[tone],
       )}
     >
+      <span className={cn('h-1.5 w-1.5 rounded-full', DOT_STYLES[tone])} />
       {status.replace(/_/g, ' ')}
     </span>
   );
