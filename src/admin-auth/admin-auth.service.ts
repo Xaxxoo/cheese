@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -23,6 +24,8 @@ import { BlockchainService } from '../blockchain/services/blockchain.service';
 
 @Injectable()
 export class AdminAuthService {
+  private readonly logger = new Logger(AdminAuthService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
