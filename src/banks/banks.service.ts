@@ -564,25 +564,35 @@ export class BanksService {
     //     USDC has already moved at this point.
     //     If the provider call fails we MUST refund the USDC immediately.
     try {
-      const providerRef = await this.initiateBankingTransfer({
-        debitAccount: this.pulseMfb.platformDebitAccount,
-        accountNumber: dto.accountNumber,
-        bankCode: dto.bankCode,
-        bankName,
-        accountName: resolvedAccount.accountName,
-        amountNgn,
-        reference,
-      });
+      const { providerRef, completedImmediately } =
+        await this.initiateBankingTransfer({
+          debitAccount: this.pulseMfb.platformDebitAccount,
+          accountNumber: dto.accountNumber,
+          bankCode: dto.bankCode,
+          bankName,
+          accountName: resolvedAccount.accountName,
+          amountNgn,
+          reference,
+        });
 
-      // Mark PROCESSING — awaiting final settlement confirmation via webhook
-      await this.transferRepo.update(
-        { id: transfer.id },
-        {
-          status: BankTransferStatus.PROCESSING,
-          providerReference: providerRef,
-        },
-      );
-      // Transaction stays PENDING until the webhook fires transfer.success
+      if (completedImmediately) {
+        // PulseMFB settled the transfer synchronously — mark both records final
+        await this.transferRepo.update(
+          { id: transfer.id },
+          { status: BankTransferStatus.COMPLETED, providerReference: providerRef },
+        );
+        await this.txService.update(tx.id, { status: TxStatus.COMPLETED });
+        this.logger.log(
+          `Bank transfer settled immediately [ref=${reference}] [provider=${providerRef}]`,
+        );
+      } else {
+        // Mark PROCESSING — awaiting final settlement confirmation via webhook
+        await this.transferRepo.update(
+          { id: transfer.id },
+          { status: BankTransferStatus.PROCESSING, providerReference: providerRef },
+        );
+        // Transaction stays PENDING until the webhook fires transfer.success
+      }
     } catch (err) {
       this.logger.error(
         `Banking provider failed for ${reference} — refunding USDC: ${(err as Error).message}`,
@@ -785,7 +795,7 @@ export class BanksService {
     accountName: string;
     amountNgn: number;
     reference: string;
-  }): Promise<string> {
+  }): Promise<{ providerRef: string; completedImmediately: boolean }> {
     const result = await this.pulseMfb.initiateTransfer({
       debitAccount: params.debitAccount,
       beneficiaryAccountNumber: params.accountNumber,
@@ -802,8 +812,10 @@ export class BanksService {
         `[internal=${result.internal_reference}] [status=${result.status}]`,
     );
 
-    // Return the provider's internal reference for tracking
-    return result.internal_reference;
+    return {
+      providerRef: result.internal_reference,
+      completedImmediately: result.status === 'completed',
+    };
   }
 
   // ── USDC refund helper ────────────────────────────────────────────────────

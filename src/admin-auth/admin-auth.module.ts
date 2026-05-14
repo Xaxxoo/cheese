@@ -12,6 +12,7 @@ import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
 import { AdminRatesController } from './admin-rates.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { RatesModule } from '../rates/rates.module';
+import { BlockchainModule } from '../blockchain/blockchain.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RatesModule } from '../rates/rates.module';
     PassportModule,
     JwtModule.register({}),
     RatesModule,
+    BlockchainModule,
   ],
   controllers: [AdminAuthController, AdminRatesController, AdminDashboardController],
   providers: [AdminAuthService, AdminJwtStrategy],

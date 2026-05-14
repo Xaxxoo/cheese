@@ -19,6 +19,7 @@ import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfe
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
+import { BlockchainService } from '../blockchain/services/blockchain.service';
 
 @Injectable()
 export class AdminAuthService {
@@ -37,6 +38,7 @@ export class AdminAuthService {
 
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly blockchainService: BlockchainService,
   ) {}
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -423,7 +425,7 @@ export class AdminAuthService {
     const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
     if (!user) throw new NotFoundException('User not found');
 
-    const [txCount, failedTransferCount, recentTxs, recentTransfers] =
+    const [txCount, failedTransferCount, recentTxs, recentTransfers, balances] =
       await Promise.all([
         this.txRepo.count({ where: { userId: id } }),
         this.bankTransferRepo.count({
@@ -439,6 +441,9 @@ export class AdminAuthService {
           order: { createdAt: 'DESC' },
           take: 5,
         }),
+        user.stellarPublicKey
+          ? this.blockchainService.getStellarBalance(user.stellarPublicKey).catch(() => null)
+          : Promise.resolve(null),
       ]);
 
     const kycDisplay: Record<string, string> = {
@@ -466,6 +471,7 @@ export class AdminAuthService {
       referralCode:     user.referralCode,
       points:           user.points,
       createdAt:        user.createdAt,
+      usdcBalance:      balances?.usdc ?? null,
       txCount,
       failedTransferCount,
       recentTransactions: recentTxs.map((tx) => ({
