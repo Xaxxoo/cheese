@@ -109,12 +109,20 @@ export function HeroSection() {
           <span className="text-2xl">🧀</span>
           <span className="font-display text-xl font-bold text-white tracking-tight">Cheese</span>
         </div>
-        <a
-          href="#waitlist"
-          className="hidden sm:inline-flex items-center text-sm font-semibold text-[#0a0a0a] bg-[#d4a843] hover:bg-[#c49535] px-4 py-2 rounded-full transition-colors"
-        >
-          Reserve username
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="/login"
+            className="hidden sm:inline-flex items-center text-sm font-medium text-[#888] hover:text-white px-3 py-2 transition-colors"
+          >
+            Sign in
+          </a>
+          <a
+            href="/signup"
+            className="hidden sm:inline-flex items-center text-sm font-semibold text-[#0a0a0a] bg-[#d4a843] hover:bg-[#c49535] px-4 py-2 rounded-full transition-colors"
+          >
+            Create account
+          </a>
+        </div>
       </nav>
 
       {/* Live count pill */}

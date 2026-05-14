@@ -40,16 +40,6 @@ export function WaitlistForm() {
     staleTime: 10_000,
   });
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Username state:', {
-      rawUsername,
-      cleaned: username,
-      debounced: debouncedUsername,
-      availability,
-      checking,
-    });
-  }, [rawUsername, username, debouncedUsername, availability, checking]);
 
   const register = useMutation({
     mutationFn: registerWaitlist,
@@ -210,6 +200,12 @@ export function WaitlistForm() {
     </div>
   ))}
 </div>
+            <p className="text-center text-xs text-[#555] mt-5">
+              Ready to create your full account?{' '}
+              <a href="/signup" className="text-[#d4a843] hover:underline font-medium">Sign up</a>
+              {' · '}
+              <a href="/login" className="text-[#d4a843] hover:underline font-medium">Sign in</a>
+            </p>
           </div>
         </div>
       </div>
