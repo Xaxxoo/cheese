@@ -1,155 +1,185 @@
 import type { BreakdownSlice, RevenuePoint } from '../../types';
 import { formatCompactNumber } from '../../lib/format';
 
-function buildLinePath(points: RevenuePoint[], key: 'gross' | 'settled') {
-  const width = 100;
-  const height = 44;
-  const padding = 4;
-  const values = points.map((point) => point[key]);
-  const max = Math.max(...values);
-  const min = Math.min(...values);
+/* ─── Revenue Area Chart ─────────────────────────────── */
+
+function buildPath(points: RevenuePoint[], key: 'gross' | 'settled') {
+  if (points.length < 2) return '';
+  const W = 100, H = 48, PX = 4, PY = 6;
+  const values = points.map((p) => p[key]);
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);
 
   return points
-    .map((point, index) => {
-      const x = padding + (index * (width - padding * 2)) / Math.max(points.length - 1, 1);
-      const y =
-        height -
-        padding -
-        ((point[key] - min) / range) * (height - padding * 2);
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    .map((p, i) => {
+      const x = PX + (i / (points.length - 1)) * (W - PX * 2);
+      const y = H - PY - ((p[key] - min) / range) * (H - PY * 2);
+      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(' ');
 }
 
 export function RevenueAreaChart({ points }: { points: RevenuePoint[] }) {
-  const grossPath = buildLinePath(points, 'gross');
-  const settledPath = buildLinePath(points, 'settled');
+  if (!points.length) return null;
+
+  const grossPath   = buildPath(points, 'gross');
+  const settledPath = buildPath(points, 'settled');
+  const maxVal      = Math.max(...points.map((p) => p.gross), 1);
+  const displayPoints = points.slice(-7);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-4 text-xs text-[color:var(--merchant-muted)]">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-[#1d4ed8]" />
-          Gross volume
+    <div className="space-y-3">
+      {/* Legend */}
+      <div className="flex items-center gap-5 text-xs text-[color:var(--merchant-muted)]">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[#D4A843]" />
+          Gross
         </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-[#0f766e]" />
-          Settled volume
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[color:var(--merchant-border)] opacity-80" />
+          Settled
+        </span>
+        <span className="ml-auto font-medium text-[color:var(--merchant-text)]">
+          {formatCompactNumber(maxVal)} peak
         </span>
       </div>
-      <svg viewBox="0 0 100 44" className="h-52 w-full overflow-visible">
-        <defs>
-          <linearGradient id="merchantGrossGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.24" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
-          </linearGradient>
-          <linearGradient id="merchantSettledGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0f766e" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#0f766e" stopOpacity="0.01" />
-          </linearGradient>
-        </defs>
-        {points.map((point, index) => (
-          <line
-            key={point.label}
-            x1={4 + (index * 92) / Math.max(points.length - 1, 1)}
-            y1="4"
-            x2={4 + (index * 92) / Math.max(points.length - 1, 1)}
-            y2="40"
-            stroke="rgba(148, 163, 184, 0.08)"
-            strokeDasharray="1.5 3.5"
+
+      {/* SVG Chart */}
+      <div className="relative overflow-hidden rounded-lg">
+        <svg
+          viewBox="0 0 100 48"
+          preserveAspectRatio="none"
+          className="h-48 w-full"
+        >
+          <defs>
+            <linearGradient id="m-gross-g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#D4A843" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#D4A843" stopOpacity="0.02" />
+            </linearGradient>
+            <linearGradient id="m-settled-g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#94A3B8" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#94A3B8" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid lines */}
+          {[0.25, 0.5, 0.75].map((frac) => (
+            <line
+              key={frac}
+              x1="4" y1={6 + frac * 36}
+              x2="96" y2={6 + frac * 36}
+              stroke="currentColor"
+              strokeOpacity="0.06"
+              strokeWidth="0.4"
+            />
+          ))}
+
+          {/* Settled area + line */}
+          <path
+            d={`${settledPath} L 96 48 L 4 48 Z`}
+            fill="url(#m-settled-g)"
           />
-        ))}
-        <path d={`${grossPath} L 96 40 L 4 40 Z`} fill="url(#merchantGrossGradient)" />
-        <path d={`${settledPath} L 96 40 L 4 40 Z`} fill="url(#merchantSettledGradient)" />
-        <path d={grossPath} fill="none" stroke="#2563eb" strokeWidth="1.6" strokeLinecap="round" />
-        <path d={settledPath} fill="none" stroke="#0f766e" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-      <div className="grid grid-cols-3 gap-3 text-xs text-[color:var(--merchant-muted)] md:grid-cols-6">
-        {points.slice(-6).map((point) => (
-          <div key={point.label}>
-            <p>{point.label}</p>
-            <p className="mt-1 font-semibold text-[color:var(--merchant-text)]">
-              {formatCompactNumber(point.gross)}
-            </p>
-          </div>
+          <path
+            d={settledPath}
+            fill="none"
+            stroke="#94A3B8"
+            strokeWidth="1"
+            strokeOpacity="0.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Gross area + line */}
+          <path
+            d={`${grossPath} L 96 48 L 4 48 Z`}
+            fill="url(#m-gross-g)"
+          />
+          <path
+            d={grossPath}
+            fill="none"
+            stroke="#D4A843"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+
+      {/* X-axis labels */}
+      <div className="flex items-center justify-between text-[10px] text-[color:var(--merchant-muted)]">
+        {displayPoints.map((p) => (
+          <span key={p.label}>{p.label}</span>
         ))}
       </div>
     </div>
   );
 }
 
+/* ─── Donut Chart ────────────────────────────────────── */
+
 export function BreakdownDonutChart({ slices }: { slices: BreakdownSlice[] }) {
-  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
-  let offset = 0;
+  const total  = slices.reduce((s, slice) => s + slice.value, 0);
+  let   offset = 0;
+
+  if (!slices.length || total === 0) {
+    return (
+      <div className="flex items-center justify-center py-6">
+        <p className="text-xs text-[color:var(--merchant-muted)]">No data available.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[220px,1fr] lg:items-center">
-      <div className="relative mx-auto h-56 w-56">
+    <div className="flex items-center gap-5">
+      {/* Donut */}
+      <div className="relative h-20 w-20 flex-shrink-0">
         <svg viewBox="0 0 42 42" className="h-full w-full -rotate-90">
           <circle
-            cx="21"
-            cy="21"
-            r="15.915"
+            cx="21" cy="21" r="15.915"
             fill="none"
-            stroke="rgba(148, 163, 184, 0.12)"
-            strokeWidth="4"
+            stroke="currentColor"
+            strokeOpacity="0.07"
+            strokeWidth="5"
           />
           {slices.map((slice) => {
-            const value = (slice.value / total) * 100;
-            const dasharray = `${value} ${100 - value}`;
-            const dashoffset = -offset;
-            offset += value;
-
+            const pct       = (slice.value / total) * 100;
+            const dasharray = `${pct} ${100 - pct}`;
+            const dash      = -offset;
+            offset += pct;
             return (
               <circle
                 key={slice.label}
-                cx="21"
-                cy="21"
-                r="15.915"
+                cx="21" cy="21" r="15.915"
                 fill="none"
                 stroke={slice.color}
-                strokeWidth="4"
+                strokeWidth="5"
                 strokeDasharray={dasharray}
-                strokeDashoffset={dashoffset}
-                strokeLinecap="round"
+                strokeDashoffset={dash}
+                strokeLinecap="butt"
               />
             );
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--merchant-muted)]">
-            Live mix
-          </p>
-          <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[color:var(--merchant-text)]">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <p className="text-[11px] font-semibold text-[color:var(--merchant-text)]">
             {total}%
-          </p>
-          <p className="mt-1 text-sm text-[color:var(--merchant-soft-text)]">
-            Current distribution
           </p>
         </div>
       </div>
-      <div className="space-y-3">
+
+      {/* Legend */}
+      <div className="flex-1 space-y-2 min-w-0">
         {slices.map((slice) => (
-          <div
-            key={slice.label}
-            className="flex items-start justify-between gap-4 rounded-2xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel-soft)] px-4 py-3"
-          >
-            <div className="flex items-start gap-3">
-              <span
-                className="mt-1 h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: slice.color }}
-              />
-              <div>
-                <p className="text-sm font-semibold text-[color:var(--merchant-text)]">
-                  {slice.label}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-[color:var(--merchant-muted)]">
-                  {slice.note}
-                </p>
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-[color:var(--merchant-text)]">
+          <div key={slice.label} className="flex items-center gap-2 text-xs">
+            <span
+              className="h-2 w-2 flex-shrink-0 rounded-full"
+              style={{ backgroundColor: slice.color }}
+            />
+            <span className="min-w-0 flex-1 truncate text-[color:var(--merchant-soft-text)]">
+              {slice.label}
+            </span>
+            <span className="flex-shrink-0 font-medium text-[color:var(--merchant-text)]">
               {slice.value}%
             </span>
           </div>
