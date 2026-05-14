@@ -47,3 +47,80 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px #1a1a1a inset;
   caret-color: white;
 }
+
+/* ═══════════════════════════════════════════════════════
+   MERCHANT DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════ */
+
+/* Dark theme (default) */
+.merchant-theme {
+  --merchant-bg:            #09090C;
+  --merchant-panel:         rgba(255, 255, 255, 0.042);
+  --merchant-panel-soft:    rgba(255, 255, 255, 0.020);
+  --merchant-panel-strong:  rgba(255, 255, 255, 0.072);
+  --merchant-border:        rgba(255, 255, 255, 0.082);
+  --merchant-strong-border: rgba(255, 255, 255, 0.155);
+  --merchant-text:          #F3F3F5;
+  --merchant-soft-text:     #9A9AAA;
+  --merchant-muted:         #5C5C6A;
+  --merchant-header:        rgba(9, 9, 12, 0.88);
+  --merchant-side:          #0C0C10;
+  /* Action button tokens */
+  --merchant-action-bg:     #EEEEF2;
+  --merchant-action-fg:     #09090C;
+  --merchant-action-hover:  #E4E4E8;
+}
+
+/* Light theme */
+.merchant-theme[data-theme="light"] {
+  --merchant-bg:            #FCFCFD;
+  --merchant-panel:         rgba(0, 0, 0, 0.032);
+  --merchant-panel-soft:    rgba(0, 0, 0, 0.016);
+  --merchant-panel-strong:  rgba(0, 0, 0, 0.058);
+  --merchant-border:        rgba(0, 0, 0, 0.082);
+  --merchant-strong-border: rgba(0, 0, 0, 0.160);
+  --merchant-text:          #09090C;
+  --merchant-soft-text:     #636370;
+  --merchant-muted:         #9898A8;
+  --merchant-header:        rgba(252, 252, 253, 0.92);
+  --merchant-side:          #F4F4F8;
+  /* Action button tokens */
+  --merchant-action-bg:     #0F0F14;
+  --merchant-action-fg:     #F3F3F5;
+  --merchant-action-hover:  #1A1A22;
+}
+
+/* Merchant component class */
+.merchant-panel {
+  background-color: var(--merchant-panel);
+  border: 1px solid var(--merchant-border);
+}
+
+/* Merchant font smoothing */
+.merchant-theme {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11" 1, "cv01" 1;
+}
+
+/* Merchant scrollbar */
+.merchant-theme ::-webkit-scrollbar        { width: 4px; height: 4px; }
+.merchant-theme ::-webkit-scrollbar-track  { background: transparent; }
+.merchant-theme ::-webkit-scrollbar-thumb  { background: var(--merchant-border); border-radius: 4px; }
+.merchant-theme ::-webkit-scrollbar-thumb:hover { background: var(--merchant-strong-border); }
+
+/* Merchant focus ring — gold */
+.merchant-theme :focus-visible {
+  outline: 1.5px solid rgba(212, 168, 67, 0.55);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Merchant autofill */
+.merchant-theme input:-webkit-autofill,
+.merchant-theme input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--merchant-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--merchant-bg) inset;
+  caret-color: var(--merchant-text);
+  transition: background-color 5000s ease-in-out 0s;
+}
