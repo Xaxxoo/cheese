@@ -442,7 +442,10 @@ export class AdminAuthService {
           take: 5,
         }),
         user.stellarPublicKey
-          ? this.blockchainService.getStellarBalance(user.stellarPublicKey).catch(() => null)
+          ? this.blockchainService.getStellarBalance(user.stellarPublicKey).catch((e: Error) => {
+              this.logger.warn(`getUserDetail: balance fetch failed for ${id}: ${e.message}`);
+              return null;
+            })
           : Promise.resolve(null),
       ]);
 

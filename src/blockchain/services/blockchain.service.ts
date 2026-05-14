@@ -939,6 +939,8 @@ export class BlockchainService implements OnModuleInit {
         | undefined;
       return usdcBalance?.balance ?? '0.0000000';
     } catch (err) {
+      const anyErr = err as { response?: { status?: number } };
+      if (anyErr?.response?.status === 404) return '0.0000000';
       throw this.wrapError('getStellarUsdcBalance', err);
     }
   }
