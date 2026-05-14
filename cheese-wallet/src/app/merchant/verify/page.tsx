@@ -9,10 +9,8 @@ import { useMerchantAuthStore } from '@/features/merchant/store/merchant-auth-st
 
 export default function MerchantVerifyPage() {
   const router = useRouter();
-  const { pendingEmail } = useMerchantAuthStore((state) => ({
-    pendingEmail: state.pendingEmail,
-  }));
-  const [code, setCode] = useState('482931');
+  const pendingEmail = useMerchantAuthStore((s) => s.pendingEmail);
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -64,7 +62,7 @@ export default function MerchantVerifyPage() {
             inputMode="numeric"
             value={code}
             onChange={(event) => setCode(event.target.value)}
-            hint="Demo code prefilled for local merchant flow."
+            hint="Enter the 6-digit code sent to your email."
           />
           {error && <p className="text-sm text-rose-500">{error}</p>}
           <MerchantButton type="submit" className="w-full h-12" loading={loading}>
