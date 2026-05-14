@@ -10,7 +10,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { Public } from '../common/decorators/public.decorator'; // used at class level
 import { MerchantAuthService } from './merchant-auth.service';
 import { MerchantJwtGuard } from './guards/merchant-jwt.guard';
@@ -114,14 +114,14 @@ export class MerchantAuthController {
   @UseGuards(MerchantJwtGuard)
   @Get('me')
   async getMe(@Req() req: Request) {
-    const ctx = req.user as MerchantJwtContext;
+    const ctx = (req as any).user as MerchantJwtContext;
     return this.merchantAuthService.getMe(ctx);
   }
 
   @UseGuards(MerchantJwtGuard)
   @Patch('onboarding')
   async completeOnboarding(@Req() req: Request, @Body() dto: MerchantOnboardingDto) {
-    const ctx = req.user as MerchantJwtContext;
+    const ctx = (req as any).user as MerchantJwtContext;
     return this.merchantAuthService.completeOnboarding(ctx, dto);
   }
 

@@ -9,7 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { MerchantService } from './merchant.service';
 import { MerchantJwtGuard } from './guards/merchant-jwt.guard';
@@ -26,7 +26,7 @@ export class MerchantController {
 
   @Get('dashboard')
   async getDashboard(@Req() req: Request) {
-    const ctx = req.user as MerchantJwtContext;
+    const ctx = (req as any).user as MerchantJwtContext;
     return this.merchantService.getDashboard(ctx);
   }
 
@@ -37,7 +37,7 @@ export class MerchantController {
     @Query('limit') limit?: string,
     @Query('status') status?: string,
   ) {
-    const ctx = req.user as MerchantJwtContext;
+    const ctx = (req as any).user as MerchantJwtContext;
     return this.merchantService.listPayments(ctx, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
@@ -47,7 +47,7 @@ export class MerchantController {
 
   @Get('payments/:id')
   async getPayment(@Req() req: Request, @Param('id') id: string) {
-    const ctx = req.user as MerchantJwtContext;
+    const ctx = (req as any).user as MerchantJwtContext;
     const result = await this.merchantService.getPayment(ctx, id);
     if (!result) throw new NotFoundException('Payment not found');
     return result;
@@ -55,13 +55,13 @@ export class MerchantController {
 
   @Post('payments')
   async createPayment(@Req() req: Request, @Body() dto: CreatePaymentRequestDto) {
-    const ctx = req.user as MerchantJwtContext;
+    const ctx = (req as any).user as MerchantJwtContext;
     return this.merchantService.createPaymentRequest(ctx, dto);
   }
 
   @Get('settlements')
   async getSettlements(@Req() req: Request) {
-    const ctx = req.user as MerchantJwtContext;
+    const ctx = (req as any).user as MerchantJwtContext;
     return this.merchantService.getSettlements(ctx);
   }
 }
