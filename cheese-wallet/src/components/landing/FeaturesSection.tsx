@@ -3,18 +3,18 @@
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 import {
-  Zap, TrendingUp, Send, Receipt, Shield, Clock, Smartphone, Eye
+  Coins, Send, Building2, TrendingUp, Shield, Clock, Smartphone, Eye
 } from 'lucide-react'
 
 const FEATURES = [
-  { icon: Zap, title: 'Instant Conversion', desc: 'USDC converts to Naira the moment it hits your wallet. No waiting, no processing delays.' },
-  { icon: TrendingUp, title: 'Live Exchange Rates', desc: 'We use real market rates with zero hidden markup. You always know what you\'re getting.' },
-  { icon: Send, title: 'Send to Any Bank', desc: 'Transfer Naira directly to any Nigerian bank account in seconds. No charges, no friction.' },
-  { icon: Receipt, title: 'Pay Bills & Airtime', desc: 'Top up your data, pay DSTV, NEPA, and more — straight from your CheesePay balance.' },
-  { icon: Shield, title: 'Device-Secured', desc: 'Your wallet is locked to your device with cryptographic keys. Only you can access it.' },
-  { icon: Clock, title: 'Available 24/7', desc: 'Send money at 2am on a Sunday. CheesePay never sleeps, never delays, never blocks you.' },
-  { icon: Smartphone, title: 'Works on Any Phone', desc: 'No app download needed. CheesePay works beautifully in your mobile browser from day one.' },
-  { icon: Eye, title: 'Full Transparency', desc: 'Every conversion, every transfer, every fee — visible in your history. Nothing hidden.' },
+  { icon: Coins,      title: 'Hold Stablecoins',         desc: 'Your balance stays in USDC or USDT — protected from Naira volatility, always ready to spend.' },
+  { icon: Send,       title: 'Instant Bank Transfers',   desc: 'Send money directly to any Nigerian bank account in seconds, straight from your stablecoin balance.' },
+  { icon: Building2,  title: 'Familiar Transfer Flow',   desc: 'Bank name, account number, amount, send. The exact same flow you already know from Kuda, Opay, or your bank app.' },
+  { icon: TrendingUp, title: 'Spend Without Converting', desc: 'No pre-conversion. No swap. Just enter an amount and send — CheesePay handles everything behind the scenes.' },
+  { icon: Shield,     title: 'Device-Secured Wallet',    desc: 'Your funds are protected by cryptographic keys tied to your device. Only you can authorise a transfer.' },
+  { icon: Clock,      title: 'Always Available',         desc: 'Send money at midnight on a public holiday. Your stablecoin balance never sleeps and neither does CheesePay.' },
+  { icon: Smartphone, title: 'No App Download Needed',   desc: 'CheesePay works beautifully in your mobile browser from day one. Nothing to install.' },
+  { icon: Eye,        title: 'Full Transparency',        desc: 'Every transfer, every rate applied, every timestamp — completely visible in your history. Nothing hidden.' },
 ]
 
 export function FeaturesSection() {
@@ -31,10 +31,10 @@ export function FeaturesSection() {
         >
           <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>Features</div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            Built for real life
+            Your stablecoins, usable everywhere
           </h2>
           <p className="text-[#B5B5B5] max-w-xl mx-auto">
-            Everything you need to turn your USDC into spending power — simply and immediately.
+            Live your everyday Nigerian financial life directly from your USDC or USDT balance.
           </p>
         </motion.div>
 

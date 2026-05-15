@@ -6,10 +6,10 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 
 const FLOATING_CARDS = [
-  { label: 'USDC → NGN', amount: '₦3,840,000', sub: '$2,400 converted', time: 'Just now', positive: true },
-  { label: 'Payment sent', amount: '₦12,500', sub: 'To @sarah', time: '2m ago', positive: false },
-  { label: 'USDC → NGN', amount: '₦891,000', sub: '$540 converted', time: '5m ago', positive: true },
-  { label: 'Balance', amount: '$4,820.00', sub: 'USDC available', time: 'Live', positive: true },
+  { label: 'Sent to Zenith Bank', amount: '₦150,000', sub: 'Amara Okafor · Just now', positive: true },
+  { label: 'USDC Balance', amount: '$4,820.00', sub: 'Available to spend', positive: true },
+  { label: 'Sent to GTBank', amount: '₦45,000', sub: 'Tunde Adewale · 3m ago', positive: false },
+  { label: 'Transfer received', amount: '₦891,000', sub: 'From $540 USDC · 8m ago', positive: true },
 ]
 
 function FloatingCard({ card, delay, x, y }: { card: typeof FLOATING_CARDS[0]; delay: number; x: string; y: string }) {
@@ -24,12 +24,12 @@ function FloatingCard({ card, delay, x, y }: { card: typeof FLOATING_CARDS[0]; d
       <motion.div
         animate={{ y: [0, -10, 0] }}
         transition={{ duration: 5 + delay, repeat: Infinity, ease: 'easeInOut' }}
-        className="rounded-2xl p-4 w-[190px]"
+        className="rounded-2xl p-4 w-[200px]"
         style={{ background: 'rgba(11,11,11,0.9)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 20px rgba(212,175,55,0.05)' }}
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] text-[#555]">{card.label}</span>
-          <span className="text-[9px] text-[#333]">{card.time}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
         </div>
         <div className="text-white font-bold text-base mb-1">{card.amount}</div>
         <div className="text-[11px]" style={{ color: card.positive ? '#D4AF37' : '#B5B5B5' }}>{card.sub}</div>
@@ -109,10 +109,10 @@ export function HeroSection() {
           transition={{ duration: 0.9, delay: 0.2 }}
           className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white tracking-tight leading-[0.9] mb-6"
         >
-          Spend USDC
+          Hold USDC.
           <br />
           <span style={{ background: 'linear-gradient(135deg, #D4AF37, #F0D060, #B8941F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            like cash.
+            Send Naira.
           </span>
         </motion.h1>
 
@@ -122,7 +122,7 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="text-lg md:text-xl text-[#B5B5B5] max-w-xl mx-auto mb-10 leading-relaxed"
         >
-          Fund your CheesePay wallet with USDC and spend seamlessly in Naira — instantly converted, beautifully simple.
+          Keep your money in USDC or USDT. Send to any Nigerian bank account instantly — with the familiar transfer experience you already know.
         </motion.p>
 
         <motion.div
@@ -150,7 +150,7 @@ export function HeroSection() {
           transition={{ delay: 1.0 }}
           className="text-xs text-[#333]"
         >
-          No hidden fees · Instant conversion · Secured by USDC
+          No hidden fees · Instant bank transfers · Your stablecoins, usable everywhere
         </motion.p>
       </div>
     </section>

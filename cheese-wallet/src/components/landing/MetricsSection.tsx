@@ -4,10 +4,10 @@ import { motion, useInView } from 'framer-motion'
 import { useRef, useEffect, useState } from 'react'
 
 const METRICS = [
-  { value: 3, suffix: 's', prefix: '<', label: 'Conversion Speed', sublabel: 'USDC to Naira, instantly' },
-  { value: 0, suffix: '%', label: 'Hidden Fees', sublabel: 'What you see is what you get' },
-  { value: 7, suffix: '+', label: 'Funding Networks', sublabel: 'Polygon, Base, Arbitrum & more' },
-  { value: 24, suffix: '/7', label: 'Always On', sublabel: 'Your money never sleeps' },
+  { value: 3,  suffix: 's', prefix: '<', label: 'Transfer Speed',   sublabel: 'Money arrives instantly' },
+  { value: 0,  suffix: '%', label: 'Hidden Fees',   sublabel: 'The rate you see is the rate you get' },
+  { value: 7,  suffix: '+', label: 'Funded From',   sublabel: 'Any supported USDC network' },
+  { value: 24, suffix: '/7', label: 'Always Open',  sublabel: 'Send money any time, any day' },
 ]
 
 function CountUp({ value, suffix, prefix }: { value: number; suffix: string; prefix?: string }) {

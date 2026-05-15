@@ -6,11 +6,11 @@ import { Zap, CheckCircle2 } from 'lucide-react'
 
 const NETWORKS = [
   { name: 'Polygon', speed: '2s', color: '#8247E5', abbr: 'POL' },
-  { name: 'Base', speed: '2s', color: '#0052FF', abbr: 'BASE' },
-  { name: 'Arbitrum', speed: '1s', color: '#28A0F0', abbr: 'ARB' },
-  { name: 'Optimism', speed: '2s', color: '#FF0420', abbr: 'OP' },
+  { name: 'Base',    speed: '2s', color: '#0052FF', abbr: 'BASE' },
+  { name: 'Arbitrum',speed: '1s', color: '#28A0F0', abbr: 'ARB' },
+  { name: 'Optimism',speed: '2s', color: '#FF0420', abbr: 'OP' },
   { name: 'Stellar', speed: '5s', color: '#7D00FF', abbr: 'XLM' },
-  { name: 'Celo', speed: '5s', color: '#35D07F', abbr: 'CELO' },
+  { name: 'Celo',    speed: '5s', color: '#35D07F', abbr: 'CELO' },
 ]
 
 export function NetworksSection() {
@@ -25,16 +25,16 @@ export function NetworksSection() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           className="text-center mb-20"
         >
-          <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>Funding Networks</div>
+          <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>Supported Networks</div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            Fund from anywhere
+            Fund from any chain
           </h2>
           <p className="text-[#B5B5B5] max-w-xl mx-auto">
-            Send USDC from whichever chain you prefer. CheesePay handles the rest.
+            Send USDC or USDT from whichever network you hold it on. Your wallet, your choice.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {NETWORKS.map((net, i) => (
             <motion.div
               key={net.name}
@@ -67,7 +67,7 @@ export function NetworksSection() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 text-[#555]">
                     <CheckCircle2 size={10} />
-                    <span className="text-[10px]">USDC</span>
+                    <span className="text-[10px]">USDC & USDT</span>
                   </div>
                   <span className="text-emerald-400 text-[10px]">Supported</span>
                 </div>

@@ -2,29 +2,29 @@
 
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
-import { Wallet, ArrowLeftRight, ShoppingBag } from 'lucide-react'
+import { Wallet, Building2, CheckCircle2 } from 'lucide-react'
 
 const STEPS = [
   {
     icon: Wallet,
     step: '01',
     title: 'Fund Your Wallet',
-    description: 'Send USDC from any supported wallet — Polygon, Base, Arbitrum, and more. Your balance appears instantly.',
-    detail: 'Works with any USDC wallet',
+    description: 'Add USDC or USDT from any supported network. Your stablecoin balance is your spending power — no pre-conversion required.',
+    detail: 'USDC & USDT supported',
   },
   {
-    icon: ArrowLeftRight,
+    icon: Building2,
     step: '02',
-    title: 'Convert to Naira',
-    description: 'CheesePay converts your USDC to NGN at live rates with zero hidden markup. No surprises, ever.',
-    detail: 'Live rates, zero markup',
+    title: 'Enter Bank Details',
+    description: 'Pick a bank, enter an account number, type an amount. Exactly like every Nigerian bank transfer you have ever made.',
+    detail: 'GTBank, Zenith, Kuda, Opay & more',
   },
   {
-    icon: ShoppingBag,
+    icon: CheckCircle2,
     step: '03',
-    title: 'Spend Like Cash',
-    description: 'Pay bills, send money to any Nigerian bank, or spend anywhere Naira is accepted — all from your phone.',
-    detail: 'Banks, bills, transfers — sorted.',
+    title: 'Recipient Gets Naira',
+    description: 'Your stablecoins are quietly settled in the background. The recipient receives Naira in their bank account — instantly.',
+    detail: 'Instant. No crypto knowledge needed.',
   },
 ]
 
@@ -44,10 +44,10 @@ export function HowItWorksSection() {
         >
           <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>How It Works</div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            Three steps to spending power
+            Feels exactly like banking
           </h2>
           <p className="text-[#B5B5B5] max-w-xl mx-auto">
-            From USDC to Naira in your pocket — no crypto knowledge required.
+            The transfer experience you already know — powered by stablecoins underneath.
           </p>
         </motion.div>
 
@@ -70,7 +70,6 @@ export function HowItWorksSection() {
                   <div className="rounded-2xl p-8 border transition-all h-full"
                     style={{ background: '#0B0B0B', borderColor: 'rgba(255,255,255,0.06)' }}
                   >
-                    {/* Step number + Icon */}
                     <div className="flex items-center gap-4 mb-6">
                       <div className="relative">
                         <div className="w-12 h-12 rounded-xl flex items-center justify-center border"
@@ -97,6 +96,18 @@ export function HowItWorksSection() {
             })}
           </div>
         </div>
+
+        {/* Behind the scenes note */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.8, duration: 0.6 }}
+          className="mt-12 text-center"
+        >
+          <p className="text-xs text-[#444] max-w-md mx-auto leading-relaxed">
+            Behind the scenes, CheesePay handles stablecoin deduction, conversion, and bank settlement — completely invisibly to the recipient.
+          </p>
+        </motion.div>
       </div>
     </section>
   )

@@ -25,14 +25,14 @@ export function CtaSection() {
         >
           <div className="text-xs font-medium tracking-[0.2em] uppercase mb-6" style={{ color: '#D4AF37' }}>Get Started</div>
           <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight leading-[0.95]">
-            Nigeria runs on Naira.
+            Hold crypto.
             <br />
             <span style={{ background: 'linear-gradient(135deg, #D4AF37, #F0D060, #B8941F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              Your USDC should too.
+              Live locally.
             </span>
           </h2>
           <p className="text-[#B5B5B5] text-lg max-w-xl mx-auto mb-12 leading-relaxed">
-            Stop converting manually. Stop paying inflated rates. CheesePay gives your USDC the spending power it deserves.
+            You shouldn&apos;t have to choose between the stability of stablecoins and the convenience of everyday Nigerian life. CheesePay gives you both.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

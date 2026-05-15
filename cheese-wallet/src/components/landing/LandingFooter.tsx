@@ -1,9 +1,9 @@
 'use client'
 
 const LINKS: Record<string, string[]> = {
-  Product: ['Features', 'How It Works', 'Security', 'Pricing'],
+  Product: ['How It Works', 'Features', 'Security', 'Pricing'],
   Company: ['About', 'Blog', 'Careers', 'Contact'],
-  Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy'],
+  Legal:   ['Privacy Policy', 'Terms of Service', 'Cookie Policy'],
 }
 
 export function LandingFooter() {
@@ -20,7 +20,7 @@ export function LandingFooter() {
               <span className="text-white font-semibold text-sm">CheesePay</span>
             </div>
             <p className="text-[#555] text-xs leading-relaxed max-w-[180px]">
-              Spend USDC like cash. Instantly converted to Naira, beautifully simple.
+              Hold stablecoins. Send Naira. Live normally in Nigeria.
             </p>
           </div>
 
@@ -41,7 +41,7 @@ export function LandingFooter() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t gap-4" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           <p className="text-[#333] text-xs">&copy; {new Date().getFullYear()} CheesePay. All rights reserved.</p>
-          <p className="text-[#333] text-xs">Powered by USDC · Built for Nigeria</p>
+          <p className="text-[#333] text-xs">Your stablecoins, usable everywhere in Nigeria.</p>
         </div>
       </div>
     </footer>
