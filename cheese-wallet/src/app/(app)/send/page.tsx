@@ -483,12 +483,12 @@ function AddressInput({
 }
 
 // ─────────────────────────────────────────────────────────
-// Bank details step
+// Bank details step (combined with amount entry)
 // ─────────────────────────────────────────────────────────
 function BankDetailsStep({
   onNext,
 }: {
-  onNext: (recipient: BankRecipient) => void
+  onNext: (recipient: BankRecipient, amountNgn: string) => void
 }) {
   const [selectedBank, setSelectedBank] = useState<NigerianBank | null>(null)
   const [acctNum, setAcctNum]           = useState('')
@@ -498,6 +498,9 @@ function BankDetailsStep({
   const [verified, setVerified]         = useState(false)
   const [bankOpen, setBankOpen]         = useState(false)
   const [verifyError, setVerifyError]   = useState('')
+  const [amountRaw, setAmountRaw]       = useState('')
+  const [amountError, setAmountError]   = useState('')
+  const verifyRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const banksQ = useQuery({
     queryKey: QUERY_KEYS.BANKS,
@@ -513,30 +516,59 @@ function BankDetailsStep({
     setAcctName('')
     setNameUnverified(false)
     setVerifyError('')
+    setAmountRaw('')
+    setAmountError('')
   }
 
-  async function verify() {
-    if (!selectedBank || acctNum.length !== 10) return
-    setVerifying(true)
-    setVerifyError('')
-    try {
-      const result = await resolveAccount({ bankCode: selectedBank.code, accountNumber: acctNum })
-      setVerified(true)
-      if (result.accountName) {
-        setAcctName(result.accountName)
-        setNameUnverified(false)
-      } else {
-        setAcctName('')
-        setNameUnverified(true)
+  // Auto-verify when 10 digits entered and bank is selected
+  useEffect(() => {
+    if (acctNum.length !== 10 || !selectedBank || verified) return
+    let cancelled = false
+    if (verifyRef.current) clearTimeout(verifyRef.current)
+    verifyRef.current = setTimeout(async () => {
+      setVerifying(true)
+      setVerifyError('')
+      try {
+        const result = await resolveAccount({ bankCode: selectedBank.code, accountNumber: acctNum })
+        if (cancelled) return
+        setVerified(true)
+        if (result.accountName) {
+          setAcctName(result.accountName)
+          setNameUnverified(false)
+        } else {
+          setAcctName('')
+          setNameUnverified(true)
+        }
+      } catch (err) {
+        if (cancelled) return
+        setVerifyError((err as Error).message ?? 'Could not verify account')
+      } finally {
+        if (!cancelled) setVerifying(false)
       }
-    } catch (err) {
-      setVerifyError((err as Error).message ?? 'Could not verify account')
-    } finally {
-      setVerifying(false)
+    }, 800)
+    return () => {
+      cancelled = true
+      if (verifyRef.current) clearTimeout(verifyRef.current)
     }
+  }, [acctNum, selectedBank, verified])
+
+  function handleAmountInput(v: string) {
+    setAmountRaw(v.replace(/\D/g, ''))
+    setAmountError('')
   }
 
-  const canContinue = verified && !!acctName && !!selectedBank
+  const amount     = parseInt(amountRaw, 10) || 0
+  const canConfirm = verified && !!acctName && !!selectedBank && amount >= 100
+
+  function handleConfirm() {
+    if (!selectedBank || !acctName) return
+    if (!amount || amount <= 0) { setAmountError('Enter an amount'); return }
+    if (amount < 100)           { setAmountError('Minimum is ₦100'); return }
+    onNext(
+      { bankCode: selectedBank.code, bankName: selectedBank.name, accountNumber: acctNum, accountName: acctName },
+      amountRaw,
+    )
+  }
 
   return (
     <div className="flex flex-col gap-5 flex-1">
@@ -562,7 +594,15 @@ function BankDetailsStep({
                 <button
                   key={b.code}
                   type="button"
-                  onClick={() => { setSelectedBank(b); setBankOpen(false); setVerified(false); setAcctName(''); setNameUnverified(false) }}
+                  onClick={() => {
+                    setSelectedBank(b)
+                    setBankOpen(false)
+                    setVerified(false)
+                    setAcctName('')
+                    setNameUnverified(false)
+                    setAmountRaw('')
+                    setAmountError('')
+                  }}
                   className="w-full text-left px-4 py-3 text-sm text-white/70 hover:bg-white/8 hover:text-white transition-colors border-b border-white/5 last:border-0"
                 >
                   {b.name}
@@ -578,7 +618,9 @@ function BankDetailsStep({
         <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">Account Number</p>
         <div className={cn(
           'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
-          verified ? 'border-emerald-500/40' : 'border-white/10 focus-within:border-[#d4a843]/50',
+          verified  ? 'border-emerald-500/40' :
+          verifying ? 'border-[#d4a843]/30'   :
+          'border-white/10 focus-within:border-[#d4a843]/50',
         )}>
           <input
             type="text"
@@ -589,32 +631,28 @@ function BankDetailsStep({
             className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none font-mono tracking-widest"
             maxLength={10}
           />
-          <span className="text-xs text-white/25 shrink-0">{acctNum.length}/10</span>
+          {verifying
+            ? <Loader2      size={15} className="text-[#d4a843] animate-spin shrink-0" />
+            : verified
+            ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+            : <span className="text-xs text-white/25 shrink-0">{acctNum.length}/10</span>
+          }
         </div>
       </div>
-
-      {/* Verify button */}
-      {acctNum.length === 10 && selectedBank && !verified && (
-        <Button fullWidth onClick={verify} disabled={verifying}>
-          {verifying
-            ? <><Loader2 size={14} className="animate-spin mr-1.5" />Verifying…</>
-            : 'Verify Account'}
-        </Button>
-      )}
 
       {/* Verify error */}
       {verifyError && (
         <p className="text-xs text-red-400 text-center">{verifyError}</p>
       )}
 
-      {/* Resolved account name — verified automatically */}
+      {/* Resolved account name — auto-verified */}
       {verified && !nameUnverified && acctName && (
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
           <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
             <User size={16} className="text-emerald-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white">{acctName}</p>
+            <p className="text-sm font-semibold text-white">{acctName}</p>
             <p className="text-xs text-white/35 mt-0.5">{selectedBank?.name} · {acctNum}</p>
           </div>
           <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
@@ -631,11 +669,13 @@ function BankDetailsStep({
             'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-[border-color] duration-150',
             acctName ? 'border-[#d4a843]/50' : 'border-white/10 focus-within:border-[#d4a843]/50',
           )}>
+            <User size={15} className="text-white/30 shrink-0" />
             <input
               type="text"
               value={acctName}
               onChange={(e) => setAcctName(e.target.value)}
               placeholder="e.g. JOHN DOE"
+              autoFocus
               className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none uppercase"
               autoCapitalize="characters"
               spellCheck={false}
@@ -644,14 +684,47 @@ function BankDetailsStep({
         </div>
       )}
 
+      {/* Amount input — shown once name is resolved */}
+      {verified && acctName && (
+        <div>
+          <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">Amount</p>
+          <div className={cn(
+            'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
+            amountError           ? 'border-red-500/40'         :
+            amount >= 100         ? 'border-[#d4a843]/40'       :
+            'border-white/10 focus-within:border-[#d4a843]/50',
+          )}>
+            <span className="text-white/30 text-sm font-medium shrink-0">₦</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amountRaw}
+              onChange={(e) => handleAmountInput(e.target.value)}
+              placeholder="Enter amount"
+              autoFocus
+              className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none"
+            />
+            {amount >= 100 && (
+              <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+            )}
+          </div>
+          {amountError && (
+            <p className="text-xs text-red-400 mt-1.5 px-1">{amountError}</p>
+          )}
+          {amountRaw && amount > 0 && amount < 100 && (
+            <p className="text-xs text-amber-400 mt-1.5 px-1">Minimum transfer is ₦100</p>
+          )}
+        </div>
+      )}
+
       <div className="mt-auto">
         <Button
           fullWidth
           size="lg"
-          onClick={() => canContinue && selectedBank && onNext({ bankCode: selectedBank.code, bankName: selectedBank.name, accountNumber: acctNum, accountName: acctName })}
-          disabled={!canContinue}
+          onClick={handleConfirm}
+          disabled={!canConfirm}
         >
-          Continue
+          Confirm
           <ChevronRight size={16} />
         </Button>
       </div>
@@ -1358,7 +1431,6 @@ export default function SendPage() {
     step === 'recipient'        ? (mode === 'username' ? 'Send by Username' : usdcType === 'evm' ? `${chainLabel} USDC` : 'Stellar USDC') :
     step === 'amount'           ? 'Enter amount' :
     step === 'bank_details'     ? 'Bank Transfer' :
-    step === 'bank_amount'      ? 'Enter amount' :
     step === 'pin'              ? 'Confirm transfer' : ''
 
   const headerBack =
@@ -1368,8 +1440,7 @@ export default function SendPage() {
     step === 'recipient'        ? () => { if (mode === 'usdc') setStep('usdc_network'); else if (mode === 'username') setStep('username_network'); else setStep('mode') } :
     step === 'amount'           ? () => setStep('recipient') :
     step === 'bank_details'     ? () => setStep('mode') :
-    step === 'bank_amount'      ? () => setStep('bank_details') :
-    step === 'pin'              ? () => { if (isBankFlow) setStep('bank_amount'); else setStep('amount') } :
+    step === 'pin'              ? () => { if (isBankFlow) setStep('bank_details'); else setStep('amount') } :
     () => {}
 
   return (
@@ -1478,19 +1549,10 @@ export default function SendPage() {
         />
       )}
 
-      {/* Bank details step */}
+      {/* Bank details step — includes amount entry; goes directly to PIN on confirm */}
       {step === 'bank_details' && (
         <BankDetailsStep
-          onNext={(r) => { setBankRecipient(r); setStep('bank_amount') }}
-        />
-      )}
-
-      {/* Bank amount step */}
-      {step === 'bank_amount' && bankRecipient && (
-        <BankAmountStep
-          recipient={bankRecipient}
-          onBack={() => setStep('bank_details')}
-          onNext={(amt) => { setBankAmount(amt); setStep('pin') }}
+          onNext={(r, amt) => { setBankRecipient(r); setBankAmount(amt); setStep('pin') }}
         />
       )}
 
@@ -1511,7 +1573,7 @@ export default function SendPage() {
         <BankPinStep
           recipient={bankRecipient}
           amountNgn={bankAmount}
-          onBack={() => setStep('bank_amount')}
+          onBack={() => setStep('bank_details')}
           onSuccess={() => setStep('success')}
           onError={(msg) => { setErrMsg(msg); setStep('error') }}
         />
