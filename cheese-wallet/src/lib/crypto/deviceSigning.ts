@@ -125,6 +125,30 @@ export async function signPayload(
 }
 
 /**
+ * Signs just the raw deviceId string for the login challenge.
+ * The backend verifies: verifyDeviceSignature({ message: deviceId, ... })
+ * so the signed bytes must be exactly UTF-8(deviceId), NOT JSON.
+ */
+export async function signDeviceChallenge(deviceId: string): Promise<string> {
+  const db   = await openDb()
+  const pair = await idbGet<CryptoKeyPair>(db, deviceId)
+
+  if (!pair?.privateKey) {
+    throw new Error(
+      'Device key not found. Re-register this device to continue.',
+    )
+  }
+
+  const sigBuf = await crypto.subtle.sign(
+    SIGN_ALGO,
+    pair.privateKey,
+    strToUtf8Buf(deviceId),
+  )
+
+  return bufToBase64url(sigBuf)
+}
+
+/**
  * Checks whether a key pair exists locally for the given deviceId.
  * Used at login to decide if re-registration is required.
  */

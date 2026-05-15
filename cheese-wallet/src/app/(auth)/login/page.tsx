@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
 import { login } from '@/lib/api/auth'
-import { generateDeviceKey, hasDeviceKey, signPayload } from '@/lib/crypto/deviceSigning'
+import { generateDeviceKey, hasDeviceKey, signDeviceChallenge } from '@/lib/crypto/deviceSigning'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -46,8 +46,8 @@ export default function LoginPage() {
         await generateDeviceKey(deviceId)
       }
 
-      // Sign the deviceId as the login challenge
-      const deviceSignature = await signPayload(deviceId, { deviceId })
+      // Sign the raw deviceId string — backend verifies message === deviceId (UTF-8)
+      const deviceSignature = await signDeviceChallenge(deviceId)
 
       const { user, tokens } = await login({
         identifier: identifier.trim(),
