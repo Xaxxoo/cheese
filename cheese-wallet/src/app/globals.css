@@ -69,6 +69,10 @@ input:-webkit-autofill:focus {
   --merchant-action-bg:     #EEEEF2;
   --merchant-action-fg:     #09090C;
   --merchant-action-hover:  #E4E4E8;
+  /* Solid input backgrounds — semi-transparent panel colors let the browser's
+     native white input background bleed through, making text invisible */
+  --merchant-input-bg:      #131316;
+  --merchant-input-bg-focus:#1a1a1e;
 }
 
 /* Light theme */
@@ -88,6 +92,9 @@ input:-webkit-autofill:focus {
   --merchant-action-bg:     #0F0F14;
   --merchant-action-fg:     #F3F3F5;
   --merchant-action-hover:  #1A1A22;
+  /* Solid input backgrounds for light theme */
+  --merchant-input-bg:      #F4F4F7;
+  --merchant-input-bg-focus:#EEEEF2;
 }
 
 /* Merchant component class */

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -67,6 +68,8 @@ export function MerchantInput({
   prefix,
   className,
   style,
+  onFocus,
+  onBlur,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
@@ -75,6 +78,8 @@ export function MerchantInput({
   suffix?: ReactNode;
   prefix?: ReactNode;
 }) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <label className="flex flex-col gap-1.5">
       {label && (
@@ -91,17 +96,29 @@ export function MerchantInput({
         <input
           className={cn(
             'h-9 w-full rounded-lg border text-sm outline-none transition-all duration-150',
-            'bg-[color:var(--merchant-panel)] text-[color:var(--merchant-text)]',
+            'text-[color:var(--merchant-text)]',
             'border-[color:var(--merchant-border)] placeholder:text-[color:var(--merchant-muted)]',
-            'focus:border-[color:var(--merchant-strong-border)] focus:bg-[color:var(--merchant-panel-strong)]',
+            focused
+              ? 'border-[color:var(--merchant-strong-border)]'
+              : '',
             prefix && 'pl-9',
             suffix && 'pr-10',
             !prefix && 'px-3.5',
-            error && 'border-rose-500/40 focus:border-rose-500/60',
+            error && 'border-rose-500/40',
+            focused && error && 'border-rose-500/60',
             props.readOnly && 'opacity-60 cursor-default',
             className,
           )}
-          style={{ WebkitTextFillColor: 'var(--merchant-text)', caretColor: 'var(--merchant-text)', ...style }}
+          style={{
+            backgroundColor: focused
+              ? 'var(--merchant-input-bg-focus)'
+              : 'var(--merchant-input-bg)',
+            WebkitTextFillColor: 'var(--merchant-text)',
+            caretColor: 'var(--merchant-text)',
+            ...style,
+          }}
+          onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+          onBlur={(e) => { setFocused(false); onBlur?.(e); }}
           {...props}
         />
         {suffix && (

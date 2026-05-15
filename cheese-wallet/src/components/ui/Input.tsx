@@ -41,10 +41,10 @@ export function Input({
         <input
           id={inputId}
           className={cn(
-            'w-full h-12 bg-white/6 border rounded-2xl px-4 text-sm text-white',
+            'w-full h-12 border rounded-2xl px-4 text-sm text-white',
             'placeholder:text-white/30',
             'transition-all duration-150',
-            'focus:outline-none focus:border-[#d4a843]/60 focus:bg-white/8',
+            'focus:outline-none focus:border-[#d4a843]/60',
             error
               ? 'border-red-500/40 focus:border-red-500/60'
               : 'border-white/10',
@@ -52,7 +52,13 @@ export function Input({
             suffix && 'pr-12',
             className,
           )}
-          style={{ WebkitTextFillColor: 'white', caretColor: 'white', ...style }}
+          style={{
+            backgroundColor: '#191919',
+            WebkitTextFillColor: 'white',
+            caretColor: 'white',
+            colorScheme: 'dark',
+            ...style,
+          }}
           {...props}
         />
         {suffix && (
