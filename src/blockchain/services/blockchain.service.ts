@@ -1278,7 +1278,7 @@ export class BlockchainService implements OnModuleInit {
       );
 
       return crypto.verify(
-        null,
+        'SHA256',
         Buffer.from(message, 'utf8'),
         { key: keyObject, dsaEncoding: 'ieee-p1363' },
         sigBuf,
