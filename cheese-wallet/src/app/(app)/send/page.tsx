@@ -13,6 +13,7 @@ import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer } from '@/lib/api/wallet'
+import { resetPin as apiResetPin } from '@/lib/api/auth'
 import { signTransaction, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction, NigerianBank } from '@/types'
@@ -1009,7 +1010,7 @@ function PinStep({
 
     try {
       const [pinHash, sigResult] = await Promise.all([
-        hashPin(currentPin, deviceId),
+        hashPin(currentPin, user.id),
         signTransaction({
           deviceId,
           userId:    user.id,
@@ -1124,14 +1125,16 @@ function PinStep({
       </div>
 
       {!loading && (
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors mt-4"
-        >
-          <ArrowLeft size={14} />
-          Change amount
-        </button>
+        <div className="flex flex-col items-center gap-3 mt-4">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Change amount
+          </button>
+        </div>
       )}
     </div>
   )
@@ -1160,6 +1163,55 @@ function BankPinStep({
   const [pinError, setPinError] = useState('')
   const submittedRef            = useRef(false)
 
+  // ── Forgot PIN reset flow ───────────────────────────────
+  type ResetFlow = 'off' | 'new' | 'confirm'
+  const [resetFlow, setResetFlow]   = useState<ResetFlow>('off')
+  const [firstNewPin, setFirstNewPin] = useState('')
+  const [resetPin, setResetPin]     = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+
+  const submitResetPin = useCallback(async (input: string) => {
+    if (resetFlow === 'new') {
+      setFirstNewPin(input)
+      setResetPin('')
+      setResetFlow('confirm')
+      return
+    }
+    if (resetFlow === 'confirm') {
+      if (input !== firstNewPin) {
+        setPinError("PINs don't match — try again")
+        setResetPin('')
+        setResetFlow('new')
+        setFirstNewPin('')
+        return
+      }
+      if (!user) { onError('Session expired'); return }
+      setResetLoading(true)
+      try {
+        const { default: apiClient } = await import('@/lib/api/client')
+        await apiResetPin()
+        const newHash = await hashPin(firstNewPin, user.id)
+        await apiClient.post('/auth/set-pin', { pinHash: newHash })
+        setResetFlow('off')
+        setResetPin('')
+        setFirstNewPin('')
+        setPinError('')
+        setPin('')
+      } catch (err) {
+        onError(err instanceof Error ? err.message : 'PIN reset failed')
+      } finally {
+        setResetLoading(false)
+      }
+    }
+  }, [resetFlow, firstNewPin, user, onError])
+
+  useEffect(() => {
+    if (resetFlow !== 'off' && resetPin.length === 6 && !resetLoading) {
+      void submitResetPin(resetPin)
+    }
+  }, [resetPin, resetFlow, resetLoading, submitResetPin])
+  // ────────────────────────────────────────────────────────
+
   const submit = useCallback(async (currentPin: string) => {
     if (submittedRef.current) return
     if (!user || !deviceId) { onError('Session expired — please log in again.'); return }
@@ -1169,7 +1221,7 @@ function BankPinStep({
     setPinError('')
 
     try {
-      const pinHash = await hashPin(currentPin, deviceId)
+      const pinHash = await hashPin(currentPin, user.id)
       const sig = await signTransaction({
         action:    'bank_transfer',
         userId:    user.id,
@@ -1188,7 +1240,6 @@ function BankPinStep({
         timestamp:       String(sig.timestamp),
         nonce:           sig.nonce,
       })
-      // Invalidate balance so the dashboard shows the updated USDC amount
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BALANCE })
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(1) })
       onSuccess()
@@ -1207,10 +1258,10 @@ function BankPinStep({
   }, [user, deviceId, queryClient, recipient, amountNgn, onSuccess, onError])
 
   useEffect(() => {
-    if (pin.length === 6 && !loading) {
+    if (resetFlow === 'off' && pin.length === 6 && !loading) {
       void submit(pin)
     }
-  }, [pin, loading, submit])
+  }, [pin, loading, submit, resetFlow])
 
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
 
@@ -1237,11 +1288,21 @@ function BankPinStep({
       </div>
 
       <div className="flex-1 flex items-center justify-center">
-        {loading ? (
+        {(loading || resetLoading) ? (
           <div className="flex flex-col items-center gap-4">
             <Loader2 size={40} className="text-[#d4a843] animate-spin" />
-            <p className="text-sm text-white/40">Processing transfer…</p>
+            <p className="text-sm text-white/40">
+              {resetLoading ? 'Setting new PIN…' : 'Processing transfer…'}
+            </p>
           </div>
+        ) : resetFlow !== 'off' ? (
+          <PinPad
+            value={resetPin}
+            onChange={setResetPin}
+            maxLength={6}
+            label={resetFlow === 'new' ? 'Enter your new PIN' : 'Confirm your new PIN'}
+            error={pinError}
+          />
         ) : (
           <PinPad
             value={pin}
@@ -1253,15 +1314,37 @@ function BankPinStep({
         )}
       </div>
 
-      {!loading && (
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors mt-4"
-        >
-          <ArrowLeft size={14} />
-          Change amount
-        </button>
+      {!loading && !resetLoading && (
+        <div className="flex flex-col items-center gap-3 mt-4">
+          {resetFlow === 'off' ? (
+            <>
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors"
+              >
+                <ArrowLeft size={14} />
+                Change amount
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPinError(''); setPin(''); setResetFlow('new') }}
+                className="text-xs text-white/25 hover:text-[#d4a843]/60 transition-colors"
+              >
+                Forgot PIN?
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setResetFlow('off'); setResetPin(''); setFirstNewPin(''); setPinError('') }}
+              className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors"
+            >
+              <ArrowLeft size={14} />
+              Cancel
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
