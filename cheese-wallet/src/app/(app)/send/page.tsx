@@ -645,41 +645,65 @@ function BankDetailsStep({
         <p className="text-xs text-red-400 text-center">{verifyError}</p>
       )}
 
-      {/* Resolved account name — auto-verified */}
+      {/* ── Case 1: name auto-resolved by the API ── */}
       {verified && !nameUnverified && acctName && (
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
           <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
             <User size={16} className="text-emerald-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">{acctName}</p>
-            <p className="text-xs text-white/35 mt-0.5">{selectedBank?.name} · {acctNum}</p>
+            <p className="text-xs text-emerald-400/70 mb-0.5">Account name</p>
+            <p className="text-base font-semibold text-white">{acctName}</p>
+            <p className="text-xs text-white/35 mt-0.5 font-mono">{acctNum} · {selectedBank?.name}</p>
           </div>
           <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
         </div>
       )}
 
-      {/* Manual name entry when bank couldn't be auto-verified */}
+      {/* ── Case 2: API couldn't fetch name (most external banks) ──
+           Show a "account accepted" card, then a name field for the user to fill */}
       {verified && nameUnverified && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-white/40">
-            Account number accepted. Enter the recipient&apos;s name as it appears on their bank account.
-          </p>
-          <div className={cn(
-            'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-[border-color] duration-150',
-            acctName ? 'border-[#d4a843]/50' : 'border-white/10 focus-within:border-[#d4a843]/50',
-          )}>
-            <User size={15} className="text-white/30 shrink-0" />
-            <input
-              type="text"
-              value={acctName}
-              onChange={(e) => setAcctName(e.target.value)}
-              placeholder="e.g. JOHN DOE"
-              autoFocus
-              className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none uppercase"
-              autoCapitalize="characters"
-              spellCheck={false}
-            />
+        <div className="flex flex-col gap-3">
+          {/* Confirmed card — bank + account number */}
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-[#d4a843]/6 border border-[#d4a843]/20">
+            <div className="w-10 h-10 rounded-full bg-[#d4a843]/12 flex items-center justify-center shrink-0">
+              <Building2 size={16} className="text-[#d4a843]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-[#d4a843]/60 mb-0.5">Account accepted</p>
+              <p className="text-sm font-semibold text-white">{selectedBank?.name}</p>
+              <p className="text-xs text-white/40 font-mono mt-0.5">{acctNum}</p>
+            </div>
+            <CheckCircle2 size={18} className="text-[#d4a843] shrink-0" />
+          </div>
+
+          {/* Name field */}
+          <div>
+            <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">
+              Recipient Name
+            </p>
+            <div className={cn(
+              'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-[border-color] duration-150',
+              acctName ? 'border-emerald-500/40' : 'border-white/10 focus-within:border-[#d4a843]/50',
+            )}>
+              <User size={15} className="text-white/30 shrink-0" />
+              <input
+                type="text"
+                value={acctName}
+                onChange={(e) => setAcctName(e.target.value.toUpperCase())}
+                placeholder="ACCOUNT HOLDER NAME"
+                autoFocus
+                className="flex-1 bg-transparent text-white text-sm placeholder:text-white/20 outline-none tracking-wide"
+                autoCapitalize="characters"
+                spellCheck={false}
+              />
+              {acctName.length > 2 && (
+                <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+              )}
+            </div>
+            <p className="text-xs text-white/30 mt-1.5 px-1">
+              Enter the name exactly as it appears on the bank account
+            </p>
           </div>
         </div>
       )}
