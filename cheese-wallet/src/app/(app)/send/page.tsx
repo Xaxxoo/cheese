@@ -1040,7 +1040,7 @@ function PinStep({
     } catch (err) {
       submittedRef.current = false
       const msg = err instanceof Error ? err.message : 'Transfer failed'
-      if (msg.toLowerCase().includes('pin') || (err as { statusCode?: number }).statusCode === 403) {
+      if (msg.toLowerCase().includes('incorrect pin')) {
         setPinError('Incorrect PIN — try again')
         setPin('')
       } else {
@@ -1195,7 +1195,7 @@ function BankPinStep({
     } catch (err) {
       submittedRef.current = false
       const msg = err instanceof Error ? err.message : 'Transfer failed'
-      if (msg.toLowerCase().includes('pin') || (err as { statusCode?: number }).statusCode === 403) {
+      if (msg.toLowerCase().includes('incorrect pin')) {
         setPinError('Incorrect PIN — try again')
         setPin('')
       } else {
