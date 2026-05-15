@@ -116,7 +116,7 @@ export default function ForgotPasswordPage() {
           <form onSubmit={handleReset} className="flex flex-col gap-4">
             <Input
               label="6-digit code"
-              type="number"
+              type="text"
               inputMode="numeric"
               placeholder="123456"
               maxLength={6}

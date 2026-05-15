@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { notify } from '@/lib/toast'
 import { Input } from '@/components/ui/Input'
@@ -10,11 +10,13 @@ import { generateDeviceKey } from '@/lib/crypto/deviceSigning'
 import { requestDeviceRegistration, completeDeviceRegistration } from '@/lib/api/auth'
 
 export default function AddDevicePage() {
-  const { ensureDeviceId } = useAuthStore()
+  const { ensureDeviceId, setBooting } = useAuthStore()
   const [step, setStep]       = useState<'email' | 'otp' | 'done'>('email')
   const [email, setEmail]     = useState('')
   const [otp, setOtp]         = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => { setBooting(false) }, [setBooting])
 
   async function handleRequestOtp(e: React.FormEvent) {
     e.preventDefault()
@@ -95,8 +97,10 @@ export default function AddDevicePage() {
         <form onSubmit={handleCompleteRegistration} className="flex flex-col gap-4">
           <Input
             label="6-digit code"
+            type="text"
+            inputMode="numeric"
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
             maxLength={6}
             required
             autoFocus
