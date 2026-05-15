@@ -271,6 +271,26 @@ export class CompleteDeviceRegistrationDto {
   publicKey: string;
 }
 
+export class CompleteDeviceRegistrationByLinkDto {
+  @ApiProperty({
+    example: 'eyJhbGci...',
+    description: 'Signed token from the magic-link URL (?token=...)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  @ApiProperty({ example: 'device-uuid-v4', description: 'New device UUID generated on this device' })
+  @IsString()
+  @IsNotEmpty()
+  deviceId: string;
+
+  @ApiProperty({ example: 'MFkwEwYHKoZI...', description: 'ECDSA P-256 public key in base64url' })
+  @IsString()
+  @IsNotEmpty()
+  publicKey: string;
+}
+
 export class ChangePinDto {
   @ApiProperty({
     example: 'hmac-sha256-old-pin-base64url',

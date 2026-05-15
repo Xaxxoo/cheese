@@ -23,6 +23,7 @@ import { Device } from '../devices/entities/device.entity';
 import {
   ChangePinDto,
   CompleteDeviceRegistrationDto,
+  CompleteDeviceRegistrationByLinkDto,
   SetPinDto,
   ForgotPasswordDto,
   LoginDto,
@@ -478,22 +479,71 @@ export class AuthService {
     return this.sanitiseUser(user);
   }
 
-  // ── Request device registration OTP ───────────────────────────────────────
+  // ── Request device registration — magic link ──────────────────────────────
+  // Generates a short-lived signed token and emails a clickable link.
+  // The link opens /add-device?token=<jwt> on the new device, which then
+  // generates its own deviceId + key pair and calls complete-link.
 
   async requestDeviceRegistration(email: string): Promise<void> {
     const user = await this.userRepo.findOne({ where: { email } });
-    if (!user) return; // silent to prevent email enumeration
-    await this.otpService.sendOtp(email, OtpType.DEVICE_REGISTER, {
-      fullName: user.fullName ?? undefined,
+    if (!user) return; // silent — prevent email enumeration
+
+    const token = this.jwtService.sign(
+      { sub: user.id, purpose: 'device-registration' },
+      {
+        secret: this.config.get<string>('jwt.accessSecret'),
+        expiresIn: '30m',
+      },
+    );
+
+    const frontendUrl = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+    const link = `${frontendUrl}/add-device?token=${token}`;
+
+    await this.emailService.sendDeviceRegistrationLink({
+      to: email,
+      fullName: user.fullName ?? email,
+      link,
     });
   }
 
-  // ── Complete device registration ───────────────────────────────────────────
+  // ── Complete device registration (OTP — kept for backwards compat) ─────────
 
   async completeDeviceRegistration(dto: CompleteDeviceRegistrationDto): Promise<void> {
     await this.otpService.verifyOtp(dto.email, dto.otp, OtpType.DEVICE_REGISTER);
 
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const existing = await this.deviceRepo.findOne({ where: { deviceId: dto.deviceId } });
+    if (existing) throw new ConflictException('Device already registered');
+
+    await this.deviceRepo.save(
+      this.deviceRepo.create({
+        deviceId: dto.deviceId,
+        publicKey: dto.publicKey,
+        userId: user.id,
+      }),
+    );
+  }
+
+  // ── Complete device registration — magic link ──────────────────────────────
+
+  async completeDeviceRegistrationByLink(dto: CompleteDeviceRegistrationByLinkDto): Promise<void> {
+    // Verify token and extract userId
+    let payload: { sub: string; purpose: string };
+    try {
+      payload = this.jwtService.verify(dto.token, {
+        secret: this.config.get<string>('jwt.accessSecret'),
+      });
+    } catch {
+      throw new BadRequestException('Link is invalid or has expired');
+    }
+
+    if (payload.purpose !== 'device-registration') {
+      throw new BadRequestException('Link is invalid or has expired');
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: payload.sub } });
     if (!user) throw new NotFoundException('User not found');
 
     const existing = await this.deviceRepo.findOne({ where: { deviceId: dto.deviceId } });

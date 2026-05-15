@@ -815,3 +815,52 @@ export function waitlistReminder(params: {
   });
   return { subject, html };
 }
+
+// ─────────────────────────────────────────────────────────
+// 12. DEVICE REGISTRATION MAGIC LINK
+// ─────────────────────────────────────────────────────────
+export function deviceRegistrationLink(params: {
+  fullName: string;
+  link: string;
+}): { subject: string; html: string } {
+  const subject = 'Authorise your new device — Cheese Pay';
+  const html = baseLayout({
+    preheader: 'Click the button below on your new device to authorise it.',
+    body: `
+      <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
+      <div style="padding:48px 40px 40px;">
+
+        <!-- Icon -->
+        <div style="text-align:center;margin-bottom:28px;">
+          ${ICONS.key(BRAND.gold, 52)}
+        </div>
+
+        <h1 style="font-size:28px;font-weight:700;color:${BRAND.textPrimary};
+                   font-family:'Inter',sans-serif;line-height:1.2;letter-spacing:-0.5px;
+                   margin:0 0 12px;text-align:center;">
+          Authorise your new device
+        </h1>
+
+        <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                  line-height:1.7;margin:0 0 32px;text-align:center;">
+          Hi ${params.fullName}, open this email on the device you want to add and
+          tap the button below. It will register the device automatically — no code to type.
+        </p>
+
+        <div style="margin-bottom:32px;">${primaryButton('Authorise this device', params.link)}</div>
+
+        ${goldDivider()}
+
+        <div style="padding:28px 0 0;">
+          ${infoBox(
+            `This link expires in <strong style="color:${BRAND.textLight};">30 minutes</strong> and can only be used once. ` +
+            `If you did not request this, ignore this email — your account remains secure.`,
+            'warning',
+          )}
+        </div>
+
+      </div>
+    `,
+  });
+  return { subject, html };
+}

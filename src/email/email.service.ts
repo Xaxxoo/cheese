@@ -13,6 +13,7 @@ import {
   moneySent,
   kycApproved,
   tierUpgrade,
+  deviceRegistrationLink,
 } from './templates';
 import { tierEligible } from './templates/tier-eligible';
 
@@ -179,6 +180,24 @@ export class EmailService {
       subject: 'Register your new device — Cheese Pay',
       html,
     });
+  }
+
+  async sendDeviceRegistrationLink(params: {
+    to: string;
+    fullName: string;
+    link: string;
+  }): Promise<void> {
+    const { subject, html } = deviceRegistrationLink({
+      fullName: params.fullName,
+      link: params.link,
+    });
+    const text =
+      `Hi ${params.fullName},\n\n` +
+      `Click the link below on your new device to register it with Cheese Pay.\n\n` +
+      `${params.link}\n\n` +
+      `This link expires in 30 minutes. If you did not request this, ignore this email.\n\n` +
+      `– The Cheese Team`;
+    await this.send({ to: params.to, subject, html, text });
   }
 
   async sendPasswordResetOtp(params: {

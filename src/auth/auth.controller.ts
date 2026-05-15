@@ -28,6 +28,7 @@ import { JwtRefreshGuard } from './guards/jwt.guard';
 import {
   ChangePinDto,
   CompleteDeviceRegistrationDto,
+  CompleteDeviceRegistrationByLinkDto,
   RequestDeviceRegistrationDto,
   SetPinDto,
   ForgotPasswordDto,
@@ -344,6 +345,27 @@ export class AuthController {
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async completeDeviceRegistration(@Body() dto: CompleteDeviceRegistrationDto) {
     await this.authService.completeDeviceRegistration(dto);
+    return { message: 'Device registered successfully. You can now log in.' };
+  }
+
+  // ── POST /auth/device-registration/complete-link ──────────
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('device-registration/complete-link')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Complete device registration via magic link',
+    description:
+      'Called automatically by the frontend when the user clicks the device registration link in their email. ' +
+      'The token comes from the ?token= query param in the link. The frontend generates deviceId and publicKey on the new device.',
+  })
+  @ApiResponse({ status: 200, description: 'Device registered successfully' })
+  @ApiResponse({ status: 400, description: 'Link is invalid or has expired' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 409, description: 'Device already registered' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  async completeDeviceRegistrationByLink(@Body() dto: CompleteDeviceRegistrationByLinkDto) {
+    await this.authService.completeDeviceRegistrationByLink(dto);
     return { message: 'Device registered successfully. You can now log in.' };
   }
 
