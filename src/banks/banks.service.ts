@@ -380,23 +380,37 @@ export class BanksService {
     accountNumber: string;
     bankCode: string;
     bankName: string;
+    verified: boolean;
   }> {
-    const result = await this.pulseMfb.nameEnquiry(
-      dto.accountNumber,
-      dto.bankCode,
-    );
+    const bankName = this.findBankByCode(dto.bankCode)?.name ?? dto.bankCode;
 
-    if (result.responseCode !== '00') {
-      throw new BadRequestException(
-        result.responseMessage || 'Account could not be resolved',
+    try {
+      const result = await this.pulseMfb.nameEnquiry(
+        dto.accountNumber,
+        dto.bankCode,
       );
+
+      if (result.responseCode === '00' && result.accountName) {
+        return {
+          accountName: result.accountName,
+          accountNumber: dto.accountNumber,
+          bankCode: dto.bankCode,
+          bankName,
+          verified: true,
+        };
+      }
+    } catch {
+      // PulseMFB name enquiry only resolves its own internal accounts.
+      // For external NIP banks it returns 400 — fall through to unverified.
     }
 
+    // Unverified — caller must supply the account name themselves.
     return {
-      accountName: result.accountName,
-      accountNumber: result.accountNumber,
+      accountName: '',
+      accountNumber: dto.accountNumber,
       bankCode: dto.bankCode,
-      bankName: this.findBankByCode(dto.bankCode)?.name ?? dto.bankCode,
+      bankName,
+      verified: false,
     };
   }
 
@@ -488,14 +502,22 @@ export class BanksService {
       accountNumber: dto.accountNumber,
       bankCode: dto.bankCode,
     });
+    // Only enforce name match when PulseMFB could verify the account.
+    // For external NIP banks the enquiry returns unverified — trust the
+    // name the user supplied (consistent with how most Nigerian apps work).
     if (
+      resolvedAccount.verified &&
       normalizeAccountName(resolvedAccount.accountName) !==
-      normalizeAccountName(dto.accountName)
+        normalizeAccountName(dto.accountName)
     ) {
       throw new BadRequestException(
         `Account name mismatch. Resolved name is "${resolvedAccount.accountName}".`,
       );
     }
+    // Use the resolved name when available, fall back to what the user provided.
+    const accountName = resolvedAccount.verified
+      ? resolvedAccount.accountName
+      : dto.accountName;
 
     // 8. Create PENDING records — both start as PENDING before any money moves
     const reference = `CW-NGN-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
@@ -506,7 +528,7 @@ export class BanksService {
         accountNumber: dto.accountNumber,
         bankCode: dto.bankCode,
         bankName,
-        accountName: resolvedAccount.accountName,
+        accountName,
         amountNgn: dto.amountNgn,
         amountUsdc,
         feeUsdc,
@@ -524,11 +546,11 @@ export class BanksService {
       amountNgn: dto.amountNgn,
       feeUsdc,
       rateApplied: rate.effectiveRate,
-      recipientName: resolvedAccount.accountName,
+      recipientName: accountName,
       accountNumber: dto.accountNumber,
       bankName,
       reference,
-      description: `Withdrawal to ${resolvedAccount.accountName} — ${bankName}`,
+      description: `Withdrawal to ${accountName} — ${bankName}`,
     });
 
     // 9. Deduct USDC — send to the platform wallet which funds the NGN payout.
@@ -570,7 +592,7 @@ export class BanksService {
           accountNumber: dto.accountNumber,
           bankCode: dto.bankCode,
           bankName,
-          accountName: resolvedAccount.accountName,
+          accountName,
           amountNgn,
           reference,
         });
@@ -636,7 +658,7 @@ export class BanksService {
       amountUsdc,
       rateApplied: rate.effectiveRate,
       fee: String(TRANSFER_FEE_NGN),
-      recipientName: resolvedAccount.accountName,
+      recipientName: accountName,
       bankName,
       stellarTxHash,
       createdAt: transfer.createdAt,
