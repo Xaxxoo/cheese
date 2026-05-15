@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { notify } from '@/lib/toast'
@@ -72,9 +72,13 @@ function PasswordStrength({ password }: { password: string }) {
 // ── OTP input ───────────────────────────────────────────────
 function OtpInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const digits = value.split('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="flex gap-2 justify-center">
+    <div
+      className="flex gap-2 justify-center cursor-text"
+      onClick={() => inputRef.current?.focus()}
+    >
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
@@ -87,9 +91,10 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
           {digits[i] ?? ''}
         </div>
       ))}
-      {/* Hidden real input */}
+      {/* Hidden real input — positioned off-screen so it stays focusable */}
       <input
-        type="number"
+        ref={inputRef}
+        type="text"
         inputMode="numeric"
         maxLength={6}
         value={value}
