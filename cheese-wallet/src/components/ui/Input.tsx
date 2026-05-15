@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import { cn } from '@/lib/cn'
 import type { InputHTMLAttributes, ReactNode } from 'react'
 
@@ -18,9 +21,12 @@ export function Input({
   className,
   id,
   style,
+  onFocus,
+  onBlur,
   ...props
 }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+  const [focused, setFocused] = useState(false)
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -43,11 +49,14 @@ export function Input({
           className={cn(
             'w-full h-12 border rounded-2xl px-4 text-sm text-white',
             'placeholder:text-white/30',
-            'transition-all duration-150',
-            'focus:outline-none focus:border-[#d4a843]/60',
-            error
-              ? 'border-red-500/40 focus:border-red-500/60'
-              : 'border-white/10',
+            // Only transition border-color — NOT transition-all, which would
+            // animate background-color and let the browser's autofill/filled
+            // white background fade in
+            'transition-[border-color] duration-150',
+            'focus:outline-none',
+            focused
+              ? (error ? 'border-red-500/60' : 'border-[#d4a843]/60')
+              : (error ? 'border-red-500/40' : 'border-white/10'),
             prefix && 'pl-9',
             suffix && 'pr-12',
             className,
@@ -59,6 +68,8 @@ export function Input({
             colorScheme: 'dark',
             ...style,
           }}
+          onFocus={(e) => { setFocused(true); onFocus?.(e) }}
+          onBlur={(e) => { setFocused(false); onBlur?.(e) }}
           {...props}
         />
         {suffix && (

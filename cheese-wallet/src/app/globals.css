@@ -40,12 +40,18 @@ body::before {
 /* Focus */
 :focus-visible { outline: 1.5px solid #d4a843; outline-offset: 3px; border-radius: 4px; }
 
-/* Autofill */
+/* Autofill — covers all pseudo-states Chrome/Safari use */
 input:-webkit-autofill,
-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: white;
-  -webkit-box-shadow: 0 0 0 1000px #1a1a1a inset;
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0 1000px #191919 inset !important;
+  box-shadow: 0 0 0 1000px #191919 inset !important;
   caret-color: white;
+  /* Makes Chrome's autofill background transition last 5000 s — effectively
+     preventing it from ever reaching its target white/yellow colour */
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* ═══════════════════════════════════════════════════════
