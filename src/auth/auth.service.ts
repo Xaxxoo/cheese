@@ -424,6 +424,14 @@ export class AuthService {
     }
   }
 
+  // ── Reset PIN (clear stored hash so user can set a fresh one) ────────────
+
+  async resetPin(userId: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    await this.userRepo.update({ id: userId }, { pinHash: null });
+  }
+
   // ── Set PIN (first-time only) ──────────────────────────────────────────────
 
   async setPin(userId: string, dto: SetPinDto): Promise<void> {

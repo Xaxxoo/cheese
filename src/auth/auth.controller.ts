@@ -291,6 +291,21 @@ export class AuthController {
     return { message: 'PIN set successfully' };
   }
 
+  // ── POST /auth/reset-pin ─────────────────────────────────
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('reset-pin')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Reset PIN',
+    description: 'Clears the stored PIN hash so the user can set a new one via POST /auth/set-pin.',
+  })
+  @ApiResponse({ status: 200, description: 'PIN reset successfully' })
+  async resetPin(@CurrentUser() user: User) {
+    await this.authService.resetPin(user.id);
+    return { message: 'PIN reset. Set a new PIN to continue.' };
+  }
+
   // ── POST /auth/change-pin ─────────────────────────────────
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('change-pin')
