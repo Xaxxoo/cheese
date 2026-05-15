@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { notify } from '@/lib/toast'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -36,9 +36,9 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword(email.trim().toLowerCase())
       setStep('otp')
-      toast.success('Reset code sent — check your inbox')
+      notify.success('Reset code sent — check your inbox')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not send reset email')
+      notify.error(err instanceof Error ? err.message : 'Could not send reset email')
     } finally {
       setLoading(false)
     }
@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
       await resetPassword({ email: email.toLowerCase(), otp, newPassword: newPw })
       setStep('done')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Reset failed. Try again.')
+      notify.error(err instanceof Error ? err.message : 'Reset failed. Try again.')
     } finally {
       setLoading(false)
     }

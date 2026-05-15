@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { notify } from '@/lib/toast'
 import { Eye, EyeOff, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -213,7 +213,7 @@ export default function SignupPage() {
 
       setStep(3)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Signup failed. Try again.')
+      notify.error(err instanceof Error ? err.message : 'Signup failed. Try again.')
     } finally {
       setLoading(false)
     }
@@ -242,7 +242,7 @@ export default function SignupPage() {
 
       setStep(4) // PIN setup
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Invalid code. Try again.')
+      notify.error(err instanceof Error ? err.message : 'Invalid code. Try again.')
     } finally {
       setLoading(false)
     }
@@ -251,22 +251,22 @@ export default function SignupPage() {
   async function resendCode() {
     try {
       await resendOtp(form.email.toLowerCase(), 'email_verify')
-      toast.success('Code resent — check your inbox')
+      notify.success('Code resent — check your inbox')
     } catch {
-      toast.error('Could not resend code')
+      notify.error('Could not resend code')
     }
   }
 
   // ── Submit PIN ───────────────────────────────────────────
   async function submitPin() {
     if (pinStep === 'set') {
-      if (pin.length < 6) { toast.error('Enter a 6-digit PIN'); return }
+      if (pin.length < 6) { notify.error('Enter a 6-digit PIN'); return }
       setPinStep('confirm')
       return
     }
     // Confirm step
     if (confirmPin !== pin) {
-      toast.error('PINs don\'t match — try again')
+      notify.error('PINs don\'t match — try again')
       setConfirmPin('')
       return
     }
@@ -278,7 +278,7 @@ export default function SignupPage() {
       const { default: apiClient } = await import('@/lib/api/client')
       await apiClient.post('/auth/set-pin', { pinHash })
 
-      toast.success('PIN set successfully')
+      notify.success('PIN set successfully')
       router.replace('/dashboard')
     } catch {
       // PIN setting is non-fatal — proceed to dashboard anyway

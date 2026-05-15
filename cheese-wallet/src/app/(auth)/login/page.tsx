@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { notify } from '@/lib/toast'
 import { Eye, EyeOff } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -78,7 +78,7 @@ export default function LoginPage() {
       router.replace('/dashboard')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed. Please try again.'
-      toast.error(msg)
+      notify.error(msg)
     } finally {
       setLoading(false)
     }

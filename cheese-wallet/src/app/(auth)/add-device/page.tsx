@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { notify } from '@/lib/toast'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
@@ -22,9 +22,9 @@ export default function AddDevicePage() {
     try {
       await requestDeviceRegistration(email.trim())
       setStep('otp')
-      toast.success('Check your email for a 6-digit code')
+      notify.success('Check your email for a 6-digit code')
     } catch {
-      toast.error('Could not send OTP. Check your email and try again.')
+      notify.error('Could not send OTP. Check your email and try again.')
     } finally {
       setLoading(false)
     }
@@ -38,9 +38,9 @@ export default function AddDevicePage() {
       const { publicKey } = await generateDeviceKey(deviceId)
       await completeDeviceRegistration({ email: email.trim(), otp: otp.trim(), deviceId, publicKey })
       setStep('done')
-      toast.success('Device registered!')
+      notify.success('Device registered!')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not register device')
+      notify.error(err instanceof Error ? err.message : 'Could not register device')
     } finally {
       setLoading(false)
     }
