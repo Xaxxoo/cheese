@@ -67,6 +67,11 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         deviceId: state.deviceId,
       }),
+      // After localStorage is read, mark boot as complete so auth layouts
+      // can render their children instead of showing the spinner forever.
+      onRehydrateStorage: () => (state) => {
+        state?.setBooting(false)
+      },
     },
   ),
 )
