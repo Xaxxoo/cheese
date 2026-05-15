@@ -493,6 +493,7 @@ function BankDetailsStep({
   const [selectedBank, setSelectedBank] = useState<NigerianBank | null>(null)
   const [acctNum, setAcctNum]           = useState('')
   const [acctName, setAcctName]         = useState('')
+  const [nameUnverified, setNameUnverified] = useState(false)
   const [verifying, setVerifying]       = useState(false)
   const [verified, setVerified]         = useState(false)
   const [bankOpen, setBankOpen]         = useState(false)
@@ -510,6 +511,7 @@ function BankDetailsStep({
     setAcctNum(clean)
     setVerified(false)
     setAcctName('')
+    setNameUnverified(false)
     setVerifyError('')
   }
 
@@ -519,8 +521,14 @@ function BankDetailsStep({
     setVerifyError('')
     try {
       const result = await resolveAccount({ bankCode: selectedBank.code, accountNumber: acctNum })
-      setAcctName(result.accountName)
       setVerified(true)
+      if (result.accountName) {
+        setAcctName(result.accountName)
+        setNameUnverified(false)
+      } else {
+        setAcctName('')
+        setNameUnverified(true)
+      }
     } catch (err) {
       setVerifyError((err as Error).message ?? 'Could not verify account')
     } finally {
@@ -554,7 +562,7 @@ function BankDetailsStep({
                 <button
                   key={b.code}
                   type="button"
-                  onClick={() => { setSelectedBank(b); setBankOpen(false); setVerified(false); setAcctName('') }}
+                  onClick={() => { setSelectedBank(b); setBankOpen(false); setVerified(false); setAcctName(''); setNameUnverified(false) }}
                   className="w-full text-left px-4 py-3 text-sm text-white/70 hover:bg-white/8 hover:text-white transition-colors border-b border-white/5 last:border-0"
                 >
                   {b.name}
@@ -599,8 +607,8 @@ function BankDetailsStep({
         <p className="text-xs text-red-400 text-center">{verifyError}</p>
       )}
 
-      {/* Resolved account name */}
-      {verified && acctName && (
+      {/* Resolved account name — verified automatically */}
+      {verified && !nameUnverified && acctName && (
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
           <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
             <User size={16} className="text-emerald-400" />
@@ -610,6 +618,29 @@ function BankDetailsStep({
             <p className="text-xs text-white/35 mt-0.5">{selectedBank?.name} · {acctNum}</p>
           </div>
           <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+        </div>
+      )}
+
+      {/* Manual name entry when bank couldn't be auto-verified */}
+      {verified && nameUnverified && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-white/40">
+            Account number accepted. Enter the recipient&apos;s name as it appears on their bank account.
+          </p>
+          <div className={cn(
+            'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-[border-color] duration-150',
+            acctName ? 'border-[#d4a843]/50' : 'border-white/10 focus-within:border-[#d4a843]/50',
+          )}>
+            <input
+              type="text"
+              value={acctName}
+              onChange={(e) => setAcctName(e.target.value)}
+              placeholder="e.g. JOHN DOE"
+              className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none uppercase"
+              autoCapitalize="characters"
+              spellCheck={false}
+            />
+          </div>
         </div>
       )}
 
