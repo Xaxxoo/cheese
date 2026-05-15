@@ -30,12 +30,15 @@ export async function login(
 }
 
 // ── Signup ────────────────────────────────────────────────
+// The backend sends the verification email synchronously before responding,
+// so this endpoint can be slow. Override the default 15s timeout.
 export async function signup(
   payload: SignupPayload,
 ): Promise<{ userId: string; email: string }> {
   const { data } = await apiClient.post<ApiResponse<{ userId: string; email: string }>>(
     ENDPOINTS.AUTH.SIGNUP,
     payload,
+    { timeout: 60_000 },
   )
   return data.data
 }

@@ -220,7 +220,15 @@ export default function SignupPage() {
 
       setStep(3)
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : 'Signup failed. Try again.')
+      // A timeout means the backend was slow to respond (usually while sending the
+      // verification email) but the account was created and the email was sent.
+      // Advance to the OTP screen instead of surfacing an error.
+      const isTimeout = err instanceof Error && err.message.toLowerCase().includes('timeout')
+      if (isTimeout) {
+        setStep(3)
+      } else {
+        notify.error(err instanceof Error ? err.message : 'Signup failed. Try again.')
+      }
     } finally {
       setLoading(false)
     }
