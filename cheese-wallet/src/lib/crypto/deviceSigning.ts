@@ -221,14 +221,15 @@ export async function signTransaction(opts: {
 
 /**
  * Hashes a PIN for server verification.
- * Uses HMAC-SHA256(pin, deviceId) so the same PIN produces
- * different hashes on different devices.
+ * Uses HMAC-SHA256(message=pin, key=userId) — userId is stable across all
+ * sessions and devices, so the same PIN always produces the same hash
+ * regardless of which browser or device is used.
  * Returns base64url string.
  */
-export async function hashPin(pin: string, deviceId: string): Promise<string> {
+export async function hashPin(pin: string, userId: string): Promise<string> {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(deviceId),
+    new TextEncoder().encode(userId),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],

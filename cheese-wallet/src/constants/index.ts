@@ -17,7 +17,9 @@ export const ENDPOINTS = {
     RESET_PASSWORD:   '/auth/reset-password',
     ME:               '/auth/me',
     VERIFY_PIN:       '/auth/verify-pin',
+    SET_PIN:          '/auth/set-pin',
     CHANGE_PIN:       '/auth/change-pin',
+    RESET_PIN:        '/auth/reset-pin',
   },
 
   // ── Admin Auth ────────────────────────────────────────
