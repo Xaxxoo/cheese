@@ -36,7 +36,7 @@ export function CtaSection() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/merchant/sign-up"
+            <Link href="/signup"
               className="group flex items-center gap-2 px-8 py-4 rounded-lg text-black font-semibold transition-all hover:scale-[1.02]"
               style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)', boxShadow: '0 0 40px rgba(212,175,55,0.25)' }}>
               Start Building

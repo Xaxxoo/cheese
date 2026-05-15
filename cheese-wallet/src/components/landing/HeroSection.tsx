@@ -92,8 +92,8 @@ export function HeroSection() {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/merchant/sign-in" className="text-sm text-[#B5B5B5] hover:text-white transition-colors hidden sm:block">Sign in</Link>
-          <Link href="/merchant/sign-up" className="text-sm font-medium px-4 py-2 rounded-lg text-black transition-all"
+          <Link href="/login" className="text-sm text-[#B5B5B5] hover:text-white transition-colors hidden sm:block">Sign in</Link>
+          <Link href="/signup" className="text-sm font-medium px-4 py-2 rounded-lg text-black transition-all"
             style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)' }}>
             Get started
           </Link>
@@ -147,7 +147,7 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
         >
-          <Link href="/merchant/sign-up"
+          <Link href="/signup"
             className="group flex items-center gap-2 px-7 py-3.5 rounded-lg text-black font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
             style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)', boxShadow: '0 0 30px rgba(212,175,55,0.3)' }}>
             Start Accepting Payments
