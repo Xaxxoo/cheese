@@ -125,7 +125,7 @@ interface SignupData {
 
 export default function SignupPage() {
   const router = useRouter()
-  const { setAuth, ensureDeviceId, setBooting } = useAuthStore()
+  const { user, setAuth, ensureDeviceId, setBooting } = useAuthStore()
 
   const [step, setStep]       = useState<SignupStep>(1)
   const [loading, setLoading] = useState(false)
@@ -292,8 +292,10 @@ export default function SignupPage() {
     }
     setLoading(true)
     try {
-      const deviceId = ensureDeviceId()
-      const pinHash = await hashPin(pin, deviceId)
+      // userId is the stable salt — same hash regardless of browser/device
+      const userId = user?.id
+      if (!userId) throw new Error('Session expired — please log in again')
+      const pinHash = await hashPin(pin, userId)
 
       const { default: apiClient } = await import('@/lib/api/client')
       await apiClient.post('/auth/set-pin', { pinHash })
