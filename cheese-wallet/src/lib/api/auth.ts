@@ -111,6 +111,12 @@ export async function verifyPin(payload: {
   return data.data
 }
 
+// ── Set PIN ───────────────────────────────────────────────────────────────
+// Only valid when no PIN is currently set. Use resetPin() first if needed.
+export async function setPin(pinHash: string): Promise<void> {
+  await apiClient.post(ENDPOINTS.AUTH.SET_PIN, { pinHash })
+}
+
 // ── Reset PIN (clears stored hash — user must set new PIN via set-pin) ────
 export async function resetPin(): Promise<void> {
   await apiClient.post(ENDPOINTS.AUTH.RESET_PIN)

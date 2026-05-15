@@ -11,8 +11,8 @@ import { PinPad } from '@/components/ui/PinPad'
 import { Spinner } from '@/components/ui/Spinner'
 import { useAuthStore } from '@/store/authStore'
 import { signup, verifyOtp, resendOtp, login } from '@/lib/api/auth'
-import { generateDeviceKey, signPayload } from '@/lib/crypto/deviceSigning'
-import { hashPin } from '@/lib/crypto/deviceSigning'
+import { generateDeviceKey, signPayload, hashPin } from '@/lib/crypto/deviceSigning'
+import { setPin as apiSetPin } from '@/lib/api/auth'
 
 // ── Step indicator ─────────────────────────────────────────
 function StepBar({ step, total }: { step: number; total: number }) {
@@ -297,17 +297,14 @@ export default function SignupPage() {
       if (!userId) throw new Error('Session expired — please log in again')
       const pinHash = await hashPin(pin, userId)
 
-      const { default: apiClient } = await import('@/lib/api/client')
-      await apiClient.post('/auth/set-pin', { pinHash })
+      await apiSetPin(pinHash)
 
       notify.success('PIN set successfully')
-      router.replace('/dashboard')
-    } catch {
-      // PIN setting is non-fatal — proceed to dashboard anyway
-      // They can set it later in profile
-      router.replace('/dashboard')
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : 'Could not save PIN — you can set it later in Profile')
     } finally {
       setLoading(false)
+      router.replace('/dashboard')
     }
   }
 

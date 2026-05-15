@@ -13,7 +13,7 @@ import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer } from '@/lib/api/wallet'
-import { resetPin as apiResetPin } from '@/lib/api/auth'
+import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
 import { signTransaction, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction, NigerianBank } from '@/types'
@@ -1188,10 +1188,9 @@ function BankPinStep({
       if (!user) { onError('Session expired'); return }
       setResetLoading(true)
       try {
-        const { default: apiClient } = await import('@/lib/api/client')
         await apiResetPin()
         const newHash = await hashPin(firstNewPin, user.id)
-        await apiClient.post('/auth/set-pin', { pinHash: newHash })
+        await apiSetPin(newHash)
         setResetFlow('off')
         setResetPin('')
         setFirstNewPin('')
