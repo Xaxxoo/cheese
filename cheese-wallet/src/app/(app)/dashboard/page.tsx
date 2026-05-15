@@ -42,7 +42,7 @@ function BalanceCard() {
   })
 
   async function copyAddress() {
-    const addr = addressQ.data?.address
+    const addr = addressQ.data?.stellarAddress
     if (!addr) return
     try {
       await navigator.clipboard.writeText(addr)
@@ -54,7 +54,7 @@ function BalanceCard() {
   }
 
   const usdcDisplay = balanceQ.data
-    ? (balanceQ.data.usdcFormatted ?? `$${parseFloat(balanceQ.data.usdc ?? '0').toFixed(2)}`)
+    ? (balanceQ.data.totalUsdcDisplay ?? `$${parseFloat(balanceQ.data.totalUsdc ?? '0').toFixed(2)}`)
     : null
 
   const ngnDisplay = balanceQ.data?.ngnEquivalent ?? null
@@ -111,7 +111,7 @@ function BalanceCard() {
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-xs text-white/30 shrink-0">Stellar</span>
               <span className="text-xs text-white/50 font-mono truncate">
-                {addressQ.data.address.slice(0, 10)}…{addressQ.data.address.slice(-6)}
+                {addressQ.data.stellarAddress.slice(0, 10)}…{addressQ.data.stellarAddress.slice(-6)}
               </span>
             </div>
             {copied
@@ -147,25 +147,30 @@ function BalanceCard() {
 
 // ── Transaction row ───────────────────────────────────────
 function TxRow({ tx }: { tx: Transaction }) {
-  const isIn = tx.type === 'deposit' || tx.type === 'receive' || tx.type === 'bank_in'
+  const isIn = tx.type === 'deposit' || tx.type === 'yield_credit' || tx.type === 'referral_bonus'
   const sign = isIn ? '+' : '-'
   const color = isIn ? 'text-emerald-400' : 'text-white'
 
   const typeLabel: Record<string, string> = {
-    send:        'Sent',
-    receive:     'Received',
-    bank_out:    'Bank Transfer',
-    bank_in:     'Bank In',
-    deposit:     'Deposit',
-    card_spend:  'Card Payment',
+    send_username:  'Sent',
+    send_address:   'Sent',
+    bank_transfer:  'Bank Transfer',
+    withdrawal:     'Withdrawal',
+    deposit:        'Deposit',
+    yield_credit:   'Yield',
+    referral_bonus: 'Referral Bonus',
+    card_payment:   'Card Payment',
+    fee:            'Fee',
+    pay_request:    'Pay Request',
   }
 
   const statusColor: Record<string, string> = {
     pending:  'bg-amber-400/15 text-amber-400',
     failed:   'bg-red-400/15 text-red-400',
+    reversed: 'bg-orange-400/15 text-orange-400',
   }
 
-  const subtitle = tx.recipient ?? tx.recipientAddress ?? tx.bank ?? null
+  const subtitle = tx.recipientUsername ?? tx.recipientAddress ?? tx.bank ?? null
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 transition-colors rounded-2xl">
@@ -183,7 +188,7 @@ function TxRow({ tx }: { tx: Transaction }) {
           <p className="text-xs text-white/35">
             {new Date(tx.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
           </p>
-          {tx.status !== 'confirmed' && statusColor[tx.status] && (
+          {tx.status !== 'completed' && statusColor[tx.status] && (
             <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', statusColor[tx.status])}>
               {tx.status}
             </span>
@@ -210,7 +215,7 @@ function RecentTransactions() {
     <section className="px-2 mt-6">
       <div className="flex items-center justify-between px-2 mb-3">
         <h2 className="text-sm font-semibold text-white/70 tracking-wide">Recent activity</h2>
-        {txQ.isSuccess && txQ.data.hasMore && (
+        {txQ.isSuccess && txQ.data.totalPages > 1 && (
           <Link href="/history" className="text-xs text-[#d4a843]/80 hover:text-[#d4a843] transition-colors">
             See all
           </Link>
