@@ -56,6 +56,13 @@ export class OtpService {
         otp: code,
         expiresIn,
       });
+    } else if (type === OtpType.DEVICE_REGISTER) {
+      await this.emailService.sendDeviceRegistrationOtp({
+        to: email,
+        fullName,
+        otp: code,
+        expiresIn,
+      });
     }
 
     return code;

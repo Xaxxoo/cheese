@@ -11,6 +11,7 @@ export enum OtpType {
   PHONE_VERIFY = 'phone_verify',
   PASSWORD_RESET = 'password_reset',
   LOGIN_2FA = 'login_2fa',
+  DEVICE_REGISTER = 'device_register',
 }
 
 @Entity('otps')

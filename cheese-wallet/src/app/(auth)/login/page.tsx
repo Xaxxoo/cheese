@@ -119,7 +119,13 @@ export default function LoginPage() {
           }
         />
 
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <Link
+            href="/add-device"
+            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+          >
+            New device? Register it
+          </Link>
           <Link
             href="/forgot-password"
             className="text-xs text-[#d4a843]/80 hover:text-[#d4a843] transition-colors"

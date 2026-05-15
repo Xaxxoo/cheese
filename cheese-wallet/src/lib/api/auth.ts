@@ -123,3 +123,17 @@ export async function logout(): Promise<void> {
   await apiClient.post(ENDPOINTS.AUTH.LOGOUT)
   tokenStore.clear()
 }
+
+// ── Device registration (unauthenticated) ─────────────────
+export async function requestDeviceRegistration(email: string): Promise<void> {
+  await apiClient.post('/auth/device-registration/request', { email })
+}
+
+export async function completeDeviceRegistration(payload: {
+  email:     string
+  otp:       string
+  deviceId:  string
+  publicKey: string
+}): Promise<void> {
+  await apiClient.post('/auth/device-registration/complete', payload)
+}

@@ -163,6 +163,24 @@ export class EmailService {
     await this.send({ to: params.to, subject, html, text });
   }
 
+  async sendDeviceRegistrationOtp(params: {
+    to: string;
+    fullName: string;
+    otp: string;
+    expiresIn?: string;
+  }): Promise<void> {
+    const { html } = signupOtp({
+      fullName: params.fullName,
+      otp: params.otp,
+      expiresIn: params.expiresIn || '5 minutes',
+    });
+    await this.send({
+      to: params.to,
+      subject: 'Register your new device — Cheese Pay',
+      html,
+    });
+  }
+
   async sendPasswordResetOtp(params: {
     to: string;
     fullName: string;

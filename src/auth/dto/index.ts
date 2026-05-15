@@ -243,6 +243,34 @@ export class SetPinDto {
   deviceId: string;
 }
 
+export class RequestDeviceRegistrationDto {
+  @ApiProperty({ example: 'tunde@example.com' })
+  @IsEmail()
+  email: string;
+}
+
+export class CompleteDeviceRegistrationDto {
+  @ApiProperty({ example: 'tunde@example.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '482910', description: '6-digit OTP from email' })
+  @IsString()
+  @MinLength(6)
+  @MaxLength(6)
+  otp: string;
+
+  @ApiProperty({ example: 'device-uuid-v4', description: 'New device UUID generated on the device' })
+  @IsString()
+  @IsNotEmpty()
+  deviceId: string;
+
+  @ApiProperty({ example: 'MFkwEwYHKoZI...', description: 'ECDSA P-256 public key in base64url' })
+  @IsString()
+  @IsNotEmpty()
+  publicKey: string;
+}
+
 export class ChangePinDto {
   @ApiProperty({
     example: 'hmac-sha256-old-pin-base64url',

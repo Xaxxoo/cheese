@@ -22,6 +22,7 @@ import { OtpType } from '../otp/entities/otp.entity';
 import { Device } from '../devices/entities/device.entity';
 import {
   ChangePinDto,
+  CompleteDeviceRegistrationDto,
   SetPinDto,
   ForgotPasswordDto,
   LoginDto,
@@ -475,6 +476,36 @@ export class AuthService {
 
   getMe(user: User) {
     return this.sanitiseUser(user);
+  }
+
+  // ── Request device registration OTP ───────────────────────────────────────
+
+  async requestDeviceRegistration(email: string): Promise<void> {
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) return; // silent to prevent email enumeration
+    await this.otpService.sendOtp(email, OtpType.DEVICE_REGISTER, {
+      fullName: user.fullName ?? undefined,
+    });
+  }
+
+  // ── Complete device registration ───────────────────────────────────────────
+
+  async completeDeviceRegistration(dto: CompleteDeviceRegistrationDto): Promise<void> {
+    await this.otpService.verifyOtp(dto.email, dto.otp, OtpType.DEVICE_REGISTER);
+
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const existing = await this.deviceRepo.findOne({ where: { deviceId: dto.deviceId } });
+    if (existing) throw new ConflictException('Device already registered');
+
+    await this.deviceRepo.save(
+      this.deviceRepo.create({
+        deviceId: dto.deviceId,
+        publicKey: dto.publicKey,
+        userId: user.id,
+      }),
+    );
   }
 
   // ── Private: award referral points ────────────────────────────────────────

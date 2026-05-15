@@ -27,6 +27,8 @@ import { AuthService } from './auth.service';
 import { JwtRefreshGuard } from './guards/jwt.guard';
 import {
   ChangePinDto,
+  CompleteDeviceRegistrationDto,
+  RequestDeviceRegistrationDto,
   SetPinDto,
   ForgotPasswordDto,
   LoginDto,
@@ -306,6 +308,43 @@ export class AuthController {
   async changePin(@CurrentUser() user: User, @Body() dto: ChangePinDto) {
     await this.authService.changePin(user.id, dto);
     return { message: 'PIN updated successfully' };
+  }
+
+  // ── POST /auth/device-registration/request ───────────────
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('device-registration/request')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Request device registration OTP',
+    description:
+      'Sends a 6-digit OTP to the email if the account exists. Always returns 200 to prevent email enumeration.',
+  })
+  @ApiResponse({ status: 200, description: 'OTP sent (if account exists)' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  async requestDeviceRegistration(@Body() dto: RequestDeviceRegistrationDto) {
+    await this.authService.requestDeviceRegistration(dto.email);
+    return { message: 'If that email is registered, an OTP has been sent.' };
+  }
+
+  // ── POST /auth/device-registration/complete ──────────────
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('device-registration/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Complete device registration with OTP',
+    description:
+      'Verifies the OTP and registers the new device public key. After this, the device can log in normally.',
+  })
+  @ApiResponse({ status: 200, description: 'Device registered successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 409, description: 'Device already registered' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  async completeDeviceRegistration(@Body() dto: CompleteDeviceRegistrationDto) {
+    await this.authService.completeDeviceRegistration(dto);
+    return { message: 'Device registered successfully. You can now log in.' };
   }
 
   // ── Helpers ───────────────────────────────────────────────
