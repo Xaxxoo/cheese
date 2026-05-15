@@ -173,13 +173,13 @@ export function buildTxPayload(opts: {
   recipient: string
   timestamp: number
   nonce:     string
-}): Record<string, unknown> {
+}): Record<string, string> {
   return {
     action:    opts.action,
     amount:    opts.amount,
     nonce:     opts.nonce,
     recipient: opts.recipient,
-    timestamp: opts.timestamp,
+    timestamp: String(opts.timestamp),   // string — matches backend's Record<string,string> canonical format
     userId:    opts.userId,
   }
 }

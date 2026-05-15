@@ -14,7 +14,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer } from '@/lib/api/wallet'
 import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
-import { signTransaction, hashPin } from '@/lib/crypto/deviceSigning'
+import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction, NigerianBank } from '@/types'
 
@@ -1009,15 +1009,11 @@ function PinStep({
     setPinError('')
 
     try {
-      const [pinHash, sigResult] = await Promise.all([
+      // send.service.ts verifies the signature against just the deviceId string,
+      // not the full canonical payload — use signDeviceChallenge accordingly.
+      const [pinHash, deviceSignature] = await Promise.all([
         hashPin(currentPin, user.id),
-        signTransaction({
-          deviceId,
-          userId:    user.id,
-          action:    recipient.type === 'username' ? 'send_username' : 'send_address',
-          amount,
-          recipient: recipient.raw,
-        }),
+        signDeviceChallenge(deviceId),
       ])
 
       const tx = recipient.type === 'username'
@@ -1025,7 +1021,7 @@ function PinStep({
             username:        recipient.raw.replace(/^@/, ''),
             amountUsdc:      amount,
             pin:             pinHash,
-            deviceSignature: sigResult.deviceSignature,
+            deviceSignature,
             deviceId,
           })
         : await sendToAddress({
@@ -1033,7 +1029,7 @@ function PinStep({
             amountUsdc:      amount,
             network,
             pin:             pinHash,
-            deviceSignature: sigResult.deviceSignature,
+            deviceSignature,
             deviceId,
           })
 
@@ -1226,7 +1222,7 @@ function BankPinStep({
         userId:    user.id,
         deviceId,
         amount:    amountNgn,
-        recipient: recipient.accountNumber,
+        recipient: `${recipient.bankCode}:${recipient.accountNumber}`,
       })
       await bankTransfer({
         bankCode:        recipient.bankCode,
