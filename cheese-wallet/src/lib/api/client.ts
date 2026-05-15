@@ -81,7 +81,7 @@ apiClient.interceptors.response.use(
         // Refresh failed — clear token and let the auth store handle redirect
         tokenStore.clear()
         window.dispatchEvent(new CustomEvent('cheese:auth:expired'))
-        return Promise.reject(error)
+        return Promise.reject(normaliseError(error))
       }
     }
 
