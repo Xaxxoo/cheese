@@ -4,14 +4,14 @@ import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 
 const TRANSACTIONS = [
-  { id: 'TXN-8821', amount: '+$2,400.00', fiat: '₦3,840,000', chain: 'Base', status: 'settled', time: '2m ago' },
-  { id: 'TXN-8820', amount: '+$890.50', fiat: 'GHS 13,357', chain: 'Polygon', status: 'settled', time: '8m ago' },
-  { id: 'TXN-8819', amount: '+$3,120.00', fiat: 'KES 504,720', chain: 'Arbitrum', status: 'processing', time: '15m ago' },
-  { id: 'TXN-8818', amount: '+$540.00', fiat: 'ZAR 10,098', chain: 'Stellar', status: 'settled', time: '23m ago' },
-  { id: 'TXN-8817', amount: '+$1,200.00', fiat: '₦1,920,000', chain: 'Base', status: 'settled', time: '41m ago' },
+  { id: 'Airtime top-up', amount: '-₦2,000', note: 'MTN · 08012345678', time: '2m ago', type: 'spend' },
+  { id: 'USDC received', amount: '+$500.00', note: '→ ₦800,000', time: '8m ago', type: 'fund' },
+  { id: 'Bank transfer', amount: '-₦50,000', note: 'To Zenith · Amara O.', time: '1h ago', type: 'spend' },
+  { id: 'DSTV payment', amount: '-₦24,500', note: 'Compact Plus', time: '3h ago', type: 'spend' },
+  { id: 'USDC received', amount: '+$200.00', note: '→ ₦320,000', time: '6h ago', type: 'fund' },
 ]
 
-const BARS = [40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88]
+const BARS = [30, 50, 40, 75, 55, 85, 65, 90, 70, 95, 80, 100]
 
 export function DashboardSection() {
   const ref = useRef(null)
@@ -25,12 +25,12 @@ export function DashboardSection() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           className="text-center mb-16"
         >
-          <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>Dashboard</div>
+          <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>Your Wallet</div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            Your settlement command center
+            Everything at a glance
           </h2>
           <p className="text-[#B5B5B5] max-w-xl mx-auto">
-            Real-time analytics, settlement tracking, and transaction history — all in one place.
+            Your balance, spending history, and conversions — beautifully organised in one place.
           </p>
         </motion.div>
 
@@ -41,25 +41,24 @@ export function DashboardSection() {
           className="rounded-2xl border overflow-hidden"
           style={{ background: '#050505', borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.04)' }}
         >
-          {/* Dashboard header */}
+          {/* App header */}
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500/60" />
               <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
               <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
             </div>
-            <span className="text-[#555] text-xs font-mono">merchant.cheesepay.xyz/dashboard</span>
+            <span className="text-[#555] text-xs font-mono">app.cheesepay.xyz</span>
             <div className="w-16" />
           </div>
 
           <div className="p-6">
-            {/* Metric cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {/* Balance card */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
               {[
-                { label: 'Volume (30d)', value: '$148,290', change: '+23.4%' },
-                { label: 'Settlements', value: '1,284', change: '+18.2%' },
-                { label: 'Avg. Speed', value: '3.2s', change: '-0.4s' },
-                { label: 'Success Rate', value: '99.97%', change: '+0.02%' },
+                { label: 'Naira Balance', value: '₦1,120,000', change: '+₦320,000 today' },
+                { label: 'USDC Balance', value: '$200.00', change: 'Ready to convert' },
+                { label: 'Spent this month', value: '₦76,500', change: '5 transactions' },
               ].map((m, i) => (
                 <motion.div
                   key={m.label}
@@ -71,16 +70,16 @@ export function DashboardSection() {
                 >
                   <div className="text-[#555] text-[10px] mb-1">{m.label}</div>
                   <div className="text-white font-bold text-lg">{m.value}</div>
-                  <div className="text-emerald-400 text-[10px] mt-0.5">{m.change}</div>
+                  <div className="text-[#D4AF37] text-[10px] mt-0.5">{m.change}</div>
                 </motion.div>
               ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-              {/* Chart */}
+              {/* Spending chart */}
               <div className="lg:col-span-3 rounded-lg border p-4" style={{ background: '#0B0B0B', borderColor: 'rgba(255,255,255,0.06)' }}>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-white text-xs font-medium">Settlement Volume</span>
+                  <span className="text-white text-xs font-medium">Naira Spending</span>
                   <span className="text-[#555] text-[10px]">Last 12 weeks</span>
                 </div>
                 <div className="flex items-end gap-1.5 h-24">
@@ -100,13 +99,13 @@ export function DashboardSection() {
               {/* Transaction list */}
               <div className="lg:col-span-2 rounded-lg border" style={{ background: '#0B0B0B', borderColor: 'rgba(255,255,255,0.06)' }}>
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <span className="text-white text-xs font-medium">Recent Settlements</span>
+                  <span className="text-white text-xs font-medium">Recent Activity</span>
                   <span className="text-[#D4AF37] text-[10px]">Live</span>
                 </div>
                 <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                   {TRANSACTIONS.map((tx, i) => (
                     <motion.div
-                      key={tx.id}
+                      key={tx.id + i}
                       initial={{ opacity: 0, x: 10 }}
                       animate={inView ? { opacity: 1, x: 0 } : {}}
                       transition={{ delay: 0.7 + i * 0.1 }}
@@ -114,17 +113,13 @@ export function DashboardSection() {
                       style={{ borderColor: 'rgba(255,255,255,0.04)' }}
                     >
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-white text-[10px] font-mono">{tx.id}</span>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${tx.status === 'settled' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[#D4AF37]/10 text-[#D4AF37]'}`}>
-                            {tx.status}
-                          </span>
-                        </div>
-                        <div className="text-[#555] text-[9px] mt-0.5">{tx.chain} · {tx.time}</div>
+                        <div className="text-white text-[10px] font-medium">{tx.id}</div>
+                        <div className="text-[#555] text-[9px] mt-0.5">{tx.note} · {tx.time}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-white text-[10px] font-medium">{tx.amount}</div>
-                        <div className="text-[#555] text-[9px]">{tx.fiat}</div>
+                        <div className={`text-[10px] font-medium ${tx.type === 'fund' ? 'text-emerald-400' : 'text-white'}`}>
+                          {tx.amount}
+                        </div>
                       </div>
                     </motion.div>
                   ))}

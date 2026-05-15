@@ -2,17 +2,17 @@
 
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
-import { Zap, Activity } from 'lucide-react'
+import { Zap, CheckCircle2 } from 'lucide-react'
 
 const NETWORKS = [
-  { name: 'Polygon', speed: '2s', efficiency: '99.8%', color: '#8247E5', abbr: 'POL' },
-  { name: 'Base', speed: '2s', efficiency: '99.9%', color: '#0052FF', abbr: 'BASE' },
-  { name: 'Arbitrum', speed: '1s', efficiency: '99.7%', color: '#28A0F0', abbr: 'ARB' },
-  { name: 'Optimism', speed: '2s', efficiency: '99.8%', color: '#FF0420', abbr: 'OP' },
-  { name: 'Stellar', speed: '5s', efficiency: '99.9%', color: '#7D00FF', abbr: 'XLM' },
-  { name: 'Celo', speed: '5s', efficiency: '99.6%', color: '#35D07F', abbr: 'CELO' },
-  { name: 'Starknet', speed: '3s', efficiency: '99.5%', color: '#EC796B', abbr: 'STRK' },
-  { name: 'Stacks', speed: '10s', efficiency: '99.4%', color: '#5546FF', abbr: 'STX' },
+  { name: 'Polygon', speed: '2s', color: '#8247E5', abbr: 'POL' },
+  { name: 'Base', speed: '2s', color: '#0052FF', abbr: 'BASE' },
+  { name: 'Arbitrum', speed: '1s', color: '#28A0F0', abbr: 'ARB' },
+  { name: 'Optimism', speed: '2s', color: '#FF0420', abbr: 'OP' },
+  { name: 'Stellar', speed: '5s', color: '#7D00FF', abbr: 'XLM' },
+  { name: 'Celo', speed: '5s', color: '#35D07F', abbr: 'CELO' },
+  { name: 'Starknet', speed: '3s', color: '#EC796B', abbr: 'STRK' },
+  { name: 'Stacks', speed: '10s', color: '#5546FF', abbr: 'STX' },
 ]
 
 export function NetworksSection() {
@@ -27,12 +27,12 @@ export function NetworksSection() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           className="text-center mb-20"
         >
-          <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>Infrastructure</div>
+          <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>Funding Networks</div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            Multi-chain by design
+            Fund from anywhere
           </h2>
           <p className="text-[#B5B5B5] max-w-xl mx-auto">
-            Native integration across every major blockchain network. Your customers pay how they want.
+            Send USDC from whichever chain you prefer. CheesePay handles the rest.
           </p>
         </motion.div>
 
@@ -62,16 +62,16 @@ export function NetworksSection() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 text-[#555]">
                     <Zap size={10} />
-                    <span className="text-[10px]">Speed</span>
+                    <span className="text-[10px]">Arrives in</span>
                   </div>
                   <span className="text-[#D4AF37] text-[10px] font-mono">{net.speed}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 text-[#555]">
-                    <Activity size={10} />
-                    <span className="text-[10px]">Uptime</span>
+                    <CheckCircle2 size={10} />
+                    <span className="text-[10px]">USDC</span>
                   </div>
-                  <span className="text-emerald-400 text-[10px] font-mono">{net.efficiency}</span>
+                  <span className="text-emerald-400 text-[10px]">Supported</span>
                 </div>
               </div>
 

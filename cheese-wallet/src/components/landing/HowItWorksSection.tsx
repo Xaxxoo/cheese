@@ -2,29 +2,29 @@
 
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
-import { QrCode, Coins, Building2 } from 'lucide-react'
+import { Wallet, ArrowLeftRight, ShoppingBag } from 'lucide-react'
 
 const STEPS = [
   {
-    icon: QrCode,
+    icon: Wallet,
     step: '01',
-    title: 'Customer Scans QR',
-    description: 'The merchant displays a dynamically generated QR code tied to the exact payment amount and currency.',
-    detail: 'Powered by real-time exchange rates',
+    title: 'Fund Your Wallet',
+    description: 'Send USDC from any supported wallet — Polygon, Base, Arbitrum, and more. Your balance appears instantly.',
+    detail: 'Works with any USDC wallet',
   },
   {
-    icon: Coins,
+    icon: ArrowLeftRight,
     step: '02',
-    title: 'Payment in USDC',
-    description: 'Customer pays with USDC from any supported wallet across Polygon, Base, Arbitrum, Stellar, and more.',
-    detail: 'Multi-chain, single experience',
+    title: 'Convert to Naira',
+    description: 'CheesePay converts your USDC to NGN at live rates with zero hidden markup. No surprises, ever.',
+    detail: 'Live rates, zero markup',
   },
   {
-    icon: Building2,
+    icon: ShoppingBag,
     step: '03',
-    title: 'Merchant Receives Fiat',
-    description: "CheesePay instantly converts and routes settlement to the merchant's local bank account in their preferred currency.",
-    detail: 'Direct to bank. No crypto required.',
+    title: 'Spend Like Cash',
+    description: 'Pay bills, send money to any Nigerian bank, or spend anywhere Naira is accepted — all from your phone.',
+    detail: 'Banks, bills, transfers — sorted.',
   },
 ]
 
@@ -33,7 +33,7 @@ export function HowItWorksSection() {
   const inView = useInView(ref, { once: true, margin: '-100px' })
 
   return (
-    <section ref={ref} className="py-32 px-6" style={{ background: '#050505' }}>
+    <section ref={ref} id="how-it-works" className="py-32 px-6" style={{ background: '#050505' }}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div
@@ -44,10 +44,10 @@ export function HowItWorksSection() {
         >
           <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>How It Works</div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            Three steps to global settlement
+            Three steps to spending power
           </h2>
           <p className="text-[#B5B5B5] max-w-xl mx-auto">
-            From crypto payment to fiat receipt in seconds. No complexity, no volatility risk.
+            From USDC to Naira in your pocket — no crypto knowledge required.
           </p>
         </motion.div>
 

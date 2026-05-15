@@ -25,28 +25,28 @@ export function CtaSection() {
         >
           <div className="text-xs font-medium tracking-[0.2em] uppercase mb-6" style={{ color: '#D4AF37' }}>Get Started</div>
           <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 tracking-tight leading-[0.95]">
-            The future of global
+            Nigeria runs on Naira.
             <br />
             <span style={{ background: 'linear-gradient(135deg, #D4AF37, #F0D060, #B8941F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              settlement infrastructure
+              Your USDC should too.
             </span>
           </h2>
           <p className="text-[#B5B5B5] text-lg max-w-xl mx-auto mb-12 leading-relaxed">
-            Accept stablecoins globally. Settle fiat locally. Without complexity.
+            Stop converting manually. Stop paying inflated rates. CheesePay gives your USDC the spending power it deserves.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/signup"
               className="group flex items-center gap-2 px-8 py-4 rounded-lg text-black font-semibold transition-all hover:scale-[1.02]"
               style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)', boxShadow: '0 0 40px rgba(212,175,55,0.25)' }}>
-              Start Building
+              Create free account
               <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
             </Link>
-            <a href="mailto:hello@cheesepay.xyz"
+            <Link href="/login"
               className="px-8 py-4 rounded-lg text-white text-sm font-medium border transition-all hover:bg-white/[0.04]"
               style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
-              Contact Sales
-            </a>
+              Sign in
+            </Link>
           </div>
         </motion.div>
       </div>

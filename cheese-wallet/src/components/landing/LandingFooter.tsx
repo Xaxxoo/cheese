@@ -1,17 +1,16 @@
 'use client'
 
 const LINKS: Record<string, string[]> = {
-  Product: ['Payments', 'Settlement', 'Dashboard', 'Webhooks', 'Pricing'],
-  Developers: ['Documentation', 'API Reference', 'SDKs', 'Changelog', 'Status'],
-  Company: ['About', 'Blog', 'Careers', 'Press', 'Contact'],
-  Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Compliance'],
+  Product: ['Features', 'How It Works', 'Security', 'Pricing'],
+  Company: ['About', 'Blog', 'Careers', 'Contact'],
+  Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy'],
 }
 
 export function LandingFooter() {
   return (
     <footer className="border-t py-16 px-6" style={{ background: '#050505', borderColor: 'rgba(255,255,255,0.04)' }}>
       <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-12 mb-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
@@ -21,7 +20,7 @@ export function LandingFooter() {
               <span className="text-white font-semibold text-sm">CheesePay</span>
             </div>
             <p className="text-[#555] text-xs leading-relaxed max-w-[180px]">
-              Global stablecoin payments. Local fiat settlement.
+              Spend USDC like cash. Instantly converted to Naira, beautifully simple.
             </p>
           </div>
 
@@ -42,7 +41,7 @@ export function LandingFooter() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t gap-4" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           <p className="text-[#333] text-xs">&copy; {new Date().getFullYear()} CheesePay. All rights reserved.</p>
-          <p className="text-[#333] text-xs">Stablecoin payments infrastructure for global commerce.</p>
+          <p className="text-[#333] text-xs">Powered by USDC · Built for Nigeria</p>
         </div>
       </div>
     </footer>

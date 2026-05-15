@@ -4,10 +4,10 @@ import { motion, useInView } from 'framer-motion'
 import { useRef, useEffect, useState } from 'react'
 
 const METRICS = [
-  { value: 7, suffix: '+', label: 'Blockchain Networks', sublabel: 'Polygon, Base, Arbitrum & more' },
-  { value: 99.99, suffix: '%', label: 'Uptime SLA', sublabel: 'Enterprise-grade reliability' },
-  { value: 5, suffix: 's', prefix: '<', label: 'Settlement Routing', sublabel: 'Average transaction speed' },
-  { value: 40, suffix: '+', label: 'Fiat Currencies', sublabel: 'Local settlement worldwide' },
+  { value: 3, suffix: 's', prefix: '<', label: 'Conversion Speed', sublabel: 'USDC to Naira, instantly' },
+  { value: 0, suffix: '%', label: 'Hidden Fees', sublabel: 'What you see is what you get' },
+  { value: 7, suffix: '+', label: 'Funding Networks', sublabel: 'Polygon, Base, Arbitrum & more' },
+  { value: 24, suffix: '/7', label: 'Always On', sublabel: 'Your money never sleeps' },
 ]
 
 function CountUp({ value, suffix, prefix }: { value: number; suffix: string; prefix?: string }) {
@@ -17,6 +17,7 @@ function CountUp({ value, suffix, prefix }: { value: number; suffix: string; pre
 
   useEffect(() => {
     if (!inView) return
+    if (value === 0) { setDisplay(0); return }
     const duration = 1500
     const start = Date.now()
     const tick = () => {
