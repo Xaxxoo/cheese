@@ -684,14 +684,14 @@ function BankDetailsStep({
         </div>
       )}
 
-      {/* Amount input — shown once name is resolved */}
-      {verified && acctName && (
+      {/* Amount input — shown as soon as account is verified, regardless of name resolution */}
+      {verified && (
         <div>
           <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">Amount</p>
           <div className={cn(
             'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
-            amountError           ? 'border-red-500/40'         :
-            amount >= 100         ? 'border-[#d4a843]/40'       :
+            amountError   ? 'border-red-500/40'   :
+            amount >= 100 ? 'border-[#d4a843]/40' :
             'border-white/10 focus-within:border-[#d4a843]/50',
           )}>
             <span className="text-white/30 text-sm font-medium shrink-0">₦</span>
@@ -701,18 +701,38 @@ function BankDetailsStep({
               value={amountRaw}
               onChange={(e) => handleAmountInput(e.target.value)}
               placeholder="Enter amount"
-              autoFocus
+              autoFocus={!nameUnverified}
               className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none"
             />
             {amount >= 100 && (
               <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
             )}
           </div>
+
+          {/* Quick-select preset amounts */}
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {[500, 1000, 2000, 5000, 10000, 20000].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => { setAmountRaw(String(preset)); setAmountError('') }}
+                className={cn(
+                  'py-2.5 rounded-xl border text-sm font-medium transition-colors',
+                  amountRaw === String(preset)
+                    ? 'bg-[#d4a843]/15 border-[#d4a843]/40 text-[#d4a843]'
+                    : 'bg-white/4 border-white/8 text-white/50 hover:bg-white/8 hover:text-white/80',
+                )}
+              >
+                ₦{preset.toLocaleString('en-NG')}
+              </button>
+            ))}
+          </div>
+
           {amountError && (
-            <p className="text-xs text-red-400 mt-1.5 px-1">{amountError}</p>
+            <p className="text-xs text-red-400 mt-2 px-1">{amountError}</p>
           )}
           {amountRaw && amount > 0 && amount < 100 && (
-            <p className="text-xs text-amber-400 mt-1.5 px-1">Minimum transfer is ₦100</p>
+            <p className="text-xs text-amber-400 mt-2 px-1">Minimum transfer is ₦100</p>
           )}
         </div>
       )}
