@@ -28,6 +28,9 @@ const STEPS = [
   },
 ]
 
+// Rotation angles for the back cards per step
+const BACK_ANGLES = [-3, 2.5, -2]
+
 export function HowItWorksSection() {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-100px' })
@@ -40,7 +43,7 @@ export function HowItWorksSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-20"
+          className="text-center mb-24"
         >
           <div className="text-xs font-medium tracking-[0.2em] uppercase mb-4" style={{ color: '#D4AF37' }}>How It Works</div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
@@ -51,50 +54,77 @@ export function HowItWorksSection() {
           </p>
         </motion.div>
 
-        {/* Steps */}
-        <div className="relative">
-          {/* Connecting line */}
-          <div className="hidden lg:block absolute top-16 left-[16.5%] right-[16.5%] h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.3), rgba(212,175,55,0.3), transparent)' }} />
+        {/* Steps — stacked card layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {STEPS.map((step, i) => {
+            const Icon = step.icon
+            const angle = BACK_ANGLES[i]
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {STEPS.map((step, i) => {
-              const Icon = step.icon
-              return (
-                <motion.div
-                  key={step.step}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={inView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ delay: i * 0.2, duration: 0.7 }}
-                  className="relative group"
+            return (
+              <motion.div
+                key={step.step}
+                initial={{ opacity: 0, y: 40 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: i * 0.2, duration: 0.7 }}
+                className="relative"
+                style={{ paddingBottom: '18px' }}
+              >
+                {/* Deep back card */}
+                <div
+                  className="absolute inset-x-0 top-0 bottom-0 rounded-2xl border"
+                  style={{
+                    background: '#080808',
+                    borderColor: 'rgba(255,255,255,0.03)',
+                    transform: `rotate(${angle * 1.6}deg) translateY(16px)`,
+                    transformOrigin: 'center bottom',
+                  }}
+                />
+
+                {/* Middle back card */}
+                <div
+                  className="absolute inset-x-0 top-0 bottom-0 rounded-2xl border"
+                  style={{
+                    background: '#0A0A0A',
+                    borderColor: 'rgba(255,255,255,0.05)',
+                    transform: `rotate(${angle}deg) translateY(9px)`,
+                    transformOrigin: 'center bottom',
+                  }}
+                />
+
+                {/* Front card — content */}
+                <div
+                  className="relative rounded-2xl p-8 border"
+                  style={{
+                    background: '#111',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                    zIndex: 2,
+                    boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+                  }}
                 >
-                  <div className="rounded-2xl p-8 border transition-all h-full"
-                    style={{ background: '#0B0B0B', borderColor: 'rgba(255,255,255,0.06)' }}
-                  >
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center border"
-                          style={{ background: 'rgba(212,175,55,0.08)', borderColor: 'rgba(212,175,55,0.2)' }}>
-                          <Icon size={20} style={{ color: '#D4AF37' }} />
-                        </div>
-                        <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-black"
-                          style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)' }}>
-                          {i + 1}
-                        </div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center border"
+                        style={{ background: 'rgba(212,175,55,0.08)', borderColor: 'rgba(212,175,55,0.2)' }}>
+                        <Icon size={20} style={{ color: '#D4AF37' }} />
                       </div>
-                      <span className="text-[#333] font-bold text-3xl font-mono">{step.step}</span>
+                      <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-black"
+                        style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)' }}>
+                        {i + 1}
+                      </div>
                     </div>
-
-                    <h3 className="text-white font-semibold text-lg mb-3">{step.title}</h3>
-                    <p className="text-[#B5B5B5] text-sm leading-relaxed mb-4">{step.description}</p>
-                    <div className="text-xs px-3 py-1.5 rounded-full inline-block"
-                      style={{ background: 'rgba(212,175,55,0.08)', color: '#D4AF37' }}>
-                      {step.detail}
-                    </div>
+                    <span className="text-[#2a2a2a] font-bold text-3xl font-mono">{step.step}</span>
                   </div>
-                </motion.div>
-              )
-            })}
-          </div>
+
+                  <h3 className="text-white font-semibold text-lg mb-3">{step.title}</h3>
+                  <p className="text-[#B5B5B5] text-sm leading-relaxed mb-4">{step.description}</p>
+                  <div className="text-xs px-3 py-1.5 rounded-full inline-block"
+                    style={{ background: 'rgba(212,175,55,0.08)', color: '#D4AF37' }}>
+                    {step.detail}
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
 
         {/* Behind the scenes note */}
@@ -102,7 +132,7 @@ export function HowItWorksSection() {
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ delay: 0.8, duration: 0.6 }}
-          className="mt-12 text-center"
+          className="mt-16 text-center"
         >
           <p className="text-xs text-[#444] max-w-md mx-auto leading-relaxed">
             Behind the scenes, CheesePay handles stablecoin deduction, conversion, and bank settlement — completely invisibly to the recipient.
