@@ -228,7 +228,7 @@ export class SetPinDto {
   @ApiProperty({
     example: 'hmac-sha256-base64url-here',
     description:
-      'HMAC-SHA256(pin, deviceId) — the PIN hash to set. Only valid when no PIN exists yet.',
+      'HMAC-SHA256(pin, userId) — the PIN hash to set. Only valid when no PIN exists yet.',
   })
   @IsString()
   @IsNotEmpty()
@@ -236,11 +236,12 @@ export class SetPinDto {
 
   @ApiProperty({
     example: 'device-uuid-v4-here',
-    description: 'Device ID used as the HMAC key',
+    description: 'Device ID (legacy field — ignored by the server, kept for compatibility)',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  deviceId: string;
+  deviceId?: string;
 }
 
 export class RequestDeviceRegistrationDto {
