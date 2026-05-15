@@ -191,6 +191,12 @@ export class PulseMfbClient implements OnModuleInit {
       .update(sigPayload)
       .digest('hex');
 
+    this.logger.debug(
+      `PulseMFB sig payload [${method} ${path}]: ` +
+        `timestamp=${timestamp} bodyLen=${bodyString.length} ` +
+        `payload="${sigPayload.slice(0, 120)}..."`,
+    );
+
     return {
       'Content-Type': 'application/json',
       'x-public-key': this.publicKey,
@@ -201,19 +207,29 @@ export class PulseMfbClient implements OnModuleInit {
 
   private async post<T>(path: string, body: unknown): Promise<T> {
     this.requireReady(path);
+    // Strip trailing slash from baseUrl to avoid double-slash in URL
+    const base = this.baseUrl.replace(/\/$/, '');
+    const fullUrl = `${base}${path}`;
+    const bodyString = JSON.stringify(body);
     const headers = this.buildHeaders('POST', path, body);
-    const res = await fetch(`${this.baseUrl}${path}`, {
+
+    this.logger.debug(
+      `PulseMFB POST ${fullUrl} body=${bodyString}`,
+    );
+
+    const res = await fetch(fullUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body),
+      body: bodyString,
     });
     return this.handleResponse<T>(res, path);
   }
 
   private async get<T>(path: string): Promise<T> {
     this.requireReady(path);
+    const base = this.baseUrl.replace(/\/$/, '');
     const headers = this.buildHeaders('GET', path, null);
-    const res = await fetch(`${this.baseUrl}${path}`, {
+    const res = await fetch(`${base}${path}`, {
       method: 'GET',
       headers,
     });
