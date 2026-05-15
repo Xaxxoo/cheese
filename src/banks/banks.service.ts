@@ -271,7 +271,7 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
     type: 'commercial',
   },
   {
-    code: '120001',
+    code: '999992',
     name: 'Opay',
     shortName: 'Opay',
     color: '#008751',
@@ -279,7 +279,7 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
     type: 'fintech',
   },
   {
-    code: '120002',
+    code: '999991',
     name: 'PalmPay',
     shortName: 'PalmPay',
     color: '#00A859',
@@ -287,7 +287,7 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
     type: 'fintech',
   },
   {
-    code: '120003',
+    code: '50515',
     name: 'Moniepoint',
     shortName: 'Moniepoint',
     color: '#004B87',
@@ -295,7 +295,7 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
     type: 'fintech',
   },
   {
-    code: '120004',
+    code: '50211',
     name: 'Kuda Bank',
     shortName: 'Kuda',
     color: '#40196D',
