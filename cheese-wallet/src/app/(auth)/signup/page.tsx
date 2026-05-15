@@ -247,7 +247,7 @@ export default function SignupPage() {
     }
     setLoading(true)
     try {
-      await verifyOtp({ email: form.email.toLowerCase(), otp, type: 'email_verify' })
+      await verifyOtp({ email: form.email.toLowerCase(), otp, type: 'signup' })
 
       // Auto-login after OTP verification
       const deviceId = ensureDeviceId()
@@ -270,7 +270,7 @@ export default function SignupPage() {
 
   async function resendCode() {
     try {
-      await resendOtp(form.email.toLowerCase(), 'email_verify')
+      await resendOtp(form.email.toLowerCase(), 'signup')
       notify.success('Code resent — check your inbox')
     } catch {
       notify.error('Could not resend code')
