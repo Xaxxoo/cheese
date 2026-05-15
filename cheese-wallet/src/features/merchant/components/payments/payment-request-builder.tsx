@@ -69,7 +69,7 @@ export function PaymentRequestBuilder({ onCreated }: PaymentRequestBuilderProps 
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+    <div className="space-y-6">
       <SectionCard
         title="Create a payment request"
         description="Issue a checkout session, payment link, invoice, or QR-backed request without exposing blockchain complexity."

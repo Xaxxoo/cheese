@@ -8,19 +8,24 @@ import {
   listMerchantSettlements,
   listTopMerchantCustomers,
 } from '../lib/merchant-api';
+import { MOCK_DASHBOARD, MOCK_PAYMENTS, MOCK_SETTLEMENTS } from '../lib/mock-data';
+
+const DEV_BYPASS =
+  process.env.NODE_ENV === 'development' &&
+  process.env.NEXT_PUBLIC_MERCHANT_DEV_BYPASS === 'true';
 
 export const merchantQueryKeys = {
-  dashboard: ['merchant', 'dashboard'] as const,
-  payments: ['merchant', 'payments'] as const,
-  payment: (paymentId: string) => ['merchant', 'payments', paymentId] as const,
+  dashboard:   ['merchant', 'dashboard'] as const,
+  payments:    ['merchant', 'payments'] as const,
+  payment:     (paymentId: string) => ['merchant', 'payments', paymentId] as const,
   settlements: ['merchant', 'settlements'] as const,
-  customers: ['merchant', 'customers'] as const,
+  customers:   ['merchant', 'customers'] as const,
 };
 
 export function useMerchantDashboard() {
   return useQuery({
     queryKey: merchantQueryKeys.dashboard,
-    queryFn: getMerchantDashboard,
+    queryFn:  DEV_BYPASS ? () => Promise.resolve(MOCK_DASHBOARD) : getMerchantDashboard,
     staleTime: 20_000,
   });
 }
@@ -28,7 +33,7 @@ export function useMerchantDashboard() {
 export function useMerchantPayments() {
   return useQuery({
     queryKey: merchantQueryKeys.payments,
-    queryFn: () => listMerchantPayments(),
+    queryFn:  DEV_BYPASS ? () => Promise.resolve(MOCK_PAYMENTS) : () => listMerchantPayments(),
     staleTime: 10_000,
   });
 }
@@ -36,7 +41,24 @@ export function useMerchantPayments() {
 export function useMerchantPayment(paymentId: string) {
   return useQuery({
     queryKey: merchantQueryKeys.payment(paymentId),
-    queryFn: () => getMerchantPayment(paymentId),
+    queryFn:  DEV_BYPASS
+      ? () => Promise.resolve({
+          payment:     MOCK_PAYMENTS.find((p) => p.id === paymentId) ?? MOCK_PAYMENTS[0],
+          timeline: [
+            { id: 'tl_1', label: 'Payment created',    description: 'Checkout session initialised', at: MOCK_PAYMENTS[0].createdAt,                    status: 'done'    as const },
+            { id: 'tl_2', label: 'Awaiting on-chain',  description: 'Waiting for network confirmation', at: new Date(Date.now() - 50_000).toISOString(), status: 'done'    as const },
+            { id: 'tl_3', label: 'Confirmed',          description: 'Transaction confirmed on-chain',    at: new Date(Date.now() - 30_000).toISOString(), status: 'done'    as const },
+            { id: 'tl_4', label: 'Settlement complete', description: 'Funds pushed to Zenith Bank',     at: new Date(Date.now() - 10_000).toISOString(), status: 'current' as const },
+            { id: 'tl_5', label: 'Bank credit',        description: 'Expected within 15 seconds',       at: new Date().toISOString(),                    status: 'upcoming' as const },
+          ],
+          feeSummary: {
+            processingFee: '0.35% (₦1,680)',
+            settlementFee: '0.20% (₦960)',
+            fxRate:        '1 USDC = ₦1,598.40',
+            payoutEta:     '~11 seconds',
+          },
+        })
+      : () => getMerchantPayment(paymentId),
     staleTime: 10_000,
     enabled: !!paymentId,
   });
@@ -45,7 +67,7 @@ export function useMerchantPayment(paymentId: string) {
 export function useMerchantSettlements() {
   return useQuery({
     queryKey: merchantQueryKeys.settlements,
-    queryFn: listMerchantSettlements,
+    queryFn:  DEV_BYPASS ? () => Promise.resolve(MOCK_SETTLEMENTS) : listMerchantSettlements,
     staleTime: 10_000,
   });
 }
@@ -53,7 +75,9 @@ export function useMerchantSettlements() {
 export function useMerchantCustomers() {
   return useQuery({
     queryKey: merchantQueryKeys.customers,
-    queryFn: listTopMerchantCustomers,
+    queryFn:  DEV_BYPASS
+      ? () => Promise.resolve([])
+      : listTopMerchantCustomers,
     staleTime: 60_000,
   });
 }
