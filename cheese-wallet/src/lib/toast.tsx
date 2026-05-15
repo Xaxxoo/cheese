@@ -1,10 +1,10 @@
 import toast from 'react-hot-toast'
-import { CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, Info, type LucideIcon } from 'lucide-react'
 
 type ToastType = 'success' | 'error' | 'warning' | 'info'
 
 const CONFIG: Record<ToastType, {
-  icon: React.FC<{ size: number; color: string }>
+  icon: LucideIcon
   iconColor: string
   borderColor: string
   duration: number
