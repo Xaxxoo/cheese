@@ -52,7 +52,12 @@ export default function AddDevicePage() {
         <p className="text-sm text-white/45">
           Your device is registered. You can now log in normally.
         </p>
-        <Button asChild><Link href="/login">Go to login</Link></Button>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center h-12 px-6 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49a38] transition-colors"
+        >
+          Go to login
+        </Link>
       </div>
     )
   }
