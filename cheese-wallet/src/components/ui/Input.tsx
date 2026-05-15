@@ -17,6 +17,7 @@ export function Input({
   prefix,
   className,
   id,
+  style,
   ...props
 }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
@@ -51,6 +52,7 @@ export function Input({
             suffix && 'pr-12',
             className,
           )}
+          style={{ WebkitTextFillColor: 'white', caretColor: 'white', ...style }}
           {...props}
         />
         {suffix && (

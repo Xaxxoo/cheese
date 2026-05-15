@@ -170,7 +170,14 @@ export default function SignupPage() {
     if (!form.fullName.trim())         e.fullName = 'Full name is required'
     if (!form.email.trim())            e.email    = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email'
-    if (!form.phone.trim())            e.phone    = 'Phone number is required'
+    if (!form.phone.trim()) {
+      e.phone = 'Phone number is required'
+    } else {
+      const normalized = form.phone.trim().replace(/[\s\-()]/g, '')
+      if (!/^\+[1-9]\d{6,14}$/.test(normalized)) {
+        e.phone = 'Must start with country code, e.g. +2348012345678'
+      }
+    }
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -204,7 +211,7 @@ export default function SignupPage() {
       await signup({
         fullName:       form.fullName.trim(),
         email:          form.email.trim().toLowerCase(),
-        phone:          form.phone.trim(),
+        phone:          form.phone.trim().replace(/[\s\-()]/g, ''),
         username:       form.username.trim().toLowerCase(),
         password:       form.password,
         devicePublicKey: publicKey,
@@ -324,11 +331,12 @@ export default function SignupPage() {
             <Input
               label="Phone number"
               type="tel"
-              placeholder="+234 800 000 0000"
+              placeholder="+234 801 234 5678"
               value={form.phone}
               onChange={(e) => set('phone', e.target.value)}
               error={errors.phone}
               autoComplete="tel"
+              hint="Include your country code, e.g. +234 for Nigeria"
             />
           </div>
 

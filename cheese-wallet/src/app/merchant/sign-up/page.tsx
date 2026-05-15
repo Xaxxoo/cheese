@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { MerchantAuthShell } from '@/features/merchant/components/auth/merchant-auth-shell';
 import { MerchantButton, MerchantInput } from '@/features/merchant/components/shared/primitives';
 import { registerMerchant } from '@/features/merchant/lib/merchant-api';
@@ -22,6 +23,7 @@ export default function MerchantSignUpPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   function update<Key extends keyof typeof form>(key: Key, value: (typeof form)[Key]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -83,9 +85,18 @@ export default function MerchantSignUpPage() {
             />
             <MerchantInput
               label="Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={form.password}
               onChange={(event) => update('password', event.target.value)}
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-[color:var(--merchant-muted)] hover:text-[color:var(--merchant-text)] transition-colors"
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              }
             />
           </div>
 

@@ -66,6 +66,7 @@ export function MerchantInput({
   suffix,
   prefix,
   className,
+  style,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
@@ -100,10 +101,11 @@ export function MerchantInput({
             props.readOnly && 'opacity-60 cursor-default',
             className,
           )}
+          style={{ WebkitTextFillColor: 'var(--merchant-text)', caretColor: 'var(--merchant-text)', ...style }}
           {...props}
         />
         {suffix && (
-          <span className="pointer-events-none absolute right-3.5 text-xs font-medium text-[color:var(--merchant-muted)]">
+          <span className="absolute right-3.5 text-xs font-medium text-[color:var(--merchant-muted)]">
             {suffix}
           </span>
         )}
