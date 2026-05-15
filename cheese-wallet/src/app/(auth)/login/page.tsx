@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
 import { login } from '@/lib/api/auth'
 import { generateDeviceKey, hasDeviceKey, signPayload } from '@/lib/crypto/deviceSigning'
-import { registerDevice } from '@/lib/api/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -41,13 +40,10 @@ export default function LoginPage() {
     try {
       const deviceId = ensureDeviceId()
 
-      // Ensure device key exists — generate if this is a new device
+      // Ensure a local device key exists for signing
       const exists = await hasDeviceKey(deviceId)
-      let publicKey: string | undefined
-
       if (!exists) {
-        const generated = await generateDeviceKey(deviceId)
-        publicKey = generated.publicKey
+        await generateDeviceKey(deviceId)
       }
 
       // Sign the deviceId as the login challenge
@@ -61,24 +57,17 @@ export default function LoginPage() {
       })
 
       setAuth(user, tokens.accessToken)
-
-      // Register new device with the server (if just generated)
-      if (publicKey) {
-        try {
-          await registerDevice({
-            deviceId,
-            publicKey,
-            deviceName: navigator.userAgent.slice(0, 80),
-          })
-        } catch {
-          // Non-fatal — device registration can be retried
-        }
-      }
-
       router.replace('/dashboard')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed. Please try again.'
-      notify.error(msg)
+      // If the backend rejects the device signature the user needs to register
+      // this device first via the add-device OTP flow
+      const isDeviceError = /device|signature|unrecognized/i.test(msg)
+      if (isDeviceError) {
+        notify.error('This device is not recognised. Use "New device? Register it" below.')
+      } else {
+        notify.error(msg)
+      }
     } finally {
       setLoading(false)
     }
