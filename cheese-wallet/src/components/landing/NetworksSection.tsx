@@ -11,8 +11,6 @@ const NETWORKS = [
   { name: 'Optimism', speed: '2s', color: '#FF0420', abbr: 'OP' },
   { name: 'Stellar', speed: '5s', color: '#7D00FF', abbr: 'XLM' },
   { name: 'Celo', speed: '5s', color: '#35D07F', abbr: 'CELO' },
-  { name: 'Starknet', speed: '3s', color: '#EC796B', abbr: 'STRK' },
-  { name: 'Stacks', speed: '10s', color: '#5546FF', abbr: 'STX' },
 ]
 
 export function NetworksSection() {
