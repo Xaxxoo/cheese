@@ -102,7 +102,7 @@ export class PulseMfbClient implements OnModuleInit {
   ): Promise<PulseMfbNameEnquiryResult> {
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/api/v1/external-api/transfers/name-enquiry',
-      { accountNumber, bankCode },
+      { account_number: accountNumber, bank_code: bankCode },
     );
     return data.data;
   }
@@ -226,8 +226,11 @@ export class PulseMfbClient implements OnModuleInit {
     if (!res.ok) {
       const msg: string =
         ((json as Record<string, unknown>)?.message as string) ||
+        ((json as Record<string, unknown>)?.responseMessage as string) ||
         `PulseMFB ${res.status}`;
-      this.logger.error(`PulseMFB error [${path}] ${res.status}: ${msg}`);
+      this.logger.error(
+        `PulseMFB error [${path}] ${res.status}: ${msg} — body: ${JSON.stringify(json)}`,
+      );
       throw new BadRequestException(`Banking provider error: ${msg}`);
     }
     return json as T;
