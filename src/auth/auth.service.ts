@@ -546,16 +546,23 @@ export class AuthService {
     const user = await this.userRepo.findOne({ where: { id: payload.sub } });
     if (!user) throw new NotFoundException('User not found');
 
+    // Upsert — if the device already exists (re-registration), update its
+    // public key so the new key pair generated on the device takes effect.
     const existing = await this.deviceRepo.findOne({ where: { deviceId: dto.deviceId } });
-    if (existing) throw new ConflictException('Device already registered');
-
-    await this.deviceRepo.save(
-      this.deviceRepo.create({
-        deviceId: dto.deviceId,
-        publicKey: dto.publicKey,
-        userId: user.id,
-      }),
-    );
+    if (existing) {
+      await this.deviceRepo.update(
+        { id: existing.id },
+        { publicKey: dto.publicKey, isActive: true },
+      );
+    } else {
+      await this.deviceRepo.save(
+        this.deviceRepo.create({
+          deviceId: dto.deviceId,
+          publicKey: dto.publicKey,
+          userId: user.id,
+        }),
+      );
+    }
   }
 
   // ── Private: award referral points ────────────────────────────────────────
