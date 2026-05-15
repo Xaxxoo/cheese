@@ -111,8 +111,12 @@ export class WalletDepositScheduler {
         );
         this.logger.log(`Wallet activated [user=${user.username}]`);
       } catch (err) {
+        const e = err as { message?: string; response?: { data?: unknown } };
+        const detail = e.response?.data
+          ? ` — horizon: ${JSON.stringify(e.response.data)}`
+          : '';
         this.logger.error(
-          `Wallet activation retry failed [user=${user.username}]: ${(err as Error).message}`,
+          `Wallet activation retry failed [user=${user.username}]: ${e.message ?? String(err)}${detail}`,
         );
       }
     }

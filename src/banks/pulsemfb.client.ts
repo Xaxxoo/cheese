@@ -191,7 +191,7 @@ export class PulseMfbClient implements OnModuleInit {
       .update(sigPayload)
       .digest('hex');
 
-    this.logger.debug(
+    this.logger.log(
       `PulseMFB sig payload [${method} ${path}]: ` +
         `timestamp=${timestamp} bodyLen=${bodyString.length} ` +
         `payload="${sigPayload.slice(0, 120)}..."`,
@@ -213,7 +213,7 @@ export class PulseMfbClient implements OnModuleInit {
     const bodyString = JSON.stringify(body);
     const headers = this.buildHeaders('POST', path, body);
 
-    this.logger.debug(
+    this.logger.log(
       `PulseMFB POST ${fullUrl} body=${bodyString}`,
     );
 
