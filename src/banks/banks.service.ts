@@ -426,7 +426,7 @@ export class BanksService {
         dto.bankCode,
       );
 
-      if (result.responseCode === '00' && result.accountName) {
+      if (result.responseCode === '00' && result.accountName.trim()) {
         return {
           accountName: result.accountName,
           accountNumber: dto.accountNumber,
@@ -434,6 +434,25 @@ export class BanksService {
           bankName,
           verified: true,
         };
+      }
+
+      const providerMessage =
+        result.responseMessage?.trim() ||
+        'Could not verify the recipient account';
+      this.logger.warn('PulseMFB name enquiry did not verify account', {
+        accountNumber: dto.accountNumber,
+        bankCode: dto.bankCode,
+        responseCode: result.responseCode,
+        responseMessage: providerMessage,
+      });
+
+      if (
+        result.responseCode !== '00' ||
+        isPulseMfbRecipientValidationFailureMessage(providerMessage)
+      ) {
+        throw new BadRequestException(
+          `Banking provider error: ${providerMessage}`,
+        );
       }
     } catch (err) {
       const errorMessage = (err as Error).message;
@@ -450,7 +469,9 @@ export class BanksService {
       // unavailable.
     }
 
-    // Unverified — caller must supply the account name themselves.
+    // Soft fallback only when the provider could not resolve the account due to
+    // a temporary upstream issue. Transfer initiation will still require a
+    // verified beneficiary to avoid debiting USDC for a likely-bad payout.
     return {
       accountName: '',
       accountNumber: dto.accountNumber,
@@ -548,22 +569,20 @@ export class BanksService {
       accountNumber: dto.accountNumber,
       bankCode: dto.bankCode,
     });
-    // Only enforce name match when PulseMFB could verify the account.
-    // For external NIP banks the enquiry returns unverified — trust the
-    // name the user supplied (consistent with how most Nigerian apps work).
+    if (!resolvedAccount.verified || !resolvedAccount.accountName.trim()) {
+      throw new BadRequestException(
+        'Could not verify the recipient account. Confirm the bank and account number and try again.',
+      );
+    }
     if (
-      resolvedAccount.verified &&
       normalizeAccountName(resolvedAccount.accountName) !==
-        normalizeAccountName(dto.accountName)
+      normalizeAccountName(dto.accountName)
     ) {
       throw new BadRequestException(
         `Account name mismatch. Resolved name is "${resolvedAccount.accountName}".`,
       );
     }
-    // Use the resolved name when available, fall back to what the user provided.
-    const accountName = resolvedAccount.verified
-      ? resolvedAccount.accountName
-      : dto.accountName;
+    const accountName = resolvedAccount.accountName;
 
     // 8. Create PENDING records — both start as PENDING before any money moves
     const reference = `CW-NGN-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;

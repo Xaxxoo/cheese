@@ -506,7 +506,7 @@ function BankDetailsStep({
   const banksQ = useQuery({
     queryKey: QUERY_KEYS.BANKS,
     queryFn:  getBanks,
-    staleTime: STALE_TIMES.PROFILE,
+    staleTime: STALE_TIMES.BANKS,
   })
   const banks: NigerianBank[] = banksQ.data ?? []
 
@@ -532,16 +532,22 @@ function BankDetailsStep({
       try {
         const result = await resolveAccount({ bankCode: selectedBank.code, accountNumber: acctNum })
         if (cancelled) return
-        setVerified(true)
-        if (result.accountName) {
+        if (result.verified && result.accountName) {
+          setVerified(true)
           setAcctName(result.accountName)
           setNameUnverified(false)
-        } else {
-          setAcctName('')
-          setNameUnverified(true)
+          return
         }
+
+        setVerified(false)
+        setAcctName('')
+        setNameUnverified(false)
+        setVerifyError('Could not verify this account. Confirm the bank and account number and try again.')
       } catch (err) {
         if (cancelled) return
+        setVerified(false)
+        setAcctName('')
+        setNameUnverified(false)
         setVerifyError((err as Error).message ?? 'Could not verify account')
       } finally {
         if (!cancelled) setVerifying(false)
