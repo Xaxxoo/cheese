@@ -103,6 +103,7 @@ export class PulseMfbClient implements OnModuleInit {
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/api/v1/external-api/transfers/name-enquiry',
       { accountNumber, bankCode },
+      15_000,
     );
     return data.data;
   }
@@ -205,7 +206,7 @@ export class PulseMfbClient implements OnModuleInit {
     };
   }
 
-  private async post<T>(path: string, body: unknown): Promise<T> {
+  private async post<T>(path: string, body: unknown, timeoutMs = 30_000): Promise<T> {
     this.requireReady(path);
     // Strip trailing slash from baseUrl to avoid double-slash in URL
     const base = this.baseUrl.replace(/\/$/, '');
@@ -217,23 +218,47 @@ export class PulseMfbClient implements OnModuleInit {
       `PulseMFB POST ${fullUrl} body=${bodyString}`,
     );
 
-    const res = await fetch(fullUrl, {
-      method: 'POST',
-      headers,
-      body: bodyString,
-    });
-    return this.handleResponse<T>(res, path);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(fullUrl, {
+        method: 'POST',
+        headers,
+        body: bodyString,
+        signal: controller.signal,
+      });
+      return this.handleResponse<T>(res, path);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new BadRequestException(`Banking provider timed out after ${timeoutMs / 1000}s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  private async get<T>(path: string): Promise<T> {
+  private async get<T>(path: string, timeoutMs = 30_000): Promise<T> {
     this.requireReady(path);
     const base = this.baseUrl.replace(/\/$/, '');
     const headers = this.buildHeaders('GET', path, null);
-    const res = await fetch(`${base}${path}`, {
-      method: 'GET',
-      headers,
-    });
-    return this.handleResponse<T>(res, path);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${base}${path}`, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      return this.handleResponse<T>(res, path);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new BadRequestException(`Banking provider timed out after ${timeoutMs / 1000}s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private async handleResponse<T>(res: Response, path: string): Promise<T> {

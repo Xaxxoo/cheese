@@ -118,6 +118,7 @@ export async function bankTransfer(payload: BankTransferPayload): Promise<BankTr
   const { data } = await apiClient.post<ApiResponse<BankTransferResponse>>(
     ENDPOINTS.BANK.TRANSFER,
     payload,
+    { timeout: 60_000 },
   )
   return data.data
 }
