@@ -446,39 +446,30 @@ export class BanksService {
         responseMessage: providerMessage,
       });
 
-      if (
-        result.responseCode !== '00' ||
-        isPulseMfbRecipientValidationFailureMessage(providerMessage)
-      ) {
-        throw new BadRequestException(
-          `Banking provider error: ${providerMessage}`,
-        );
-      }
+      throw new BadRequestException(`Banking provider error: ${providerMessage}`);
     } catch (err) {
       const errorMessage = (err as Error).message;
-      this.logger.error('PulseMFB name enquiry failed', { accountNumber: dto.accountNumber, bankCode: dto.bankCode, error: errorMessage });
+      this.logger.error('PulseMFB name enquiry failed', {
+        accountNumber: dto.accountNumber,
+        bankCode: dto.bankCode,
+        error: errorMessage,
+      });
+
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+
       if (isPulseMfbAuthFailureMessage(errorMessage)) {
         throw err;
       }
       if (isPulseMfbRecipientValidationFailureMessage(errorMessage)) {
         throw err;
       }
-      // Fall back to a manual confirmation flow when the provider cannot
-      // resolve the account. This keeps the transfer flow usable even when
-      // the upstream enquiry endpoint is degraded or a bank is temporarily
-      // unavailable.
-    }
 
-    // Soft fallback only when the provider could not resolve the account due to
-    // a temporary upstream issue. Transfer initiation will still require a
-    // verified beneficiary to avoid debiting USDC for a likely-bad payout.
-    return {
-      accountName: '',
-      accountNumber: dto.accountNumber,
-      bankCode: dto.bankCode,
-      bankName,
-      verified: false,
-    };
+      throw new BadRequestException(
+        'Could not verify the recipient account. Please try again.',
+      );
+    }
   }
 
   // ── POST /banks/transfer ──────────────────────────────────────────────────
