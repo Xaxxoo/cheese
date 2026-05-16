@@ -154,6 +154,8 @@ export interface AccountResolveResponse {
   accountName: string
   accountNumber: string
   bankCode: string
+  bankName: string
+  verified: boolean
 }
 
 export interface BankTransferPayload {
@@ -170,15 +172,18 @@ export interface BankTransferPayload {
 }
 
 export interface BankTransferResponse {
-  id: string
-  status: 'pending' | 'completed' | 'failed'
-  amount: string
-  amountUSD: string
-  bankCode: string
-  accountNumber: string
-  accountName: string
-  timestamp: string
   reference: string
+  providerReference?: string | null
+  status: 'processing' | 'completed'
+  message: string
+  amountNgn: string
+  amountUsdc: string
+  rateApplied: string
+  fee: string
+  recipientName: string
+  bankName: string
+  stellarTxHash: string
+  createdAt: string
 }
 
 // ── Card Types ────────────────────────────────────────────

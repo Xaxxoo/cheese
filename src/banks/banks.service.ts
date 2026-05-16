@@ -399,7 +399,6 @@ export class BanksService {
       const result = await this.pulseMfb.nameEnquiry(
         dto.accountNumber,
         dto.bankCode,
-        bankName,
       );
 
       if (result.responseCode === '00' && result.accountName) {
@@ -413,8 +412,10 @@ export class BanksService {
       }
     } catch (err) {
       this.logger.error('PulseMFB name enquiry failed', { accountNumber: dto.accountNumber, bankCode: dto.bankCode, error: (err as Error).message });
-      // PulseMFB name enquiry only resolves its own internal accounts.
-      // For external NIP banks it returns 400 — fall through to unverified.
+      // Fall back to a manual confirmation flow when the provider cannot
+      // resolve the account. This keeps the transfer flow usable even when
+      // the upstream enquiry endpoint is degraded or a bank is temporarily
+      // unavailable.
     }
 
     // Unverified — caller must supply the account name themselves.
@@ -598,17 +599,23 @@ export class BanksService {
     // 10. Call the banking provider to initiate the NGN payout
     //     USDC has already moved at this point.
     //     If the provider call fails we MUST refund the USDC immediately.
+    let finalStatus: BankTransferStatus = BankTransferStatus.PROCESSING;
+    let providerReference: string | null = null;
     try {
       const { providerRef, completedImmediately } =
         await this.initiateBankingTransfer({
           debitAccount: this.pulseMfb.platformDebitAccount,
           accountNumber: dto.accountNumber,
           bankCode: dto.bankCode,
-          bankName,
           accountName,
           amountNgn,
           reference,
         });
+
+      finalStatus = completedImmediately
+        ? BankTransferStatus.COMPLETED
+        : BankTransferStatus.PROCESSING;
+      providerReference = providerRef;
 
       if (completedImmediately) {
         // PulseMFB settled the transfer synchronously — mark both records final
@@ -664,9 +671,12 @@ export class BanksService {
 
     return {
       reference,
-      status: 'processing',
+      providerReference,
+      status: finalStatus,
       message:
-        'USDC deducted. NGN payout is being processed. You will receive a confirmation once the transfer settles.',
+        finalStatus === BankTransferStatus.COMPLETED
+          ? 'USDC deducted and NGN payout completed successfully.'
+          : 'USDC deducted. NGN payout is being processed. You will receive a confirmation once the transfer settles.',
       amountNgn: dto.amountNgn,
       amountUsdc,
       rateApplied: rate.effectiveRate,
@@ -680,12 +690,10 @@ export class BanksService {
 
   // ── POST /banks/webhook ───────────────────────────────────────────────────
   async processWebhook(dto: BankWebhookDto) {
-    const transfer = await this.transferRepo.findOne({
-      where: { reference: dto.reference },
-    });
+    const transfer = await this.findTransferByAnyReference(dto.reference);
     if (!transfer) {
       throw new NotFoundException(
-        `No transfer found with reference: ${dto.reference}`,
+        `No transfer found with reference or provider reference: ${dto.reference}`,
       );
     }
 
@@ -701,7 +709,8 @@ export class BanksService {
       );
       return {
         alreadyProcessed: true,
-        reference: dto.reference,
+        reference: transfer.reference,
+        providerReference: transfer.providerReference,
         status: transfer.status,
       };
     }
@@ -713,13 +722,17 @@ export class BanksService {
           { id: transfer.id },
           { status: BankTransferStatus.COMPLETED },
         );
-        await this.txService.updateByReference(dto.reference, {
+        await this.txService.updateByReference(transfer.reference, {
           status: TxStatus.COMPLETED,
         });
-        this.logger.log(`Bank transfer settled [ref=${dto.reference}]`);
+        this.logger.log(
+          `Bank transfer settled [ref=${transfer.reference}] ` +
+            `[providerRef=${transfer.providerReference ?? dto.reference}]`,
+        );
         return {
           processed: true,
-          reference: dto.reference,
+          reference: transfer.reference,
+          providerReference: transfer.providerReference,
           status: 'completed',
         };
       }
@@ -740,12 +753,12 @@ export class BanksService {
             userId: transfer.userId,
             toPublicKey: user.stellarPublicKey,
             amountUsdc: transfer.amountUsdc,
-            reference: dto.reference,
+            reference: transfer.reference,
             reason: dto.failureReason ?? dto.event,
           });
         } else {
           this.logger.error(
-            `Cannot refund — user ${transfer.userId} has no Stellar wallet [ref=${dto.reference}]`,
+            `Cannot refund — user ${transfer.userId} has no Stellar wallet [ref=${transfer.reference}]`,
           );
         }
 
@@ -756,7 +769,7 @@ export class BanksService {
             failureReason: dto.failureReason ?? dto.event,
           },
         );
-        await this.txService.updateByReference(dto.reference, {
+        await this.txService.updateByReference(transfer.reference, {
           status:
             newStatus === BankTransferStatus.REVERSED
               ? TxStatus.REVERSED
@@ -765,11 +778,14 @@ export class BanksService {
         });
 
         this.logger.log(
-          `Bank transfer ${dto.event} [ref=${dto.reference}] — USDC refund initiated`,
+          `Bank transfer ${dto.event} [ref=${transfer.reference}] ` +
+            `[providerRef=${transfer.providerReference ?? dto.reference}] — ` +
+            `USDC refund initiated`,
         );
         return {
           processed: true,
-          reference: dto.reference,
+          reference: transfer.reference,
+          providerReference: transfer.providerReference,
           status: newStatus,
           refunded: !!user?.stellarPublicKey,
         };
@@ -789,9 +805,14 @@ export class BanksService {
       return { processed: false, event };
     }
 
-    const reference: string = (data as Record<string, unknown>)[
-      'reference'
-    ] as string;
+    const payload = data as Record<string, unknown>;
+    const reference =
+      (typeof payload.reference === 'string' && payload.reference) ||
+      (typeof payload.internal_reference === 'string' &&
+        payload.internal_reference) ||
+      (typeof payload.external_reference === 'string' &&
+        payload.external_reference) ||
+      '';
     if (!reference) {
       this.logger.warn(`PulseMFB webhook missing reference [event=${event}]`);
       return { processed: false, reason: 'missing reference' };
@@ -826,7 +847,6 @@ export class BanksService {
     debitAccount: string;
     accountNumber: string;
     bankCode: string;
-    bankName: string;
     accountName: string;
     amountNgn: number;
     reference: string;
@@ -835,8 +855,6 @@ export class BanksService {
       debitAccount: params.debitAccount,
       beneficiaryAccountNumber: params.accountNumber,
       beneficiaryBankCode: params.bankCode,
-      beneficiaryBankName: params.bankName,
-      beneficiaryName: params.accountName,
       amount: params.amountNgn,
       narration: `Cheese Pay withdrawal [${params.reference}]`,
       reference: params.reference,
@@ -851,6 +869,14 @@ export class BanksService {
       providerRef: result.internal_reference,
       completedImmediately: result.status === 'completed',
     };
+  }
+
+  private async findTransferByAnyReference(
+    reference: string,
+  ): Promise<BankTransfer | null> {
+    return this.transferRepo.findOne({
+      where: [{ reference }, { providerReference: reference }],
+    });
   }
 
   // ── USDC refund helper ────────────────────────────────────────────────────

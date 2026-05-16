@@ -4,16 +4,12 @@
 //
 // Authentication:
 //   Every request is signed with HMAC-SHA256 using the private key.
-//   Signature payload: timestamp + METHOD + /path + bodyJson
+//   Signature payload: timestamp + METHOD + /api/v1/external-api/path + bodyJson
 //   Headers: x-public-key, x-signature, x-timestamp
 //
-// Docs: https://documenter.getpostman.com/view/7118903/2sBXVhDqmZ
-//
-// Bank codes:
-//   PulseMFB uses its OWN internal bank codes, NOT the NIBSS NIP codes
-//   used by most Nigerian apps.  We seed a known-good mapping below and
-//   supplement it by fetching PulseMFB's /banks list at startup.
-//
+// The repo includes PulseMFB's Postman collection, which documents the
+// public base URL as https://api.pulsemfb.com and the external API paths
+// under /api/v1/external-api.
 
 import {
   BadRequestException,
@@ -23,10 +19,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Response shapes (trimmed to what we actually use)
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface PulseMfbNameEnquiryResult {
   responseCode: string; // "00" = success
@@ -41,7 +33,8 @@ export interface PulseMfbTransferResult {
   internal_reference: string;
   amount: number;
   debit_account: string;
-  beneficiary_account: string;
+  beneficiary_account?: string;
+  credit_account?: string;
   status: string; // "completed" | "pending" | "failed"
   created_at: string;
 }
@@ -50,26 +43,10 @@ export interface PulseMfbTransferStatus extends PulseMfbTransferResult {
   completed_at?: string;
 }
 
-interface PulseMfbBankEntry {
-  code: string;
-  name: string;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Seed mapping: NIBSS NIP code → PulseMFB internal code
-// Add entries here as you discover them from PulseMFB's portal/docs.
-// The dynamic bank list fetch (onModuleInit) will cover the rest.
-// ─────────────────────────────────────────────────────────────────────────────
-const NIBSS_TO_PULSEMFB: Record<string, string> = {
-  '058': '100',         // GTBank  (Guaranty Trust Bank)
-  '999992': '1200014',  // OPay
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Injectable()
 export class PulseMfbClient implements OnModuleInit {
   private readonly logger = new Logger(PulseMfbClient.name);
+  private readonly apiBasePath = '/api/v1/external-api';
 
   private baseUrl!: string;
   private publicKey!: string;
@@ -77,13 +54,14 @@ export class PulseMfbClient implements OnModuleInit {
   private debitAccount!: string;
   private ready = false;
 
-  // Bank list fetched from PulseMFB at startup — used for code resolution
-  private bankCache: PulseMfbBankEntry[] = [];
-
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
-    this.baseUrl = this.config.get<string>('pulsemfb.baseUrl') ?? 'https://api.pulsemfb.com/api/v1/external-api';
+    const configuredBaseUrl =
+      this.config.get<string>('pulsemfb.baseUrl') ??
+      'https://api.pulsemfb.com';
+
+    this.baseUrl = this.normalizeBaseUrl(configuredBaseUrl);
     this.publicKey = this.config.get<string>('pulsemfb.publicKey') ?? '';
     this.privateKey = this.config.get<string>('pulsemfb.privateKey') ?? '';
     this.debitAccount = this.config.get<string>('pulsemfb.debitAccount') ?? '';
@@ -91,15 +69,15 @@ export class PulseMfbClient implements OnModuleInit {
     if (this.publicKey && this.privateKey) {
       this.ready = true;
       this.logger.log(
-        `PulseMFB client ready [env=${this.config.get('app.nodeEnv')}] [account=${this.debitAccount || 'not-configured'}]`,
+        `PulseMFB client ready [env=${this.config.get('app.nodeEnv')}] ` +
+          `[account=${this.debitAccount || 'not-configured'}] ` +
+          `[base=${this.baseUrl}${this.apiBasePath}]`,
       );
       if (!this.debitAccount) {
         this.logger.warn(
           'PULSE_MFB_DEBIT_ACCOUNT not set — account resolution and status lookups will work, but transfer initiation is disabled',
         );
       }
-      // Fire-and-forget bank list fetch; seed map covers us if this fails
-      void this.refreshBankList();
     } else {
       this.logger.warn(
         'PulseMFB not configured — set PULSE_MFB_PUBLIC_KEY and PULSE_MFB_PRIVATE_KEY',
@@ -120,57 +98,28 @@ export class PulseMfbClient implements OnModuleInit {
     return this.debitAccount;
   }
 
-  // ───  Banks Lists ───────────────────────────────────────────────────────────
-   async banks(): Promise<PulseMfbBankEntry[]> {
-    const data = await this.get<{ data: PulseMfbBankEntry[] }>(
-      '/banks',
-    );
-    return Array.isArray(data?.data) && data.data.length > 0 ? data.data : [];
-  }
-
-  // ── Name Enquiry ────────────────────────────────────────────────────────────
   async nameEnquiry(
     accountNumber: string,
-    nibssBankCode: string,
-    bankName: string,
+    bankCode: string,
   ): Promise<PulseMfbNameEnquiryResult> {
-    const bankCode = this.resolveBankCode(nibssBankCode, bankName);
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/transfers/name-enquiry',
       { accountNumber, bankCode },
-      // 15_000,
     );
     return data.data;
   }
 
-  // ── Initiate Transfer ───────────────────────────────────────────────────────
   async initiateTransfer(params: {
     debitAccount: string;
     beneficiaryAccountNumber: string;
-    beneficiaryBankCode: string;  // NIBSS code — resolved internally to PulseMFB code
-    beneficiaryBankName: string;
-    beneficiaryName: string;
+    beneficiaryBankCode: string;
     amount: number;
     narration: string;
     reference: string;
   }): Promise<PulseMfbTransferResult> {
-    const beneficiaryBankName = params.beneficiaryBankName.trim();
-    if (!beneficiaryBankName) {
-      throw new BadRequestException(
-        'Beneficiary bank name could not be determined for this transfer',
-      );
-    }
-
-    const resolvedBankCode = this.resolveBankCode(
-      params.beneficiaryBankCode,
-      beneficiaryBankName,
-    );
-
     this.logger.log(
       `PulseMFB transfer request [ref=${params.reference}] ` +
-        `[nibssCode=${params.beneficiaryBankCode}] ` +
-        `[resolvedCode=${resolvedBankCode}] ` +
-        `[bankName=${beneficiaryBankName}]`,
+        `[bankCode=${params.beneficiaryBankCode}]`,
     );
 
     const data = await this.post<{ data: PulseMfbTransferResult }>(
@@ -178,9 +127,7 @@ export class PulseMfbClient implements OnModuleInit {
       {
         debit_account_number: params.debitAccount,
         beneficiary_account_number: params.beneficiaryAccountNumber,
-        beneficiary_bank_code: resolvedBankCode,
-        beneficiary_bank_name: beneficiaryBankName,
-        beneficiary_name: params.beneficiaryName,
+        beneficiary_bank_code: params.beneficiaryBankCode,
         amount: params.amount,
         narration: params.narration,
         reference: params.reference,
@@ -189,7 +136,6 @@ export class PulseMfbClient implements OnModuleInit {
     return data.data;
   }
 
-  // ── Get Transfer Status ─────────────────────────────────────────────────────
   async getTransferStatus(reference: string): Promise<PulseMfbTransferStatus> {
     const data = await this.get<{ data: PulseMfbTransferStatus }>(
       `/transfers/${encodeURIComponent(reference)}`,
@@ -197,15 +143,14 @@ export class PulseMfbClient implements OnModuleInit {
     return data.data;
   }
 
-  // ── Verify inbound webhook signature ───────────────────────────────────────
-  // PulseMFB sends X-Webhook-Signature: HMAC-SHA256(webhookSecret, body)
+  // PulseMFB sends X-Webhook-Signature: HMAC-SHA256(webhookSecret, rawBody)
   verifyWebhookSignature(rawBody: string, signature: string): boolean {
     const secret = this.config.get<string>('pulsemfb.webhookSecret');
     if (!secret) {
       this.logger.warn(
         'PULSE_MFB_WEBHOOK_SECRET not set — skipping signature verification',
       );
-      return true; // allow through in unconfigured dev env
+      return true;
     }
     try {
       const expected = createHmac('sha256', secret)
@@ -217,100 +162,36 @@ export class PulseMfbClient implements OnModuleInit {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Bank code resolution
-  // ─────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Maps a standard NIBSS bank code to PulseMFB's internal routing code.
-   * Resolution order:
-   *   1. Seed map (NIBSS_TO_PULSEMFB — hardcoded known-good values)
-   *   2. Dynamic bank list fetched from PulseMFB at startup (matched by name)
-   *   3. Fall back to the NIBSS code with a warning (transfer may still fail)
-   */
-  private resolveBankCode(nibssCode: string, bankName: string): string {
-    // 1. Seed map — fastest, most reliable
-    if (NIBSS_TO_PULSEMFB[nibssCode]) {
-      const resolved = NIBSS_TO_PULSEMFB[nibssCode];
-      if (resolved !== nibssCode) {
-        this.logger.log(
-          `Bank code resolved via seed [${nibssCode} → ${resolved}] (${bankName})`,
-        );
-      }
-      return resolved;
+  private normalizeBaseUrl(baseUrl: string): string {
+    const trimmed = baseUrl.trim().replace(/\/$/, '');
+    if (trimmed.endsWith(this.apiBasePath)) {
+      return trimmed.slice(0, -this.apiBasePath.length);
     }
-
-    // 2. Dynamic list — match by normalised bank name
-    if (this.bankCache.length > 0) {
-      const normalize = (s: string) =>
-        s.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const needle = normalize(bankName);
-      const found =
-        this.bankCache.find((b) => normalize(b.name) === needle) ??
-        this.bankCache.find(
-          (b) =>
-            normalize(b.name).includes(needle) ||
-            needle.includes(normalize(b.name)),
-        );
-      if (found) {
-        this.logger.log(
-          `Bank code resolved via dynamic list [${nibssCode} → ${found.code}] (${bankName} ↔ ${found.name})`,
-        );
-        // Cache in seed map so subsequent calls are O(1)
-        NIBSS_TO_PULSEMFB[nibssCode] = found.code;
-        return found.code;
-      }
-    }
-
-    // 3. Fallback — warn loudly so the operator knows to add a seed entry
-    this.logger.warn(
-      `No PulseMFB bank code found for NIBSS code ${nibssCode} (${bankName}) — ` +
-        `sending NIBSS code as-is; add it to NIBSS_TO_PULSEMFB if transfers fail`,
-    );
-    return nibssCode;
+    return trimmed;
   }
 
-  /**
-   * Fetches PulseMFB's supported bank list and caches it.
-   * Called fire-and-forget from onModuleInit; never throws.
-   */
-  private async refreshBankList(): Promise<void> {
-    try {
-      const data = await this.get<{ data: PulseMfbBankEntry[] }>(
-        '/banks',
-        10_000,
-      );
-      if (Array.isArray(data?.data) && data.data.length > 0) {
-        this.bankCache = data.data;
-        this.logger.log(
-          `PulseMFB bank list loaded: ${this.bankCache.length} banks`,
-        );
-      }
-    } catch (err) {
-      this.logger.warn(
-        `PulseMFB bank list unavailable — using seed map only: ${(err as Error).message}`,
-      );
+  private buildRequestPath(path: string): string {
+    if (path.startsWith(this.apiBasePath)) {
+      return path;
     }
+    return `${this.apiBasePath}${path.startsWith('/') ? path : `/${path}`}`;
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Private HTTP helpers
-  // ─────────────────────────────────────────────────────────────────────────
 
   private buildHeaders(
     method: string,
-    path: string,
+    requestPath: string,
     body: unknown,
   ): Record<string, string> {
     const timestamp = Date.now().toString();
     const bodyString = body ? JSON.stringify(body) : '';
-    const sigPayload = timestamp + method.toUpperCase() + path + bodyString;
+    const sigPayload =
+      timestamp + method.toUpperCase() + requestPath + bodyString;
     const signature = createHmac('sha256', this.privateKey)
       .update(sigPayload)
       .digest('hex');
 
     this.logger.log(
-      `PulseMFB sig payload [${method} ${path}]: ` +
+      `PulseMFB sig payload [${method} ${requestPath}]: ` +
         `timestamp=${timestamp} bodyLen=${bodyString.length} ` +
         `payload="${sigPayload.slice(0, 120)}..."`,
     );
@@ -323,17 +204,18 @@ export class PulseMfbClient implements OnModuleInit {
     };
   }
 
-  private async post<T>(path: string, body: unknown, timeoutMs = 30_000): Promise<T> {
+  private async post<T>(
+    path: string,
+    body: unknown,
+    timeoutMs = 30_000,
+  ): Promise<T> {
     this.requireReady(path);
-    // Strip trailing slash from baseUrl to avoid double-slash in URL
-    const base = this.baseUrl.replace(/\/$/, '');
-    const fullUrl = `${base}${path}`;
+    const requestPath = this.buildRequestPath(path);
+    const fullUrl = `${this.baseUrl}${requestPath}`;
     const bodyString = JSON.stringify(body);
-    const headers = this.buildHeaders('POST', path, body);
+    const headers = this.buildHeaders('POST', requestPath, body);
 
-    this.logger.log(
-      `PulseMFB POST ${fullUrl} body=${bodyString}`,
-    );
+    this.logger.log(`PulseMFB POST ${fullUrl} body=${bodyString}`);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -344,10 +226,12 @@ export class PulseMfbClient implements OnModuleInit {
         body: bodyString,
         signal: controller.signal,
       });
-      return this.handleResponse<T>(res, path);
+      return this.handleResponse<T>(res, requestPath);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        throw new BadRequestException(`Banking provider timed out after ${timeoutMs / 1000}s`);
+        throw new BadRequestException(
+          `Banking provider timed out after ${timeoutMs / 1000}s`,
+        );
       }
       throw err;
     } finally {
@@ -357,20 +241,22 @@ export class PulseMfbClient implements OnModuleInit {
 
   private async get<T>(path: string, timeoutMs = 30_000): Promise<T> {
     this.requireReady(path);
-    const base = this.baseUrl.replace(/\/$/, '');
-    const headers = this.buildHeaders('GET', path, null);
+    const requestPath = this.buildRequestPath(path);
+    const headers = this.buildHeaders('GET', requestPath, null);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(`${base}${path}`, {
+      const res = await fetch(`${this.baseUrl}${requestPath}`, {
         method: 'GET',
         headers,
         signal: controller.signal,
       });
-      return this.handleResponse<T>(res, path);
+      return this.handleResponse<T>(res, requestPath);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        throw new BadRequestException(`Banking provider timed out after ${timeoutMs / 1000}s`);
+        throw new BadRequestException(
+          `Banking provider timed out after ${timeoutMs / 1000}s`,
+        );
       }
       throw err;
     } finally {

@@ -16,7 +16,7 @@ import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSen
 import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
 import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
-import type { Transaction, NigerianBank } from '@/types'
+import type { BankTransferResponse, Transaction, NigerianBank } from '@/types'
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -1149,7 +1149,7 @@ function BankPinStep({
   recipient: BankRecipient
   amountNgn: string
   onBack: () => void
-  onSuccess: () => void
+  onSuccess: (result: BankTransferResponse) => void
   onError: (msg: string) => void
 }) {
   const { user, deviceId } = useAuthStore()
@@ -1224,7 +1224,7 @@ function BankPinStep({
         amount:    amountNgn,
         recipient: `${recipient.bankCode}:${recipient.accountNumber}`,
       })
-      await bankTransfer({
+      const result = await bankTransfer({
         bankCode:        recipient.bankCode,
         accountNumber:   recipient.accountNumber,
         accountName:     recipient.accountName,
@@ -1237,7 +1237,7 @@ function BankPinStep({
       })
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BALANCE })
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(1) })
-      onSuccess()
+      onSuccess(result)
     } catch (err) {
       submittedRef.current = false
       const msg = err instanceof Error ? err.message : 'Transfer failed'
@@ -1402,17 +1402,22 @@ function SuccessScreen({
 // Success screen — Bank transfer
 // ─────────────────────────────────────────────────────────
 function BankSuccessScreen({
+  transfer,
   recipient,
   amountNgn,
   onDone,
   onSendAnother,
 }: {
+  transfer: BankTransferResponse | null
   recipient: BankRecipient
   amountNgn: string
   onDone: () => void
   onSendAnother: () => void
 }) {
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
+  const isCompleted = transfer?.status === 'completed'
+  const statusLabel = isCompleted ? '✓ Completed' : '⏳ Processing'
+  const subtitle = transfer?.message ?? 'Bank transfer initiated'
 
   return (
     <div className="flex flex-col items-center flex-1 pt-8 pb-4">
@@ -1421,7 +1426,7 @@ function BankSuccessScreen({
       </div>
 
       <h2 className="text-2xl font-semibold text-white mb-1">Sent!</h2>
-      <p className="text-sm text-white/40 mb-8">Bank transfer initiated</p>
+      <p className="text-sm text-white/40 mb-8 text-center">{subtitle}</p>
 
       <div className="w-full rounded-3xl border border-white/8 bg-white/4 p-5 mb-8">
         {[
@@ -1429,7 +1434,8 @@ function BankSuccessScreen({
           { label: 'Bank',    value: recipient.bankName },
           { label: 'Account', value: recipient.accountNumber },
           { label: 'Amount',  value: `₦${formattedAmount}` },
-          { label: 'Status',  value: '⏳ Processing' },
+          { label: 'Status',  value: statusLabel },
+          ...(transfer?.reference ? [{ label: 'Reference', value: transfer.reference }] : []),
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
             <span className="text-xs text-white/35 uppercase tracking-wide">{label}</span>
@@ -1505,6 +1511,7 @@ export default function SendPage() {
   const [errMsg,        setErrMsg]        = useState('')
   const [bankRecipient, setBankRecipient] = useState<BankRecipient | null>(null)
   const [bankAmount,    setBankAmount]    = useState('')
+  const [bankTransferResult, setBankTransferResult] = useState<BankTransferResponse | null>(null)
 
   function handleModeSelect(m: SendMode) {
     setMode(m)
@@ -1515,6 +1522,7 @@ export default function SendPage() {
     setRecipient(null)
     setBankRecipient(null)
     setBankAmount('')
+    setBankTransferResult(null)
     setStep(m === 'bank' ? 'bank_details' : m === 'usdc' ? 'usdc_network' : m === 'username' ? 'username_network' : 'recipient')
   }
 
@@ -1537,6 +1545,7 @@ export default function SendPage() {
     setErrMsg('')
     setBankRecipient(null)
     setBankAmount('')
+    setBankTransferResult(null)
   }
 
   const isBankFlow = mode === 'bank'
@@ -1696,7 +1705,7 @@ export default function SendPage() {
           recipient={bankRecipient}
           amountNgn={bankAmount}
           onBack={() => setStep('bank_details')}
-          onSuccess={() => setStep('success')}
+          onSuccess={(result) => { setBankTransferResult(result); setStep('success') }}
           onError={(msg) => { setErrMsg(msg); setStep('error') }}
         />
       )}
@@ -1715,6 +1724,7 @@ export default function SendPage() {
       {/* Success — Bank flow */}
       {step === 'success' && isBankFlow && bankRecipient && (
         <BankSuccessScreen
+          transfer={bankTransferResult}
           recipient={bankRecipient}
           amountNgn={bankAmount}
           onDone={() => router.push('/dashboard')}

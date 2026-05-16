@@ -123,27 +123,33 @@ export interface AccountResolveResponse {
   accountNumber: string
   bankCode: string
   bankName: string
+  verified: boolean
 }
 
 export interface BankTransferPayload {
   accountNumber: string
   bankCode: string
   accountName: string
-  amountNgn: number
-  pin: string
+  amountNgn: string
+  pinHash: string
   deviceSignature: string
   deviceId: string
+  timestamp?: string
+  nonce?: string
 }
 
 export interface BankTransferResponse {
   reference: string
-  status: TxStatus
-  amountNgn: number
+  providerReference?: string | null
+  status: 'processing' | 'completed'
+  message: string
+  amountNgn: string
   amountUsdc: string
-  usdcDeducted: string
-  rateApplied: number
+  rateApplied: string
   fee: string
   recipientName: string
+  bankName: string
+  stellarTxHash: string
   createdAt: string
 }
 
