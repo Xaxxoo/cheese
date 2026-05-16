@@ -102,7 +102,7 @@ export class PulseMfbClient implements OnModuleInit {
   ): Promise<PulseMfbNameEnquiryResult> {
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/api/v1/external-api/transfers/name-enquiry',
-      { accountNumber, bankCode },
+      { account_number: accountNumber, bank_code: bankCode },
       15_000,
     );
     return data.data;
