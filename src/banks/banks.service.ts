@@ -358,6 +358,19 @@ function isPulseMfbAuthFailureMessage(message: string): boolean {
   );
 }
 
+function isPulseMfbRecipientValidationFailureMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('invalid credit account') ||
+    normalized.includes('account number') ||
+    normalized.includes('account not found') ||
+    normalized.includes('invalid bank code') ||
+    normalized.includes('beneficiary_bank_code') ||
+    normalized.includes('beneficiary_bank_name') ||
+    normalized.includes('beneficiary_name')
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -426,6 +439,9 @@ export class BanksService {
       const errorMessage = (err as Error).message;
       this.logger.error('PulseMFB name enquiry failed', { accountNumber: dto.accountNumber, bankCode: dto.bankCode, error: errorMessage });
       if (isPulseMfbAuthFailureMessage(errorMessage)) {
+        throw err;
+      }
+      if (isPulseMfbRecipientValidationFailureMessage(errorMessage)) {
         throw err;
       }
       // Fall back to a manual confirmation flow when the provider cannot
