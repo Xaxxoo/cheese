@@ -71,10 +71,10 @@ const NIBSS_TO_PULSEMFB: Record<string, string> = {
 export class PulseMfbClient implements OnModuleInit {
   private readonly logger = new Logger(PulseMfbClient.name);
 
-  private baseUrl: string;
-  private publicKey: string;
-  private privateKey: string;
-  private debitAccount: string;
+  private baseUrl!: string;
+  private publicKey!: string;
+  private privateKey!: string;
+  private debitAccount!: string;
   private ready = false;
 
   // Bank list fetched from PulseMFB at startup — used for code resolution
@@ -128,11 +128,10 @@ export class PulseMfbClient implements OnModuleInit {
   ): Promise<PulseMfbNameEnquiryResult> {
     const bankCode = this.resolveBankCode(nibssBankCode, bankName);
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
-      '/api/v1/external-api/transfers/name-enquiry',
+      '/transfers/name-enquiry',
       { accountNumber, bankCode },
       // 15_000,
     );
-    console.log('PulseMFB name enquiry response', data);
     return data.data;
   }
 
@@ -167,7 +166,7 @@ export class PulseMfbClient implements OnModuleInit {
     );
 
     const data = await this.post<{ data: PulseMfbTransferResult }>(
-      '/api/v1/external-api/transfers',
+      '/transfers',
       {
         debit_account_number: params.debitAccount,
         beneficiary_account_number: params.beneficiaryAccountNumber,
@@ -185,7 +184,7 @@ export class PulseMfbClient implements OnModuleInit {
   // ── Get Transfer Status ─────────────────────────────────────────────────────
   async getTransferStatus(reference: string): Promise<PulseMfbTransferStatus> {
     const data = await this.get<{ data: PulseMfbTransferStatus }>(
-      `/api/v1/external-api/transfers/${encodeURIComponent(reference)}`,
+      `/transfers/${encodeURIComponent(reference)}`,
     );
     return data.data;
   }
@@ -270,7 +269,7 @@ export class PulseMfbClient implements OnModuleInit {
   private async refreshBankList(): Promise<void> {
     try {
       const data = await this.get<{ data: PulseMfbBankEntry[] }>(
-        '/api/v1/external-api/banks',
+        '/banks',
         10_000,
       );
       if (Array.isArray(data?.data) && data.data.length > 0) {

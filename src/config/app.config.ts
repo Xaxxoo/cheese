@@ -73,7 +73,7 @@ export const dojahConfig = registerAs('dojah', () => ({
 }));
 
 export const pulseMfbConfig = registerAs('pulsemfb', () => ({
-  baseUrl: process.env.PULSE_MFB_BASE_URL || 'https://api.pulsemfb.com',
+  baseUrl: process.env.PULSE_MFB_BASE_URL || 'https://api.pulsemfb.com/api/v1/external-api',
   publicKey: process.env.PULSE_MFB_PUBLIC_KEY,
   privateKey: process.env.PULSE_MFB_PRIVATE_KEY,
   debitAccount: process.env.PULSE_MFB_DEBIT_ACCOUNT, // platform's NGN account at PulseMFB
