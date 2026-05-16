@@ -368,12 +368,17 @@ export class BanksService {
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
-  async getBanks() {
+  async getBanks(): Promise<{
+    name: string;
+    code: string;
+  }[]> {
     // return NIGERIAN_BANKS;
     try {
-      const result = await this.pulseMfb.getBankDirectory();
-      
+      const result = await this.pulseMfb.banks();
+      return result;
     } catch (err) {
+      this.logger.error('Failed to fetch PulseMFB bank list', { error: (err as Error).message });
+      return [];
     }
   }
 
