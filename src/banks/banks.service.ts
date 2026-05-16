@@ -368,18 +368,19 @@ export class BanksService {
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
-  async getBanks(): Promise<{
-    name: string;
-    code: string;
-  }[]> {
-    // return NIGERIAN_BANKS;
-    try {
-      const result = await this.pulseMfb.banks();
-      return result;
-    } catch (err) {
-      this.logger.error('Failed to fetch PulseMFB bank list', { error: (err as Error).message });
-      return [];
-    }
+  // async getBanks(): Promise<{
+  //   name: string;
+  //   code: string;
+// }[]> {
+   async getBanks(): Promise<BankDirectoryEntry[]> {
+    return NIGERIAN_BANKS;
+    // try {
+    //   const result = await this.pulseMfb.banks();
+    //   return result;
+    // } catch (err) {
+    //   this.logger.error('Failed to fetch PulseMFB bank list', { error: (err as Error).message });
+    //   return [];
+    // }
   }
 
   // ── POST /banks/resolve ───────────────────────────────────────────────────
