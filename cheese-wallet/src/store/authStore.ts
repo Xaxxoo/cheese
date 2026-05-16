@@ -31,7 +31,12 @@ export const useAuthStore = create<AuthStore>()(
 
       updateUser: (partial) => {
         const { user } = get()
-        if (user) set({ user: { ...user, ...partial } })
+        if (user) {
+          set({ user: { ...user, ...partial } })
+        } else {
+          // Called during boot() when restoring a session from scratch
+          set({ user: partial as User })
+        }
       },
 
       signOut: () => {

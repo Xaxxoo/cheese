@@ -59,7 +59,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user) return null // Redirecting
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Spinner size="lg" />
+    </div>
+  )
 
   return (
     <div className="flex flex-col min-h-screen items-center">
