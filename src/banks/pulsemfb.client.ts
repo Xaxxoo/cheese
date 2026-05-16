@@ -83,7 +83,7 @@ export class PulseMfbClient implements OnModuleInit {
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
-    this.baseUrl = this.config.get<string>('pulsemfb.baseUrl')!;
+    this.baseUrl = this.config.get<string>('pulsemfb.baseUrl') ?? 'https://api.pulsemfb.com/api/v1/external-api';
     this.publicKey = this.config.get<string>('pulsemfb.publicKey') ?? '';
     this.privateKey = this.config.get<string>('pulsemfb.privateKey') ?? '';
     this.debitAccount = this.config.get<string>('pulsemfb.debitAccount') ?? '';
