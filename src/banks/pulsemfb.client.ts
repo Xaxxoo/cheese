@@ -129,7 +129,7 @@ export class PulseMfbClient implements OnModuleInit {
     const bankCode = this.resolveBankCode(nibssBankCode, bankName);
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/api/v1/external-api/transfers/name-enquiry',
-      { account_number: accountNumber, bank_code: bankCode },
+      { accountNumber, bankCode },
       // 15_000,
     );
     console.log('PulseMFB name enquiry response', data);
