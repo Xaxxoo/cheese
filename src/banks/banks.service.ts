@@ -874,6 +874,7 @@ export class BanksService {
       beneficiaryAccountNumber: params.accountNumber,
       beneficiaryBankCode: params.bankCode,
       beneficiaryBankName: params.bankName,
+      beneficiaryName: params.accountName,
       amount: params.amountNgn,
       narration: `Cheese Pay withdrawal [${params.reference}]`,
       reference: params.reference,
