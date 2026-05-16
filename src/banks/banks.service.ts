@@ -346,6 +346,18 @@ function canonicalizeSignaturePayload(
   return JSON.stringify(sortedPayload);
 }
 
+function isPulseMfbAuthFailureMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('invalid api credentials') ||
+    normalized.includes('tampered request') ||
+    normalized.includes('unauthorized') ||
+    normalized.includes('not whitelisted') ||
+    normalized.includes('whitelist') ||
+    normalized.includes('pending approval')
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -411,7 +423,11 @@ export class BanksService {
         };
       }
     } catch (err) {
-      this.logger.error('PulseMFB name enquiry failed', { accountNumber: dto.accountNumber, bankCode: dto.bankCode, error: (err as Error).message });
+      const errorMessage = (err as Error).message;
+      this.logger.error('PulseMFB name enquiry failed', { accountNumber: dto.accountNumber, bankCode: dto.bankCode, error: errorMessage });
+      if (isPulseMfbAuthFailureMessage(errorMessage)) {
+        throw err;
+      }
       // Fall back to a manual confirmation flow when the provider cannot
       // resolve the account. This keeps the transfer flow usable even when
       // the upstream enquiry endpoint is degraded or a bank is temporarily
