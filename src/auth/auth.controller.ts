@@ -205,7 +205,7 @@ export class AuthController {
           .digest('hex')
       : '';
     await this.authService.logout(user.id, tokenHash);
-    res.clearCookie('refresh_token');
+    res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'none', path: '/' });
     return { message: 'Logged out' };
   }
 
@@ -389,10 +389,10 @@ export class AuthController {
     const days = 30;
     res.cookie('refresh_token', token, {
       httpOnly: true,
-      secure: this.config.get('app.nodeEnv') === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
       maxAge: days * 24 * 60 * 60 * 1000,
-      path: '/auth/refresh',
+      path: '/',
     });
   }
 }

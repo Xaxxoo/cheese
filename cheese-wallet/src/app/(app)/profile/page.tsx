@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, LogOut, Copy, CheckCheck, ChevronRight,
-  Shield, Smartphone, RefreshCw, Trash2, User, Gift,
+  ArrowLeft, LogOut, Copy, CheckCheck,
+  Smartphone, RefreshCw, Trash2, User, Gift,
   BadgeCheck, AlertCircle, Clock,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -103,9 +103,9 @@ function ReferralCard() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2">
             {[
-              { label: 'Referred', value: refQ.data.totalReferrals.toString() },
-              { label: 'Pending', value: `$${refQ.data.pendingReward.toFixed(2)}` },
-              { label: 'Earned',  value: `$${refQ.data.paidReward.toFixed(2)}` },
+              { label: 'Referred', value: (refQ.data.totalReferrals ?? 0).toString() },
+              { label: 'Pending', value: `$${(refQ.data.pendingReward ?? 0).toFixed(2)}` },
+              { label: 'Earned',  value: `$${(refQ.data.paidReward ?? 0).toFixed(2)}` },
             ].map(({ label, value }) => (
               <div key={label} className="bg-white/5 rounded-xl px-3 py-2.5 text-center">
                 <p className="text-sm font-semibold text-white">{value}</p>
@@ -274,26 +274,6 @@ export default function ProfilePage() {
         <InfoRow label="Member since" value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' }) : '—'} />
       </div>
 
-      {/* Quick actions */}
-      <div className="mx-4 mt-3 rounded-2xl border border-white/8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
-        {[
-          { label: 'Security Settings', icon: Shield, href: '/security' },
-        ].map(({ label, icon: Icon, href }) => (
-          <Link
-            key={label}
-            href={href}
-            className="flex items-center justify-between px-4 py-4 border-b border-white/5 last:border-0 hover:bg-white/4 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center">
-                <Icon size={14} className="text-white/50" />
-              </div>
-              <span className="text-sm text-white">{label}</span>
-            </div>
-            <ChevronRight size={15} className="text-white/25" />
-          </Link>
-        ))}
-      </div>
 
       {/* Referral */}
       <ReferralCard />
