@@ -388,6 +388,7 @@ export class BanksService {
       const result = await this.pulseMfb.nameEnquiry(
         dto.accountNumber,
         dto.bankCode,
+        bankName,
       );
 
       if (result.responseCode === '00' && result.accountName) {

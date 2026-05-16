@@ -9,6 +9,11 @@
 //
 // Docs: https://documenter.getpostman.com/view/7118903/2sBXVhDqmZ
 //
+// Bank codes:
+//   PulseMFB uses its OWN internal bank codes, NOT the NIBSS NIP codes
+//   used by most Nigerian apps.  We seed a known-good mapping below and
+//   supplement it by fetching PulseMFB's /banks list at startup.
+//
 
 import {
   BadRequestException,
@@ -45,6 +50,21 @@ export interface PulseMfbTransferStatus extends PulseMfbTransferResult {
   completed_at?: string;
 }
 
+interface PulseMfbBankEntry {
+  code: string;
+  name: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Seed mapping: NIBSS NIP code → PulseMFB internal code
+// Add entries here as you discover them from PulseMFB's portal/docs.
+// The dynamic bank list fetch (onModuleInit) will cover the rest.
+// ─────────────────────────────────────────────────────────────────────────────
+const NIBSS_TO_PULSEMFB: Record<string, string> = {
+  '058': '100',         // GTBank  (Guaranty Trust Bank)
+  '999992': '1200014',  // OPay
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -56,6 +76,9 @@ export class PulseMfbClient implements OnModuleInit {
   private privateKey: string;
   private debitAccount: string;
   private ready = false;
+
+  // Bank list fetched from PulseMFB at startup — used for code resolution
+  private bankCache: PulseMfbBankEntry[] = [];
 
   constructor(private readonly config: ConfigService) {}
 
@@ -75,6 +98,8 @@ export class PulseMfbClient implements OnModuleInit {
           'PULSE_MFB_DEBIT_ACCOUNT not set — account resolution and status lookups will work, but transfer initiation is disabled',
         );
       }
+      // Fire-and-forget bank list fetch; seed map covers us if this fails
+      void this.refreshBankList();
     } else {
       this.logger.warn(
         'PulseMFB not configured — set PULSE_MFB_PUBLIC_KEY and PULSE_MFB_PRIVATE_KEY',
@@ -98,8 +123,10 @@ export class PulseMfbClient implements OnModuleInit {
   // ── Name Enquiry ────────────────────────────────────────────────────────────
   async nameEnquiry(
     accountNumber: string,
-    bankCode: string,
+    nibssBankCode: string,
+    bankName: string,
   ): Promise<PulseMfbNameEnquiryResult> {
+    const bankCode = this.resolveBankCode(nibssBankCode, bankName);
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/api/v1/external-api/transfers/name-enquiry',
       { account_number: accountNumber, bank_code: bankCode },
@@ -112,7 +139,7 @@ export class PulseMfbClient implements OnModuleInit {
   async initiateTransfer(params: {
     debitAccount: string;
     beneficiaryAccountNumber: string;
-    beneficiaryBankCode: string;
+    beneficiaryBankCode: string;  // NIBSS code — resolved internally to PulseMFB code
     beneficiaryBankName: string;
     beneficiaryName: string;
     amount: number;
@@ -126,9 +153,15 @@ export class PulseMfbClient implements OnModuleInit {
       );
     }
 
+    const resolvedBankCode = this.resolveBankCode(
+      params.beneficiaryBankCode,
+      beneficiaryBankName,
+    );
+
     this.logger.log(
       `PulseMFB transfer request [ref=${params.reference}] ` +
-        `[bankCode=${params.beneficiaryBankCode}] ` +
+        `[nibssCode=${params.beneficiaryBankCode}] ` +
+        `[resolvedCode=${resolvedBankCode}] ` +
         `[bankName=${beneficiaryBankName}]`,
     );
 
@@ -137,7 +170,7 @@ export class PulseMfbClient implements OnModuleInit {
       {
         debit_account_number: params.debitAccount,
         beneficiary_account_number: params.beneficiaryAccountNumber,
-        beneficiary_bank_code: params.beneficiaryBankCode,
+        beneficiary_bank_code: resolvedBankCode,
         beneficiary_bank_name: beneficiaryBankName,
         beneficiary_name: params.beneficiaryName,
         amount: params.amount,
@@ -173,6 +206,82 @@ export class PulseMfbClient implements OnModuleInit {
       return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
     } catch {
       return false;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Bank code resolution
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Maps a standard NIBSS bank code to PulseMFB's internal routing code.
+   * Resolution order:
+   *   1. Seed map (NIBSS_TO_PULSEMFB — hardcoded known-good values)
+   *   2. Dynamic bank list fetched from PulseMFB at startup (matched by name)
+   *   3. Fall back to the NIBSS code with a warning (transfer may still fail)
+   */
+  private resolveBankCode(nibssCode: string, bankName: string): string {
+    // 1. Seed map — fastest, most reliable
+    if (NIBSS_TO_PULSEMFB[nibssCode]) {
+      const resolved = NIBSS_TO_PULSEMFB[nibssCode];
+      if (resolved !== nibssCode) {
+        this.logger.log(
+          `Bank code resolved via seed [${nibssCode} → ${resolved}] (${bankName})`,
+        );
+      }
+      return resolved;
+    }
+
+    // 2. Dynamic list — match by normalised bank name
+    if (this.bankCache.length > 0) {
+      const normalize = (s: string) =>
+        s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const needle = normalize(bankName);
+      const found =
+        this.bankCache.find((b) => normalize(b.name) === needle) ??
+        this.bankCache.find(
+          (b) =>
+            normalize(b.name).includes(needle) ||
+            needle.includes(normalize(b.name)),
+        );
+      if (found) {
+        this.logger.log(
+          `Bank code resolved via dynamic list [${nibssCode} → ${found.code}] (${bankName} ↔ ${found.name})`,
+        );
+        // Cache in seed map so subsequent calls are O(1)
+        NIBSS_TO_PULSEMFB[nibssCode] = found.code;
+        return found.code;
+      }
+    }
+
+    // 3. Fallback — warn loudly so the operator knows to add a seed entry
+    this.logger.warn(
+      `No PulseMFB bank code found for NIBSS code ${nibssCode} (${bankName}) — ` +
+        `sending NIBSS code as-is; add it to NIBSS_TO_PULSEMFB if transfers fail`,
+    );
+    return nibssCode;
+  }
+
+  /**
+   * Fetches PulseMFB's supported bank list and caches it.
+   * Called fire-and-forget from onModuleInit; never throws.
+   */
+  private async refreshBankList(): Promise<void> {
+    try {
+      const data = await this.get<{ data: PulseMfbBankEntry[] }>(
+        '/api/v1/external-api/banks',
+        10_000,
+      );
+      if (Array.isArray(data?.data) && data.data.length > 0) {
+        this.bankCache = data.data;
+        this.logger.log(
+          `PulseMFB bank list loaded: ${this.bankCache.length} banks`,
+        );
+      }
+    } catch (err) {
+      this.logger.warn(
+        `PulseMFB bank list unavailable — using seed map only: ${(err as Error).message}`,
+      );
     }
   }
 
