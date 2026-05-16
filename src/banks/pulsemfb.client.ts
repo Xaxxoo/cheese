@@ -113,13 +113,22 @@ export class PulseMfbClient implements OnModuleInit {
     debitAccount: string;
     beneficiaryAccountNumber: string;
     beneficiaryBankCode: string;
+    beneficiaryBankName: string;
     amount: number;
     narration: string;
     reference: string;
   }): Promise<PulseMfbTransferResult> {
+    const beneficiaryBankName = params.beneficiaryBankName.trim();
+    if (!beneficiaryBankName) {
+      throw new BadRequestException(
+        'Beneficiary bank name could not be determined for this transfer',
+      );
+    }
+
     this.logger.log(
       `PulseMFB transfer request [ref=${params.reference}] ` +
-        `[bankCode=${params.beneficiaryBankCode}]`,
+        `[bankCode=${params.beneficiaryBankCode}] ` +
+        `[bankName=${beneficiaryBankName}]`,
     );
 
     const data = await this.post<{ data: PulseMfbTransferResult }>(
@@ -128,6 +137,7 @@ export class PulseMfbClient implements OnModuleInit {
         debit_account_number: params.debitAccount,
         beneficiary_account_number: params.beneficiaryAccountNumber,
         beneficiary_bank_code: params.beneficiaryBankCode,
+        beneficiary_bank_name: beneficiaryBankName,
         amount: params.amount,
         narration: params.narration,
         reference: params.reference,
