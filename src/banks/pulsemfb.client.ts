@@ -120,6 +120,14 @@ export class PulseMfbClient implements OnModuleInit {
     return this.debitAccount;
   }
 
+  // ───  Banks Lists ───────────────────────────────────────────────────────────
+   async banks(): Promise<PulseMfbBankEntry[]> {
+    const data = await this.get<{ data: PulseMfbBankEntry[] }>(
+      '/banks',
+    );
+    return Array.isArray(data?.data) && data.data.length > 0 ? data.data : [];
+  }
+
   // ── Name Enquiry ────────────────────────────────────────────────────────────
   async nameEnquiry(
     accountNumber: string,

@@ -368,8 +368,13 @@ export class BanksService {
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
-  getBanks() {
-    return NIGERIAN_BANKS;
+  async getBanks() {
+    // return NIGERIAN_BANKS;
+    try {
+      const result = await this.pulseMfb.getBankDirectory();
+      
+    } catch (err) {
+    }
   }
 
   // ── POST /banks/resolve ───────────────────────────────────────────────────
@@ -400,7 +405,8 @@ export class BanksService {
           verified: true,
         };
       }
-    } catch {
+    } catch (err) {
+      this.logger.error('PulseMFB name enquiry failed', { accountNumber: dto.accountNumber, bankCode: dto.bankCode, error: (err as Error).message });
       // PulseMFB name enquiry only resolves its own internal accounts.
       // For external NIP banks it returns 400 — fall through to unverified.
     }
