@@ -917,6 +917,51 @@ export class BanksService {
     };
   }
 
+  // ── GET /banks/transfer/:reference ───────────────────────────────────────
+  // Polls PulseMFB for the current status of a transfer and syncs it locally.
+  // Called by the frontend when a transfer is stuck in pending/processing.
+  async syncTransferStatus(userId: string, reference: string) {
+    const transfer = await this.findTransferByAnyReference(reference);
+    if (!transfer) {
+      throw new NotFoundException(`Transfer not found: ${reference}`);
+    }
+    if (transfer.userId !== userId) {
+      throw new ForbiddenException();
+    }
+
+    const terminal = [
+      BankTransferStatus.COMPLETED,
+      BankTransferStatus.FAILED,
+      BankTransferStatus.REVERSED,
+    ];
+    if (terminal.includes(transfer.status)) {
+      return { reference: transfer.reference, status: transfer.status, synced: false };
+    }
+
+    if (!transfer.providerReference) {
+      // PulseMFB never accepted the transfer — nothing to poll
+      return { reference: transfer.reference, status: transfer.status, synced: false };
+    }
+
+    const remote = await this.pulseMfb.getTransferStatus(transfer.providerReference);
+
+    if (remote.status === 'completed') {
+      await this.processWebhook({ reference: transfer.reference, event: 'transfer.success' });
+      return { reference: transfer.reference, status: BankTransferStatus.COMPLETED, synced: true };
+    }
+
+    if (remote.status === 'failed') {
+      await this.processWebhook({
+        reference: transfer.reference,
+        event: 'transfer.failed',
+        failureReason: 'Failed — detected via status poll',
+      });
+      return { reference: transfer.reference, status: BankTransferStatus.FAILED, synced: true };
+    }
+
+    return { reference: transfer.reference, status: transfer.status, synced: false };
+  }
+
   private async findTransferByAnyReference(
     reference: string,
   ): Promise<BankTransfer | null> {

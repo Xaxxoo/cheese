@@ -175,6 +175,8 @@ export class PulseMfbClient implements OnModuleInit {
       const expected = createHmac('sha256', secret)
         .update(rawBody)
         .digest('hex');
+      // timingSafeEqual requires equal-length buffers — guard first
+      if (signature.length !== expected.length) return false;
       return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
     } catch {
       return false;

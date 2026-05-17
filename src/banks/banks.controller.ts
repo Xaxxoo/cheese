@@ -6,6 +6,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   UnauthorizedException,
@@ -108,6 +109,25 @@ export class BanksController {
   })
   bankTransfer(@CurrentUser() user: User, @Body() dto: BankTransferDto) {
     return this.banksService.bankTransfer(user.id, dto);
+  }
+
+  // ── GET /banks/transfer/:reference ───────────────────────────────────────
+  @Get('transfer/:reference')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Sync a transfer status from the banking provider',
+    description:
+      'Queries PulseMFB for the current status of a transfer and updates the ' +
+      'local record if it has settled. Use this to resolve transfers that are ' +
+      'stuck in **pending** or **processing** because the webhook was not received.',
+  })
+  @ApiResponse({ status: 200, description: 'Current transfer status (and whether it was synced)' })
+  @ApiResponse({ status: 404, description: 'Transfer reference not found' })
+  syncTransferStatus(
+    @CurrentUser() user: User,
+    @Param('reference') reference: string,
+  ) {
+    return this.banksService.syncTransferStatus(user.id, reference);
   }
 
   // ── POST /banks/webhook ───────────────────────────────────────────────────
