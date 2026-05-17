@@ -11,7 +11,7 @@ import { PinPad } from '@/components/ui/PinPad'
 import { Spinner } from '@/components/ui/Spinner'
 import { useAuthStore } from '@/store/authStore'
 import { signup, verifyOtp, resendOtp, login } from '@/lib/api/auth'
-import { generateDeviceKey, signPayload, hashPin } from '@/lib/crypto/deviceSigning'
+import { generateDeviceKey, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
 import { setPin as apiSetPin } from '@/lib/api/auth'
 
 // ── Step indicator ─────────────────────────────────────────
@@ -251,7 +251,7 @@ export default function SignupPage() {
 
       // Auto-login after OTP verification
       const deviceId = ensureDeviceId()
-      const deviceSignature = await signPayload(deviceId, { deviceId })
+      const deviceSignature = await signDeviceChallenge(deviceId)
       const { user, tokens } = await login({
         identifier:      form.email.toLowerCase(),
         password:        form.password,
