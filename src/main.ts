@@ -23,13 +23,25 @@ async function bootstrap() {
 
   // ── CORS ────────────────────────────────────────────────
   app.enableCors({
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'https://cheesepay.xyz',
-      'https://www.cheesepay.xyz',
-      'http://localhost:3000',
-    ],
+    origin: (incomingOrigin, callback) => {
+      const allowed = [
+        process.env.FRONTEND_URL,
+        'https://cheesepay.xyz',
+        'https://www.cheesepay.xyz',
+        'https://app.cheesepay.xyz',
+        'http://localhost:3000',
+        'http://localhost:4000',
+      ].filter(Boolean) as string[];
+
+      // Allow requests with no origin (mobile apps, curl, Postman, server-side)
+      if (!incomingOrigin || allowed.includes(incomingOrigin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${incomingOrigin} is not allowed`), false);
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
   });
 
