@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, ArrowUpRight, ArrowDownLeft, Building2,
   RefreshCw, TrendingUp, ChevronDown,
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { cn } from '@/lib/cn'
-import { getTransactions } from '@/lib/api/wallet'
+import { getTransactions, syncBankTransferStatus } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction } from '@/types'
 
@@ -52,12 +53,33 @@ const STATUS_COLORS: Record<string, string> = {
   reversed: 'bg-orange-400/15 text-orange-400',
 }
 
-function TxRow({ tx }: { tx: Transaction }) {
+function TxRow({ tx, onSync }: { tx: Transaction; onSync?: () => void }) {
+  const [syncing, setSyncing] = useState(false)
   const isIn = tx.type === 'deposit' || tx.type === 'yield_credit' || tx.type === 'referral_bonus'
   const amountColor = isIn ? 'text-emerald-400' : 'text-white'
   const cfg = TX_ICON_CFG[tx.type] ?? TX_ICON_CFG.deposit
   const Icon = cfg.icon
   const subtitle = tx.recipientUsername ?? tx.recipientAddress ?? tx.bank ?? null
+  const isPendingBankTransfer = tx.type === 'bank_transfer' && tx.status === 'pending'
+
+  async function handleSync(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (syncing || !tx.reference) return
+    setSyncing(true)
+    try {
+      const result = await syncBankTransferStatus(tx.reference)
+      if (result.synced) {
+        toast.success('Transfer status updated')
+        onSync?.()
+      } else {
+        toast('Transfer is still processing', { icon: '⏳' })
+      }
+    } catch {
+      toast.error('Could not sync transfer status')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 transition-colors rounded-2xl">
@@ -82,9 +104,22 @@ function TxRow({ tx }: { tx: Transaction }) {
           )}
         </div>
       </div>
-      <p className={cn('text-sm font-semibold tabular-nums shrink-0', amountColor)}>
-        {isIn ? '+' : '-'}${parseFloat(tx.amountUsdc).toFixed(2)}
-      </p>
+      <div className="flex items-center gap-2 shrink-0">
+        {isPendingBankTransfer && (
+          <button
+            type="button"
+            onClick={handleSync}
+            disabled={syncing}
+            title="Check transfer status"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-amber-400/60 hover:text-amber-400 hover:bg-amber-400/10 transition-all disabled:opacity-40"
+          >
+            <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+          </button>
+        )}
+        <p className={cn('text-sm font-semibold tabular-nums', amountColor)}>
+          {isIn ? '+' : '-'}${parseFloat(tx.amountUsdc).toFixed(2)}
+        </p>
+      </div>
     </div>
   )
 }
@@ -123,11 +158,16 @@ function groupByDate(txs: Transaction[]): { date: string; txs: Transaction[] }[]
 
 // ── Page ───────────────────────────────────────────────────
 export default function HistoryPage() {
+  const qc = useQueryClient()
   const [filter,      setFilter]      = useState<Filter>('all')
   const [allTxs,      setAllTxs]      = useState<Transaction[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages,  setTotalPages]  = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
+
+  function handleSync() {
+    void qc.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(1) })
+  }
 
   const txQ = useQuery({
     queryKey: QUERY_KEYS.TRANSACTIONS(1),
@@ -248,7 +288,7 @@ export default function HistoryPage() {
           {grouped.map(({ date, txs }) => (
             <div key={date}>
               <p className="text-xs text-white/30 font-medium px-4 pt-4 pb-1.5">{date}</p>
-              {txs.map(tx => <TxRow key={tx.id} tx={tx} />)}
+              {txs.map(tx => <TxRow key={tx.id} tx={tx} onSync={handleSync} />)}
             </div>
           ))}
 

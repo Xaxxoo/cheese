@@ -186,6 +186,15 @@ export async function revokeDevice(deviceId: string): Promise<void> {
   await apiClient.delete(ENDPOINTS.DEVICE.REVOKE(deviceId))
 }
 
+export async function syncBankTransferStatus(
+  reference: string,
+): Promise<{ reference: string; status: string; synced: boolean }> {
+  const { data } = await apiClient.get<
+    import('@/types').ApiResponse<{ reference: string; status: string; synced: boolean }>
+  >(ENDPOINTS.BANK.TRANSFER_STATUS(reference))
+  return data.data
+}
+
 // ── Notifications ─────────────────────────────────────────
 export interface Notification {
   id:        string
