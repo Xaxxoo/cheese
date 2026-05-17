@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  ArrowUpRight, ArrowDownLeft, Building2, Eye, EyeOff,
+  ArrowUpRight, ArrowDownLeft, Link2, Eye, EyeOff,
   TrendingUp, RefreshCw, Copy, CheckCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -127,7 +127,7 @@ function BalanceCard() {
         {[
           { label: 'Send',     icon: ArrowUpRight,   href: '/send',          color: 'text-[#d4a843]' },
           { label: 'Receive',  icon: ArrowDownLeft,  href: '/receive',       color: 'text-emerald-400' },
-          { label: 'Withdraw', icon: Building2,      href: '/bank-transfer', color: 'text-sky-400' },
+          { label: 'Pay Link',  icon: Link2,          href: '/paylink',       color: 'text-violet-400' },
         ].map(({ label, icon: Icon, href, color }) => (
           <Link
             key={label}
