@@ -24,7 +24,11 @@ async function bootstrap() {
   // ── CORS ────────────────────────────────────────────────
   app.enableCors({
     origin: (incomingOrigin, callback) => {
-      const allowed = [
+      // No origin = server-side / mobile / Postman — always allow
+      if (!incomingOrigin) return callback(null, true);
+
+      // Explicit whitelist (env var + known domains)
+      const exactMatch = [
         process.env.FRONTEND_URL,
         'https://cheesepay.xyz',
         'https://www.cheesepay.xyz',
@@ -33,12 +37,17 @@ async function bootstrap() {
         'http://localhost:4000',
       ].filter(Boolean) as string[];
 
-      // Allow requests with no origin (mobile apps, curl, Postman, server-side)
-      if (!incomingOrigin || allowed.includes(incomingOrigin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: origin ${incomingOrigin} is not allowed`), false);
+      if (exactMatch.includes(incomingOrigin)) return callback(null, true);
+
+      // Allow any subdomain of cheesepay.xyz and Vercel preview URLs
+      if (
+        /\.cheesepay\.xyz$/.test(incomingOrigin) ||
+        /\.vercel\.app$/.test(incomingOrigin)
+      ) {
+        return callback(null, true);
       }
+
+      callback(new Error(`CORS: origin not allowed: ${incomingOrigin}`), false);
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
