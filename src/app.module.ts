@@ -54,7 +54,7 @@ import { WaitlistModule } from './waitlist/waitlist.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { AgentsModule } from './agents/agents.module';
 import { KycModule } from './kyc/kyc.module';
-// import { PayLinkModule } from './paylink/paylink.module';
+import { PayLinkModule } from './paylink/paylink.module';
 
 // Active entities
 import { User } from './auth/entities/user.entity';
@@ -76,7 +76,7 @@ import { BankTransfer } from './banks/entities/bank-transfer.entity';
 // import { VirtualCard } from './cards/entities/virtual-card.entity';
 import { Referral } from './referral/entities/referral.entity';
 import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
-// import { PaymentRequest } from './paylink/entities/payment-request.entity';
+import { PaymentRequest } from './paylink/entities/payment-request.entity';
 import { Merchant } from './merchant/entities/merchant.entity';
 import { MerchantUser } from './merchant/entities/merchant-user.entity';
 import { MerchantRefreshToken } from './merchant/entities/merchant-refresh-token.entity';
@@ -165,7 +165,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
                 Referral,
                 KycAttempt,
                 // VirtualCard,
-                // PaymentRequest,
+                PaymentRequest,
                 Merchant,
                 MerchantUser,
                 MerchantRefreshToken,
@@ -208,7 +208,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
                 Referral,
                 KycAttempt,
                 // VirtualCard,
-                // PaymentRequest,
+                PaymentRequest,
                 Merchant,
                 MerchantUser,
                 MerchantRefreshToken,
@@ -248,7 +248,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
             // BankTransfer,
             // VirtualCard,
             // Referral,
-            // PaymentRequest,
+            PaymentRequest,
             Merchant,
             MerchantUser,
             MerchantRefreshToken,
@@ -291,7 +291,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
     KycModule,
     AdminAuthModule,
     MerchantModule,
-    // PayLinkModule,
+    PayLinkModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },
