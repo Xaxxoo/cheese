@@ -49,7 +49,7 @@ export class PaymentRequest {
   amountUsdc: string;
 
   // Optional note the creator attaches ("Dinner split", "rent")
-  @Column({ nullable: true, length: 140 })
+  @Column({ type: 'varchar', nullable: true, length: 140 })
   note: string | null;
 
   // ── Status ────────────────────────────────────────────────
