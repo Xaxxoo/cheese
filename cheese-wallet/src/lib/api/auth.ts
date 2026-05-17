@@ -54,6 +54,21 @@ export async function verifyOtp(
   return data.data
 }
 
+// ── Email OTP verify (signup) ─────────────────────────────
+// The backend issues tokens directly on email_verify — no separate login needed.
+export async function verifyEmailOtp(payload: {
+  email:    string
+  otp:      string
+  deviceId?: string
+}): Promise<{ user: User; tokens: AuthTokens }> {
+  const { data } = await apiClient.post<ApiResponse<{ user: User; tokens: AuthTokens }>>(
+    ENDPOINTS.AUTH.VERIFY_OTP,
+    { ...payload, type: 'email_verify' },
+  )
+  tokenStore.set(data.data.tokens.accessToken)
+  return data.data
+}
+
 // ── Resend OTP ────────────────────────────────────────────
 export async function resendOtp(
   email: string,

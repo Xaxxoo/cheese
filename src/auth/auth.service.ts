@@ -154,6 +154,18 @@ export class AuthService {
       await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
         fullName: existingUnverified.fullName ?? undefined,
       });
+      // Update the device key — the frontend regenerates a new keypair on each
+      // signup attempt, so we must sync the stored public key to avoid
+      // signature mismatches when the user logs in after OTP verification.
+      await this.deviceRepo.upsert(
+        {
+          userId:     existingUnverified.id,
+          deviceId:   dto.deviceId,
+          publicKey:  dto.devicePublicKey,
+          deviceName: 'Primary Device',
+        },
+        { conflictPaths: ['deviceId'] },
+      );
       return { userId: existingUnverified.id, email: existingUnverified.email };
     }
 

@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/Button'
 import { PinPad } from '@/components/ui/PinPad'
 import { Spinner } from '@/components/ui/Spinner'
 import { useAuthStore } from '@/store/authStore'
-import { signup, verifyOtp, resendOtp, login } from '@/lib/api/auth'
-import { generateDeviceKey, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
+import { signup, verifyEmailOtp, resendOtp } from '@/lib/api/auth'
+import { generateDeviceKey, hashPin } from '@/lib/crypto/deviceSigning'
 import { setPin as apiSetPin } from '@/lib/api/auth'
 
 // ── Step indicator ─────────────────────────────────────────
@@ -247,19 +247,14 @@ export default function SignupPage() {
     }
     setLoading(true)
     try {
-      await verifyOtp({ email: form.email.toLowerCase(), otp, type: 'email_verify' })
-
-      // Auto-login after OTP verification
+      // verifyEmailOtp verifies the code AND returns tokens — no separate login needed.
       const deviceId = ensureDeviceId()
-      const deviceSignature = await signDeviceChallenge(deviceId)
-      const { user, tokens } = await login({
-        identifier:      form.email.toLowerCase(),
-        password:        form.password,
+      const { user, tokens } = await verifyEmailOtp({
+        email: form.email.toLowerCase(),
+        otp,
         deviceId,
-        deviceSignature,
       })
       setAuth(user, tokens.accessToken)
-
       setStep(4) // PIN setup
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Invalid code. Try again.')
