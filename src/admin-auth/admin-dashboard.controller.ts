@@ -86,6 +86,15 @@ export class AdminDashboardController {
     return this.adminAuthService.completeTransfer(id);
   }
 
+  // ── PATCH /admin/users/:id/kyc ────────────────────────────────────────────
+  @Patch('users/:id/kyc')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Manually set a user KYC status to verified' })
+  setUserKycVerified(@Param('id') id: string) {
+    return this.adminAuthService.setUserKycVerified(id);
+  }
+
   // ── PATCH /admin/users/:id/flag ────────────────────────────────────────────
   @Patch('users/:id/flag')
   @UseGuards(AdminJwtGuard)

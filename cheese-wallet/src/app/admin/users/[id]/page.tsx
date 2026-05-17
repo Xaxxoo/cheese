@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  type AdminUserDetail,
+  setAdminUserKycVerified, type AdminUserDetail,
 } from '@/lib/api/admin';
 
 const fmtDate = (s: string) =>
@@ -54,6 +54,17 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     try {
       const result = await setAdminUserStatus(user.id, !user.isActive);
       setUser((u) => u ? { ...u, isActive: result.isActive } : u);
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
+  };
+
+  const handleVerifyKyc = async () => {
+    if (!user || saving) return;
+    setSaving(true);
+    try {
+      const result = await setAdminUserKycVerified(user.id);
+      setUser((u) => u ? { ...u, kycStatus: 'Verified' } : u);
+      void result;
     } catch { /* ignore */ }
     finally { setSaving(false); }
   };
@@ -276,6 +287,26 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   {user.isFlagged ? 'Remove fraud flag' : 'Mark as suspicious'}
                 </span>
               </button>
+
+              {/* Verify KYC */}
+              {user.kycStatus !== 'Verified' && (
+                <button
+                  onClick={handleVerifyKyc}
+                  disabled={saving}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 16px', borderRadius: 10, cursor: saving ? 'default' : 'pointer',
+                    background: c.greenDim,
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    color: c.green,
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+                    opacity: saving ? 0.55 : 1, transition: 'opacity .15s',
+                  }}
+                >
+                  <span>Verify KYC</span>
+                  <span style={{ fontSize: 11, opacity: 0.65 }}>Mark identity as verified</span>
+                </button>
+              )}
 
               {/* Activate / Deactivate */}
               <button

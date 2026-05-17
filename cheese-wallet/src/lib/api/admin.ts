@@ -274,6 +274,13 @@ export async function setAdminUserStatus(id: string, isActive: boolean): Promise
   return data.data
 }
 
+export async function setAdminUserKycVerified(id: string): Promise<{ id: string; kycStatus: string }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; kycStatus: string }>>(
+    `/admin/users/${id}/kyc`,
+  )
+  return data.data
+}
+
 // ── Health check ──────────────────────────────────────────────────────────
 export interface AdminHealth {
   stellar:  boolean

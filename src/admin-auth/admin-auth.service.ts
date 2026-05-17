@@ -517,6 +517,14 @@ export class AdminAuthService {
     return { id: user.id, isActive: user.isActive };
   }
 
+  async setUserKycVerified(id: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+    user.kycStatus = KycStatus.VERIFIED;
+    await this.userRepo.save(user);
+    return { id: user.id, kycStatus: user.kycStatus };
+  }
+
   // ── Transfer actions ──────────────────────────────────────────────────────
 
   async completeTransfer(id: string) {
