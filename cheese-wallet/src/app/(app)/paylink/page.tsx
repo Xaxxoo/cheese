@@ -10,9 +10,7 @@ import {
 import { cn } from '@/lib/cn'
 import { createPayLink, getMyPayLinks, cancelPayLink } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
-import type { CreatePayLinkResponse, MyLinksResponse } from '@/types'
-
-type LinkItem = MyLinksResponse['links'][number]
+import type { CreatePayLinkResponse, PayLinkData } from '@/types'
 
 // ── Skeleton ───────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -20,14 +18,14 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 // ── Status badge ───────────────────────────────────────────
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    active:    { label: 'Active',    cls: 'bg-emerald-400/12 text-emerald-400' },
-    completed: { label: 'Paid',      cls: 'bg-sky-400/12 text-sky-400' },
+function StatusBadge({ status }: { status: PayLinkData['status'] }) {
+  const map: Record<PayLinkData['status'], { label: string; cls: string }> = {
+    pending:   { label: 'Active',    cls: 'bg-emerald-400/12 text-emerald-400' },
+    paid:      { label: 'Paid',      cls: 'bg-sky-400/12 text-sky-400' },
     expired:   { label: 'Expired',   cls: 'bg-white/10 text-white/30' },
     cancelled: { label: 'Cancelled', cls: 'bg-red-400/12 text-red-400' },
   }
-  const { label, cls } = map[status] ?? { label: status, cls: 'bg-white/10 text-white/30' }
+  const { label, cls } = map[status]
   return (
     <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full', cls)}>
       {label}
@@ -40,16 +38,14 @@ function LinkCard({
   link,
   onCancel,
 }: {
-  link: LinkItem
+  link: PayLinkData
   onCancel: (token: string) => void
 }) {
   const [copied, setCopied] = useState(false)
 
-  const payUrl = link.link ?? ''
-
   async function copy() {
     try {
-      await navigator.clipboard.writeText(payUrl)
+      await navigator.clipboard.writeText(link.url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -57,27 +53,26 @@ function LinkCard({
     }
   }
 
-  const expiry = link.expiresAt
-    ? new Date(link.expiresAt).toLocaleDateString('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric',
-      })
-    : null
+  const date = new Date(link.createdAt).toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+  })
 
   return (
     <div className="rounded-2xl border border-white/8 bg-white/3 p-4 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-base font-semibold text-white">
-            ${parseFloat(link.amount ?? '0').toFixed(2)} USDC
+            ${parseFloat(link.amountUsdc).toFixed(2)} USDC
           </p>
-          {expiry && (
-            <p className="text-[10px] text-white/25 mt-1">Expires {expiry}</p>
+          {link.note && (
+            <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{link.note}</p>
           )}
+          <p className="text-[10px] text-white/25 mt-1">{date}</p>
         </div>
-        <StatusBadge status={link.status ?? 'active'} />
+        <StatusBadge status={link.status} />
       </div>
 
-      {link.status === 'active' && payUrl && (
+      {link.status === 'pending' && (
         <div className="flex gap-2">
           <button
             type="button"
@@ -112,7 +107,7 @@ function CreatedBanner({
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(result.link)
+      await navigator.clipboard.writeText(result.url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
@@ -134,7 +129,7 @@ function CreatedBanner({
       </div>
 
       <div className="rounded-xl bg-black/20 px-3 py-2">
-        <p className="text-[11px] text-white/50 font-mono break-all leading-relaxed">{result.link}</p>
+        <p className="text-[11px] text-white/50 font-mono break-all leading-relaxed">{result.url}</p>
       </div>
 
       <button
@@ -149,7 +144,8 @@ function CreatedBanner({
       </button>
 
       <p className="text-[10px] text-white/30 text-center">
-        Amount: ${parseFloat(result.amount ?? '0').toFixed(4)} USDC
+        ${parseFloat(result.amountUsdc).toFixed(4)} USDC
+        {result.note ? ` · ${result.note}` : ''}
       </p>
     </div>
   )
@@ -183,7 +179,7 @@ export default function PayLinkPage() {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.PAYLINK_MY })
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })
+      const msg = (err as { response?: { data?: { message?: unknown } } })
         ?.response?.data?.message ?? 'Failed to create link'
       setError(Array.isArray(msg) ? msg.join(', ') : String(msg))
     },
@@ -205,18 +201,16 @@ export default function PayLinkPage() {
       setError('Enter a valid USDC amount')
       return
     }
-    const expiresInSeconds = parseInt(expiry, 10) * 3600
     createMut.mutate({
-      amount:      amt.toFixed(6),
-      amountUSD:   amt.toFixed(6),
-      description: note.trim() || undefined,
-      expiresIn:   expiresInSeconds,
+      amountUsdc:     amt.toFixed(6),
+      note:           note.trim() || undefined,
+      expiresInHours: parseInt(expiry, 10),
     })
   }
 
-  const links        = linksQ.data?.links ?? []
-  const activeLinks  = links.filter(l => l.status === 'active')
-  const pastLinks    = links.filter(l => l.status !== 'active')
+  const links       = linksQ.data?.data ?? []
+  const activeLinks = links.filter(l => l.status === 'pending')
+  const pastLinks   = links.filter(l => l.status !== 'pending')
 
   return (
     <div className="flex flex-col pb-10">
@@ -265,7 +259,7 @@ export default function PayLinkPage() {
             placeholder="e.g. Payment for design work"
             value={note}
             onChange={e => setNote(e.target.value)}
-            maxLength={120}
+            maxLength={140}
             className="rounded-xl bg-white/6 border border-white/8 px-3 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-white/20 transition-colors"
           />
         </div>
@@ -341,7 +335,7 @@ export default function PayLinkPage() {
           <div className="flex flex-col gap-3">
             {activeLinks.map(l => (
               <LinkCard
-                key={l.token}
+                key={l.id}
                 link={l}
                 onCancel={token => cancelMut.mutate(token)}
               />
@@ -360,7 +354,7 @@ export default function PayLinkPage() {
           <div className="flex flex-col gap-3">
             {pastLinks.map(l => (
               <LinkCard
-                key={l.token}
+                key={l.id}
                 link={l}
                 onCancel={token => cancelMut.mutate(token)}
               />

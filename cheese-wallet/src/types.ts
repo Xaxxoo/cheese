@@ -235,49 +235,57 @@ export interface ReferralInfo {
 
 // ── PayLink Types ─────────────────────────────────────────
 export interface CreatePayLinkPayload {
-  amount: string
-  amountUSD: string
-  description?: string
-  expiresIn?: number // seconds
-  metadata?: Record<string, unknown>
+  amountUsdc:      string
+  note?:           string
+  expiresInHours?: number
 }
 
 export interface CreatePayLinkResponse {
-  token: string
-  link: string
-  amount: string
-  expiresAt: string
+  id:             string
+  url:            string
+  token:          string
+  amountUsdc:     string
+  note:           string | null
+  expiresAt:      string
+  expiresInHours: number
+}
+
+export interface PayLinkCreator {
+  username: string
+  fullName: string
 }
 
 export interface PayLinkData {
-  token: string
-  amount: string
-  amountUSD: string
-  description?: string
-  creatorUsername: string
-  expiresAt: string
-  status: 'active' | 'expired' | 'completed'
-  paidAt?: string
+  id:         string
+  token:      string
+  url:        string
+  amountUsdc: string
+  note:       string | null
+  status:     'pending' | 'paid' | 'expired' | 'cancelled'
+  expiresAt:  string
+  createdAt:  string
+  creator:    PayLinkCreator
+  payer:      { username: string } | null
+  paidAt:     string | null
 }
 
 export interface PayLinkPayPayload {
-  pin: string
+  pinHash:         string
+  deviceId:        string
   deviceSignature: string
-  deviceId: string
 }
 
 export interface PayLinkPayResponse {
-  id: string
-  status: 'completed'
-  amount: string
-  timestamp: string
-  reference: string
+  txId:       string
+  txHash:     string
+  amountUsdc: string
+  fee:        string
+  paidAt:     string
 }
 
 export interface MyLinksResponse {
-  links: Array<CreatePayLinkResponse & { status: string; paidAt?: string }>
-  total: number
-  page: number
+  data:     PayLinkData[]
+  total:    number
+  page:     number
   pageSize: number
-  hasMore: boolean
 }
