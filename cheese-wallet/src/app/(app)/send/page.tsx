@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button'
 import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
 import { useQueryClient } from '@tanstack/react-query'
-import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer } from '@/lib/api/wallet'
+import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer, getBalance } from '@/lib/api/wallet'
 import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
 import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
@@ -799,6 +799,23 @@ function BankAmountStep({
   const [error, setError] = useState('')
   const amount = parseInt(raw, 10) || 0
 
+  const { data: rate } = useQuery({
+    queryKey: QUERY_KEYS.EXCHANGE_RATE,
+    queryFn:  getExchangeRate,
+    staleTime: STALE_TIMES.EXCHANGE_RATE,
+    retry: 1,
+  })
+  const { data: balance } = useQuery({
+    queryKey: QUERY_KEYS.BALANCE,
+    queryFn:  getBalance,
+    staleTime: STALE_TIMES.BALANCE,
+    retry: 1,
+  })
+
+  const effectiveRate = rate ? parseFloat(rate.effectiveRate) : 0
+  const usdcNeeded    = effectiveRate > 0 ? amount / effectiveRate : 0
+  const usdcBalance   = balance ? parseFloat(balance.totalUsdc) : null
+
   function handleInput(v: string) {
     setRaw(v.replace(/\D/g, ''))
     setError('')
@@ -807,6 +824,10 @@ function BankAmountStep({
   function submit() {
     if (!amount || amount <= 0) { setError('Enter an amount'); return }
     if (amount < 100)           { setError('Minimum is ₦100'); return }
+    if (usdcBalance !== null && effectiveRate > 0 && usdcBalance < usdcNeeded) {
+      setError(`Insufficient balance — need $${usdcNeeded.toFixed(4)} USDC, you have $${usdcBalance.toFixed(4)}`)
+      return
+    }
     onNext(raw)
   }
 
@@ -842,7 +863,12 @@ function BankAmountStep({
             style={{ width: `${Math.max(2, (raw || '0').length)}ch` }}
           />
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+        {!error && amount >= 100 && usdcNeeded > 0 && (
+          <p className="text-xs text-white/30 text-center">
+            ≈ ${usdcNeeded.toFixed(4)} USDC
+          </p>
+        )}
       </div>
 
       <Button fullWidth size="lg" onClick={submit} disabled={!amount || amount <= 0}>

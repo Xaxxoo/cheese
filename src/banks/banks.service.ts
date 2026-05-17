@@ -304,7 +304,7 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
   },
 ];
 
-const TRANSFER_FEE_NGN = 50; // flat ₦50 per withdrawal
+const TRANSFER_FEE_NGN = 0; // no withdrawal fee
 const MIN_TRANSFER_NGN = 100;
 const MAX_TRANSFER_NGN = 10_000_000; // Black tier ceiling — daily limit enforced per-tier above
 
