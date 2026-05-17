@@ -47,7 +47,7 @@ export interface SignupPayload {
 export interface OtpVerifyPayload {
   email: string
   otp: string
-  type: 'signup' | 'forgot-password'
+  type: 'email_verify' | 'password_reset' | 'phone_verify' | 'login_2fa' | 'device_register'
 }
 
 export interface ResetPasswordPayload {

@@ -13,6 +13,8 @@ import { useAuthStore } from '@/store/authStore'
 import { signup, verifyEmailOtp, resendOtp } from '@/lib/api/auth'
 import { generateDeviceKey, hashPin } from '@/lib/crypto/deviceSigning'
 import { setPin as apiSetPin } from '@/lib/api/auth'
+import { tokenStore } from '@/lib/api/client'
+import type { User } from '@/types'
 
 // ── Step indicator ─────────────────────────────────────────
 function StepBar({ step, total }: { step: number; total: number }) {
@@ -125,7 +127,7 @@ interface SignupData {
 
 export default function SignupPage() {
   const router = useRouter()
-  const { user, setAuth, ensureDeviceId, setBooting } = useAuthStore()
+  const { setAuth, ensureDeviceId, setBooting } = useAuthStore()
 
   const [step, setStep]       = useState<SignupStep>(1)
   const [loading, setLoading] = useState(false)
@@ -139,6 +141,13 @@ export default function SignupPage() {
   const [pinStep, setPinStep]         = useState<'set' | 'confirm'>('set')
   const [usernameStatus, setUsernameStatus] = useState<'idle'|'checking'|'available'|'taken'>('idle')
   const [errors, setErrors]           = useState<Partial<SignupData & { otp: string }>>({})
+
+  // Temp storage for credentials between OTP verification and PIN setup.
+  // We hold off calling setAuth (which sets user in the store) until AFTER the
+  // PIN step, because the auth layout redirects to /dashboard as soon as
+  // user is non-null — which would skip step 4 entirely.
+  const pendingUser  = useRef<User | null>(null)
+  const pendingToken = useRef<string | null>(null)
 
   useEffect(() => { setBooting(false) }, [setBooting])
 
@@ -249,12 +258,17 @@ export default function SignupPage() {
     try {
       // verifyEmailOtp verifies the code AND returns tokens — no separate login needed.
       const deviceId = ensureDeviceId()
-      const { user, tokens } = await verifyEmailOtp({
+      const { user: verifiedUser, tokens } = await verifyEmailOtp({
         email: form.email.toLowerCase(),
         otp,
         deviceId,
       })
-      setAuth(user, tokens.accessToken)
+      // Store credentials in refs — calling setAuth here would set user in the
+      // zustand store, causing the auth layout to redirect before step 4 shows.
+      // tokenStore.set() lets apiSetPin authenticate without triggering a redirect.
+      pendingUser.current  = verifiedUser
+      pendingToken.current = tokens.accessToken
+      tokenStore.set(tokens.accessToken)
       setStep(4) // PIN setup
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Invalid code. Try again.')
@@ -287,18 +301,20 @@ export default function SignupPage() {
     }
     setLoading(true)
     try {
-      // userId is the stable salt — same hash regardless of browser/device
-      const userId = user?.id
+      const userId = pendingUser.current?.id
       if (!userId) throw new Error('Session expired — please log in again')
       const pinHash = await hashPin(pin, userId)
-
       await apiSetPin(pinHash)
-
       notify.success('PIN set successfully')
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Could not save PIN — you can set it later in Profile')
     } finally {
       setLoading(false)
+      // Commit credentials to the store now — this triggers the auth layout
+      // redirect, which together with router.replace lands on /dashboard.
+      if (pendingUser.current && pendingToken.current) {
+        setAuth(pendingUser.current, pendingToken.current)
+      }
       router.replace('/dashboard')
     }
   }
@@ -489,7 +505,12 @@ export default function SignupPage() {
             )}
             <button
               type="button"
-              onClick={() => router.replace('/dashboard')}
+              onClick={() => {
+                if (pendingUser.current && pendingToken.current) {
+                  setAuth(pendingUser.current, pendingToken.current)
+                }
+                router.replace('/dashboard')
+              }}
               className="text-sm text-white/30 hover:text-white/50 transition-colors text-center"
             >
               Skip for now
