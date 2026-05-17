@@ -988,6 +988,104 @@ function AmountStep({
 }
 
 // ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// "No PIN set" inline setup flow — shared by all PIN steps
+// ─────────────────────────────────────────────────────────
+function SetPinFlow({ onCancel }: { onCancel: () => void }) {
+  const { user, updateUser } = useAuthStore()
+
+  type Phase = 'new' | 'confirm'
+  const [phase, setPhase]       = useState<Phase>('new')
+  const [firstPin, setFirstPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+
+  // Auto-advance when first PIN is complete
+  useEffect(() => {
+    if (phase === 'new' && firstPin.length === 6) {
+      setPhase('confirm')
+    }
+  }, [firstPin, phase])
+
+  // Auto-submit when confirm PIN is complete
+  useEffect(() => {
+    if (phase === 'confirm' && confirmPin.length === 6 && !loading) {
+      void submit(confirmPin)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmPin, phase, loading])
+
+  async function submit(confirmed: string) {
+    if (confirmed !== firstPin) {
+      setError("PINs don't match — try again")
+      setConfirmPin('')
+      setPhase('new')
+      setFirstPin('')
+      return
+    }
+    if (!user) { onCancel(); return }
+    setLoading(true)
+    setError('')
+    try {
+      const pinHash = await hashPin(confirmed, user.id)
+      await apiSetPin(pinHash)
+      updateUser({ hasPin: true })
+      // parent re-renders with hasPin true → shows normal PIN pad automatically
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to set PIN'
+      setError(msg)
+      setConfirmPin('')
+      setPhase('new')
+      setFirstPin('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="w-full flex flex-col items-center gap-5">
+      {/* Explanation banner */}
+      <div className="w-full rounded-2xl bg-amber-400/8 border border-amber-400/20 px-4 py-3.5 flex gap-2.5">
+        <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-amber-200">No transaction PIN set</p>
+          <p className="text-xs text-amber-200/70 mt-0.5 leading-relaxed">
+            You need a 6-digit transaction PIN to send money. Set one now to continue with this transfer.
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <Loader2 size={36} className="text-[#d4a843] animate-spin" />
+          <p className="text-sm text-white/40">Setting your PIN…</p>
+        </div>
+      ) : (
+        <PinPad
+          value={phase === 'new' ? firstPin : confirmPin}
+          onChange={phase === 'new' ? setFirstPin : setConfirmPin}
+          maxLength={6}
+          label={phase === 'new' ? 'Choose a 6-digit transaction PIN' : 'Confirm your PIN'}
+          error={error}
+        />
+      )}
+
+      {!loading && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex items-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors"
+        >
+          <ArrowLeft size={14} />
+          Go back
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
 // PIN step — USDC flows
 // ─────────────────────────────────────────────────────────
 function PinStep({
@@ -1136,7 +1234,9 @@ function PinStep({
       </div>
 
       <div className="flex-1 flex items-center justify-center">
-        {loading ? (
+        {!user?.hasPin ? (
+          <SetPinFlow onCancel={onBack} />
+        ) : loading ? (
           <div className="flex flex-col items-center gap-4">
             <Loader2 size={40} className="text-[#d4a843] animate-spin" />
             <p className="text-sm text-white/40">Processing transfer…</p>
@@ -1152,7 +1252,7 @@ function PinStep({
         )}
       </div>
 
-      {!loading && (
+      {user?.hasPin && !loading && (
         <div className="flex flex-col items-center gap-3 mt-4">
           <button
             type="button"
@@ -1184,8 +1284,8 @@ function BankPinStep({
   onSuccess: (result: BankTransferResponse) => void
   onError: (msg: string) => void
 }) {
-  const { user, deviceId } = useAuthStore()
-  const queryClient         = useQueryClient()
+  const { user, deviceId, updateUser } = useAuthStore()
+  const queryClient                     = useQueryClient()
   const [pin, setPin]           = useState('')
   const [loading, setLoading]   = useState(false)
   const [pinError, setPinError] = useState('')
@@ -1219,6 +1319,7 @@ function BankPinStep({
         await apiResetPin()
         const newHash = await hashPin(firstNewPin, user.id)
         await apiSetPin(newHash)
+        updateUser({ hasPin: true })
         setResetFlow('off')
         setResetPin('')
         setFirstNewPin('')
@@ -1315,7 +1416,9 @@ function BankPinStep({
       </div>
 
       <div className="flex-1 flex items-center justify-center">
-        {(loading || resetLoading) ? (
+        {!user?.hasPin ? (
+          <SetPinFlow onCancel={onBack} />
+        ) : (loading || resetLoading) ? (
           <div className="flex flex-col items-center gap-4">
             <Loader2 size={40} className="text-[#d4a843] animate-spin" />
             <p className="text-sm text-white/40">
@@ -1341,7 +1444,7 @@ function BankPinStep({
         )}
       </div>
 
-      {!loading && !resetLoading && (
+      {user?.hasPin && !loading && !resetLoading && (
         <div className="flex flex-col items-center gap-3 mt-4">
           {resetFlow === 'off' ? (
             <>

@@ -5,11 +5,119 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { CheckCheck, AlertTriangle, Clock, XCircle, RefreshCw } from 'lucide-react'
+import { CheckCheck, AlertTriangle, Clock, XCircle, RefreshCw, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { resolvePayLink, payPayLink } from '@/lib/api/wallet'
+import { setPin as apiSetPin } from '@/lib/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { hashPin, signDeviceChallenge } from '@/lib/crypto/deviceSigning'
+
+// ── Inline set-PIN flow ────────────────────────────────────
+function SetPinFlow({ onBack }: { onBack?: () => void }) {
+  const { user, updateUser } = useAuthStore()
+  type Phase = 'new' | 'confirm'
+  const [phase, setPhase]           = useState<Phase>('new')
+  const [firstPin, setFirstPin]     = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState('')
+
+  useEffect(() => {
+    if (phase === 'new' && firstPin.length === 6) setPhase('confirm')
+  }, [firstPin, phase])
+
+  useEffect(() => {
+    if (phase === 'confirm' && confirmPin.length === 6 && !loading) void submit(confirmPin)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmPin, phase, loading])
+
+  async function submit(confirmed: string) {
+    if (confirmed !== firstPin) {
+      setError("PINs don't match — try again")
+      setConfirmPin('')
+      setPhase('new')
+      setFirstPin('')
+      return
+    }
+    if (!user) return
+    setLoading(true)
+    setError('')
+    try {
+      const pinHash = await hashPin(confirmed, user.id)
+      await apiSetPin(pinHash)
+      updateUser({ hasPin: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to set PIN')
+      setConfirmPin('')
+      setPhase('new')
+      setFirstPin('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleKey(k: string) {
+    if (loading) return
+    const setter = phase === 'new' ? setFirstPin : setConfirmPin
+    const value  = phase === 'new' ? firstPin   : confirmPin
+    if (k === '⌫') { setter(value.slice(0, -1)); return }
+    if (value.length < 6) setter(value + k)
+  }
+
+  const dots = phase === 'new' ? firstPin : confirmPin
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Banner */}
+      <div className="flex gap-2.5 rounded-2xl bg-amber-400/8 border border-amber-400/20 px-4 py-3.5">
+        <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-amber-200">No transaction PIN set</p>
+          <p className="text-xs text-amber-200/70 mt-0.5 leading-relaxed">
+            Set a 6-digit PIN now to complete this payment.
+          </p>
+        </div>
+      </div>
+
+      {/* PIN dots + label */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/3 p-5">
+        <p className="text-xs text-white/40 text-center uppercase tracking-widest">
+          {phase === 'new' ? 'Choose a 6-digit PIN' : 'Confirm your PIN'}
+        </p>
+        <div className="flex gap-3 justify-center">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                'w-3 h-3 rounded-full transition-all',
+                i < dots.length ? 'bg-[#d4a843]' : 'bg-white/15',
+              )}
+            />
+          ))}
+        </div>
+        {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+        {loading && (
+          <p className="text-xs text-white/30 text-center flex items-center justify-center gap-1.5">
+            <RefreshCw size={11} className="animate-spin" /> Setting PIN…
+          </p>
+        )}
+      </div>
+
+      {!loading && <PinPad onPress={handleKey} />}
+
+      {onBack && !loading && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors"
+        >
+          <ArrowLeft size={14} />
+          Go back
+        </button>
+      )}
+    </div>
+  )
+}
 
 // ── PIN input ──────────────────────────────────────────────
 function PinDots({ value }: { value: string }) {
@@ -262,25 +370,29 @@ export default function PayLinkPage() {
           </div>
         )}
 
-        {/* PIN entry */}
+        {/* PIN entry / set-PIN */}
         {user && !isOwn && link && isActive && (
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/3 p-5">
-              <p className="text-xs text-white/40 text-center uppercase tracking-widest">
-                Enter your PIN to pay
-              </p>
-              <PinDots value={pin} />
-              {error && (
-                <p className="text-xs text-red-400 text-center">{error}</p>
-              )}
-              {payMut.isPending && (
-                <p className="text-xs text-white/30 text-center flex items-center justify-center gap-1.5">
-                  <RefreshCw size={11} className="animate-spin" /> Processing…
+          !user.hasPin ? (
+            <SetPinFlow />
+          ) : (
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/3 p-5">
+                <p className="text-xs text-white/40 text-center uppercase tracking-widest">
+                  Enter your PIN to pay
                 </p>
-              )}
+                <PinDots value={pin} />
+                {error && (
+                  <p className="text-xs text-red-400 text-center">{error}</p>
+                )}
+                {payMut.isPending && (
+                  <p className="text-xs text-white/30 text-center flex items-center justify-center gap-1.5">
+                    <RefreshCw size={11} className="animate-spin" /> Processing…
+                  </p>
+                )}
+              </div>
+              <PinPad onPress={handleKey} />
             </div>
-            <PinPad onPress={handleKey} />
-          </div>
+          )
         )}
 
       </div>

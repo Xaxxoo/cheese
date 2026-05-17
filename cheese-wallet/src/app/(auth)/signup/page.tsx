@@ -305,6 +305,10 @@ export default function SignupPage() {
       if (!userId) throw new Error('Session expired — please log in again')
       const pinHash = await hashPin(pin, userId)
       await apiSetPin(pinHash)
+      // Reflect the newly-set PIN in the pending user so setAuth stores hasPin:true
+      if (pendingUser.current) {
+        pendingUser.current = { ...pendingUser.current, hasPin: true }
+      }
       notify.success('PIN set successfully')
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Could not save PIN — you can set it later in Profile')

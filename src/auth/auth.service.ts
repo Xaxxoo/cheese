@@ -688,7 +688,7 @@ export class AuthService {
 
   private sanitiseUser(
     user: User,
-  ): Omit<User, 'passwordHash' | 'pinHash' | 'stellarSecretEnc'> {
+  ): Omit<User, 'passwordHash' | 'pinHash' | 'stellarSecretEnc'> & { hasPin: boolean } {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, pinHash, stellarSecretEnc, ...safe } =
       user as User & {
@@ -696,6 +696,6 @@ export class AuthService {
         pinHash: string;
         stellarSecretEnc: string;
       };
-    return safe;
+    return { ...safe, hasPin: !!pinHash };
   }
 }

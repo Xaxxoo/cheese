@@ -30,6 +30,7 @@ export interface User {
   phoneVerified?: boolean
   stellarPublicKey?: string | null
   evmAddress?: string | null
+  hasPin?: boolean
 }
 
 export interface AuthTokens {
