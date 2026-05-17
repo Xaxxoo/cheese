@@ -187,6 +187,8 @@ function TxRow({ tx }: { tx: Transaction }) {
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-white/35">
             {new Date(tx.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })}
+            {' · '}
+            {new Date(tx.createdAt).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
           </p>
           {tx.status !== 'completed' && statusColor[tx.status] && (
             <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium', statusColor[tx.status])}>
