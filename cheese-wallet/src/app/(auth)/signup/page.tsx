@@ -141,6 +141,7 @@ export default function SignupPage() {
   const [pinStep, setPinStep]         = useState<'set' | 'confirm'>('set')
   const [usernameStatus, setUsernameStatus] = useState<'idle'|'checking'|'available'|'taken'>('idle')
   const [errors, setErrors]           = useState<Partial<SignupData & { otp: string }>>({})
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   // Temp storage for credentials between OTP verification and PIN setup.
   // We hold off calling setAuth (which sets user in the store) until AFTER the
@@ -271,16 +272,25 @@ export default function SignupPage() {
       tokenStore.set(tokens.accessToken)
       setStep(4) // PIN setup
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : 'Invalid code. Try again.')
+      const msg = err instanceof Error ? err.message : 'Invalid code. Try again.'
+      setErrors(prev => ({ ...prev, otp: msg }))
     } finally {
       setLoading(false)
     }
   }
 
   async function resendCode() {
+    if (resendCooldown > 0) return
     try {
       await resendOtp(form.email.toLowerCase(), 'email_verify')
       notify.success('Code resent — check your inbox')
+      setResendCooldown(60)
+      const interval = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) { clearInterval(interval); return 0 }
+          return prev - 1
+        })
+      }, 1000)
     } catch {
       notify.error('Could not resend code')
     }
@@ -444,7 +454,7 @@ export default function SignupPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <OtpInput value={otp} onChange={setOtp} />
+            <OtpInput value={otp} onChange={(v) => { setOtp(v); if (errors.otp) setErrors(prev => ({ ...prev, otp: undefined })) }} />
             {errors.otp && (
               <p className="text-xs text-red-400 text-center">{errors.otp}</p>
             )}
@@ -457,9 +467,12 @@ export default function SignupPage() {
             <button
               type="button"
               onClick={resendCode}
-              className="text-sm text-white/40 hover:text-white/70 transition-colors text-center"
+              disabled={resendCooldown > 0}
+              className="text-sm text-center transition-colors disabled:cursor-not-allowed text-white/40 hover:text-white/70 disabled:text-white/20"
             >
-              Didn&apos;t get it? Resend code
+              {resendCooldown > 0
+                ? `Resend in ${resendCooldown}s`
+                : "Didn't get it? Resend code"}
             </button>
           </div>
         </div>

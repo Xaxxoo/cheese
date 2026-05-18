@@ -350,7 +350,7 @@ export class AuthService {
   async resendOtp(email: string, type: OtpType): Promise<void> {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) throw new NotFoundException('User not found');
-    await this.otpService.sendOtp(email, type);
+    await this.otpService.sendOtp(email, type, { fullName: user.fullName ?? undefined });
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
