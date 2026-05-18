@@ -146,6 +146,11 @@ export interface AdminStats {
   pendingKyc:               number
   totalTransactions:        number
   activeWallets:            number
+  pendingWallets:           number
+  failedWallets:            number
+  activeEvmWallets:         number
+  pendingEvmWallets:        number
+  failedEvmWallets:         number
   failedBankTransfersToday: number
   flaggedUsers:             number
   totalVolumeUsdc:          number
