@@ -47,7 +47,7 @@ export const stellarConfig = registerAs('stellar', () => ({
 }));
 
 export const otpConfig = registerAs('otp', () => ({
-  ttlSeconds: parseInt(process.env.OTP_TTL_SECONDS || '300', 10),
+  ttlSeconds: parseInt(process.env.OTP_TTL_SECONDS || '900', 10),
   smtpHost: process.env.SMTP_HOST,
   smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
   smtpUser: process.env.SMTP_USER,
