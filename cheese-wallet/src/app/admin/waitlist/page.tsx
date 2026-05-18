@@ -1,279 +1,338 @@
-'use client'
+'use client';
 
-import { useEffect, useState, useCallback } from 'react'
-import { listAdminWaitlist, AdminWaitlistItem } from '@/lib/api/admin'
+import { useState, useEffect, type CSSProperties } from 'react';
+import { c, IcoSearch, Pill } from '../_shared';
+import { listAdminWaitlist, type AdminWaitlistItem } from '@/lib/api/admin';
 
-// ── Status helpers ────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const STATUS_FILTERS = [
-  { key: 'all',       label: 'All' },
-  { key: 'pending',   label: 'Pending' },
-  { key: 'notified',  label: 'Notified' },
+type StatusFilter = 'all' | 'pending' | 'notified' | 'converted';
+
+const LIMIT = 20;
+
+const fmtDate = (s: string | null) =>
+  s ? new Date(s).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+function statusStyle(s: string) {
+  if (s === 'converted') return { color: c.green,   bg: c.greenDim,  brd: 'rgba(34,197,94,0.2)'  };
+  if (s === 'notified')  return { color: c.blue,    bg: c.blueDim,   brd: 'rgba(96,165,250,0.2)' };
+  return                        { color: c.amber,   bg: c.amberDim,  brd: c.amberBrd              };
+}
+
+const STATUSES: { key: StatusFilter; label: string }[] = [
+  { key: 'all',       label: 'All'       },
+  { key: 'pending',   label: 'Pending'   },
+  { key: 'notified',  label: 'Notified'  },
   { key: 'converted', label: 'Converted' },
-]
+];
 
-function statusPill(status: string) {
-  const s = status.toLowerCase()
-  const base = 'inline-block px-2 py-0.5 rounded text-xs font-semibold capitalize'
-  if (s === 'converted') return `${base} bg-emerald-100 text-emerald-700`
-  if (s === 'notified')  return `${base} bg-blue-100 text-blue-700`
-  return `${base} bg-amber-100 text-amber-700`
-}
+const COLS     = ['#', 'Username', 'Email', 'Status', 'Points', 'Referral Code', 'Joined', 'Converted'];
+const COL_GRID = '50px 1.2fr 1.6fr 100px 80px 130px 110px 110px';
 
-function fmt(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-}
+interface StatCounts { total: number; pending: number; notified: number; converted: number }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function WaitlistPage() {
-  const [entries, setEntries] = useState<AdminWaitlistItem[]>([])
-  const [total,   setTotal]   = useState(0)
-  const [page,    setPage]    = useState(1)
-  const [status,  setStatus]  = useState('all')
-  const [search,  setSearch]  = useState('')
-  const [query,   setQuery]   = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [search,       setSearch]       = useState('');
+  const [page,         setPage]         = useState(1);
+  const [entries,      setEntries]      = useState<AdminWaitlistItem[]>([]);
+  const [total,        setTotal]        = useState(0);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
+  const [stats,        setStats]        = useState<StatCounts>({ total: 0, pending: 0, notified: 0, converted: 0 });
 
-  // derived stats
-  const [counts, setCounts] = useState({ pending: 0, notified: 0, converted: 0 })
-
-  const LIMIT = 20
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await listAdminWaitlist({
-        page,
-        limit: LIMIT,
-        status: status === 'all' ? undefined : status,
-        search: query || undefined,
-      })
-      setEntries(res.entries)
-      setTotal(res.total)
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Unknown error'
-      setError(`Failed to load waitlist — ${msg}`)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, status, query])
-
-  // Load summary counts (no filter) once on mount
+  // ── Summary counts ──────────────────────────────────────────────────────────
   useEffect(() => {
-    async function loadCounts() {
+    Promise.all([
+      listAdminWaitlist({ page: 1, limit: 1 }),
+      listAdminWaitlist({ page: 1, limit: 1, status: 'pending'   }),
+      listAdminWaitlist({ page: 1, limit: 1, status: 'notified'  }),
+      listAdminWaitlist({ page: 1, limit: 1, status: 'converted' }),
+    ])
+      .then(([all, pend, notif, conv]) => {
+        setStats({ total: all.total, pending: pend.total, notified: notif.total, converted: conv.total });
+      })
+      .catch(console.error);
+  }, []);
+
+  // ── Table data ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const delay = search ? 350 : 0;
+    const timer = setTimeout(async () => {
       try {
-        const [all, notified, converted] = await Promise.all([
-          listAdminWaitlist({ page: 1, limit: 1, status: 'pending' }),
-          listAdminWaitlist({ page: 1, limit: 1, status: 'notified' }),
-          listAdminWaitlist({ page: 1, limit: 1, status: 'converted' }),
-        ])
-        setCounts({ pending: all.total, notified: notified.total, converted: converted.total })
-      } catch { /* best-effort */ }
-    }
-    void loadCounts()
-  }, [])
+        const result = await listAdminWaitlist({
+          page,
+          limit:  LIMIT,
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          search: search || undefined,
+        });
+        if (!cancelled) { setEntries(result.entries); setTotal(result.total); }
+      } catch (e) {
+        if (!cancelled) {
+          const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+            ?? (e instanceof Error ? e.message : 'Failed to load waitlist');
+          setError(msg);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, delay);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [page, search, statusFilter]);
 
-  useEffect(() => { void load() }, [load])
+  const handleStatus = (s: StatusFilter) => { setStatusFilter(s); setPage(1); };
+  const handleSearch = (q: string)       => { setSearch(q);       setPage(1); };
 
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+  const n          = (v: number) => v.toLocaleString();
+  const totalPages = Math.ceil(total / LIMIT);
+  const from       = total === 0 ? 0 : (page - 1) * LIMIT + 1;
+  const to         = Math.min(page * LIMIT, total);
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    setPage(1)
-    setQuery(search)
-  }
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14,
+  };
 
-  function changeStatus(s: string) {
-    setStatus(s)
-    setPage(1)
-  }
+  const STAT_ITEMS = [
+    { label: 'Total Signups', value: n(stats.total),     color: c.text,  icon: '⟳' },
+    { label: 'Pending',       value: n(stats.pending),   color: c.amber, icon: '◷' },
+    { label: 'Notified',      value: n(stats.notified),  color: c.blue,  icon: '✉' },
+    { label: 'Converted',     value: n(stats.converted), color: c.green, icon: '✓' },
+  ] as const;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Waitlist</h1>
+    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* ── Stats row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total" value={counts.pending + counts.notified + counts.converted} />
-        <StatCard label="Pending"   value={counts.pending}   colour="amber" />
-        <StatCard label="Notified"  value={counts.notified}  colour="blue" />
-        <StatCard label="Converted" value={counts.converted} colour="emerald" />
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div>
+        <h1 style={{ fontSize: 21, fontWeight: 700, color: c.text, margin: 0, letterSpacing: '-0.02em' }}>
+          Waitlist
+        </h1>
+        <div style={{ fontSize: 12, color: c.textDim, marginTop: 4 }}>
+          Pre-launch signups — track position, points, referrals, and conversion status
+        </div>
       </div>
 
-      {/* ── Toolbar ── */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* search */}
-        <form onSubmit={handleSearch} className="flex gap-2 flex-1">
+      {/* ── Stats row ──────────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        {STAT_ITEMS.map(({ label, value, color, icon }) => (
+          <div key={label} style={{ ...card, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 15, color,
+            }}>
+              {icon}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+                {value}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Toolbar ────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {/* Search */}
+        <div style={{ position: 'relative', flex: '0 0 270px' }}>
+          <span style={{
+            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+            color: c.textDim, display: 'flex', pointerEvents: 'none',
+          }}>
+            <IcoSearch />
+          </span>
           <input
             type="text"
+            className="user-search-input"
+            placeholder="Search username, email, code…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search username, email or referral code…"
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            onChange={(e) => handleSearch(e.target.value)}
           />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-yellow-400 text-black text-sm font-semibold rounded-lg hover:bg-yellow-300 transition-colors"
-          >
-            Search
-          </button>
-        </form>
+        </div>
 
-        {/* status tabs */}
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 h-fit">
-          {STATUS_FILTERS.map((f) => (
+        <div style={{ width: 1, height: 20, background: c.border, flexShrink: 0 }} />
+
+        {/* Status filter */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {STATUSES.map(({ key, label }) => (
             <button
-              key={f.key}
-              onClick={() => changeStatus(f.key)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                status === f.key
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              key={key}
+              className="filter-btn"
+              onClick={() => handleStatus(key)}
+              style={{
+                background: statusFilter === key ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color:      statusFilter === key ? c.text                  : c.textDim,
+                border:     statusFilter === key ? `1px solid rgba(255,255,255,0.15)` : `1px solid transparent`,
+              }}
             >
-              {f.label}
+              {label}
             </button>
           ))}
         </div>
+
+        <div style={{ marginLeft: 'auto' }}>
+          <span style={{ fontSize: 11.5, color: c.textDim }}>
+            {loading ? 'Loading…' : `${n(total)} result${total !== 1 ? 's' : ''}`}
+          </span>
+        </div>
       </div>
 
-      {/* ── Error state ── */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
-          <span className="text-red-700 text-sm">{error}</span>
-          <button
-            onClick={load}
-            className="ml-4 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-medium rounded-lg transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      )}
+      {/* ── Table ──────────────────────────────────────────────────────────── */}
+      <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-      {/* ── Table ── */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">#</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Username</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Email</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
-                <th className="text-right px-4 py-3 text-gray-500 font-medium">Points</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Referral Code</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Joined</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Converted</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>
-                    {Array.from({ length: 8 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3">
-                        <div className="h-4 bg-gray-100 rounded animate-pulse" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : entries.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
-                    No waitlist entries found
-                  </td>
-                </tr>
-              ) : (
-                entries.map((w) => (
-                  <tr key={w.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-400 tabular-nums">
-                      {w.position ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      @{w.username}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{w.email}</td>
-                    <td className="px-4 py-3">
-                      <span className={statusPill(w.status)}>{w.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-medium">
-                      {w.points.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                      {w.referralCode ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {fmt(w.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {fmt(w.convertedAt)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        {/* Column headers */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: COL_GRID,
+          padding: '9px 22px', borderBottom: `1px solid ${c.border}`, flexShrink: 0,
+        }}>
+          {COLS.map((h) => (
+            <div key={h} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
+              {h}
+            </div>
+          ))}
         </div>
 
-        {/* ── Pagination ── */}
-        {!loading && !error && total > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
-            <p className="text-sm text-gray-500">
-              Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of {total.toLocaleString()}
-            </p>
-            <div className="flex gap-2">
+        {/* Rows */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {loading && entries.length === 0 ? (
+            <div style={{ padding: '60px 22px', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: c.textDim }}>Loading waitlist…</div>
+            </div>
+          ) : error ? (
+            <div style={{ padding: '60px 22px', textAlign: 'center' }}>
+              <div style={{ fontSize: 14, color: c.red, fontWeight: 500, marginBottom: 6 }}>Failed to load waitlist</div>
+              <div style={{ fontSize: 12, color: c.textDim, marginBottom: 16 }}>{error}</div>
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-white transition-colors"
+                onClick={() => { setPage(1); setStatusFilter('all'); setSearch(''); }}
+                style={{
+                  fontSize: 12, color: c.textMid, background: 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${c.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
+                }}
               >
-                Prev
-              </button>
-              <span className="px-3 py-1.5 text-sm text-gray-600">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-white transition-colors"
-              >
-                Next
+                Retry
               </button>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+          ) : entries.length === 0 ? (
+            <div style={{ padding: '60px 22px', textAlign: 'center' }}>
+              <div style={{ fontSize: 14, color: c.textMid, fontWeight: 500, marginBottom: 6 }}>No waitlist entries found</div>
+              <div style={{ fontSize: 12, color: c.textDim }}>Try adjusting your search or filter.</div>
+            </div>
+          ) : (
+            entries.map((w, i) => {
+              const ss = statusStyle(w.status);
+              return (
+                <div
+                  key={w.id}
+                  className="row-hover"
+                  style={{
+                    display: 'grid', gridTemplateColumns: COL_GRID,
+                    padding: '11px 22px', alignItems: 'center',
+                    borderBottom: i < entries.length - 1 ? `1px solid ${c.border}` : 'none',
+                  }}
+                >
+                  {/* Position */}
+                  <div style={{ fontSize: 12, color: c.textDim, fontVariantNumeric: 'tabular-nums' }}>
+                    {w.position ?? '—'}
+                  </div>
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+                  {/* Username */}
+                  <div style={{ fontSize: 12.5, fontWeight: 500, color: c.text }}>
+                    @{w.username}
+                  </div>
 
-function StatCard({
-  label,
-  value,
-  colour,
-}: {
-  label:   string
-  value:   number
-  colour?: 'amber' | 'blue' | 'emerald'
-}) {
-  const dot: Record<string, string> = {
-    amber:   'bg-amber-400',
-    blue:    'bg-blue-400',
-    emerald: 'bg-emerald-400',
-  }
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        {colour && <span className={`w-2 h-2 rounded-full ${dot[colour]}`} />}
-        <span className="text-xs text-gray-500 font-medium">{label}</span>
+                  {/* Email */}
+                  <div style={{
+                    fontSize: 12, color: c.textMid,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8,
+                  }}>
+                    {w.email}
+                  </div>
+
+                  {/* Status */}
+                  <Pill
+                    label={w.status.charAt(0).toUpperCase() + w.status.slice(1)}
+                    color={ss.color} bg={ss.bg} brd={ss.brd}
+                  />
+
+                  {/* Points */}
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: c.text, fontVariantNumeric: 'tabular-nums' }}>
+                    {w.points.toLocaleString()}
+                  </div>
+
+                  {/* Referral Code */}
+                  <div style={{ fontSize: 11, fontFamily: 'monospace', color: c.textMid, letterSpacing: '0.04em' }}>
+                    {w.referralCode ?? '—'}
+                  </div>
+
+                  {/* Joined */}
+                  <div style={{ fontSize: 11.5, color: c.textDim }}>{fmtDate(w.createdAt)}</div>
+
+                  {/* Converted */}
+                  <div style={{ fontSize: 11.5, color: w.convertedAt ? c.green : c.textDim }}>
+                    {fmtDate(w.convertedAt)}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
-      <p className="text-2xl font-bold text-gray-900 tabular-nums">{value.toLocaleString()}</p>
+
+      {/* ── Pagination ─────────────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 4px', flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 12, color: c.textDim }}>
+          {total === 0 ? 'No entries' : (
+            <>
+              Showing <span style={{ color: c.text, fontWeight: 500 }}>{from}–{to}</span> of{' '}
+              <span style={{ color: c.text, fontWeight: 500 }}>{n(total)}</span> signups
+            </>
+          )}
+        </span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            className="action-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            style={{
+              minWidth: 30, height: 30, padding: '0 8px', fontSize: 12,
+              color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
+              cursor: page <= 1 ? 'default' : 'pointer',
+            }}
+          >
+            ← Prev
+          </button>
+          <button
+            className="action-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            style={{
+              minWidth: 30, height: 30, padding: '0 8px', fontSize: 12,
+              color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
+              cursor: page >= totalPages ? 'default' : 'pointer',
+            }}
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+
     </div>
-  )
+  );
 }
