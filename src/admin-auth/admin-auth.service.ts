@@ -562,6 +562,80 @@ export class AdminAuthService {
     return { id, status: BankTransferStatus.COMPLETED };
   }
 
+  // ── Transactions listing ──────────────────────────────────────────────────
+
+  async listTransactions(query: {
+    page:    number;
+    limit:   number;
+    status?: string;
+    type?:   string;
+    search?: string;
+    userId?: string;
+  }) {
+    const { page, limit, status, type, search, userId } = query;
+
+    const qb = this.txRepo
+      .createQueryBuilder('t')
+      .orderBy('t.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status && status !== 'all') {
+      qb.andWhere('t.status = :status', { status });
+    }
+    if (type && type !== 'all') {
+      qb.andWhere('t.type = :type', { type });
+    }
+    if (userId) {
+      qb.andWhere('t.user_id = :userId', { userId });
+    }
+    if (search) {
+      qb.andWhere(
+        `(LOWER(t.reference) LIKE :q
+          OR LOWER(t.recipient_username) LIKE :q
+          OR LOWER(t.bank_name) LIKE :q
+          OR t.user_id IN (SELECT u.id FROM users u WHERE LOWER(u.username) LIKE :q))`,
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [transactions, total] = await qb.getManyAndCount();
+
+    // Resolve owner usernames without a join
+    const uniqueUserIds = [...new Set(transactions.map((t) => t.userId))];
+    const usernameMap = new Map<string, string>();
+    if (uniqueUserIds.length > 0) {
+      const users = await this.userRepo.find({
+        where: { id: In(uniqueUserIds) },
+        select: ['id', 'username'],
+      });
+      users.forEach((u) => usernameMap.set(u.id, u.username));
+    }
+
+    return {
+      transactions: transactions.map((t) => ({
+        id:                t.id,
+        reference:         t.reference,
+        userId:            t.userId,
+        username:          usernameMap.get(t.userId) ?? '—',
+        type:              t.type,
+        status:            t.status,
+        amountUsdc:        t.amountUsdc,
+        amountNgn:         t.amountNgn,
+        feeUsdc:           t.feeUsdc,
+        recipientUsername: t.recipientUsername,
+        recipientAddress:  t.recipientAddress,
+        bankName:          t.bankName,
+        txHash:            t.txHash,
+        failureReason:     t.failureReason,
+        createdAt:         t.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
   // ── Pay links listing ─────────────────────────────────────────────────────
 
   async listPaylinks(query: {

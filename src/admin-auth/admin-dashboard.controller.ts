@@ -104,6 +104,29 @@ export class AdminDashboardController {
     return this.adminAuthService.flagUser(id, flag);
   }
 
+  // ── GET /admin/transactions ────────────────────────────────────────────────
+  @Get('transactions')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List all transactions (paginated, filterable)' })
+  listTransactions(
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+    @Query('status') status?: string,
+    @Query('type')   type?:   string,
+    @Query('search') search?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.adminAuthService.listTransactions({
+      page:  Math.max(1, parseInt(page  ?? '1',  10)),
+      limit: Math.min(100, parseInt(limit ?? '20', 10)),
+      status,
+      type,
+      search,
+      userId,
+    });
+  }
+
   // ── GET /admin/paylinks ────────────────────────────────────────────────────
   @Get('paylinks')
   @UseGuards(AdminJwtGuard)
