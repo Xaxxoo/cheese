@@ -281,6 +281,28 @@ export async function setAdminUserKycVerified(id: string): Promise<{ id: string;
   return data.data
 }
 
+// ── Treasury ──────────────────────────────────────────────────────────────
+export interface TreasuryBalance {
+  address:     string
+  balanceUsdc: string
+}
+
+export async function getTreasuryBalance(): Promise<TreasuryBalance> {
+  const { data } = await adminApiClient.get<ApiResponse<TreasuryBalance>>('/admin/treasury')
+  return data.data
+}
+
+export async function treasuryTransfer(
+  toAddress: string,
+  amountUsdc: string,
+): Promise<{ txHash: string; toAddress: string; amountUsdc: string }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ txHash: string; toAddress: string; amountUsdc: string }>>(
+    '/admin/treasury/transfer',
+    { toAddress, amountUsdc },
+  )
+  return data.data
+}
+
 // ── Health check ──────────────────────────────────────────────────────────
 export interface AdminHealth {
   stellar:  boolean

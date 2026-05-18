@@ -78,6 +78,7 @@ const NAV_GROUPS = [
   { label: 'Finance', items: [
     { label: 'Transactions',  Icon: IcoFile,     href: '/admin/transactions' },
     { label: 'Transfers',     Icon: IcoSend,     href: '/admin/transfers'    },
+    { label: 'Treasury',      Icon: IcoWallet,   href: '/admin/treasury'     },
     { label: 'Bank Payouts',  Icon: IcoBank,     href: '/admin/bank'         },
     { label: 'Cards',         Icon: IcoCard,     href: '/admin/cards'        },
     { label: 'Pay Links',     Icon: IcoLink,     href: '/admin/paylinks'     },
