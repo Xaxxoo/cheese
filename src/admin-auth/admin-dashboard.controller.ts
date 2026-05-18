@@ -104,6 +104,25 @@ export class AdminDashboardController {
     return this.adminAuthService.flagUser(id, flag);
   }
 
+  // ── GET /admin/paylinks ────────────────────────────────────────────────────
+  @Get('paylinks')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List all pay links (paginated, filterable)' })
+  listPaylinks(
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.adminAuthService.listPaylinks({
+      page:  Math.max(1, parseInt(page  ?? '1',  10)),
+      limit: Math.min(100, parseInt(limit ?? '20', 10)),
+      status,
+      search,
+    });
+  }
+
   // ── PATCH /admin/users/:id/status ─────────────────────────────────────────
   @Patch('users/:id/status')
   @UseGuards(AdminJwtGuard)

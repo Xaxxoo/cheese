@@ -17,6 +17,7 @@ import { User, AdminRole, KycStatus, Tier, WalletStatus } from '../auth/entities
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { Transaction, TxStatus } from '../transactions/entities/transaction.entity';
 import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfer.entity';
+import { PaymentRequest } from '../paylink/entities/payment-request.entity';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
@@ -38,6 +39,9 @@ export class AdminAuthService {
 
     @InjectRepository(BankTransfer)
     private readonly bankTransferRepo: Repository<BankTransfer>,
+
+    @InjectRepository(PaymentRequest)
+    private readonly paymentRequestRepo: Repository<PaymentRequest>,
 
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -556,6 +560,74 @@ export class AdminAuthService {
       await this.txRepo.update({ id: tx.id }, { status: TxStatus.COMPLETED });
     }
     return { id, status: BankTransferStatus.COMPLETED };
+  }
+
+  // ── Pay links listing ─────────────────────────────────────────────────────
+
+  async listPaylinks(query: {
+    page:    number;
+    limit:   number;
+    status?: string;
+    search?: string;
+  }) {
+    const { page, limit, status, search } = query;
+
+    const qb = this.paymentRequestRepo
+      .createQueryBuilder('pr')
+      .orderBy('pr.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status && status !== 'all') {
+      qb.andWhere('pr.status = :status', { status });
+    }
+    if (search) {
+      qb.andWhere(
+        `(LOWER(pr.note) LIKE :q
+          OR pr.creator_id IN (SELECT u.id FROM users u WHERE LOWER(u.username) LIKE :q)
+          OR pr.payer_id   IN (SELECT u.id FROM users u WHERE LOWER(u.username) LIKE :q))`,
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [paylinks, total] = await qb.getManyAndCount();
+
+    // Resolve creator + payer usernames without a join (avoids duplicate-column metadata error)
+    const allUserIds = [
+      ...new Set([
+        ...paylinks.map((pr) => pr.creatorId),
+        ...paylinks.filter((pr) => pr.payerId).map((pr) => pr.payerId as string),
+      ]),
+    ];
+    const usernameMap = new Map<string, string>();
+    if (allUserIds.length > 0) {
+      const users = await this.userRepo.find({
+        where: { id: In(allUserIds) },
+        select: ['id', 'username'],
+      });
+      users.forEach((u) => usernameMap.set(u.id, u.username));
+    }
+
+    return {
+      paylinks: paylinks.map((pr) => ({
+        id:              pr.id,
+        token:           pr.token,
+        creatorId:       pr.creatorId,
+        creatorUsername: usernameMap.get(pr.creatorId) ?? '—',
+        payerId:         pr.payerId,
+        payerUsername:   pr.payerId ? (usernameMap.get(pr.payerId) ?? '—') : null,
+        amountUsdc:      pr.amountUsdc,
+        note:            pr.note,
+        status:          pr.status,
+        expiresAt:       pr.expiresAt,
+        paidAt:          pr.paidAt,
+        settledTxHash:   pr.settledTxHash,
+        createdAt:       pr.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   // ── Health check ──────────────────────────────────────────────────────────
