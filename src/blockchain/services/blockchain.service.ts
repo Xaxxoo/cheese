@@ -1654,4 +1654,8 @@ export class BlockchainService implements OnModuleInit {
   get isSorobanReady(): boolean {
     return this.sorobanReady;
   }
+
+  get platformPublicKey(): string | null {
+    return this.stellarReady ? this.stellarPlatformKeypair.publicKey() : null;
+  }
 }

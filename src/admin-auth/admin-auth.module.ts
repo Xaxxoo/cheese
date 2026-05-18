@@ -11,6 +11,8 @@ import { AdminAuthService } from './admin-auth.service';
 import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
 import { AdminRatesController } from './admin-rates.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
+import { AdminTreasuryController } from './admin-treasury.controller';
+import { AdminTreasuryService } from './admin-treasury.service';
 import { RatesModule } from '../rates/rates.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 
@@ -22,8 +24,8 @@ import { BlockchainModule } from '../blockchain/blockchain.module';
     RatesModule,
     BlockchainModule,
   ],
-  controllers: [AdminAuthController, AdminRatesController, AdminDashboardController],
-  providers: [AdminAuthService, AdminJwtStrategy],
+  controllers: [AdminAuthController, AdminRatesController, AdminDashboardController, AdminTreasuryController],
+  providers: [AdminAuthService, AdminJwtStrategy, AdminTreasuryService],
   exports: [AdminJwtStrategy],
 })
 export class AdminAuthModule {}
