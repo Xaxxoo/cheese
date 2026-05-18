@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { CheckCheck, AlertTriangle, Clock, XCircle, RefreshCw, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { resolvePayLink, payPayLink } from '@/lib/api/wallet'
+import { QUERY_KEYS } from '@/constants'
 import { setPin as apiSetPin } from '@/lib/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { hashPin, signDeviceChallenge } from '@/lib/crypto/deviceSigning'
@@ -208,6 +209,7 @@ export default function PayLinkPage() {
   const token    = params.token as string
 
   const { user, deviceId } = useAuthStore()
+  const queryClient = useQueryClient()
 
   const [pin, setPin]           = useState('')
   const [done, setDone]         = useState(false)
@@ -233,6 +235,8 @@ export default function PayLinkPage() {
     onSuccess: (res) => {
       setPaidAmt(res.amountUsdc)
       setDone(true)
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BALANCE })
+      void queryClient.invalidateQueries({ queryKey: ['transactions'] })
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: unknown } } })
