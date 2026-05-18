@@ -303,6 +303,42 @@ export async function treasuryTransfer(
   return data.data
 }
 
+// ── Transactions ──────────────────────────────────────────────────────────
+export interface AdminTransactionItem {
+  id:                string
+  reference:         string
+  userId:            string
+  username:          string
+  type:              string
+  status:            string
+  amountUsdc:        string
+  amountNgn:         string | null
+  feeUsdc:           string
+  recipientUsername: string | null
+  recipientAddress:  string | null
+  bankName:          string | null
+  txHash:            string | null
+  failureReason:     string | null
+  createdAt:         string
+}
+
+export async function listAdminTransactions(params?: {
+  page?:   number
+  limit?:  number
+  status?: string
+  type?:   string
+  search?: string
+  userId?: string
+}): Promise<{ transactions: AdminTransactionItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    transactions: AdminTransactionItem[]
+    total:        number
+    page:         number
+    limit:        number
+  }>>('/admin/transactions', { params })
+  return data.data
+}
+
 // ── Pay links ─────────────────────────────────────────────────────────────
 export interface AdminPayLinkItem {
   id:              string
