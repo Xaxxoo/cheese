@@ -303,6 +303,38 @@ export async function treasuryTransfer(
   return data.data
 }
 
+// ── Pay links ─────────────────────────────────────────────────────────────
+export interface AdminPayLinkItem {
+  id:              string
+  token:           string
+  creatorId:       string
+  creatorUsername: string
+  payerId:         string | null
+  payerUsername:   string | null
+  amountUsdc:      string
+  note:            string | null
+  status:          string
+  expiresAt:       string
+  paidAt:          string | null
+  settledTxHash:   string | null
+  createdAt:       string
+}
+
+export async function listAdminPaylinks(params?: {
+  page?:   number
+  limit?:  number
+  status?: string
+  search?: string
+}): Promise<{ paylinks: AdminPayLinkItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    paylinks: AdminPayLinkItem[]
+    total:    number
+    page:     number
+    limit:    number
+  }>>('/admin/paylinks', { params })
+  return data.data
+}
+
 // ── Health check ──────────────────────────────────────────────────────────
 export interface AdminHealth {
   stellar:  boolean
