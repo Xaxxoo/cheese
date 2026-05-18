@@ -381,7 +381,6 @@ export class AdminAuthService {
 
     const qb = this.bankTransferRepo
       .createQueryBuilder('bt')
-      .leftJoinAndSelect('bt.user', 'u')
       .orderBy('bt.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -393,19 +392,36 @@ export class AdminAuthService {
       qb.andWhere('bt.user_id = :userId', { userId });
     }
     if (search) {
+      // Username search uses a subquery to avoid a join on the duplicate user_id column
       qb.andWhere(
-        '(LOWER(bt.reference) LIKE :q OR LOWER(bt.account_name) LIKE :q OR LOWER(bt.bank_name) LIKE :q OR LOWER(u.username) LIKE :q)',
+        `(LOWER(bt.reference) LIKE :q
+          OR LOWER(bt.account_name) LIKE :q
+          OR LOWER(bt.bank_name) LIKE :q
+          OR bt.user_id IN (
+            SELECT u.id FROM users u WHERE LOWER(u.username) LIKE :q
+          ))`,
         { q: `%${search.toLowerCase()}%` },
       );
     }
 
     const [transfers, total] = await qb.getManyAndCount();
 
+    // Fetch usernames in a single query rather than joining
+    const uniqueUserIds = [...new Set(transfers.map((bt) => bt.userId))];
+    const usernameMap = new Map<string, string>();
+    if (uniqueUserIds.length > 0) {
+      const users = await this.userRepo.find({
+        where: { id: In(uniqueUserIds) },
+        select: ['id', 'username'],
+      });
+      users.forEach((u) => usernameMap.set(u.id, u.username));
+    }
+
     return {
       transfers: transfers.map((bt) => ({
         id:            bt.id,
         reference:     bt.reference,
-        username:      bt.user?.username ?? '—',
+        username:      usernameMap.get(bt.userId) ?? '—',
         userId:        bt.userId,
         bankName:      bt.bankName,
         accountName:   bt.accountName,
