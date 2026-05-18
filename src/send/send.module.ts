@@ -9,6 +9,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 import { SendController } from './send.controller';
 import { SendService } from './send.service';
 import { KycModule } from '../kyc/kyc.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { KycModule } from '../kyc/kyc.module';
     RatesModule,
     TransactionsModule,
     KycModule,
+    EmailModule,
   ],
   controllers: [SendController],
   providers: [SendService],

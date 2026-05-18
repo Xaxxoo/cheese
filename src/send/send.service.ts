@@ -21,6 +21,7 @@ import { SendToAddressDto, SendToUsernameDto } from './dto';
 import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
+import { EmailService } from '../email/email.service';
 
 const FALLBACK_FEE_RATE = 0.001; // 0.1% — used when Soroban contract is unavailable
 const MIN_USDC = 0.01;
@@ -37,6 +38,7 @@ export class SendService {
     private readonly txService: TransactionsService,
     private readonly config: ConfigService,
     private readonly tierMilestone: TierMilestoneService,
+    private readonly emailService: EmailService,
   ) {}
 
   // ── GET /send/resolve/:username ───────────────────────────
@@ -225,6 +227,46 @@ export class SendService {
 
       // Fire-and-forget milestone check
       void this.tierMilestone.checkAndNotify(senderId);
+
+      // Fire-and-forget: email to sender
+      const appUrl = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+      this.emailService
+        .sendMoneySent({
+          to: sender.email,
+          fullName: sender.fullName,
+          amountUsdc: params.amountUsdc,
+          amountNgn: String(ngnAmount.toFixed(2)),
+          recipientUsername: params.recipientUsername,
+          recipientAddress: params.toAddress,
+          txHash,
+          reference,
+          fee: String(feeUsdc.toFixed(6)),
+          appUrl,
+        })
+        .catch((err: Error) =>
+          this.logger.error(`Sender transfer email failed [tx=${tx.id}]: ${err.message}`),
+        );
+
+      // Fire-and-forget: email to recipient (username sends only — they're a Cheese Pay user)
+      if (params.recipientUsername) {
+        void this.userRepo
+          .findOne({ where: { username: params.recipientUsername } })
+          .then((recipient) => {
+            if (!recipient?.email) return;
+            return this.emailService.sendMoneyReceived({
+              to: recipient.email,
+              fullName: recipient.fullName,
+              amountUsdc: params.amountUsdc,
+              amountNgn: String(ngnAmount.toFixed(2)),
+              txHash,
+              network: 'stellar',
+              appUrl,
+            });
+          })
+          .catch((err: Error) =>
+            this.logger.error(`Recipient transfer email failed [tx=${tx.id}]: ${err.message}`),
+          );
+      }
 
       return this.txService.getById(senderId, tx.id);
     } catch (err) {
