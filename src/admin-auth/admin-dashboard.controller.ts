@@ -154,4 +154,23 @@ export class AdminDashboardController {
   setUserStatus(@Param('id') id: string, @Body('isActive') isActive: boolean) {
     return this.adminAuthService.setUserActive(id, isActive);
   }
+
+  // ── GET /admin/waitlist ────────────────────────────────────────────────────
+  @Get('waitlist')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List waitlist entries (paginated, filterable)' })
+  listWaitlist(
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.adminAuthService.listWaitlistEntries({
+      page:  Math.max(1, parseInt(page  ?? '1',  10)),
+      limit: Math.min(100, parseInt(limit ?? '20', 10)),
+      status,
+      search,
+    });
+  }
 }

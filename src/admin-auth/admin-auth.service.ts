@@ -18,6 +18,7 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { Transaction, TxStatus } from '../transactions/entities/transaction.entity';
 import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfer.entity';
 import { PaymentRequest } from '../paylink/entities/payment-request.entity';
+import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
@@ -42,6 +43,9 @@ export class AdminAuthService {
 
     @InjectRepository(PaymentRequest)
     private readonly paymentRequestRepo: Repository<PaymentRequest>,
+
+    @InjectRepository(WaitlistEntry)
+    private readonly waitlistRepo: Repository<WaitlistEntry>,
 
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -712,6 +716,54 @@ export class AdminAuthService {
         paidAt:          pr.paidAt,
         settledTxHash:   pr.settledTxHash,
         createdAt:       pr.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── Waitlist listing ──────────────────────────────────────────────────────
+
+  async listWaitlistEntries(query: {
+    page:    number;
+    limit:   number;
+    status?: string;
+    search?: string;
+  }) {
+    const { page, limit, status, search } = query;
+
+    const qb = this.waitlistRepo
+      .createQueryBuilder('w')
+      .orderBy('w.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status && status !== 'all') {
+      qb.andWhere('w.status = :status', { status });
+    }
+    if (search) {
+      qb.andWhere(
+        '(LOWER(w.username) LIKE :q OR LOWER(w.email) LIKE :q OR LOWER(w.referral_code) LIKE :q)',
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [entries, total] = await qb.getManyAndCount();
+
+    return {
+      entries: entries.map((w) => ({
+        id:           w.id,
+        email:        w.email,
+        username:     w.username,
+        status:       w.status,
+        position:     w.position,
+        points:       w.points,
+        referralCode: w.referralCode,
+        referrerId:   w.referrerId,
+        notifiedAt:   w.notifiedAt,
+        convertedAt:  w.convertedAt,
+        createdAt:    w.createdAt,
       })),
       total,
       page,

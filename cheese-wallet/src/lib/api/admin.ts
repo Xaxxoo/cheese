@@ -376,6 +376,36 @@ export async function listAdminPaylinks(params?: {
   return data.data
 }
 
+// ── Waitlist ──────────────────────────────────────────────────────────────
+export interface AdminWaitlistItem {
+  id:           string
+  email:        string
+  username:     string
+  status:       string
+  position:     number | null
+  points:       number
+  referralCode: string | null
+  referrerId:   string | null
+  notifiedAt:   string | null
+  convertedAt:  string | null
+  createdAt:    string
+}
+
+export async function listAdminWaitlist(params?: {
+  page?:   number
+  limit?:  number
+  status?: string
+  search?: string
+}): Promise<{ entries: AdminWaitlistItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    entries: AdminWaitlistItem[]
+    total:   number
+    page:    number
+    limit:   number
+  }>>('/admin/waitlist', { params })
+  return data.data
+}
+
 // ── Health check ──────────────────────────────────────────────────────────
 export interface AdminHealth {
   stellar:  boolean
