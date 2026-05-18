@@ -323,7 +323,7 @@ export class AdminAuthService {
     const qb = this.userRepo
       .createQueryBuilder('u')
       .where('u.is_admin = :isAdmin', { isAdmin: false })
-      .orderBy('u.created_at', 'DESC')
+      .orderBy('u.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -382,7 +382,7 @@ export class AdminAuthService {
     const qb = this.bankTransferRepo
       .createQueryBuilder('bt')
       .leftJoinAndSelect('bt.user', 'u')
-      .orderBy('bt.created_at', 'DESC')
+      .orderBy('bt.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
