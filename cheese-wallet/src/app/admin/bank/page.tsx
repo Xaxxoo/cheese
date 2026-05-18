@@ -57,6 +57,7 @@ export default function BankPayoutsPage() {
   const [total,        setTotal]        = useState(0);
   const [loading,      setLoading]      = useState(true);
   const [completing,   setCompleting]   = useState<string | null>(null);
+  const [error,        setError]        = useState<string | null>(null);
   const [stats,        setStats]        = useState<StatCounts>({ total: 0, processing: 0, failed: 0 });
 
   // ── Summary counts ────────────────────────────────────────────────────────
@@ -76,6 +77,7 @@ export default function BankPayoutsPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     const delay = search ? 350 : 0;
     const timer = setTimeout(async () => {
       try {
@@ -87,7 +89,11 @@ export default function BankPayoutsPage() {
         });
         if (!cancelled) { setTransfers(result.transfers); setTotal(result.total); }
       } catch (e) {
-        console.error(e);
+        if (!cancelled) {
+          const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+            ?? (e instanceof Error ? e.message : 'Failed to load payouts');
+          setError(msg);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -235,6 +241,21 @@ export default function BankPayoutsPage() {
           {loading && transfers.length === 0 ? (
             <div style={{ padding: '60px 22px', textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: c.textDim }}>Loading payouts…</div>
+            </div>
+          ) : error ? (
+            <div style={{ padding: '60px 22px', textAlign: 'center' }}>
+              <div style={{ fontSize: 14, color: c.red, fontWeight: 500, marginBottom: 6 }}>Failed to load payouts</div>
+              <div style={{ fontSize: 12, color: c.textDim, marginBottom: 16 }}>{error}</div>
+              <button
+                onClick={() => { setPage(1); setStatusFilter('all'); setSearch(''); }}
+                style={{
+                  fontSize: 12, color: c.textMid, background: 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${c.border}`, borderRadius: 8, padding: '6px 14px',
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
+              </button>
             </div>
           ) : transfers.length === 0 ? (
             <div style={{ padding: '60px 22px', textAlign: 'center' }}>

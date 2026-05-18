@@ -21,8 +21,8 @@ export interface AdminUser {
 // Nav hrefs each role is permitted to access
 export const ROLE_NAV_PERMISSIONS: Record<AdminRole, string[] | '*'> = {
   super_admin: '*',
-  operator:    ['/admin', '/admin/users', '/admin/kyc', '/admin/transactions', '/admin/transfers', '/admin/fraud'],
-  treasurer:   ['/admin', '/admin/transactions', '/admin/transfers', '/admin/wallets', '/admin/blockchain'],
+  operator:    ['/admin', '/admin/users', '/admin/kyc', '/admin/transactions', '/admin/transfers', '/admin/bank', '/admin/fraud'],
+  treasurer:   ['/admin', '/admin/transactions', '/admin/transfers', '/admin/bank', '/admin/wallets', '/admin/blockchain'],
   support:     ['/admin', '/admin/users', '/admin/kyc', '/admin/transactions'],
 }
 
