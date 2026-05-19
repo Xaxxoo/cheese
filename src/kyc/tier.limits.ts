@@ -23,8 +23,8 @@ export const DAILY_NGN_LIMIT: Record<Tier, number> = {
 
 export const CARD_SPEND_LIMIT_USDC: Record<Tier, number | null> = {
   [Tier.SILVER]: null, // no card on Silver
-  [Tier.GOLD]: 500,
-  [Tier.BLACK]: 5_000,
+  [Tier.GOLD]:   500,
+  [Tier.BLACK]:  null, // no card on Black
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

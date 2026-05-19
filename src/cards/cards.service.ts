@@ -48,9 +48,25 @@ export class CardsService {
         'Identity verification required before accessing a card.',
       );
     }
-    if (user.tier === Tier.SILVER) {
+
+    if (user.tier !== Tier.GOLD) {
       throw new ForbiddenException(
-        'Virtual cards are available from Gold tier onwards. Complete more transactions to unlock your upgrade.',
+        user.tier === Tier.SILVER
+          ? 'Virtual cards are available to Gold tier members. Keep transacting to unlock your upgrade.'
+          : 'Virtual cards are exclusive to Gold tier members.',
+      );
+    }
+
+    // Card unlocks once the user has reached $100k in lifetime outbound volume
+    const CARD_VOLUME_THRESHOLD_USDC = 100_000;
+    const { totalUsdc } = await this.txService.getLifetimeOutboundStats(userId);
+    if (totalUsdc < CARD_VOLUME_THRESHOLD_USDC) {
+      const remaining = (CARD_VOLUME_THRESHOLD_USDC - totalUsdc).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      throw new ForbiddenException(
+        `Your virtual card unlocks at $100,000 in total transactions. You need $${remaining} more to go.`,
       );
     }
 
