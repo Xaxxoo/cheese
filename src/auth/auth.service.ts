@@ -425,7 +425,7 @@ export class AuthService {
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
     if (!user) return; // don't reveal existence
-    await this.otpService.sendOtp(dto.email, OtpType.PASSWORD_RESET);
+    await this.otpService.sendOtp(dto.email, OtpType.PASSWORD_RESET, { fullName: user.fullName ?? undefined });
   }
 
   // ── Reset password ─────────────────────────────────────────────────────────
