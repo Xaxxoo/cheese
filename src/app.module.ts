@@ -39,7 +39,7 @@ import { SendModule } from './send/send.module';
 // Phase 4
 import { BanksModule } from './banks/banks.module';
 // Phase 5
-// import { CardsModule } from './cards/cards.module';
+import { CardsModule } from './cards/cards.module';
 // Phase 6
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProfileModule } from './profile/profile.module';
@@ -73,7 +73,7 @@ import { Notification } from './notifications/entities/notification.entity';
 import { Transaction } from './transactions/entities/transaction.entity';
 import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 import { BankTransfer } from './banks/entities/bank-transfer.entity';
-// import { VirtualCard } from './cards/entities/virtual-card.entity';
+import { VirtualCard } from './cards/entities/virtual-card.entity';
 import { Referral } from './referral/entities/referral.entity';
 import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
 import { PaymentRequest } from './paylink/entities/payment-request.entity';
@@ -164,7 +164,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
                 BankTransfer,
                 Referral,
                 KycAttempt,
-                // VirtualCard,
+                VirtualCard,
                 PaymentRequest,
                 Merchant,
                 MerchantUser,
@@ -207,7 +207,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
                 BankTransfer,
                 Referral,
                 KycAttempt,
-                // VirtualCard,
+                VirtualCard,
                 PaymentRequest,
                 Merchant,
                 MerchantUser,
@@ -246,7 +246,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
             Transaction,
             ExchangeRate,
             // BankTransfer,
-            // VirtualCard,
+            VirtualCard,
             // Referral,
             PaymentRequest,
             Merchant,
@@ -277,7 +277,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
     // Phase 4
     BanksModule,
     // Phase 5
-    // CardsModule,
+    CardsModule,
     // Phase 6
     NotificationsModule,
     ProfileModule,

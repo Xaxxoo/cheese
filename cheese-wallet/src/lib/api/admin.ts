@@ -406,6 +406,39 @@ export async function listAdminWaitlist(params?: {
   return data.data
 }
 
+// ── Virtual cards ─────────────────────────────────────────────────────────
+export interface AdminCardItem {
+  id:               string
+  userId:           string
+  username:         string
+  email:            string
+  last4:            string
+  network:          string
+  holderName:       string
+  status:           string
+  availableBalance: string
+  spendLimit:       string
+  monthlySpend:     string
+  expiryMonth:      string
+  expiryYear:       string
+  createdAt:        string
+}
+
+export async function listAdminCards(params?: {
+  page?:   number
+  limit?:  number
+  status?: string
+  search?: string
+}): Promise<{ cards: AdminCardItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    cards: AdminCardItem[]
+    total: number
+    page:  number
+    limit: number
+  }>>('/admin/cards', { params })
+  return data.data
+}
+
 // ── Health check ──────────────────────────────────────────────────────────
 export interface AdminHealth {
   stellar:  boolean

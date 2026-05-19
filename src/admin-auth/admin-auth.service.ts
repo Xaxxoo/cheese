@@ -19,6 +19,7 @@ import { Transaction, TxStatus } from '../transactions/entities/transaction.enti
 import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfer.entity';
 import { PaymentRequest } from '../paylink/entities/payment-request.entity';
 import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
+import { VirtualCard } from '../cards/entities/virtual-card.entity';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
@@ -46,6 +47,9 @@ export class AdminAuthService {
 
     @InjectRepository(WaitlistEntry)
     private readonly waitlistRepo: Repository<WaitlistEntry>,
+
+    @InjectRepository(VirtualCard)
+    private readonly cardRepo: Repository<VirtualCard>,
 
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -764,6 +768,69 @@ export class AdminAuthService {
         notifiedAt:   w.notifiedAt,
         convertedAt:  w.convertedAt,
         createdAt:    w.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── Virtual cards listing ─────────────────────────────────────────────────
+
+  async listAdminCards(query: {
+    page:    number;
+    limit:   number;
+    status?: string;
+    search?: string;
+  }) {
+    const { page, limit, status, search } = query;
+
+    const qb = this.cardRepo
+      .createQueryBuilder('vc')
+      .orderBy('vc.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status && status !== 'all') {
+      qb.andWhere('vc.status = :status', { status });
+    }
+    if (search) {
+      qb.andWhere(
+        `(vc.last4 LIKE :q
+          OR LOWER(vc.holder_name) LIKE :q
+          OR vc.user_id IN (SELECT u.id FROM users u WHERE LOWER(u.username) LIKE :q OR LOWER(u.email) LIKE :q))`,
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [cards, total] = await qb.getManyAndCount();
+
+    const uniqueUserIds = [...new Set(cards.map((c) => c.userId))];
+    const userMap = new Map<string, { username: string; email: string }>();
+    if (uniqueUserIds.length > 0) {
+      const users = await this.userRepo.find({
+        where: { id: In(uniqueUserIds) },
+        select: ['id', 'username', 'email'],
+      });
+      users.forEach((u) => userMap.set(u.id, { username: u.username, email: u.email }));
+    }
+
+    return {
+      cards: cards.map((vc) => ({
+        id:               vc.id,
+        userId:           vc.userId,
+        username:         userMap.get(vc.userId)?.username ?? '—',
+        email:            userMap.get(vc.userId)?.email    ?? '—',
+        last4:            vc.last4,
+        network:          vc.network,
+        holderName:       vc.holderName,
+        status:           vc.status,
+        availableBalance: vc.availableBalance,
+        spendLimit:       vc.spendLimit,
+        monthlySpend:     vc.monthlySpend,
+        expiryMonth:      vc.expiryMonth,
+        expiryYear:       vc.expiryYear,
+        createdAt:        vc.createdAt,
       })),
       total,
       page,
