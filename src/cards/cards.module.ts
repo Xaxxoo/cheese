@@ -2,7 +2,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
-import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { BlockchainModule } from '../blockchain/blockchain.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { CardsController } from './cards.controller';
 import { CardsService } from './cards.service';
@@ -11,7 +11,7 @@ import { VirtualCard } from './entities/virtual-card.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([VirtualCard, User]),
-    BlockchainService,
+    BlockchainModule,
     TransactionsModule,
   ],
   controllers: [CardsController],
