@@ -8,7 +8,7 @@ import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
-import { forgotPassword, resetPassword } from '@/lib/api/auth'
+import { forgotPassword, resetPassword, resendOtp } from '@/lib/api/auth'
 
 type Step = 'email' | 'otp' | 'done'
 
@@ -23,6 +23,7 @@ export default function ForgotPasswordPage() {
   const [newPw, setNewPw]     = useState('')
   const [showPw, setShowPw]   = useState(false)
   const [error, setError]     = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
 
   useEffect(() => { setBooting(false) }, [setBooting])
 
@@ -36,11 +37,34 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword(email.trim().toLowerCase())
       setStep('otp')
+      setResendCooldown(60)
+      startResendTimer()
       notify.success('Reset code sent — check your inbox')
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Could not send reset email')
     } finally {
       setLoading(false)
+    }
+  }
+
+  function startResendTimer() {
+    const interval = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0) return
+    try {
+      await resendOtp(email.toLowerCase(), 'password_reset')
+      notify.success('Code resent — check your inbox')
+      setResendCooldown(60)
+      startResendTimer()
+    } catch {
+      notify.error('Could not resend code. Try again.')
     }
   }
 
@@ -141,6 +165,15 @@ export default function ForgotPasswordPage() {
               Reset password
             </Button>
           </form>
+
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendCooldown > 0}
+            className="text-sm text-center transition-colors disabled:cursor-not-allowed text-white/40 hover:text-white/70 disabled:text-white/20"
+          >
+            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Didn't get it? Resend code"}
+          </button>
         </div>
       )}
 
