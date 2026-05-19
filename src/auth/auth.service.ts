@@ -323,6 +323,21 @@ export class AuthService {
       const user = await this.userRepo.findOne({ where: { email: dto.email } });
       if (!user) throw new NotFoundException('User not found');
 
+      // Re-confirm the device registration (idempotent upsert).
+      // Guards against the case where the signup request timed out before the
+      // device row was committed — the OTP was still sent, so we re-upsert here.
+      if (dto.deviceId && dto.devicePublicKey) {
+        await this.deviceRepo.upsert(
+          {
+            userId:     user.id,
+            deviceId:   dto.deviceId,
+            publicKey:  dto.devicePublicKey,
+            deviceName: 'Primary Device',
+          },
+          { conflictPaths: ['deviceId'] },
+        );
+      }
+
       try {
         await this.emailService.sendSignupSuccess({
           to: user.email,

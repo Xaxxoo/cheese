@@ -118,6 +118,16 @@ export class VerifyOtpDto {
   @IsOptional()
   @IsString()
   deviceId?: string;
+
+  @ApiPropertyOptional({
+    example: 'MFkwEwYHKoZIzj0CAQY...',
+    description:
+      'ECDSA P-256 public key — when provided alongside deviceId during EMAIL_VERIFY, ' +
+      're-upserts the device record so the key is confirmed even if the signup request timed out',
+  })
+  @IsOptional()
+  @IsString()
+  devicePublicKey?: string;
 }
 
 export class ResendOtpDto {

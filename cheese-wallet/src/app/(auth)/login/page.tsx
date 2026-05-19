@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
 import { login } from '@/lib/api/auth'
-import { generateDeviceKey, hasDeviceKey, signDeviceChallenge } from '@/lib/crypto/deviceSigning'
+import { signDeviceChallenge } from '@/lib/crypto/deviceSigning'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -40,13 +40,9 @@ export default function LoginPage() {
     try {
       const deviceId = ensureDeviceId()
 
-      // Ensure a local device key exists for signing
-      const exists = await hasDeviceKey(deviceId)
-      if (!exists) {
-        await generateDeviceKey(deviceId)
-      }
-
-      // Sign the raw deviceId string — backend verifies message === deviceId (UTF-8)
+      // Sign the raw deviceId string — backend verifies message === deviceId (UTF-8).
+      // signDeviceChallenge throws if no key exists locally, which is caught below
+      // and directs the user to the add-device registration flow.
       const deviceSignature = await signDeviceChallenge(deviceId)
 
       const { user, tokens } = await login({

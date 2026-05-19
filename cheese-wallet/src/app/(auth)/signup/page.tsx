@@ -147,8 +147,11 @@ export default function SignupPage() {
   // We hold off calling setAuth (which sets user in the store) until AFTER the
   // PIN step, because the auth layout redirects to /dashboard as soon as
   // user is non-null — which would skip step 4 entirely.
-  const pendingUser  = useRef<User | null>(null)
-  const pendingToken = useRef<string | null>(null)
+  const pendingUser      = useRef<User | null>(null)
+  const pendingToken     = useRef<string | null>(null)
+  // Keep the public key from signup so it can be re-confirmed during OTP verification.
+  // This lets the backend re-upsert the device even if the signup request timed out.
+  const pendingPublicKey = useRef<string | null>(null)
 
   useEffect(() => { setBooting(false) }, [setBooting])
 
@@ -222,6 +225,7 @@ export default function SignupPage() {
     try {
       const deviceId = ensureDeviceId()
       const { publicKey } = await generateDeviceKey(deviceId)
+      pendingPublicKey.current = publicKey
 
       await signup({
         fullName:       form.fullName.trim(),
@@ -258,11 +262,15 @@ export default function SignupPage() {
     setLoading(true)
     try {
       // verifyEmailOtp verifies the code AND returns tokens — no separate login needed.
+      // Passing devicePublicKey lets the backend re-upsert the device record, which
+      // guards against the case where the signup request timed out before the
+      // device was persisted (the OTP was still sent and is valid).
       const deviceId = ensureDeviceId()
       const { user: verifiedUser, tokens } = await verifyEmailOtp({
-        email: form.email.toLowerCase(),
+        email:            form.email.toLowerCase(),
         otp,
         deviceId,
+        devicePublicKey:  pendingPublicKey.current ?? undefined,
       })
       // Store credentials in refs — calling setAuth here would set user in the
       // zustand store, causing the auth layout to redirect before step 4 shows.
