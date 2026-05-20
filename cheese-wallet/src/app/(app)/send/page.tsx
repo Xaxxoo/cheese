@@ -516,7 +516,7 @@ function BankDetailsStep({
     queryFn:  getBalance,
     staleTime: STALE_TIMES.BALANCE,
   })
-  const maxNgn = parseFloat(balanceQ.data?.ngnEquivalent ?? '0')
+  const maxNgn = parseFloat((balanceQ.data?.ngnEquivalent ?? '0').replace(/[^0-9.]/g, ''))
 
   function handleAcctNum(v: string) {
     const clean = v.replace(/\D/g, '').slice(0, 10)
