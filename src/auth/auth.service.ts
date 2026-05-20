@@ -290,6 +290,10 @@ export class AuthService {
         `Wallet creation queued for retry [user=${user.id}] [chains=${failedChains.join(',')}]`,
       );
     } else if (failedChains.length > 0) {
+      const failUpdate: Partial<User> = {};
+      if (failedChains.includes('stellar')) failUpdate.stellarWalletStatus = WalletStatus.FAILED;
+      if (failedChains.includes('evm'))     failUpdate.evmWalletStatus     = WalletStatus.FAILED;
+      await this.userRepo.update({ id: user.id }, failUpdate);
       this.logger.warn(
         `Wallet creation failed for [user=${user.id}] [chains=${failedChains.join(',')}] — Redis unavailable, no retry queued`,
       );

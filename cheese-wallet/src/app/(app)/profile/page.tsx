@@ -275,6 +275,23 @@ export default function ProfilePage() {
       </div>
 
 
+      {/* Wallet failure warning */}
+      {(user?.stellarWalletStatus === 'failed' || user?.evmWalletStatus === 'failed') && (
+        <div className="mx-4 mt-3 rounded-2xl border border-red-400/20 bg-red-400/5 px-4 py-3.5 flex items-start gap-3">
+          <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-red-400">Wallet setup incomplete</p>
+            <p className="text-xs text-white/40 mt-0.5">
+              Your wallet could not be created automatically. Please{' '}
+              <a href="mailto:support@cheesepay.xyz" className="text-[#d4a843] hover:underline">
+                contact support
+              </a>{' '}
+              to resolve this.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Referral */}
       <ReferralCard />
 

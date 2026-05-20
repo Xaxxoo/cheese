@@ -7,11 +7,22 @@ export interface User {
   id: string;
   email: string;
   username: string;
-  fullName: string;
-  phone: string;
+  fullName: string | null;
+  phone: string | null;
   tier: 'silver' | 'gold' | 'black';
-  kycStatus: 'none' | 'pending' | 'verified' | 'rejected';
+  kycStatus: 'pending' | 'submitted' | 'verified' | 'rejected';
+  hasPin: boolean;
   createdAt: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  isAdmin?: boolean;
+  referralCode?: string | null;
+  points?: number;
+  stellarPublicKey?: string | null;
+  stellarWalletStatus?: 'pending' | 'active' | 'failed';
+  evmAddress?: string | null;
+  evmWalletStatus?: 'pending' | 'active' | 'failed';
+  updatedAt?: string;
 }
 
 export interface AuthTokens {

@@ -291,6 +291,7 @@ export default function SignupPage() {
       const isTimeout =
         err instanceof Error && err.message.toLowerCase().includes('timeout');
       if (isTimeout) {
+        notify.info('Network was slow — check your inbox for the verification code.');
         setStep(3);
       } else {
         notify.error(

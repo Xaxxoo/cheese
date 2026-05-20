@@ -56,6 +56,9 @@ export class SignupDto {
   @IsString()
   @MinLength(8)
   @MaxLength(64)
+  @Matches(/^(?=.*[A-Z])(?=.*[0-9]).{8,64}$/, {
+    message: 'Password must contain at least one uppercase letter and one number',
+  })
   password: string;
 
   @ApiProperty({
@@ -212,6 +215,9 @@ export class ResetPasswordDto {
   @IsString()
   @MinLength(8)
   @MaxLength(64)
+  @Matches(/^(?=.*[A-Z])(?=.*[0-9]).{8,64}$/, {
+    message: 'Password must contain at least one uppercase letter and one number',
+  })
   newPassword: string;
 }
 
@@ -219,7 +225,7 @@ export class VerifyPinDto {
   @ApiProperty({
     example: 'hmac-sha256-base64url-here',
     description:
-      'Client-computed HMAC-SHA256(pin, deviceId) in base64url — raw PIN never leaves the device',
+      'Client-computed HMAC-SHA256(pin, userId) in base64url — raw PIN never leaves the device',
   })
   @IsString()
   @IsNotEmpty()
@@ -306,7 +312,7 @@ export class ChangePinDto {
   @ApiProperty({
     example: 'hmac-sha256-old-pin-base64url',
     description:
-      'HMAC-SHA256(currentPin, deviceId) — verifies ownership of existing PIN',
+      'HMAC-SHA256(currentPin, userId) — verifies ownership of existing PIN',
   })
   @IsString()
   @IsNotEmpty()
@@ -314,7 +320,7 @@ export class ChangePinDto {
 
   @ApiProperty({
     example: 'hmac-sha256-new-pin-base64url',
-    description: 'HMAC-SHA256(newPin, deviceId) — the new PIN hash to store',
+    description: 'HMAC-SHA256(newPin, userId) — the new PIN hash to store',
   })
   @IsString()
   @IsNotEmpty()

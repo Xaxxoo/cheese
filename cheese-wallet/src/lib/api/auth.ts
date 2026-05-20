@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────
 // CHEESE PAY — Auth API Service
 // All functions return the unwrapped data payload.
-// PIN is never sent in plaintext — always HMAC-SHA256(pin, deviceId).
+// PIN is never sent in plaintext — always HMAC-SHA256(pin, userId).
 // ─────────────────────────────────────────────────────────
 
 import apiClient, { tokenStore } from './client'
@@ -108,11 +108,11 @@ export async function resetPassword(
 }
 
 // ── Verify PIN ────────────────────────────────────────────
-// PIN is hashed client-side: HMAC-SHA256(pin, deviceId).
+// PIN is hashed client-side: HMAC-SHA256(pin, userId).
 // Server compares against its stored hash.
 // Throws with statusCode 403 if PIN is wrong — callers should catch this.
 export async function verifyPin(payload: {
-  pinHash:  string   // HMAC-SHA256(pin, deviceId) — base64url
+  pinHash:  string   // HMAC-SHA256(pin, userId) — base64url
   deviceId: string
 }): Promise<{ valid: boolean }> {
   const { data } = await apiClient.post<ApiResponse<{ valid: boolean }>>(
