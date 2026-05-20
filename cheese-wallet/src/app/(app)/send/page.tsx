@@ -511,6 +511,13 @@ function BankDetailsStep({
   })
   const banks: NigerianBank[] = banksQ.data ?? []
 
+  const balanceQ = useQuery({
+    queryKey: QUERY_KEYS.BALANCE,
+    queryFn:  getBalance,
+    staleTime: STALE_TIMES.BALANCE,
+  })
+  const maxNgn = parseFloat(balanceQ.data?.ngnEquivalent ?? '0')
+
   function handleAcctNum(v: string) {
     const clean = v.replace(/\D/g, '').slice(0, 10)
     setAcctNum(clean)
@@ -561,17 +568,28 @@ function BankDetailsStep({
   }, [acctNum, selectedBank, verified])
 
   function handleAmountInput(v: string) {
-    setAmountRaw(v.replace(/\D/g, ''))
-    setAmountError('')
+    const raw = v.replace(/\D/g, '')
+    setAmountRaw(raw)
+    const parsed = parseInt(raw, 10) || 0
+    if (maxNgn > 0 && parsed > maxNgn) {
+      setAmountError(`Insufficient balance — available: ₦${Math.floor(maxNgn).toLocaleString('en-NG')}`)
+    } else {
+      setAmountError('')
+    }
   }
 
   const amount     = parseInt(amountRaw, 10) || 0
-  const canConfirm = verified && !!acctName && !!selectedBank && amount >= 100
+  const overBalance = maxNgn > 0 && amount > maxNgn
+  const canConfirm = verified && !!acctName && !!selectedBank && amount >= 100 && !overBalance
 
   function handleConfirm() {
     if (!selectedBank || !acctName) return
     if (!amount || amount <= 0) { setAmountError('Enter an amount'); return }
     if (amount < 100)           { setAmountError('Minimum is ₦100'); return }
+    if (overBalance) {
+      setAmountError(`Insufficient balance — available: ₦${Math.floor(maxNgn).toLocaleString('en-NG')}`)
+      return
+    }
     onNext(
       { bankCode: selectedBank.code, bankName: selectedBank.name, accountNumber: acctNum, accountName: acctName },
       amountRaw,
@@ -747,11 +765,18 @@ function BankDetailsStep({
       {/* Amount input — shown as soon as account is verified, regardless of name resolution */}
       {verified && (
         <div>
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">Amount</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-white/40 uppercase tracking-wider font-medium">Amount</p>
+            {balanceQ.data && (
+              <p className={cn('text-xs', overBalance ? 'text-red-400' : 'text-white/30')}>
+                Available: ₦{Math.floor(maxNgn).toLocaleString('en-NG')}
+              </p>
+            )}
+          </div>
           <div className={cn(
             'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
-            amountError   ? 'border-red-500/40'   :
-            amount >= 100 ? 'border-[#d4a843]/40' :
+            overBalance || amountError ? 'border-red-500/40'   :
+            amount >= 100             ? 'border-[#d4a843]/40' :
             'border-white/10 focus-within:border-[#d4a843]/50',
           )}>
             <span className="text-white/30 text-sm font-medium shrink-0">₦</span>
@@ -764,34 +789,46 @@ function BankDetailsStep({
               autoFocus={!nameUnverified}
               className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none"
             />
-            {amount >= 100 && (
+            {amount >= 100 && !overBalance && (
               <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
             )}
           </div>
 
           {/* Quick-select preset amounts */}
           <div className="grid grid-cols-3 gap-2 mt-3">
-            {[500, 1000, 2000, 5000, 10000, 20000].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => { setAmountRaw(String(preset)); setAmountError('') }}
-                className={cn(
-                  'py-2.5 rounded-xl border text-sm font-medium transition-colors',
-                  amountRaw === String(preset)
-                    ? 'bg-[#d4a843]/15 border-[#d4a843]/40 text-[#d4a843]'
-                    : 'bg-white/4 border-white/8 text-white/50 hover:bg-white/8 hover:text-white/80',
-                )}
-              >
-                ₦{preset.toLocaleString('en-NG')}
-              </button>
-            ))}
+            {[500, 1000, 2000, 5000, 10000, 20000].map((preset) => {
+              const exceedsBalance = maxNgn > 0 && preset > maxNgn
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    setAmountRaw(String(preset))
+                    if (exceedsBalance) {
+                      setAmountError(`Insufficient balance — available: ₦${Math.floor(maxNgn).toLocaleString('en-NG')}`)
+                    } else {
+                      setAmountError('')
+                    }
+                  }}
+                  className={cn(
+                    'py-2.5 rounded-xl border text-sm font-medium transition-colors',
+                    exceedsBalance
+                      ? 'bg-white/2 border-white/5 text-white/20 cursor-not-allowed'
+                      : amountRaw === String(preset)
+                      ? 'bg-[#d4a843]/15 border-[#d4a843]/40 text-[#d4a843]'
+                      : 'bg-white/4 border-white/8 text-white/50 hover:bg-white/8 hover:text-white/80',
+                  )}
+                >
+                  ₦{preset.toLocaleString('en-NG')}
+                </button>
+              )
+            })}
           </div>
 
           {amountError && (
             <p className="text-xs text-red-400 mt-2 px-1">{amountError}</p>
           )}
-          {amountRaw && amount > 0 && amount < 100 && (
+          {amountRaw && amount > 0 && amount < 100 && !amountError && (
             <p className="text-xs text-amber-400 mt-2 px-1">Minimum transfer is ₦100</p>
           )}
         </div>
