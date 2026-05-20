@@ -113,6 +113,7 @@ export class PulseMfbClient implements OnModuleInit {
     debitAccount: string;
     beneficiaryAccountNumber: string;
     beneficiaryBankCode: string;
+    beneficiaryBankName: string;
     amount: number;
     narration: string;
     reference: string;
@@ -120,6 +121,7 @@ export class PulseMfbClient implements OnModuleInit {
     this.logger.log(
       `PulseMFB transfer request [ref=${params.reference}] ` +
         `[bankCode=${params.beneficiaryBankCode}] ` +
+        `[bankName=${params.beneficiaryBankName}] ` +
         `[account=${params.beneficiaryAccountNumber}]`,
     );
 
@@ -129,6 +131,7 @@ export class PulseMfbClient implements OnModuleInit {
         debit_account_number: params.debitAccount,
         beneficiary_account_number: params.beneficiaryAccountNumber,
         beneficiary_bank_code: params.beneficiaryBankCode,
+        beneficiary_bank_name: params.beneficiaryBankName,
         amount: params.amount,
         narration: params.narration,
         reference: params.reference,
