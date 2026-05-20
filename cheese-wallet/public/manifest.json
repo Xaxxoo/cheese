@@ -2,7 +2,7 @@
   "name": "Cheese Pay",
   "short_name": "Cheese",
   "description": "Your money, stronger than the Naira. Hold USDC, send Naira, pay bills.",
-  "start_url": "/wallet",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0904",
   "theme_color": "#0a0904",
@@ -21,12 +21,12 @@
   "shortcuts": [
     {
       "name": "Send Money",
-      "url": "/wallet?screen=send",
+      "url": "/send",
       "description": "Send USDC or NGN"
     },
     {
       "name": "Add Funds",
-      "url": "/wallet?screen=home&action=add",
+      "url": "/receive",
       "description": "Top up your wallet"
     }
   ]

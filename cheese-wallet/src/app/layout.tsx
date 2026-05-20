@@ -35,15 +35,26 @@
 //   )
 // }
 import { Toaster } from 'react-hot-toast';
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { Providers } from '@/lib/providers';
 
+export const viewport: Viewport = {
+  themeColor: '#0a0904',
+}
+
 export const metadata: Metadata = {
+  applicationName: 'Cheese Pay',
   title: 'Cheese Wallet — Reserve Your Username',
   description: 'Cheese is a USD wallet where you send money with a username. Reserve yours before launch.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://cheese.app'),
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Cheese',
+  },
   openGraph: {
     title: 'Reserve your @username on Cheese Wallet',
     description: 'Send money to anyone with just a username. Secure yours before launch.',
@@ -58,7 +69,10 @@ export const metadata: Metadata = {
     description: 'Send money to anyone with just a username. Secure yours before launch.',
     images: ['/og-image.png'],
   },
-  icons: { icon: '/icons/icon-192.png' },
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
