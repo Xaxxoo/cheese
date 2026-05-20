@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
 import { Check, Copy, ExternalLink, Trophy } from 'lucide-react';
 import { trackShare } from '@/lib/api';
+import { notify } from '@/lib/toast';
 
 interface StoredUser {
   id: string;
@@ -92,10 +92,10 @@ export default function ConfirmedPage() {
     onSuccess: (data, vars) => {
       setSharedPlatforms((prev) => new Set([...Array.from(prev), vars.platformId]));
       setTotalPoints((prev) => prev + (data.pendingPoints || 0));
-      toast.success(`+${data.pendingPoints} points pending verification!`);
+      notify.success(`+${data.pendingPoints} points pending verification!`);
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Could not track share');
+      notify.error(err?.response?.data?.message || 'Could not track share');
     },
   });
 
@@ -108,7 +108,7 @@ export default function ConfirmedPage() {
   const handleCopy = async () => {
     await navigator.clipboard.writeText(referralLink);
     setCopied(true);
-    toast.success('Copied!');
+    notify.success('Copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 

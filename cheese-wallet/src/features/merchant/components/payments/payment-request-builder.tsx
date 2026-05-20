@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { Copy, Link2, QrCode, ReceiptText } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { previewPaymentRequest, createMerchantPayment } from '../../lib/merchant-api';
 import type { PaymentRequestDraft, PaymentRequestPreview } from '../../types';
 import { MerchantButton, MerchantInput, SectionCard } from '../shared/primitives';
 import { settlementModeLabel } from '../../lib/format';
+import { notify } from '@/lib/toast';
 
 const defaultDraft: PaymentRequestDraft = {
   kind: 'checkout_session',
@@ -40,7 +40,7 @@ export function PaymentRequestBuilder({ onCreated }: PaymentRequestBuilderProps 
       const nextPreview = await previewPaymentRequest(draft);
       setPreview(nextPreview);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not build payment request');
+      notify.error(error instanceof Error ? error.message : 'Could not build payment request');
     } finally {
       setBuilding(false);
     }
@@ -50,12 +50,12 @@ export function PaymentRequestBuilder({ onCreated }: PaymentRequestBuilderProps 
     setCreating(true);
     try {
       const result = await createMerchantPayment(draft);
-      toast.success(`Payment created: ${result.reference}`);
+      notify.success(`Payment created: ${result.reference}`);
       setDraft(defaultDraft);
       setPreview(null);
       onCreated?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not create payment request');
+      notify.error(error instanceof Error ? error.message : 'Could not create payment request');
     } finally {
       setCreating(false);
     }
@@ -278,7 +278,7 @@ export function PaymentRequestBuilder({ onCreated }: PaymentRequestBuilderProps 
               variant="secondary"
               onClick={async () => {
                 await navigator.clipboard.writeText(preview.checkoutUrl);
-                toast.success('Checkout URL copied');
+                notify.success('Checkout URL copied');
               }}
               className="w-full"
             >

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
 import { CheckCheck, AlertTriangle, Clock, XCircle, RefreshCw, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { resolvePayLink, payPayLink } from '@/lib/api/wallet'
@@ -12,6 +11,7 @@ import { QUERY_KEYS } from '@/constants'
 import { setPin as apiSetPin } from '@/lib/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { hashPin, signDeviceChallenge } from '@/lib/crypto/deviceSigning'
+import { notify } from '@/lib/toast'
 
 // ── Inline set-PIN flow ────────────────────────────────────
 function SetPinFlow({ onBack }: { onBack?: () => void }) {
@@ -244,7 +244,7 @@ export default function PayLinkPage() {
       const text = Array.isArray(msg) ? msg.join(', ') : String(msg)
       setError(text)
       setPin('')
-      toast.error(text)
+      notify.error(text)
     },
   })
 

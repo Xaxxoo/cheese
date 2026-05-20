@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
 import {
   ArrowLeft, Copy, CheckCheck, Link2, X, Plus, RefreshCw, Clock,
 } from 'lucide-react'
@@ -11,6 +10,7 @@ import { cn } from '@/lib/cn'
 import { createPayLink, getMyPayLinks, cancelPayLink } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { CreatePayLinkResponse, PayLinkData } from '@/types'
+import { notify } from '@/lib/toast'
 
 // ── Skeleton ───────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -49,7 +49,7 @@ function LinkCard({
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Could not copy link')
+      notify.error('Could not copy link')
     }
   }
 
@@ -111,7 +111,7 @@ function CreatedBanner({
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
-      toast.error('Could not copy link')
+      notify.error('Could not copy link')
     }
   }
 
@@ -188,10 +188,10 @@ export default function PayLinkPage() {
   const cancelMut = useMutation({
     mutationFn: cancelPayLink,
     onSuccess: () => {
-      toast.success('Link cancelled')
+      notify.success('Link cancelled')
       qc.invalidateQueries({ queryKey: QUERY_KEYS.PAYLINK_MY })
     },
-    onError: () => toast.error('Could not cancel link'),
+    onError: () => notify.error('Could not cancel link'),
   })
 
   function submit() {

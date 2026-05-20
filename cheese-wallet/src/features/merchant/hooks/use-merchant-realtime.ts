@@ -3,9 +3,9 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import toast from 'react-hot-toast';
 import { merchantQueryKeys } from './use-merchant-data';
 import { useMerchantAuthStore } from '../store/merchant-auth-store';
+import { notify } from '@/lib/toast';
 
 export function useMerchantRealtime() {
   const queryClient = useQueryClient();
@@ -29,24 +29,22 @@ export function useMerchantRealtime() {
     }
 
     socket.on('payment.confirmed', (payload: { reference: string }) => {
-      toast.success(`Payment ${payload.reference} confirmed`);
+      notify.success(`Payment ${payload.reference} confirmed`);
       invalidateCoreData();
     });
 
     socket.on('payment.failed', (payload: { reference: string }) => {
-      toast.error(`Payment ${payload.reference} failed`);
+      notify.error(`Payment ${payload.reference} failed`);
       invalidateCoreData();
     });
 
     socket.on('settlement.settled', (payload: { paymentReference: string }) => {
-      toast.success(`Settlement completed for ${payload.paymentReference}`);
+      notify.success(`Settlement completed for ${payload.paymentReference}`);
       invalidateCoreData();
     });
 
     socket.on('risk.alert.created', () => {
-      toast('Suspicious activity detected for review.', {
-        icon: '!',
-      });
+      notify.warning('Suspicious activity detected for review.');
     });
 
     return () => {

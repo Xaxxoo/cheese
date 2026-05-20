@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
-import toast from 'react-hot-toast';
 import { Loader2, Check, X, AlertCircle, ChevronRight, Shield, Zap, Gift, type LucideIcon} from 'lucide-react';
 import { registerWaitlist, checkUsername } from '@/lib/api';
+import { notify } from '@/lib/toast';
 
 function useDebounce<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -47,7 +47,7 @@ export function WaitlistForm() {
       try {
         if (!data?.user) {
           console.error('Invalid registration response:', data);
-          toast.error('Registration succeeded but response invalid');
+          notify.error('Registration succeeded but response invalid');
           return;
         }
         sessionStorage.setItem('cheese_user', JSON.stringify(data.user));
@@ -55,22 +55,22 @@ export function WaitlistForm() {
         router.push('/waitlist/confirmed');
       } catch (err: any) {
         console.error('Error processing registration:', err);
-        toast.error(err?.message || 'Error processing registration');
+        notify.error(err?.message || 'Error processing registration');
       }
     },
     onError: (err: any) => {
       console.error('Registration error:', err);
       const msg = err?.response?.data?.message || err?.message;
-      toast.error(Array.isArray(msg) ? msg.join(', ') : msg || 'Something went wrong.');
+      notify.error(Array.isArray(msg) ? msg.join(', ') : msg || 'Something went wrong.');
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) { toast.error('Please enter your email'); return; }
-    if (username.length < 3) { toast.error('Username must be at least 3 characters'); return; }
+    if (!email) { notify.error('Please enter your email'); return; }
+    if (username.length < 3) { notify.error('Username must be at least 3 characters'); return; }
     if (availability && !availability.available) { 
-      toast.error(availability.reason || 'That username is not available'); 
+      notify.error(availability.reason || 'That username is not available'); 
       return; 
     }
 

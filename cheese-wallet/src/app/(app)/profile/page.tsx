@@ -9,11 +9,11 @@ import {
   Smartphone, RefreshCw, Trash2, User, Gift,
   BadgeCheck, AlertCircle, Clock,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
 import { getReferralInfo, listDevices, revokeDevice } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
+import { notify } from '@/lib/toast'
 
 // ── Skeleton ───────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -64,7 +64,7 @@ function ReferralCard() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Could not copy code')
+      notify.error('Could not copy code')
     }
   }
 
@@ -134,9 +134,9 @@ function DevicesCard({ currentDeviceId }: { currentDeviceId: string }) {
     mutationFn: (id: string) => revokeDevice(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.DEVICES })
-      toast.success('Device removed')
+      notify.success('Device removed')
     },
-    onError: () => toast.error('Could not remove device'),
+    onError: () => notify.error('Could not remove device'),
   })
 
   function formatLastSeen(iso: string) {

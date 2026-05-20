@@ -6,12 +6,12 @@ import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft, Copy, CheckCheck, RefreshCw, Download, AlertTriangle,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
 import { getWalletAddress, getDepositNetworks } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { DepositNetwork } from '@/types'
+import { notify } from '@/lib/toast'
 
 // ── Skeleton ───────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -133,7 +133,7 @@ export default function ReceivePage() {
       setCopiedAddr(true)
       setTimeout(() => setCopiedAddr(false), 2000)
     } catch {
-      toast.error('Could not copy address')
+      notify.error('Could not copy address')
     }
   }
 
@@ -144,7 +144,7 @@ export default function ReceivePage() {
       setCopiedUser(true)
       setTimeout(() => setCopiedUser(false), 2000)
     } catch {
-      toast.error('Could not copy username')
+      notify.error('Could not copy username')
     }
   }
 

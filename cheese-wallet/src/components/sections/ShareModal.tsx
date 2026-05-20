@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
 import { X, Check, ExternalLink, Trophy } from 'lucide-react';
 import { trackShare, type SharePlatform } from '@/lib/api';
+import { notify } from '@/lib/toast';
 
 interface Platform {
   id: SharePlatform;
@@ -75,16 +75,16 @@ export function ShareModal({ onClose }: Props) {
       trackShare({ userId: storedUser.id, platform: platformId }),
     onSuccess: (data, vars) => {
       setSharedPlatforms((prev) => new Set([...prev, vars.platformId]));
-      toast.success(`+${data.pendingPoints} points pending verification!`);
+      notify.success(`+${data.pendingPoints} points pending verification!`);
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Could not track share');
+      notify.error(err?.response?.data?.message || 'Could not track share');
     },
   });
 
   const handleShare = (p: Platform) => {
     if (!storedUser) {
-      toast.error('Reserve your username first to earn points');
+      notify.error('Reserve your username first to earn points');
       return;
     }
     window.open(p.shareUrl(referralLink, storedUser.username), '_blank', 'noopener,noreferrer');

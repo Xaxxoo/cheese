@@ -7,11 +7,11 @@ import {
   ArrowLeft, ArrowUpRight, ArrowDownLeft, Building2,
   RefreshCw, TrendingUp, ChevronDown,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { cn } from '@/lib/cn'
 import { getTransactions, syncBankTransferStatus } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction } from '@/types'
+import { notify } from '@/lib/toast'
 
 type TxType = Transaction['type']
 
@@ -69,13 +69,13 @@ function TxRow({ tx, onSync }: { tx: Transaction; onSync?: () => void }) {
     try {
       const result = await syncBankTransferStatus(tx.reference)
       if (result.synced) {
-        toast.success('Transfer status updated')
+        notify.success('Transfer status updated')
         onSync?.()
       } else {
-        toast('Transfer is still processing', { icon: '⏳' })
+        notify.info('Transfer is still processing')
       }
     } catch {
-      toast.error('Could not sync transfer status')
+      notify.error('Could not sync transfer status')
     } finally {
       setSyncing(false)
     }

@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
 import {
   ArrowUpRight, ArrowDownLeft, Link2, Eye, EyeOff,
   TrendingUp, RefreshCw, Copy, CheckCheck,
@@ -13,6 +12,7 @@ import { useAuthStore } from '@/store/authStore'
 import { getBalance, getTransactions, getWalletAddress } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction } from '@/types'
+import { notify } from '@/lib/toast'
 
 // ── Skeleton ───────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -49,7 +49,7 @@ function BalanceCard() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Could not copy address')
+      notify.error('Could not copy address')
     }
   }
 
