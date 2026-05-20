@@ -667,6 +667,7 @@ export class BanksService {
           accountNumber: dto.accountNumber,
           bankCode: dto.bankCode,
           bankName,
+          accountName,
           amountNgn,
           reference,
         });
@@ -915,6 +916,7 @@ export class BanksService {
     accountNumber: string;
     bankCode: string;
     bankName: string;
+    accountName: string;
     amountNgn: number;
     reference: string;
   }): Promise<{ providerRef: string; completedImmediately: boolean }> {
@@ -923,6 +925,7 @@ export class BanksService {
       beneficiaryAccountNumber: params.accountNumber,
       beneficiaryBankCode: params.bankCode,
       beneficiaryBankName: params.bankName,
+      beneficiaryName: params.accountName,
       amount: params.amountNgn,
       narration: `Cheese Pay withdrawal ${params.reference}`,
       reference: params.reference,
