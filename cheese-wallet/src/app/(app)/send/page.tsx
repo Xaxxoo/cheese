@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
   X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle,
-  AtSign, Wallet, ChevronRight, Loader2, Building2, User, Layers,
+  AtSign, Wallet, ChevronRight, Loader2, Building2, User, Layers, Search,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
@@ -498,6 +498,7 @@ function BankDetailsStep({
   const [verifying, setVerifying]       = useState(false)
   const [verified, setVerified]         = useState(false)
   const [bankOpen, setBankOpen]         = useState(false)
+  const [bankQuery, setBankQuery]       = useState('')
   const [verifyError, setVerifyError]   = useState('')
   const [amountRaw, setAmountRaw]       = useState('')
   const [amountError, setAmountError]   = useState('')
@@ -583,38 +584,66 @@ function BankDetailsStep({
       <div>
         <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">Bank</p>
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => setBankOpen(!bankOpen)}
-            className={cn(
-              'flex items-center gap-3 h-14 px-4 rounded-2xl border w-full bg-white/6 text-left',
-              selectedBank ? 'border-white/15 text-white' : 'border-white/10 text-white/30',
-            )}
-          >
+          <div className={cn(
+            'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
+            bankOpen ? 'border-[#d4a843]/50' : selectedBank ? 'border-white/15' : 'border-white/10',
+          )}>
             <Building2 size={17} className="text-white/30 shrink-0" />
-            <span className="flex-1 text-sm">{selectedBank?.name ?? (banksQ.isLoading ? 'Loading banks…' : 'Select bank')}</span>
-            <ChevronRight size={16} className={cn('text-white/25 transition-transform duration-150', bankOpen && 'rotate-90')} />
-          </button>
-          {bankOpen && (
-            <div className="absolute top-full mt-1 left-0 right-0 bg-[#141414] border border-white/10 rounded-2xl overflow-hidden z-10 max-h-52 overflow-y-auto">
-              {banks.map((b) => (
-                <button
-                  key={b.code}
+            <input
+              type="text"
+              value={bankOpen ? bankQuery : (selectedBank?.name ?? '')}
+              onChange={(e) => setBankQuery(e.target.value)}
+              onFocus={() => { setBankOpen(true); setBankQuery('') }}
+              onBlur={() => setTimeout(() => setBankOpen(false), 150)}
+              placeholder={banksQ.isLoading ? 'Loading banks…' : 'Search for bank…'}
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
+              readOnly={!bankOpen}
+            />
+            {selectedBank && !bankOpen
+              ? <button
                   type="button"
-                  onClick={() => {
-                    setSelectedBank(b)
-                    setBankOpen(false)
-                    setVerified(false)
-                    setAcctName('')
-                    setNameUnverified(false)
-                    setAmountRaw('')
-                    setAmountError('')
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    setSelectedBank(null)
+                    setBankQuery('')
+                    setBankOpen(true)
                   }}
-                  className="w-full text-left px-4 py-3 text-sm text-white/70 hover:bg-white/8 hover:text-white transition-colors border-b border-white/5 last:border-0"
+                  className="text-white/25 hover:text-white/50 transition-colors"
                 >
-                  {b.name}
+                  <X size={14} />
                 </button>
-              ))}
+              : <Search size={15} className="text-white/25 shrink-0" />
+            }
+          </div>
+          {bankOpen && (
+            <div className="absolute top-full mt-1 left-0 right-0 bg-[#141414] border border-white/10 rounded-2xl overflow-hidden z-10 max-h-56 overflow-y-auto">
+              {(() => {
+                const filtered = bankQuery.trim()
+                  ? banks.filter((b) => b.name.toLowerCase().includes(bankQuery.toLowerCase()))
+                  : banks
+                return filtered.length === 0
+                  ? <p className="px-4 py-5 text-sm text-white/30 text-center">No banks found</p>
+                  : filtered.map((b) => (
+                      <button
+                        key={b.code}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setSelectedBank(b)
+                          setBankOpen(false)
+                          setBankQuery('')
+                          setVerified(false)
+                          setAcctName('')
+                          setNameUnverified(false)
+                          setAmountRaw('')
+                          setAmountError('')
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm text-white/70 hover:bg-white/8 hover:text-white transition-colors border-b border-white/5 last:border-0"
+                      >
+                        {b.name}
+                      </button>
+                    ))
+              })()}
             </div>
           )}
         </div>
