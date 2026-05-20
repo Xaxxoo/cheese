@@ -666,7 +666,6 @@ export class BanksService {
           debitAccount: this.pulseMfb.platformDebitAccount,
           accountNumber: dto.accountNumber,
           bankCode: dto.bankCode,
-          accountName,
           amountNgn,
           reference,
         });
@@ -914,7 +913,6 @@ export class BanksService {
     debitAccount: string;
     accountNumber: string;
     bankCode: string;
-    accountName: string;
     amountNgn: number;
     reference: string;
   }): Promise<{ providerRef: string; completedImmediately: boolean }> {
@@ -922,7 +920,6 @@ export class BanksService {
       debitAccount: params.debitAccount,
       beneficiaryAccountNumber: params.accountNumber,
       beneficiaryBankCode: params.bankCode,
-      beneficiaryName: params.accountName,
       amount: params.amountNgn,
       narration: `Cheese Pay withdrawal ${params.reference}`,
       reference: params.reference,
