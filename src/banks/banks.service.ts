@@ -370,6 +370,19 @@ function isPulseMfbRecipientValidationFailureMessage(message: string): boolean {
   );
 }
 
+function isPulseMfbInternalError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('gson') ||
+    normalized.includes('must not be null') ||
+    normalized.includes('nullpointerexception') ||
+    normalized.includes('classcastexception') ||
+    normalized.includes('internal server error') ||
+    normalized.includes('deserializ') ||
+    normalized.includes('fromjson')
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -463,6 +476,11 @@ export class BanksService {
       }
       if (isPulseMfbRecipientValidationFailureMessage(errorMessage)) {
         throw err;
+      }
+      if (isPulseMfbInternalError(errorMessage)) {
+        throw new BadRequestException(
+          'The banking provider is temporarily unavailable. Please try again in a few minutes.',
+        );
       }
 
       throw new BadRequestException(
@@ -709,9 +727,11 @@ export class BanksService {
         failureReason: `Banking provider failed — USDC refunded. ${(err as Error).message}`,
       });
 
-      throw new BadRequestException(
-        `Bank transfer failed: ${(err as Error).message}`,
-      );
+      const rawMsg = (err as Error).message ?? '';
+      const userMsg = isPulseMfbInternalError(rawMsg)
+        ? 'The banking provider could not process this transfer. Your USDC balance has been refunded — please try again in a few minutes.'
+        : `Bank transfer failed: ${rawMsg}`;
+      throw new BadRequestException(userMsg);
     }
 
     // Fire-and-forget milestone check
