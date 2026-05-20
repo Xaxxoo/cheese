@@ -666,6 +666,7 @@ export class BanksService {
           debitAccount: this.pulseMfb.platformDebitAccount,
           accountNumber: dto.accountNumber,
           bankCode: dto.bankCode,
+          bankName,
           amountNgn,
           reference,
         });
