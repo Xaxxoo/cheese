@@ -32,7 +32,9 @@ export interface User {
   emailVerified?: boolean;
   phoneVerified?: boolean;
   stellarPublicKey?: string | null;
+  stellarWalletStatus?: 'pending' | 'active' | 'failed';
   evmAddress?: string | null;
+  evmWalletStatus?: 'pending' | 'active' | 'failed';
   hasPin?: boolean;
 }
 
