@@ -21,12 +21,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let error = 'InternalServerError';
+    let details: Record<string, unknown> = {};
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exResponse = exception.getResponse() as
         | string
-        | { message?: string | string[]; error?: string };
+        | {
+            message?: string | string[];
+            error?: string;
+            [key: string]: unknown;
+          };
       message =
         typeof exResponse === 'string'
           ? exResponse
@@ -35,6 +40,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
             : exResponse.message || exception.message;
       error =
         (typeof exResponse !== 'string' && exResponse.error) || exception.name;
+      if (typeof exResponse !== 'string') {
+        const { message: _message, error: _error, ...extra } = exResponse;
+        details = extra;
+      }
     } else if (exception instanceof Error) {
       message = exception.message;
       this.logger.error(
@@ -48,6 +57,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       message,
       error,
+      ...details,
       path: request.url,
       timestamp: new Date().toISOString(),
     });

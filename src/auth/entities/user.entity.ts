@@ -1,5 +1,7 @@
 // src/auth/entities/user.entity.ts
 import {
+  BeforeInsert,
+  BeforeUpdate,
   Column,
   CreateDateColumn,
   Entity,
@@ -13,6 +15,10 @@ import { Device } from '../../devices/entities/device.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Transaction } from '../../transactions/entities/transaction.entity';
 import { ShareEvent } from '../../waitlist/entities/share-event.entity';
+import {
+  normalizeEmail,
+  normalizeUsername,
+} from '../utils/identity-normalization.util';
 
 export enum KycStatus {
   PENDING = 'pending',
@@ -191,4 +197,11 @@ export class User {
 
   @OneToMany(() => ShareEvent, (share) => share.user)
   shareEvents: ShareEvent[];
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  normalizeIdentityFields(): void {
+    this.email = normalizeEmail(this.email);
+    this.username = normalizeUsername(this.username);
+  }
 }

@@ -4,273 +4,301 @@
 
 // ── Auth ──────────────────────────────────────────────────
 export interface User {
-  id: string
-  email: string
-  username: string
-  fullName: string
-  phone: string
-  tier: 'silver' | 'gold' | 'black'
-  kycStatus: 'none' | 'pending' | 'verified' | 'rejected'
-  createdAt: string
+  id: string;
+  email: string;
+  username: string;
+  fullName: string;
+  phone: string;
+  tier: 'silver' | 'gold' | 'black';
+  kycStatus: 'none' | 'pending' | 'verified' | 'rejected';
+  createdAt: string;
 }
 
 export interface AuthTokens {
-  accessToken: string
-  refreshToken: string
-  expiresIn: number
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
 export interface DeviceKey {
-  deviceId: string
-  publicKey: string
-  deviceName: string
-  registeredAt: string
+  deviceId: string;
+  publicKey: string;
+  deviceName: string;
+  registeredAt: string;
 }
 
 export interface LoginPayload {
-  identifier: string
-  password: string
-  deviceSignature: string
-  deviceId: string
+  identifier: string;
+  password: string;
+  deviceSignature: string;
+  deviceId: string;
 }
 
 export interface SignupPayload {
-  fullName: string
-  email: string
-  phone: string
-  username: string
-  password: string
-  devicePublicKey: string
-  deviceId: string
+  fullName: string;
+  email: string;
+  phone: string;
+  username: string;
+  password: string;
+  devicePublicKey: string;
+  deviceId: string;
 }
 
 export interface OtpVerifyPayload {
-  email: string
-  otp: string
-  type: 'email_verify' | 'password_reset' | 'phone_verify' | 'login_2fa' | 'device_register'
+  email: string;
+  otp: string;
+  type:
+    | 'email_verify'
+    | 'password_reset'
+    | 'phone_verify'
+    | 'login_2fa'
+    | 'device_register';
 }
 
 export interface ResetPasswordPayload {
-  email: string
-  otp: string
-  newPassword: string
+  email: string;
+  otp: string;
+  newPassword: string;
 }
 
 // ── Wallet ────────────────────────────────────────────────
 export interface WalletBalance {
-  usdc: string
-  usdcFormatted: string
-  ngnEquivalent: string
-  ngnRate: number
-  lastUpdated: string
+  usdc: string;
+  usdcFormatted: string;
+  ngnEquivalent: string;
+  ngnRate: number;
+  lastUpdated: string;
 }
 
 export interface WalletAddress {
-  address: string
-  username: string
-  network: string
+  address: string;
+  username: string;
+  network: string;
 }
 
 // ── Transactions ──────────────────────────────────────────
-export type TxType = 'send' | 'receive' | 'bank_out' | 'bank_in' | 'deposit' | 'card_spend'
-export type TxStatus = 'pending' | 'confirmed' | 'failed'
+export type TxType =
+  | 'send'
+  | 'receive'
+  | 'bank_out'
+  | 'bank_in'
+  | 'deposit'
+  | 'card_spend';
+export type TxStatus = 'pending' | 'confirmed' | 'failed';
 
 export interface Transaction {
-  id: string
-  type: TxType
-  status: TxStatus
-  amountUsdc: string       // always present; NGN amounts stored here as string too
-  amountNgn?: string       // set for bank_out / bank_in
-  fee: string
-  recipient?: string       // username for p2p, address for on-chain
-  recipientName?: string   // display name
-  recipientAddress?: string // EVM address (on-chain sends)
-  recipientIdentifier?: string // canonical repeatable identifier (@username / 0x… / account#)
-  bank?: string
-  accountNumber?: string
-  txHash?: string
-  network?: string         // 'arbitrum' | 'polygon' | 'base' etc.
-  reference: string
-  createdAt: string
-  description?: string
+  id: string;
+  type: TxType;
+  status: TxStatus;
+  amountUsdc: string; // always present; NGN amounts stored here as string too
+  amountNgn?: string; // set for bank_out / bank_in
+  fee: string;
+  recipient?: string; // username for p2p, address for on-chain
+  recipientName?: string; // display name
+  recipientAddress?: string; // EVM address (on-chain sends)
+  recipientIdentifier?: string; // canonical repeatable identifier (@username / 0x… / account#)
+  bank?: string;
+  accountNumber?: string;
+  txHash?: string;
+  network?: string; // 'arbitrum' | 'polygon' | 'base' etc.
+  reference: string;
+  createdAt: string;
+  description?: string;
 }
 
 export interface TransactionListResponse {
-  items: Transaction[]
-  total: number
-  page: number
-  pageSize: number
-  hasMore: boolean
+  items: Transaction[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }
 
 // ── Bank Transfer ─────────────────────────────────────────
 export interface NigerianBank {
-  code: string
-  name: string
-  shortName: string
-  color: string
-  type: 'commercial' | 'microfinance' | 'fintech' | 'merchant'
-  nipEnabled: boolean
+  code: string;
+  name: string;
+  shortName: string;
+  color: string;
+  type: 'commercial' | 'microfinance' | 'fintech' | 'merchant';
+  nipEnabled: boolean;
 }
 
 export interface AccountResolvePayload {
-  accountNumber: string
-  bankCode: string
+  accountNumber: string;
+  bankCode: string;
 }
 
 export interface AccountResolveResponse {
-  accountName: string
-  accountNumber: string
-  bankCode: string
-  bankName: string
-  verified: boolean
+  accountName: string;
+  accountNumber: string;
+  bankCode: string;
+  bankName: string;
+  verified: boolean;
 }
 
 export interface BankTransferPayload {
-  accountNumber: string
-  bankCode: string
-  accountName: string
-  amountNgn: string
-  pinHash: string
-  deviceSignature: string
-  deviceId: string
-  timestamp?: string
-  nonce?: string
+  accountNumber: string;
+  bankCode: string;
+  accountName: string;
+  amountNgn: string;
+  pinHash: string;
+  deviceSignature: string;
+  deviceId: string;
+  timestamp?: string;
+  nonce?: string;
 }
 
 export interface BankTransferResponse {
-  reference: string
-  providerReference?: string | null
-  status: 'processing' | 'completed'
-  message: string
-  amountNgn: string
-  amountUsdc: string
-  rateApplied: string
-  fee: string
-  recipientName: string
-  bankName: string
-  stellarTxHash: string
-  createdAt: string
+  reference: string;
+  providerReference?: string | null;
+  status: 'processing' | 'completed';
+  message: string;
+  amountNgn: string;
+  amountUsdc: string;
+  rateApplied: string;
+  fee: string;
+  recipientName: string;
+  bankName: string;
+  stellarTxHash: string;
+  createdAt: string;
 }
 
 // ── Exchange Rate ─────────────────────────────────────────
 export interface ExchangeRate {
-  usdToNgn: number
-  effectiveRate: number
-  spread: number
-  fetchedAt: string
-  source: string
+  usdToNgn: number;
+  effectiveRate: number;
+  spread: number;
+  fetchedAt: string;
+  source: string;
 }
 
 // ── Deposit ───────────────────────────────────────────────
 export interface DepositNetwork {
-  id: string
-  name: string
-  symbol: string
-  color: string
-  shortName: string
-  address: string
-  fee: string
-  feeDisplay: string
-  isFeatured: boolean
+  id: string;
+  name: string;
+  symbol: string;
+  color: string;
+  shortName: string;
+  address: string;
+  fee: string;
+  feeDisplay: string;
+  isFeatured: boolean;
 }
 
 // ── Card ──────────────────────────────────────────────────
 export interface VirtualCard {
-  id: string
-  last4: string
-  expiryMonth: string
-  expiryYear: string
-  holderName: string
-  maskedNumber: string
-  expiry: string
-  network: 'visa' | 'mastercard'
-  status: 'active' | 'frozen' | 'terminated'
-  availableBalance: string
-  monthlySpend: string
-  spendLimit: string
+  id: string;
+  last4: string;
+  expiryMonth: string;
+  expiryYear: string;
+  holderName: string;
+  maskedNumber: string;
+  expiry: string;
+  network: 'visa' | 'mastercard';
+  status: 'active' | 'frozen' | 'terminated';
+  availableBalance: string;
+  monthlySpend: string;
+  spendLimit: string;
 }
 
 // ── API wrappers ──────────────────────────────────────────
 export interface ApiResponse<T> {
-  success: boolean
-  data: T
-  message?: string
+  success: boolean;
+  data: T;
+  message?: string;
 }
 
 export interface ApiError {
-  statusCode: number
-  message: string
-  error: string
+  statusCode: number;
+  message: string;
+  error: string;
+  code?: string;
+  email?: string;
+  [key: string]: unknown;
 }
 
 // ── UI ────────────────────────────────────────────────────
-export type Theme = 'dark' | 'light'
-export type AppScreen = 'home' | 'send' | 'cards' | 'cardscreen' | 'history' | 'profile'
+export type Theme = 'dark' | 'light';
+export type AppScreen =
+  | 'home'
+  | 'send'
+  | 'cards'
+  | 'cardscreen'
+  | 'history'
+  | 'profile';
 export type AuthScreen =
-  | 'splash' | 'login' | 'signup-1' | 'signup-2' | 'signup-3'
-  | 'signup-otp' | 'device' | 'forgot-email' | 'forgot-otp'
-  | 'new-password' | 'pw-success'
+  | 'splash'
+  | 'login'
+  | 'signup-1'
+  | 'signup-2'
+  | 'signup-3'
+  | 'signup-otp'
+  | 'device'
+  | 'forgot-email'
+  | 'forgot-otp'
+  | 'new-password'
+  | 'pw-success';
 
 // ── PayLink ───────────────────────────────────────────────
-export type PayLinkStatus = 'pending' | 'paid' | 'expired' | 'cancelled'
+export type PayLinkStatus = 'pending' | 'paid' | 'expired' | 'cancelled';
 
 export interface PayLinkCreator {
-  username: string
-  fullName: string
+  username: string;
+  fullName: string;
 }
 
 export interface PayLinkPayer {
-  username: string
+  username: string;
 }
 
 export interface PayLinkData {
-  id:         string
-  token:      string
-  url:        string
-  amountUsdc: string
-  note:       string | null
-  status:     PayLinkStatus
-  expiresAt:  string
-  createdAt:  string
-  creator:    PayLinkCreator
-  payer:      PayLinkPayer | null
-  paidAt:     string | null
+  id: string;
+  token: string;
+  url: string;
+  amountUsdc: string;
+  note: string | null;
+  status: PayLinkStatus;
+  expiresAt: string;
+  createdAt: string;
+  creator: PayLinkCreator;
+  payer: PayLinkPayer | null;
+  paidAt: string | null;
 }
 
 export interface CreatePayLinkPayload {
-  amountUsdc:     string
-  note?:          string
-  expiresInHours?: number
+  amountUsdc: string;
+  note?: string;
+  expiresInHours?: number;
 }
 
 export interface CreatePayLinkResponse {
-  id:             string
-  url:            string
-  token:          string
-  amountUsdc:     string
-  note:           string | null
-  expiresAt:      string
-  expiresInHours: number
+  id: string;
+  url: string;
+  token: string;
+  amountUsdc: string;
+  note: string | null;
+  expiresAt: string;
+  expiresInHours: number;
 }
 
 export interface PayLinkPayPayload {
-  pinHash:         string
-  deviceId:        string
-  deviceSignature: string
+  pinHash: string;
+  deviceId: string;
+  deviceSignature: string;
 }
 
 export interface PayLinkPayResponse {
-  txId:       string
-  txHash:     string
-  amountUsdc: string
-  fee:        string
-  paidAt:     string
+  txId: string;
+  txHash: string;
+  amountUsdc: string;
+  fee: string;
+  paidAt: string;
 }
 
 export interface MyLinksResponse {
-  data:     PayLinkData[]
-  total:    number
-  page:     number
-  pageSize: number
+  data: PayLinkData[];
+  total: number;
+  page: number;
+  pageSize: number;
 }

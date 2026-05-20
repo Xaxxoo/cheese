@@ -6,7 +6,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { OtpModule } from '../otp/otp.module';
 import { EmailModule } from '../email/email.module';
-import { WaitlistModule } from '../waitlist/waitlist.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { ReferralModule } from '../referral/referral.module';
 import { Device } from '../devices/entities/device.entity';
@@ -38,7 +37,6 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
     OtpModule,
     BlockchainModule,
     EmailModule,
-    WaitlistModule,
     ReferralModule,
   ],
   controllers: [AuthController],
@@ -52,6 +50,6 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
       ? [WalletCreationProcessor]
       : []),
   ],
-  exports: [AuthService, TypeOrmModule, WaitlistModule],
+  exports: [AuthService, TypeOrmModule],
 })
 export class AuthModule {}

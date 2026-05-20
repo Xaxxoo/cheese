@@ -15,7 +15,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as bcrypt from 'bcrypt';
-import { createHash, timingSafeEqual } from 'crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import { Repository } from 'typeorm';
 import { OtpService } from '../otp/otp.service';
 import { OtpType } from '../otp/entities/otp.entity';
@@ -33,7 +33,6 @@ import {
   VerifyPinDto,
 } from './dto';
 import { EmailService } from '../email/email.service';
-import { WaitlistService } from '../waitlist/waitlist.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User, WalletStatus } from './entities/user.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
@@ -45,8 +44,14 @@ import {
   ReferralEvent,
   REFERRAL_POINTS,
 } from '../waitlist/entities/referral-event.entity';
-import { nanoid } from 'nanoid';
 import { ReferralService } from '../referral/referral.service';
+import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
+import { generateShortCode } from '../common/utils/random-code.util';
+import {
+  normalizeEmail,
+  normalizeIdentifier,
+  normalizeUsername,
+} from './utils/identity-normalization.util';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -88,7 +93,6 @@ export class AuthService {
     private readonly otpService: OtpService,
     private readonly blockchainService: BlockchainService,
     private readonly emailService: EmailService,
-    private readonly waitlistService: WaitlistService,
 
     @Optional()
     private readonly referralService: ReferralService | null,
@@ -97,17 +101,20 @@ export class AuthService {
   // ── Signup ─────────────────────────────────────────────────────────────────
 
   async signup(dto: SignupDto): Promise<{ userId: string; email: string }> {
+    const normalizedDto = this.normalizeSignupDto(dto);
     const existingUser = await this.userRepo.findOne({
-      where: { email: dto.email, emailVerified: true },
+      where: { email: normalizedDto.email, emailVerified: true },
     });
     if (existingUser) throw new ConflictException('Email already registered');
 
     const waitlistEntry = await this.waitlistRepo.findOne({
-      where: { email: dto.email },
+      where: { email: normalizedDto.email },
     });
 
     if (waitlistEntry) {
-      if (waitlistEntry.username !== dto.username) {
+      if (
+        normalizeUsername(waitlistEntry.username) !== normalizedDto.username
+      ) {
         throw new ConflictException(
           'Username does not match waitlist reservation',
         );
@@ -115,7 +122,7 @@ export class AuthService {
       if (waitlistEntry.status === WaitlistStatus.CONVERTED) {
         // If the user was deleted from the DB, allow re-signup by resetting the waitlist entry
         const userExists = await this.userRepo.findOne({
-          where: { email: dto.email },
+          where: { email: normalizedDto.email },
         });
         if (userExists)
           throw new ConflictException('This email has already been converted');
@@ -125,12 +132,12 @@ export class AuthService {
         );
         waitlistEntry.status = WaitlistStatus.PENDING;
       }
-      return this.createUserFromWaitlist(dto, waitlistEntry);
+      return this.createUserFromWaitlist(normalizedDto, waitlistEntry);
     }
 
     // Allow open signup when SIGNUP_OPEN=true (set in Railway env vars)
     if (process.env.SIGNUP_OPEN === 'true') {
-      return this.createUserFromWaitlist(dto, null);
+      return this.createUserFromWaitlist(normalizedDto, null);
     }
 
     throw new ForbiddenException(
@@ -149,22 +156,37 @@ export class AuthService {
       where: { email: dto.email, emailVerified: false },
     });
     if (existingUnverified) {
-      // Previous attempt created the user but OTP was never verified.
-      // Re-send the OTP and return so the user can complete verification.
-      await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
-        fullName: existingUnverified.fullName ?? undefined,
+      const phoneExists = await this.userRepo.findOne({
+        where: { phone: dto.phone },
       });
-      // Update the device key — the frontend regenerates a new keypair on each
-      // signup attempt, so we must sync the stored public key to avoid
-      // signature mismatches when the user logs in after OTP verification.
-      await this.deviceRepo.upsert(
-        {
-          userId:     existingUnverified.id,
-          deviceId:   dto.deviceId,
-          publicKey:  dto.devicePublicKey,
-          deviceName: 'Primary Device',
-        },
-        { conflictPaths: ['deviceId'] },
+      if (phoneExists && phoneExists.id !== existingUnverified.id) {
+        throw new ConflictException('Phone already registered');
+      }
+
+      const usernameExists = await this.userRepo.findOne({
+        where: { username: dto.username },
+      });
+      if (usernameExists && usernameExists.id !== existingUnverified.id) {
+        throw new ConflictException('Username taken');
+      }
+
+      existingUnverified.fullName = dto.fullName;
+      existingUnverified.phone = dto.phone;
+      existingUnverified.username = dto.username;
+      existingUnverified.passwordHash = await bcrypt.hash(
+        dto.password,
+        BCRYPT_ROUNDS,
+      );
+      await this.userRepo.save(existingUnverified);
+
+      await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
+        fullName: dto.fullName,
+      });
+
+      await this.registerOrUpdateDeviceForUser(
+        existingUnverified.id,
+        dto.deviceId,
+        dto.devicePublicKey,
       );
       return { userId: existingUnverified.id, email: existingUnverified.email };
     }
@@ -188,7 +210,7 @@ export class AuthService {
       phone: dto.phone,
       username: dto.username,
       passwordHash,
-      referralCode: nanoid(8),
+      referralCode: generateShortCode(8),
       referredBy: waitlistEntry?.referrerId || null,
       points: waitlistEntry?.points ?? 0,
     });
@@ -287,14 +309,10 @@ export class AuthService {
     }
 
     // ── Register device (upsert — idempotent on retry) ────────────────────
-    await this.deviceRepo.upsert(
-      {
-        userId: user.id,
-        deviceId: dto.deviceId,
-        publicKey: dto.devicePublicKey,
-        deviceName: 'Primary Device',
-      },
-      { conflictPaths: ['deviceId'] },
+    await this.registerOrUpdateDeviceForUser(
+      user.id,
+      dto.deviceId,
+      dto.devicePublicKey,
     );
 
     // ── Send verification OTP ─────────────────────────────────────────────
@@ -316,25 +334,27 @@ export class AuthService {
     dto: VerifyOtpDto,
     meta: { userAgent?: string; ip?: string } = {},
   ) {
-    await this.otpService.verifyOtp(dto.email, dto.otp, dto.type);
+    const normalizedEmail = normalizeEmail(dto.email);
+    await this.otpService.verifyOtp(normalizedEmail, dto.otp, dto.type);
 
     if (dto.type === OtpType.EMAIL_VERIFY) {
-      await this.userRepo.update({ email: dto.email }, { emailVerified: true });
-      const user = await this.userRepo.findOne({ where: { email: dto.email } });
+      await this.userRepo.update(
+        { email: normalizedEmail },
+        { emailVerified: true },
+      );
+      const user = await this.userRepo.findOne({
+        where: { email: normalizedEmail },
+      });
       if (!user) throw new NotFoundException('User not found');
 
       // Re-confirm the device registration (idempotent upsert).
       // Guards against the case where the signup request timed out before the
       // device row was committed — the OTP was still sent, so we re-upsert here.
       if (dto.deviceId && dto.devicePublicKey) {
-        await this.deviceRepo.upsert(
-          {
-            userId:     user.id,
-            deviceId:   dto.deviceId,
-            publicKey:  dto.devicePublicKey,
-            deviceName: 'Primary Device',
-          },
-          { conflictPaths: ['deviceId'] },
+        await this.registerOrUpdateDeviceForUser(
+          user.id,
+          dto.deviceId,
+          dto.devicePublicKey,
         );
       }
 
@@ -343,7 +363,7 @@ export class AuthService {
           to: user.email,
           fullName: user.fullName,
           username: user.username,
-          appUrl: this.config.get('app.frontendUrl') + '/wallet',
+          appUrl: this.config.get('app.frontendUrl') + '/dashboard',
         });
         this.logger.log(`Welcome email delivered [user=${user.email}]`);
       } catch (err) {
@@ -363,16 +383,22 @@ export class AuthService {
   // ── Resend OTP ─────────────────────────────────────────────────────────────
 
   async resendOtp(email: string, type: OtpType): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const normalizedEmail = normalizeEmail(email);
+    const user = await this.userRepo.findOne({
+      where: { email: normalizedEmail },
+    });
     if (!user) throw new NotFoundException('User not found');
-    await this.otpService.sendOtp(email, type, { fullName: user.fullName ?? undefined });
+    await this.otpService.sendOtp(normalizedEmail, type, {
+      fullName: user.fullName ?? undefined,
+    });
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
   async login(dto: LoginDto, meta: { userAgent?: string; ip?: string }) {
+    const identifier = normalizeIdentifier(dto.identifier);
     const user = await this.userRepo.findOne({
-      where: [{ email: dto.identifier }, { username: dto.identifier }],
+      where: [{ email: identifier }, { username: identifier }],
     });
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (!user.isActive) throw new ForbiddenException('Account suspended');
@@ -381,6 +407,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     const passwordOk = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordOk) throw new UnauthorizedException('Invalid credentials');
+    this.assertUserCanAuthenticate(user);
 
     const device = await this.deviceRepo.findOne({
       where: { deviceId: dto.deviceId, userId: user.id, isActive: true },
@@ -392,7 +419,10 @@ export class AuthService {
       signature: dto.deviceSignature,
       message: dto.deviceId,
     });
-    if (!signatureValid && this.config.get('app.nodeEnv') === 'production') {
+    if (
+      !signatureValid &&
+      !isInsecureDeviceSignatureBypassEnabled(this.config)
+    ) {
       throw new UnauthorizedException('Invalid device signature');
     }
 
@@ -409,9 +439,16 @@ export class AuthService {
     oldTokenHash: string,
     meta: { userAgent?: string; ip?: string },
   ) {
-    await this.rtRepo.update({ tokenHash: oldTokenHash }, { isRevoked: true });
-    const tokens = await this.issueTokens(user, null, meta);
-    return { accessToken: tokens.accessToken };
+    const storedToken = await this.rtRepo.findOne({
+      where: { tokenHash: oldTokenHash, userId: user.id, isRevoked: false },
+    });
+    if (!storedToken || storedToken.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired or revoked');
+    }
+
+    await this.rtRepo.update({ id: storedToken.id }, { isRevoked: true });
+    const tokens = await this.issueTokens(user, storedToken.deviceId, meta);
+    return tokens;
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
@@ -423,23 +460,27 @@ export class AuthService {
   // ── Forgot password ────────────────────────────────────────────────────────
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    const email = normalizeEmail(dto.email);
+    const user = await this.userRepo.findOne({ where: { email } });
     if (!user) return; // don't reveal existence
-    await this.otpService.sendOtp(dto.email, OtpType.PASSWORD_RESET, { fullName: user.fullName ?? undefined });
+    await this.otpService.sendOtp(email, OtpType.PASSWORD_RESET, {
+      fullName: user.fullName ?? undefined,
+    });
   }
 
   // ── Reset password ─────────────────────────────────────────────────────────
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    await this.otpService.verifyOtp(dto.email, dto.otp, OtpType.PASSWORD_RESET);
+    const email = normalizeEmail(dto.email);
+    await this.otpService.verifyOtp(email, dto.otp, OtpType.PASSWORD_RESET);
 
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
-    await this.userRepo.update({ email: dto.email }, { passwordHash });
+    await this.userRepo.update({ email }, { passwordHash });
 
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    const user = await this.userRepo.findOne({ where: { email } });
     if (user) {
       this.emailService
-        .sendPasswordChanged({ to: dto.email, fullName: user.fullName })
+        .sendPasswordChanged({ to: email, fullName: user.fullName })
         .catch((err) =>
           this.logger.error(
             `Password changed email failed: ${(err as Error).message}`,
@@ -520,8 +561,11 @@ export class AuthService {
   // generates its own deviceId + key pair and calls complete-link.
 
   async requestDeviceRegistration(email: string): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { email } });
-    if (!user) return; // silent — prevent email enumeration
+    const normalizedEmail = normalizeEmail(email);
+    const user = await this.userRepo.findOne({
+      where: { email: normalizedEmail },
+    });
+    if (!user || !user.emailVerified) return; // silent — prevent enumeration
 
     const token = this.jwtService.sign(
       { sub: user.id, purpose: 'device-registration' },
@@ -531,7 +575,10 @@ export class AuthService {
       },
     );
 
-    const frontendUrl = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+    const frontendUrl = this.config.get<string>(
+      'app.frontendUrl',
+      'https://cheesepay.xyz',
+    );
     const link = `${frontendUrl}/add-device?token=${token}`;
 
     await this.emailService.sendDeviceRegistrationLink({
@@ -543,27 +590,28 @@ export class AuthService {
 
   // ── Complete device registration (OTP — kept for backwards compat) ─────────
 
-  async completeDeviceRegistration(dto: CompleteDeviceRegistrationDto): Promise<void> {
-    await this.otpService.verifyOtp(dto.email, dto.otp, OtpType.DEVICE_REGISTER);
+  async completeDeviceRegistration(
+    dto: CompleteDeviceRegistrationDto,
+  ): Promise<void> {
+    const email = normalizeEmail(dto.email);
+    await this.otpService.verifyOtp(email, dto.otp, OtpType.DEVICE_REGISTER);
 
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    const user = await this.userRepo.findOne({ where: { email } });
     if (!user) throw new NotFoundException('User not found');
+    this.assertUserCanAuthenticate(user);
 
-    const existing = await this.deviceRepo.findOne({ where: { deviceId: dto.deviceId } });
-    if (existing) throw new ConflictException('Device already registered');
-
-    await this.deviceRepo.save(
-      this.deviceRepo.create({
-        deviceId: dto.deviceId,
-        publicKey: dto.publicKey,
-        userId: user.id,
-      }),
+    await this.registerOrUpdateDeviceForUser(
+      user.id,
+      dto.deviceId,
+      dto.publicKey,
     );
   }
 
   // ── Complete device registration — magic link ──────────────────────────────
 
-  async completeDeviceRegistrationByLink(dto: CompleteDeviceRegistrationByLinkDto): Promise<void> {
+  async completeDeviceRegistrationByLink(
+    dto: CompleteDeviceRegistrationByLinkDto,
+  ): Promise<void> {
     // Verify token and extract userId
     let payload: { sub: string; purpose: string };
     try {
@@ -580,24 +628,13 @@ export class AuthService {
 
     const user = await this.userRepo.findOne({ where: { id: payload.sub } });
     if (!user) throw new NotFoundException('User not found');
+    this.assertUserCanAuthenticate(user);
 
-    // Upsert — if the device already exists (re-registration), update its
-    // public key so the new key pair generated on the device takes effect.
-    const existing = await this.deviceRepo.findOne({ where: { deviceId: dto.deviceId } });
-    if (existing) {
-      await this.deviceRepo.update(
-        { id: existing.id },
-        { publicKey: dto.publicKey, isActive: true },
-      );
-    } else {
-      await this.deviceRepo.save(
-        this.deviceRepo.create({
-          deviceId: dto.deviceId,
-          publicKey: dto.publicKey,
-          userId: user.id,
-        }),
-      );
-    }
+    await this.registerOrUpdateDeviceForUser(
+      user.id,
+      dto.deviceId,
+      dto.publicKey,
+    );
   }
 
   // ── Private: award referral points ────────────────────────────────────────
@@ -662,6 +699,8 @@ export class AuthService {
     deviceId: string | null,
     meta: { userAgent?: string; ip?: string },
   ) {
+    this.assertUserCanAuthenticate(user);
+
     const payload = {
       sub: user.id,
       email: user.email,
@@ -673,10 +712,13 @@ export class AuthService {
       expiresIn: this.config.get('jwt.accessExpires'),
     });
 
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.config.get('jwt.refreshSecret'),
-      expiresIn: this.config.get('jwt.refreshExpires'),
-    });
+    const refreshToken = this.jwtService.sign(
+      { ...payload, jti: randomUUID() },
+      {
+        secret: this.config.get('jwt.refreshSecret'),
+        expiresIn: this.config.get('jwt.refreshExpires'),
+      },
+    );
 
     const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
 
@@ -703,7 +745,10 @@ export class AuthService {
 
   private sanitiseUser(
     user: User,
-  ): Omit<User, 'passwordHash' | 'pinHash' | 'stellarSecretEnc'> & { hasPin: boolean } {
+  ): Omit<
+    User,
+    'passwordHash' | 'pinHash' | 'stellarSecretEnc' | 'normalizeIdentityFields'
+  > & { hasPin: boolean } {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, pinHash, stellarSecretEnc, ...safe } =
       user as User & {
@@ -712,5 +757,60 @@ export class AuthService {
         stellarSecretEnc: string;
       };
     return { ...safe, hasPin: !!pinHash };
+  }
+
+  private normalizeSignupDto(dto: SignupDto): SignupDto {
+    return {
+      ...dto,
+      fullName: dto.fullName.trim(),
+      email: normalizeEmail(dto.email),
+      phone: dto.phone.trim(),
+      username: normalizeUsername(dto.username),
+      referralCode: dto.referralCode?.trim(),
+    };
+  }
+
+  private assertUserCanAuthenticate(user: User): void {
+    if (!user.isActive) throw new ForbiddenException('Account suspended');
+    if (!user.emailVerified) {
+      throw new ForbiddenException({
+        message: 'Email not verified. Verify your email to continue.',
+        error: 'EMAIL_NOT_VERIFIED',
+        code: 'EMAIL_NOT_VERIFIED',
+        email: user.email,
+      });
+    }
+  }
+
+  private async registerOrUpdateDeviceForUser(
+    userId: string,
+    deviceId: string,
+    publicKey: string,
+    deviceName = 'Primary Device',
+  ): Promise<void> {
+    const existingDevice = await this.deviceRepo.findOne({
+      where: { deviceId },
+    });
+
+    if (existingDevice) {
+      if (existingDevice.userId !== userId) {
+        throw new ConflictException('Device already registered');
+      }
+
+      await this.deviceRepo.update(
+        { id: existingDevice.id },
+        { publicKey, deviceName, isActive: true },
+      );
+      return;
+    }
+
+    await this.deviceRepo.save(
+      this.deviceRepo.create({
+        userId,
+        deviceId,
+        publicKey,
+        deviceName,
+      }),
+    );
   }
 }

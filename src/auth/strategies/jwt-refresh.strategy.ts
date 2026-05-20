@@ -19,7 +19,6 @@ export class JwtRefreshStrategy extends PassportStrategy(
     config: ConfigService,
     @InjectRepository(RefreshToken)
     private readonly rtRepo: Repository<RefreshToken>,
-    @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     super({
@@ -50,6 +49,13 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
     if (!stored || stored.expiresAt < new Date()) {
       throw new UnauthorizedException('Refresh token expired or revoked');
+    }
+    if (!stored.user.isActive) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+    if (!stored.user.emailVerified) {
+      await this.rtRepo.update({ id: stored.id }, { isRevoked: true });
+      throw new UnauthorizedException('Email verification required');
     }
 
     return { user: stored.user, tokenHash };

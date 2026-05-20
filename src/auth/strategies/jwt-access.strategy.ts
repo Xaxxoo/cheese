@@ -38,6 +38,9 @@ export class JwtAccessStrategy extends PassportStrategy(
       where: { id: payload.sub, isActive: true },
     });
     if (!user) throw new UnauthorizedException('User not found or inactive');
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Email verification required');
+    }
     return user;
   }
 }

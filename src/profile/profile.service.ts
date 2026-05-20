@@ -3,6 +3,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
+import { normalizeUsername } from '../auth/utils/identity-normalization.util';
 import { UpdateProfileDto } from './dto';
 
 @Injectable()
@@ -14,10 +15,22 @@ export class ProfileService {
   async update(
     userId: string,
     dto: UpdateProfileDto,
-  ): Promise<Omit<User, 'passwordHash' | 'pinHash' | 'stellarSecretEnc'>> {
-    if (dto.username) {
+  ): Promise<
+    Omit<
+      User,
+      | 'passwordHash'
+      | 'pinHash'
+      | 'stellarSecretEnc'
+      | 'normalizeIdentityFields'
+    >
+  > {
+    const normalizedUsername = dto.username
+      ? normalizeUsername(dto.username)
+      : undefined;
+
+    if (normalizedUsername) {
       const existing = await this.userRepo.findOne({
-        where: { username: dto.username },
+        where: { username: normalizedUsername },
       });
       if (existing && existing.id !== userId)
         throw new ConflictException('Username already taken');
@@ -30,7 +43,13 @@ export class ProfileService {
         throw new ConflictException('Phone already registered');
     }
 
-    await this.userRepo.update({ id: userId }, dto);
+    await this.userRepo.update(
+      { id: userId },
+      {
+        ...dto,
+        ...(normalizedUsername ? { username: normalizedUsername } : {}),
+      },
+    );
     const updated = await this.userRepo.findOne({ where: { id: userId } });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, pinHash, stellarSecretEnc, ...safe } =

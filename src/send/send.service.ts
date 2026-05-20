@@ -22,6 +22,7 @@ import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
 import { EmailService } from '../email/email.service';
+import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 
 const FALLBACK_FEE_RATE = 0.001; // 0.1% — used when Soroban contract is unavailable
 const MIN_USDC = 0.01;
@@ -143,7 +144,7 @@ export class SendService {
       signature: params.deviceSignature,
       message: params.deviceId,
     });
-    if (!sigValid && this.config.get('app.nodeEnv') === 'production') {
+    if (!sigValid && !isInsecureDeviceSignatureBypassEnabled(this.config)) {
       throw new ForbiddenException('Invalid device signature');
     }
 
@@ -229,7 +230,10 @@ export class SendService {
       void this.tierMilestone.checkAndNotify(senderId);
 
       // Fire-and-forget: email to sender
-      const appUrl = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+      const appUrl = this.config.get<string>(
+        'app.frontendUrl',
+        'https://cheesepay.xyz',
+      );
       this.emailService
         .sendMoneySent({
           to: sender.email,
@@ -244,7 +248,9 @@ export class SendService {
           appUrl,
         })
         .catch((err: Error) =>
-          this.logger.error(`Sender transfer email failed [tx=${tx.id}]: ${err.message}`),
+          this.logger.error(
+            `Sender transfer email failed [tx=${tx.id}]: ${err.message}`,
+          ),
         );
 
       // Fire-and-forget: email to recipient (username sends only — they're a Cheese Pay user)
@@ -264,7 +270,9 @@ export class SendService {
             });
           })
           .catch((err: Error) =>
-            this.logger.error(`Recipient transfer email failed [tx=${tx.id}]: ${err.message}`),
+            this.logger.error(
+              `Recipient transfer email failed [tx=${tx.id}]: ${err.message}`,
+            ),
           );
       }
 

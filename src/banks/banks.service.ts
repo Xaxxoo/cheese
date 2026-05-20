@@ -26,6 +26,7 @@ import { PulseMfbClient } from './pulsemfb.client';
 import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_NGN_LIMIT, formatNgnLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
+import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 
 type BankDirectoryEntry = {
   code: string;
@@ -333,9 +334,7 @@ function extractProviderFailureReason(
   return undefined;
 }
 
-function canonicalizeSignaturePayload(
-  payload: Record<string, string>,
-): string {
+function canonicalizeSignaturePayload(payload: Record<string, string>): string {
   const sortedPayload = Object.keys(payload)
     .sort()
     .reduce<Record<string, string>>((acc, key) => {
@@ -396,8 +395,8 @@ export class BanksService {
   // async getBanks(): Promise<{
   //   name: string;
   //   code: string;
-// }[]> {
-   async getBanks(): Promise<BankDirectoryEntry[]> {
+  // }[]> {
+  async getBanks(): Promise<BankDirectoryEntry[]> {
     return NIGERIAN_BANKS;
     // try {
     //   const result = await this.pulseMfb.banks();
@@ -409,9 +408,7 @@ export class BanksService {
   }
 
   // ── POST /banks/resolve ───────────────────────────────────────────────────
-  async resolveAccount(
-    dto: ResolveAccountDto,
-  ): Promise<{
+  async resolveAccount(dto: ResolveAccountDto): Promise<{
     accountName: string;
     accountNumber: string;
     bankCode: string;
@@ -446,7 +443,9 @@ export class BanksService {
         responseMessage: providerMessage,
       });
 
-      throw new BadRequestException(`Banking provider error: ${providerMessage}`);
+      throw new BadRequestException(
+        `Banking provider error: ${providerMessage}`,
+      );
     } catch (err) {
       const errorMessage = (err as Error).message;
       this.logger.error('PulseMFB name enquiry failed', {
@@ -522,7 +521,7 @@ export class BanksService {
       signature: dto.deviceSignature,
       message: deviceSignatureMessage,
     });
-    if (!sigValid && this.config.get('app.nodeEnv') === 'production') {
+    if (!sigValid && !isInsecureDeviceSignatureBypassEnabled(this.config)) {
       throw new ForbiddenException('Invalid device signature');
     }
 
@@ -664,7 +663,10 @@ export class BanksService {
         // PulseMFB settled the transfer synchronously — mark both records final
         await this.transferRepo.update(
           { id: transfer.id },
-          { status: BankTransferStatus.COMPLETED, providerReference: providerRef },
+          {
+            status: BankTransferStatus.COMPLETED,
+            providerReference: providerRef,
+          },
         );
         await this.txService.update(tx.id, { status: TxStatus.COMPLETED });
         this.logger.log(
@@ -674,7 +676,10 @@ export class BanksService {
         // Mark PROCESSING — awaiting final settlement confirmation via webhook
         await this.transferRepo.update(
           { id: transfer.id },
-          { status: BankTransferStatus.PROCESSING, providerReference: providerRef },
+          {
+            status: BankTransferStatus.PROCESSING,
+            providerReference: providerRef,
+          },
         );
         // Transaction stays PENDING until the webhook fires transfer.success
       }
@@ -935,19 +940,36 @@ export class BanksService {
       BankTransferStatus.REVERSED,
     ];
     if (terminal.includes(transfer.status)) {
-      return { reference: transfer.reference, status: transfer.status, synced: false };
+      return {
+        reference: transfer.reference,
+        status: transfer.status,
+        synced: false,
+      };
     }
 
     if (!transfer.providerReference) {
       // PulseMFB never accepted the transfer — nothing to poll
-      return { reference: transfer.reference, status: transfer.status, synced: false };
+      return {
+        reference: transfer.reference,
+        status: transfer.status,
+        synced: false,
+      };
     }
 
-    const remote = await this.pulseMfb.getTransferStatus(transfer.providerReference);
+    const remote = await this.pulseMfb.getTransferStatus(
+      transfer.providerReference,
+    );
 
     if (remote.status === 'completed') {
-      await this.processWebhook({ reference: transfer.reference, event: 'transfer.success' });
-      return { reference: transfer.reference, status: BankTransferStatus.COMPLETED, synced: true };
+      await this.processWebhook({
+        reference: transfer.reference,
+        event: 'transfer.success',
+      });
+      return {
+        reference: transfer.reference,
+        status: BankTransferStatus.COMPLETED,
+        synced: true,
+      };
     }
 
     if (remote.status === 'failed') {
@@ -956,10 +978,18 @@ export class BanksService {
         event: 'transfer.failed',
         failureReason: 'Failed — detected via status poll',
       });
-      return { reference: transfer.reference, status: BankTransferStatus.FAILED, synced: true };
+      return {
+        reference: transfer.reference,
+        status: BankTransferStatus.FAILED,
+        synced: true,
+      };
     }
 
-    return { reference: transfer.reference, status: transfer.status, synced: false };
+    return {
+      reference: transfer.reference,
+      status: transfer.status,
+      synced: false,
+    };
   }
 
   private async findTransferByAnyReference(

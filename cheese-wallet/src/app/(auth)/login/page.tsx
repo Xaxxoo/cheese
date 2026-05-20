@@ -1,71 +1,96 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { notify } from '@/lib/toast'
-import { Eye, EyeOff } from 'lucide-react'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { useAuthStore } from '@/store/authStore'
-import { login } from '@/lib/api/auth'
-import { signDeviceChallenge } from '@/lib/crypto/deviceSigning'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { notify } from '@/lib/toast';
+import { Eye, EyeOff } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { useAuthStore } from '@/store/authStore';
+import { login } from '@/lib/api/auth';
+import { signDeviceChallenge } from '@/lib/crypto/deviceSigning';
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { setAuth, ensureDeviceId, setBooting } = useAuthStore()
+  const router = useRouter();
+  const { setAuth, ensureDeviceId, setBooting } = useAuthStore();
 
-  const [identifier, setIdentifier] = useState('')
-  const [password, setPassword]     = useState('')
-  const [showPw, setShowPw]         = useState(false)
-  const [loading, setLoading]       = useState(false)
-  const [errors, setErrors]         = useState<{ identifier?: string; password?: string }>({})
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{
+    identifier?: string;
+    password?: string;
+  }>({});
 
   // Auth boot: mark booting done (layout already checked user)
-  useEffect(() => { setBooting(false) }, [setBooting])
+  useEffect(() => {
+    setBooting(false);
+  }, [setBooting]);
 
   function validate() {
-    const e: typeof errors = {}
-    if (!identifier.trim()) e.identifier = 'Email or username is required'
-    if (!password)          e.password   = 'Password is required'
-    setErrors(e)
-    return Object.keys(e).length === 0
+    const e: typeof errors = {};
+    if (!identifier.trim()) e.identifier = 'Email or username is required';
+    if (!password) e.password = 'Password is required';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!validate()) return
-    setLoading(true)
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
 
     try {
-      const deviceId = ensureDeviceId()
+      const deviceId = ensureDeviceId();
 
       // Sign the raw deviceId string — backend verifies message === deviceId (UTF-8).
       // signDeviceChallenge throws if no key exists locally, which is caught below
       // and directs the user to the add-device registration flow.
-      const deviceSignature = await signDeviceChallenge(deviceId)
+      const deviceSignature = await signDeviceChallenge(deviceId);
 
       const { user, tokens } = await login({
         identifier: identifier.trim(),
         password,
         deviceId,
         deviceSignature,
-      })
+      });
 
-      setAuth(user, tokens.accessToken)
-      router.replace('/dashboard')
+      setAuth(user, tokens.accessToken);
+      router.replace('/dashboard');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Login failed. Please try again.'
+      const authError = err as Error & {
+        errorCode?: string;
+        email?: string;
+      };
+      if (authError.errorCode === 'EMAIL_NOT_VERIFIED') {
+        const email =
+          authError.email ??
+          (identifier.includes('@') ? identifier.trim().toLowerCase() : '');
+        notify.error(
+          "Verify your email before signing in. We've taken you back to the code screen.",
+        );
+        router.push(
+          `/signup?mode=verify${email ? `&email=${encodeURIComponent(email)}` : ''}`,
+        );
+        return;
+      }
+
+      const msg =
+        err instanceof Error ? err.message : 'Login failed. Please try again.';
       // If the backend rejects the device signature the user needs to register
       // this device first via the add-device OTP flow
-      const isDeviceError = /device|signature|unrecognized/i.test(msg)
+      const isDeviceError = /device|signature|unrecognized/i.test(msg);
       if (isDeviceError) {
-        notify.error('This device is not recognised. Use "New device? Register it" below.')
+        notify.error(
+          'This device is not recognised. Use "New device? Register it" below.',
+        );
       } else {
-        notify.error(msg)
+        notify.error(msg);
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -98,7 +123,11 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           error={errors.password}
           suffix={
-            <button type="button" onClick={() => setShowPw(!showPw)} className="text-white/40 hover:text-white/70 transition-colors">
+            <button
+              type="button"
+              onClick={() => setShowPw(!showPw)}
+              className="text-white/40 hover:text-white/70 transition-colors"
+            >
               {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           }
@@ -119,7 +148,13 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <Button type="submit" fullWidth size="lg" loading={loading} className="mt-2">
+        <Button
+          type="submit"
+          fullWidth
+          size="lg"
+          loading={loading}
+          className="mt-2"
+        >
           Sign in
         </Button>
       </form>
@@ -131,5 +166,5 @@ export default function LoginPage() {
         </Link>
       </p>
     </div>
-  )
+  );
 }

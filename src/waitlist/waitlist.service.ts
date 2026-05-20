@@ -11,7 +11,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { nanoid } from 'nanoid';
 import { User } from '../auth/entities/user.entity';
 import { ShareEvent, PLATFORM_POINTS } from './entities/share-event.entity';
 import {
@@ -27,6 +26,7 @@ import {
 } from './entities/waitlist-entry.entity';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { generateShortCode } from '../common/utils/random-code.util';
 
 const RESERVED_USERNAMES = new Set([
   'admin',
@@ -136,7 +136,7 @@ export class WaitlistService {
       // ── Create entry ──────────────────────────────────────────────────────
       const totalEntries = await queryRunner.manager.count(WaitlistEntry);
       const position = totalEntries + 1;
-      const generatedCode = nanoid(8);
+      const generatedCode = generateShortCode(8);
 
       const newEntry = await queryRunner.manager.save(
         queryRunner.manager.create(WaitlistEntry, {

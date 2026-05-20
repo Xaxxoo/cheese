@@ -6,6 +6,8 @@ export const appConfig = registerAs('app', () => ({
   port: parseInt(process.env.PORT || '3001', 10),
   payLinkBaseUrl: process.env.PAYLINK_BASE_URL || 'https://cheesepay.xyz',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  allowInsecureDeviceSignatures:
+    process.env.ALLOW_INSECURE_DEVICE_SIGNATURES === 'true',
 }));
 
 // export const dbConfig = registerAs('db', () => ({

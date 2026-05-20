@@ -20,6 +20,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 ### Technology Stack
 
 #### Backend (Settlement API)
+
 - **Framework**: NestJS (TypeScript)
 - **Database**: PostgreSQL with TypeORM
 - **Blockchain Integration**: ethers.js, Stellar SDK, Starknet.js, Stacks.js
@@ -28,6 +29,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - **Job Scheduling**: Cron-based blockchain monitoring
 
 #### Frontend (Merchant & Customer Portal)
+
 - **Framework**: Next.js 14 (App Router)
 - **Type Safety**: TypeScript
 - **Styling**: Tailwind CSS
@@ -39,6 +41,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 ### Supported Blockchain Networks
 
 #### EVM-Compatible Chains
+
 1. **Polygon** (Layer 2 Ethereum)
    - Gas: Ultra-low (~$0.01)
    - Speed: ~2 seconds
@@ -65,6 +68,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
    - Best for: Ethereum ecosystem
 
 #### Non-EVM Chains
+
 6. **Starknet** (ZK-Rollup)
    - Gas: Very low
    - Speed: ~10 seconds
@@ -80,12 +84,12 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
    - Speed: Bitcoin block time
    - Best for: Bitcoin-secured settlements
 
-
 ## Features
 
 ### Core Functionality
 
 #### 1. Payment Request Generation
+
 - Generate unique payment requests with QR codes
 - Multi-chain support with automatic network selection
 - Customizable expiration times
@@ -93,6 +97,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - Merchant metadata attachment
 
 #### 2. Blockchain Monitoring
+
 - Automated deposit detection across all supported chains
 - Block-by-block transaction scanning
 - Intelligent payment matching algorithms
@@ -100,6 +105,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - Failed transaction handling and retry logic
 
 #### 3. Settlement Automation
+
 - Automatic fiat conversion via partner liquidity providers
 - Bank transfer execution
 - Multi-currency support (USD, NGN, EUR, GBP, etc.)
@@ -107,6 +113,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - Settlement status tracking
 
 #### 4. Merchant Dashboard
+
 - Real-time payment tracking
 - Transaction history and analytics
 - Settlement reports and exports
@@ -115,6 +122,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - Multi-user access control
 
 #### 5. Developer Tools
+
 - RESTful API with comprehensive documentation
 - Webhook system for real-time notifications
 - SDK support (JavaScript/TypeScript, Python, Go)
@@ -123,14 +131,15 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - Swagger documentation for API docs
 
 **Waitlist API**
+
 - Join waitlist: `POST /v1/waitlist/join`
 - Username availability: `GET /v1/waitlist/check/:username`
 - Stats: `GET /v1/waitlist/stats`
 
-
 ### Advanced Features
 
 #### Security
+
 - Multi-signature wallet support
 - Rate limiting and DDoS protection
 - API key authentication with scopes
@@ -139,6 +148,7 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - PCI-DSS compliance ready
 
 #### Monitoring & Observability
+
 - Prometheus metrics export
 - Grafana dashboard templates
 - Sentry error tracking
@@ -147,14 +157,13 @@ Cheese is a B2B2C payment settlement platform that enables businesses and indivi
 - Uptime monitoring with alerting
 
 #### Scalability
+
 - Horizontal scaling support
 - Database connection pooling
 - Redis caching for hot data
 - Message queue for async processing
 - Load balancing ready
 - CDN integration for static assets
-
-
 
 ## Installation & Setup
 
@@ -240,6 +249,7 @@ npm run start
 # Server Configuration
 PORT=3000
 NODE_ENV=development
+ALLOW_INSECURE_DEVICE_SIGNATURES=false # Only set true for explicit local debugging
 
 # Database
 DB_HOST=localhost
@@ -301,8 +311,6 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
 NEXT_PUBLIC_GA_TRACKING_ID=G-XXXXXXXXXX
 ```
 
-
-
 ### Webhook Events
 
 Cheese sends webhooks for the following events:
@@ -314,14 +322,11 @@ Cheese sends webhooks for the following events:
 - `payment.failed` - Payment or settlement failed
 - `payment.expired` - Payment request expired
 
-
 ## 🌐 Blockchain Integration Details
 
 ### EVM Networks (Polygon, Base, Celo, Arbitrum, Optimism)
 
 **Token Standard:** ERC-20 (USDC)
-
-
 
 ## 🎨 Frontend Features
 
@@ -348,36 +353,35 @@ Cheese sends webhooks for the following events:
 4. Real-time status updates
 5. Receipt generation
 
-
 ### Cloud Platforms
 
 #### Railway
+
 ```bash
 railway up
 ```
 
 #### Vercel (Frontend)
+
 ```bash
 vercel --prod
 ```
 
-
 ### Project Links
+
 - **Website**: [https://dabdub.xyz](https://Cheesepay.xyz)
 - **Documentation**: [https://docs.dabdub.xyz](https://docs.Cheesepay.xyz)
 - **API Reference**: [https://api.dabdub.xyz/docs](https://api.Cheesepay.xyz/docs)
 - **Status Page**: [https://status.dabdub.xyz](https://status.Cheesepay.xyz)
 
 ### Community
+
 - **Twitter**: [@CryptoSettle](https://twitter.com/Cheesepay)
 - **Telegram**: [CryptoSettle Community](https://t.me/Cheesepay)
-
 
 ## 📞 Support
 
 - **Email**: support@Cheesepay.xyz
 - **Enterprise Inquiries**: enterprise@Cheesepay.xyz
-
-
 
 Built with ❤️ by the CheesePay team

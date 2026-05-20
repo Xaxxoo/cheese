@@ -17,7 +17,7 @@ import {
   ApiResponse,
   ApiCookieAuth,
 } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { Throttle } from '@nestjs/throttler';
@@ -175,11 +175,18 @@ export class AuthController {
   })
   async refresh(
     @Req() req: Request & { user: { user: User; tokenHash: string } },
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.refresh(req.user.user, req.user.tokenHash, {
-      userAgent: req.headers['user-agent'],
-      ip: req.ip,
-    });
+    const result = await this.authService.refresh(
+      req.user.user,
+      req.user.tokenHash,
+      {
+        userAgent: req.headers['user-agent'],
+        ip: req.ip,
+      },
+    );
+    this.setRefreshCookie(res, result.refreshToken);
+    return { accessToken: result.accessToken };
   }
 
   // ── POST /auth/logout ────────────────────────────────────
@@ -205,7 +212,7 @@ export class AuthController {
           .digest('hex')
       : '';
     await this.authService.logout(user.id, tokenHash);
-    res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'none', path: '/' });
+    this.clearRefreshCookie(res);
     return { message: 'Logged out' };
   }
 
@@ -298,7 +305,8 @@ export class AuthController {
   @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'Reset PIN',
-    description: 'Clears the stored PIN hash so the user can set a new one via POST /auth/set-pin.',
+    description:
+      'Clears the stored PIN hash so the user can set a new one via POST /auth/set-pin.',
   })
   @ApiResponse({ status: 200, description: 'PIN reset successfully' })
   async resetPin(@CurrentUser() user: User) {
@@ -379,20 +387,31 @@ export class AuthController {
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiResponse({ status: 409, description: 'Device already registered' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
-  async completeDeviceRegistrationByLink(@Body() dto: CompleteDeviceRegistrationByLinkDto) {
+  async completeDeviceRegistrationByLink(
+    @Body() dto: CompleteDeviceRegistrationByLinkDto,
+  ) {
     await this.authService.completeDeviceRegistrationByLink(dto);
     return { message: 'Device registered successfully. You can now log in.' };
   }
 
   // ── Helpers ───────────────────────────────────────────────
   private setRefreshCookie(res: Response, token: string) {
+    res.cookie('refresh_token', token, this.getRefreshCookieOptions());
+  }
+
+  private clearRefreshCookie(res: Response) {
+    const { maxAge: _maxAge, ...options } = this.getRefreshCookieOptions();
+    res.clearCookie('refresh_token', options);
+  }
+
+  private getRefreshCookieOptions(): CookieOptions {
     const days = 30;
-    res.cookie('refresh_token', token, {
+    return {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
       maxAge: days * 24 * 60 * 60 * 1000,
       path: '/',
-    });
+    };
   }
 }
