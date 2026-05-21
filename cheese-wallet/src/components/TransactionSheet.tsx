@@ -168,13 +168,13 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Sheet */}
       <div
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 rounded-t-3xl flex flex-col w-full max-w-[430px]"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-[60] rounded-t-3xl flex flex-col w-full max-w-[430px]"
         style={{
           background: '#141414',
           border: '1px solid rgba(255,255,255,0.08)',
