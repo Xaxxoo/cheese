@@ -74,7 +74,7 @@ function groupByDate(notifs: Notification[]): { date: string; items: Notificatio
 
 // ── Push banner ────────────────────────────────────────────
 function PushBanner() {
-  const { status, subscribe, unsubscribe } = usePushNotifications()
+  const { status, error, subscribe, unsubscribe } = usePushNotifications()
 
   if (status === 'unsupported') return null
 
@@ -107,7 +107,7 @@ function PushBanner() {
 
   // default
   return (
-    <div className="mx-4 mb-3">
+    <div className="mx-4 mb-3 flex flex-col gap-2">
       <button
         type="button"
         onClick={subscribe}
@@ -116,6 +116,9 @@ function PushBanner() {
         <Bell size={15} />
         Enable Push Notifications
       </button>
+      {error && (
+        <p className="text-xs text-red-400/80 text-center px-2">{error}</p>
+      )}
     </div>
   )
 }

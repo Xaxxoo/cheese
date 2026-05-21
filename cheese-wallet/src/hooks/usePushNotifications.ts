@@ -7,6 +7,7 @@ type PushStatus = 'unsupported' | 'denied' | 'default' | 'subscribed'
 
 export function usePushNotifications() {
   const [status, setStatus] = useState<PushStatus>('default')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!('Notification' in window) || !('PushManager' in window)) {
@@ -25,19 +26,25 @@ export function usePushNotifications() {
   }, [])
 
   async function subscribe() {
-    const permission = await Notification.requestPermission()
-    if (permission !== 'granted') {
-      setStatus('denied')
-      return
+    try {
+      setError(null)
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        setStatus('denied')
+        return
+      }
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+      })
+      const { endpoint, keys } = sub.toJSON() as any
+      await subscribePush({ endpoint, p256dh: keys.p256dh, authKey: keys.auth })
+      setStatus('subscribed')
+    } catch (err: any) {
+      console.error('[push subscribe]', err)
+      setError(err?.message ?? 'Failed to enable notifications')
     }
-    const reg = await navigator.serviceWorker.ready
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    })
-    const { endpoint, keys } = sub.toJSON() as any
-    await subscribePush({ endpoint, p256dh: keys.p256dh, authKey: keys.auth })
-    setStatus('subscribed')
   }
 
   async function unsubscribe() {
@@ -50,5 +57,5 @@ export function usePushNotifications() {
     setStatus('default')
   }
 
-  return { status, subscribe, unsubscribe }
+  return { status, error, subscribe, unsubscribe }
 }
