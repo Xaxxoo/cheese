@@ -82,7 +82,7 @@ export class NotificationsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Unsubscribe from push notifications' })
   @ApiResponse({ status: 204, description: 'Subscription removed' })
-  unsubscribe(@CurrentUser() user: User, @Body() dto: UnsubscribeDto) {
-    return this.notifService.unsubscribe(user.id, dto.endpoint);
+  async unsubscribe(@CurrentUser() user: User, @Body() dto: UnsubscribeDto): Promise<void> {
+    await this.notifService.unsubscribe(user.id, dto.endpoint);
   }
 }
