@@ -173,16 +173,22 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
       />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl overflow-hidden"
-        style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none', maxHeight: '90dvh', overflowY: 'auto' }}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col"
+        style={{
+          background: '#141414',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: 'none',
+          maxHeight: '92dvh',
+        }}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
+        {/* Drag handle — not scrollable */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="w-10 h-1 rounded-full bg-white/15" />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-3 pb-4">
+        {/* Header — not scrollable */}
+        <div className="flex items-center justify-between px-5 pt-3 pb-4 shrink-0">
           <h2 className="text-base font-semibold text-white">Transaction Detail</h2>
           <button
             type="button"
@@ -193,55 +199,61 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
           </button>
         </div>
 
-        {/* Amount hero */}
-        <div className="flex flex-col items-center gap-3 px-5 py-5">
-          <div className={cn('w-16 h-16 rounded-2xl flex items-center justify-center', cfg.bg)}>
-            <Icon size={28} className={cfg.color} />
-          </div>
-          <div className="text-center">
-            <p className={cn('text-3xl font-bold tabular-nums', amountColor)}>
-              {sign}${parseFloat(tx.amountUsdc).toFixed(2)}
-              <span className="text-base font-medium text-white/30 ml-1.5">USDC</span>
-            </p>
-            {tx.amountNgn && (
-              <p className="text-sm text-white/35 mt-1">
-                ≈ ₦{parseFloat(tx.amountNgn).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Amount hero */}
+          <div className="flex flex-col items-center gap-3 px-5 py-5">
+            <div className={cn('w-16 h-16 rounded-2xl flex items-center justify-center', cfg.bg)}>
+              <Icon size={28} className={cfg.color} />
+            </div>
+            <div className="text-center">
+              <p className={cn('text-3xl font-bold tabular-nums', amountColor)}>
+                {sign}${parseFloat(tx.amountUsdc).toFixed(2)}
+                <span className="text-base font-medium text-white/30 ml-1.5">USDC</span>
               </p>
-            )}
+              {tx.amountNgn && (
+                <p className="text-sm text-white/35 mt-1">
+                  ≈ ₦{parseFloat(tx.amountNgn).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                </p>
+              )}
+            </div>
+            <span className={cn('text-xs font-medium px-3 py-1 rounded-full', status.cls)}>
+              {status.label}
+            </span>
           </div>
-          <span className={cn('text-xs font-medium px-3 py-1 rounded-full', status.cls)}>
-            {status.label}
-          </span>
+
+          {/* Details */}
+          <div className="px-5 pb-2">
+            <div className="rounded-2xl px-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <DetailRow label="Type"      value={TX_LABELS[tx.type] ?? tx.type} />
+              <DetailRow label="Date"      value={date} />
+              {tx.recipientName    && <DetailRow label="Recipient"  value={tx.recipientName} />}
+              {tx.recipientUsername && <DetailRow label="To"         value={`@${tx.recipientUsername}`} />}
+              {tx.recipientAddress && <DetailRow label="Address"    value={tx.recipientAddress} mono truncate />}
+              {tx.bank             && <DetailRow label="Bank"       value={tx.bank} />}
+              {tx.accountNumber    && <DetailRow label="Account"    value={tx.accountNumber} mono />}
+              {tx.network          && <DetailRow label="Network"    value={tx.network} />}
+              {tx.description      && <DetailRow label="Note"       value={tx.description} />}
+              {tx.fee && parseFloat(tx.fee) > 0 && (
+                <DetailRow label="Fee" value={`$${parseFloat(tx.fee).toFixed(4)} USDC`} />
+              )}
+            </div>
+          </div>
+
+          {/* Reference + txHash */}
+          <div className="px-5 pt-3 pb-4">
+            <div className="rounded-2xl px-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <DetailRow label="Reference" value={tx.reference} mono />
+              {tx.txHash && <DetailRow label="Tx Hash" value={tx.txHash} mono truncate />}
+            </div>
+          </div>
         </div>
 
-        {/* Details */}
-        <div className="px-5 pb-2">
-          <div className="rounded-2xl px-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <DetailRow label="Type"      value={TX_LABELS[tx.type] ?? tx.type} />
-            <DetailRow label="Date"      value={date} />
-            {tx.recipientName    && <DetailRow label="Recipient"  value={tx.recipientName} />}
-            {tx.recipientUsername && <DetailRow label="To"         value={`@${tx.recipientUsername}`} />}
-            {tx.recipientAddress && <DetailRow label="Address"    value={tx.recipientAddress} mono truncate />}
-            {tx.bank             && <DetailRow label="Bank"       value={tx.bank} />}
-            {tx.accountNumber    && <DetailRow label="Account"    value={tx.accountNumber} mono />}
-            {tx.network          && <DetailRow label="Network"    value={tx.network} />}
-            {tx.description      && <DetailRow label="Note"       value={tx.description} />}
-            {tx.fee && parseFloat(tx.fee) > 0 && (
-              <DetailRow label="Fee" value={`$${parseFloat(tx.fee).toFixed(4)} USDC`} />
-            )}
-          </div>
-        </div>
-
-        {/* Reference + txHash */}
-        <div className="px-5 pt-3 pb-2">
-          <div className="rounded-2xl px-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <DetailRow label="Reference" value={tx.reference} mono />
-            {tx.txHash && <DetailRow label="Tx Hash" value={tx.txHash} mono truncate />}
-          </div>
-        </div>
-
-        {/* Share button */}
-        <div className="px-5 pt-4 pb-8">
+        {/* Share button — sticky above safe area */}
+        <div
+          className="shrink-0 px-5 pt-3 pb-3"
+          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        >
           <button
             type="button"
             onClick={handleShare}
