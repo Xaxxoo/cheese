@@ -174,7 +174,7 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
 
       {/* Sheet */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl flex flex-col"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 rounded-t-3xl flex flex-col w-full max-w-[430px]"
         style={{
           background: '#141414',
           border: '1px solid rgba(255,255,255,0.08)',
