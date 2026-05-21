@@ -1,4 +1,6 @@
-import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Query, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { User } from '../auth/entities/user.entity';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminAuthService } from './admin-auth.service';
@@ -144,6 +146,16 @@ export class AdminDashboardController {
       status,
       search,
     });
+  }
+
+  // ── DELETE /admin/users/:id ────────────────────────────────────────────────
+  @Delete('users/:id')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Permanently delete a user (super_admin only)' })
+  async deleteUser(@Param('id') id: string, @CurrentUser() requester: User) {
+    await this.adminAuthService.deleteUser(id, requester);
   }
 
   // ── PATCH /admin/users/:id/status ─────────────────────────────────────────

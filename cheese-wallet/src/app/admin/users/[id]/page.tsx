@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  setAdminUserKycVerified, type AdminUserDetail,
+  setAdminUserKycVerified, deleteAdminUser, type AdminUserDetail,
 } from '@/lib/api/admin';
 
 const fmtDate = (s: string) =>
@@ -30,6 +30,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [saving,  setSaving]  = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     getAdminUserDetail(params.id)
@@ -67,6 +68,16 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       void result;
     } catch { /* ignore */ }
     finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!user || saving) return;
+    setSaving(true);
+    try {
+      await deleteAdminUser(user.id);
+      router.replace('/admin/users');
+    } catch { /* ignore */ }
+    finally { setSaving(false); setConfirmDelete(false); }
   };
 
   const handleCompleteTransfer = async (transferId: string) => {
@@ -327,6 +338,67 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   {user.isActive ? 'Block user access' : 'Restore user access'}
                 </span>
               </button>
+
+              {/* Divider */}
+              <div style={{ borderTop: `1px solid ${c.border}`, margin: '4px 0' }} />
+
+              {/* Delete User */}
+              {!confirmDelete ? (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={saving}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 16px', borderRadius: 10, cursor: saving ? 'default' : 'pointer',
+                    background: 'transparent',
+                    border: `1px solid rgba(239,68,68,0.3)`,
+                    color: c.red,
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+                    opacity: saving ? 0.55 : 1, transition: 'opacity .15s',
+                  }}
+                >
+                  <span>Delete User</span>
+                  <span style={{ fontSize: 11, opacity: 0.65 }}>Permanent — cannot be undone</span>
+                </button>
+              ) : (
+                <div style={{
+                  borderRadius: 10, border: '1px solid rgba(239,68,68,0.4)',
+                  background: c.redDim, padding: '12px 16px',
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                }}>
+                  <div style={{ fontSize: 12, color: c.red, fontWeight: 600 }}>
+                    Permanently delete @{user.username}?
+                  </div>
+                  <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
+                    This will delete the account, all transactions, wallets, and associated data. This cannot be reversed.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={handleDelete}
+                      disabled={saving}
+                      style={{
+                        flex: 1, padding: '8px 0', borderRadius: 8, cursor: saving ? 'default' : 'pointer',
+                        background: c.red, border: 'none', color: '#fff',
+                        fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                        opacity: saving ? 0.6 : 1,
+                      }}
+                    >
+                      {saving ? 'Deleting…' : 'Yes, delete permanently'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={saving}
+                      style={{
+                        padding: '8px 14px', borderRadius: 8, cursor: saving ? 'default' : 'pointer',
+                        background: 'transparent', border: `1px solid ${c.border}`, color: c.textMid,
+                        fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

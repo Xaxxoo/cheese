@@ -568,6 +568,32 @@ export class AdminAuthService {
     return { id: user.id, kycStatus: user.kycStatus };
   }
 
+  /**
+   * Permanently delete a user and all associated data.
+   * Restricted to super_admin only.
+   *
+   * Deletion order:
+   *   1. blockchain_wallets rows (no FK back to users — manual delete required)
+   *   2. The user row itself (DB cascades handle transactions, devices, tokens, etc.)
+   */
+  async deleteUser(id: string, requester: User): Promise<void> {
+    if (requester.adminRole !== AdminRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only super_admin can permanently delete users');
+    }
+
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // blockchain_wallets has no FK constraint back to users — delete manually
+    await this.userRepo.manager.query(
+      `DELETE FROM "blockchain_wallets" WHERE "userId" = $1`,
+      [id],
+    );
+
+    await this.userRepo.remove(user);
+    this.logger.warn(`User permanently deleted [id=${id}] by admin [id=${requester.id}]`);
+  }
+
   // ── Transfer actions ──────────────────────────────────────────────────────
 
   async completeTransfer(id: string) {

@@ -286,6 +286,10 @@ export async function setAdminUserKycVerified(id: string): Promise<{ id: string;
   return data.data
 }
 
+export async function deleteAdminUser(id: string): Promise<void> {
+  await adminApiClient.delete(`/admin/users/${id}`)
+}
+
 // ── Treasury ──────────────────────────────────────────────────────────────
 export interface EvmVaultBalance {
   vaultAddress: string
