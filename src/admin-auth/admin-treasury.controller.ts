@@ -23,6 +23,12 @@ class TreasuryTransferDto {
   amountUsdc: string;
 }
 
+class EvmWithdrawDto {
+  @IsString()
+  @Matches(/^0x[a-fA-F0-9]{40}$/, { message: 'Invalid EVM address' })
+  toAddress: string;
+}
+
 @ApiTags('Admin – Treasury')
 @Controller('admin/treasury')
 @UseGuards(AdminJwtGuard)
@@ -51,5 +57,16 @@ export class AdminTreasuryController {
       );
     }
     return this.treasury.transfer(dto.toAddress, dto.amountUsdc);
+  }
+
+  // ── POST /admin/treasury/evm-withdraw ────────────────────────────────────
+  @Post('evm-withdraw')
+  @ApiOperation({ summary: 'Sweep all available funds from the EVM CheeseVault' })
+  evmWithdraw(@CurrentUser() admin: User, @Body() dto: EvmWithdrawDto) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException('Only super_admin or treasurer roles can withdraw from the vault');
+    }
+    return this.treasury.evmWithdraw(dto.toAddress);
   }
 }

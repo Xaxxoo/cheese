@@ -79,6 +79,7 @@ interface EvmChainContext {
 }
 
 const EVM_CHAIN_DEFINITIONS = [
+  { chainId: 80002, name: 'amoy',     envPrefix: 'AMOY'     },
   { chainId: 42161, name: 'arbitrum', envPrefix: 'ARBITRUM' },
   { chainId: 8453,  name: 'base',     envPrefix: 'BASE'     },
   { chainId: 42220, name: 'celo',     envPrefix: 'CELO'     },
@@ -169,6 +170,11 @@ export class BlockchainService implements OnModuleInit {
     'function transfer(address to, uint256 amount) returns (bool)',
     'function balanceOf(address account) view returns (uint256)',
     'function decimals() view returns (uint8)',
+  ];
+
+  private readonly VAULT_ABI = [
+    'function getAvailableWithdrawal(address token) external view returns (uint256 payments, uint256 fees, uint256 total)',
+    'function withdrawVaultFunds(address to, address token) external',
   ];
 
   constructor(private readonly config: ConfigService) {}
@@ -1637,6 +1643,51 @@ export class BlockchainService implements OnModuleInit {
       `sendViaContract confirmed [hash=${sendResult.hash}] [balanceAfter=${balanceAfter}]`,
     );
     return { txHash: sendResult.hash, balanceAfter };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EVM Vault — CheeseVault contract read/write
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async getVaultBalance(
+    vaultAddress: string,
+    usdcAddress: string,
+    chainId: number,
+  ): Promise<{ payments: string; fees: string; total: string }> {
+    this.requireEvm('getVaultBalance', chainId);
+    const ctx = this.getChainContext(chainId);
+    try {
+      const vault = new ethers.Contract(vaultAddress, this.VAULT_ABI, ctx.provider);
+      const [payments, fees, total]: [bigint, bigint, bigint] =
+        await vault.getAvailableWithdrawal(usdcAddress);
+      return {
+        payments: this.toHuman(payments),
+        fees:     this.toHuman(fees),
+        total:    this.toHuman(total),
+      };
+    } catch (err) {
+      throw this.wrapError('getVaultBalance', err);
+    }
+  }
+
+  async withdrawFromVault(
+    vaultAddress: string,
+    toAddress: string,
+    usdcAddress: string,
+    chainId: number,
+  ): Promise<string> {
+    this.requireEvm('withdrawFromVault', chainId);
+    const ctx = this.getChainContext(chainId);
+    this.logger.log(`withdrawFromVault [vault=${vaultAddress}] [to=${toAddress}] [chain=${ctx.name}]`);
+    try {
+      const vault = new ethers.Contract(vaultAddress, this.VAULT_ABI, ctx.signer);
+      const tx = await vault.withdrawVaultFunds(toAddress, usdcAddress);
+      const receipt = (await tx.wait(1)) as ethers.TransactionReceipt;
+      this.logger.log(`withdrawFromVault confirmed [txHash=${receipt.hash}]`);
+      return receipt.hash;
+    } catch (err) {
+      throw this.wrapError('withdrawFromVault', err);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

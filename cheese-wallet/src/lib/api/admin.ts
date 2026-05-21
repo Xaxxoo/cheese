@@ -287,9 +287,18 @@ export async function setAdminUserKycVerified(id: string): Promise<{ id: string;
 }
 
 // ── Treasury ──────────────────────────────────────────────────────────────
+export interface EvmVaultBalance {
+  vaultAddress: string
+  payments:     string
+  fees:         string
+  total:        string
+  chainId:      number
+}
+
 export interface TreasuryBalance {
   address:     string
   balanceUsdc: string
+  evmVault?:   EvmVaultBalance   // absent if Amoy not configured
 }
 
 export async function getTreasuryBalance(): Promise<TreasuryBalance> {
@@ -305,6 +314,15 @@ export async function treasuryTransfer(
     '/admin/treasury/transfer',
     { toAddress, amountUsdc },
   )
+  return data.data
+}
+
+export async function evmTreasuryWithdraw(
+  toAddress: string,
+): Promise<{ txHash: string; toAddress: string }> {
+  const { data } = await adminApiClient.post<
+    ApiResponse<{ txHash: string; toAddress: string }>
+  >('/admin/treasury/evm-withdraw', { toAddress })
   return data.data
 }
 

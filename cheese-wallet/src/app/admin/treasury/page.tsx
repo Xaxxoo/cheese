@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, type CSSProperties } from 'react';
-import { c, IcoSend, IcoWallet, Pill } from '../_shared';
+import { c, IcoSend, IcoWallet, IcoChain, Pill } from '../_shared';
 import {
   getTreasuryBalance,
   treasuryTransfer,
+  evmTreasuryWithdraw,
   listAdminTransfers,
   type TreasuryBalance,
+  type EvmVaultBalance,
   type AdminTransferItem,
 } from '@/lib/api/admin';
 import { useAdminAuthStore } from '@/store/adminAuthStore';
@@ -111,6 +113,131 @@ function BalanceCard({
           {loading ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── EVM Vault card ────────────────────────────────────────────────────────
+function EvmVaultCard({
+  vault,
+  loading,
+  onRefresh,
+}: {
+  vault:     EvmVaultBalance | null | undefined;
+  loading:   boolean;
+  onRefresh: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function copyAddress() {
+    if (!vault?.vaultAddress) return;
+    void navigator.clipboard.writeText(vault.vaultAddress).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  const card: CSSProperties = {
+    background: c.surface,
+    border: `1px solid ${c.border}`,
+    borderRadius: 14,
+    padding: '22px 26px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  };
+
+  if (!vault && !loading) {
+    return (
+      <div style={{ ...card, justifyContent: 'center', minHeight: 80 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: c.blue, flexShrink: 0,
+          }}>
+            <IcoChain />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>
+              EVM Vault · Polygon Amoy
+            </div>
+            <div style={{ fontSize: 14, color: c.textDim }}>Not configured</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: c.blue, flexShrink: 0,
+          }}>
+            <IcoChain />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>
+              EVM Vault · Polygon Amoy
+            </div>
+            {loading && !vault ? (
+              <div style={{ fontSize: 26, fontWeight: 700, color: c.textDim, letterSpacing: '-0.02em' }}>—</div>
+            ) : (
+              <div style={{ fontSize: 26, fontWeight: 700, color: c.text, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                ${fmtUsd(vault?.total ?? '0')}
+                <span style={{ fontSize: 13, color: c.textDim, fontWeight: 500, marginLeft: 6 }}>USDC</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {vault?.vaultAddress && (
+            <button
+              onClick={copyAddress}
+              style={{
+                fontSize: 11.5, color: copied ? c.green : c.textDim,
+                background: copied ? c.greenDim : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${copied ? 'rgba(34,197,94,0.2)' : c.border}`,
+                borderRadius: 8, padding: '6px 12px', cursor: 'pointer', transition: 'all 0.15s',
+                fontFamily: 'monospace',
+              }}
+            >
+              {copied ? 'Copied!' : `${vault.vaultAddress.slice(0, 6)}…${vault.vaultAddress.slice(-4)}`}
+            </button>
+          )}
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            style={{
+              fontSize: 11.5, color: c.textDim, background: 'transparent',
+              border: `1px solid ${c.border}`, borderRadius: 8, padding: '6px 12px',
+              cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.5 : 1,
+            }}
+          >
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {vault && (
+        <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 12, display: 'flex', gap: 24 }}>
+          <div>
+            <div style={{ fontSize: 10, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>Payments</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: c.text, fontVariantNumeric: 'tabular-nums' }}>${fmtUsd(vault.payments)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>Fees</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: c.blue, fontVariantNumeric: 'tabular-nums' }}>${fmtUsd(vault.fees)}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -236,6 +363,113 @@ function TransferPanel({ onSent }: { onSent: () => void }) {
   );
 }
 
+// ── EVM Withdraw panel ────────────────────────────────────────────────────
+function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
+  const { admin } = useAdminAuthStore();
+  const canWithdraw = admin?.adminRole === 'super_admin' || admin?.adminRole === 'treasurer';
+
+  const [toAddress,  setToAddress]  = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [result,     setResult]     = useState<{ txHash: string } | null>(null);
+  const [error,      setError]      = useState('');
+
+  async function handleSweep() {
+    setError('');
+    setResult(null);
+    if (!toAddress.trim()) { setError('Destination address is required.'); return; }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(toAddress.trim())) { setError('Invalid EVM address — must be 0x followed by 40 hex characters.'); return; }
+    setSubmitting(true);
+    try {
+      const res = await evmTreasuryWithdraw(toAddress.trim());
+      setResult(res);
+      setToAddress('');
+      onSent();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Sweep failed';
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`,
+    borderRadius: 14, padding: '20px 24px',
+    display: 'flex', flexDirection: 'column', gap: 14,
+  };
+
+  const inp: CSSProperties = {
+    background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`,
+    borderRadius: 9, padding: '10px 14px', color: c.text, fontSize: 13,
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+    fontFamily: 'monospace',
+  };
+
+  if (!canWithdraw) {
+    return (
+      <div style={{ ...card, alignItems: 'center', padding: '24px', textAlign: 'center' }}>
+        <div style={{ color: c.textDim, fontSize: 13 }}>
+          Only <span style={{ color: c.blue }}>super_admin</span> and <span style={{ color: c.blue }}>treasurer</span> roles can withdraw from the vault.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sweep Vault Funds</div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          Destination EVM Address
+        </label>
+        <input
+          style={inp}
+          placeholder="0x…"
+          value={toAddress}
+          onChange={(e) => setToAddress(e.target.value)}
+        />
+      </div>
+
+      <div style={{ fontSize: 12, color: c.textDim, background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`, borderRadius: 8, padding: '8px 12px' }}>
+        This sweeps all available payments and fees in one transaction.
+      </div>
+
+      {error && (
+        <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+          Swept! TX hash:{' '}
+          <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
+            {result.txHash.slice(0, 20)}…
+          </span>
+        </div>
+      )}
+
+      <button
+        onClick={handleSweep}
+        disabled={submitting}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          background: submitting ? c.blueDim : c.blue,
+          color: '#000',
+          border: `1px solid rgba(96,165,250,0.4)`, borderRadius: 9,
+          padding: '10px 18px', fontSize: 13, fontWeight: 600,
+          cursor: submitting ? 'default' : 'pointer', transition: 'all 0.15s',
+          opacity: submitting ? 0.7 : 1,
+        }}
+      >
+        <IcoChain />
+        {submitting ? 'Sweeping…' : 'Sweep All Funds'}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
   const [treasury,    setTreasury]    = useState<TreasuryBalance | null>(null);
@@ -275,6 +509,11 @@ export default function TreasuryPage() {
     background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14,
   };
 
+  const sectionLabel = (label: string, color: string): CSSProperties => ({
+    fontSize: 12, fontWeight: 600, letterSpacing: '0.06em',
+    textTransform: 'uppercase', color, marginBottom: 10,
+  });
+
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -284,14 +523,26 @@ export default function TreasuryPage() {
           Treasury
         </h1>
         <div style={{ fontSize: 12, color: c.textDim, marginTop: 4 }}>
-          Platform USDC wallet — accumulated from all bank transfer payouts
+          Platform wallets — Stellar treasury and EVM vault
         </div>
       </div>
 
-      {/* Top row — balance + transfer side-by-side */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
-        <BalanceCard treasury={treasury} loading={balLoading} onRefresh={loadBalance} />
-        <TransferPanel onSent={loadBalance} />
+      {/* Stellar Treasury section */}
+      <div>
+        <div style={sectionLabel('Stellar Treasury', c.amber)}>Stellar Treasury</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
+          <BalanceCard treasury={treasury} loading={balLoading} onRefresh={loadBalance} />
+          <TransferPanel onSent={loadBalance} />
+        </div>
+      </div>
+
+      {/* EVM Vault section */}
+      <div>
+        <div style={sectionLabel('EVM Vault · CheeseVault', c.blue)}>EVM Vault · CheeseVault</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
+          <EvmVaultCard vault={treasury?.evmVault} loading={balLoading} onRefresh={loadBalance} />
+          <EvmWithdrawPanel onSent={loadBalance} />
+        </div>
       </div>
 
       {/* Completed transfers table */}

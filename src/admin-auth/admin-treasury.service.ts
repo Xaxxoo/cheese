@@ -5,16 +5,40 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 
 @Injectable()
 export class AdminTreasuryService {
   private readonly logger = new Logger(AdminTreasuryService.name);
 
-  constructor(private readonly blockchain: BlockchainService) {}
+  constructor(
+    private readonly blockchain: BlockchainService,
+    private readonly config: ConfigService,
+  ) {}
+
+  private get vaultAddress(): string {
+    return this.config.get<string>('AMOY_VAULT_ADDRESS') ?? '';
+  }
+
+  private get vaultUsdcAddress(): string {
+    return this.config.get<string>('AMOY_USDC_ADDRESS') ?? '';
+  }
+
+  private readonly VAULT_CHAIN_ID = 80002;
 
   // ── GET /admin/treasury ──────────────────────────────────────────────────
-  async getBalance(): Promise<{ address: string; balanceUsdc: string }> {
+  async getBalance(): Promise<{
+    address:     string;
+    balanceUsdc: string;
+    evmVault?: {
+      vaultAddress: string;
+      payments:     string;
+      fees:         string;
+      total:        string;
+      chainId:      number;
+    };
+  }> {
     const address = this.blockchain.platformPublicKey;
     if (!address) {
       throw new ServiceUnavailableException(
@@ -22,7 +46,23 @@ export class AdminTreasuryService {
       );
     }
     const balanceUsdc = await this.blockchain.getStellarUsdcBalance(address);
-    return { address, balanceUsdc };
+
+    let evmVault: { vaultAddress: string; payments: string; fees: string; total: string; chainId: number } | undefined;
+    if (this.blockchain.isEvmReady && this.vaultAddress && this.vaultUsdcAddress) {
+      try {
+        const vb = await this.blockchain.getVaultBalance(
+          this.vaultAddress,
+          this.vaultUsdcAddress,
+          this.VAULT_CHAIN_ID,
+        );
+        evmVault = { vaultAddress: this.vaultAddress, chainId: this.VAULT_CHAIN_ID, ...vb };
+      } catch (err) {
+        this.logger.warn(`EVM vault balance fetch failed: ${(err as Error).message}`);
+        // Graceful degradation — Stellar section still works
+      }
+    }
+
+    return { address, balanceUsdc, ...(evmVault ? { evmVault } : {}) };
   }
 
   // ── POST /admin/treasury/transfer ────────────────────────────────────────
@@ -69,5 +109,20 @@ export class AdminTreasuryService {
     );
 
     return { txHash, toAddress, amountUsdc };
+  }
+
+  // ── POST /admin/treasury/evm-withdraw ────────────────────────────────────
+  async evmWithdraw(toAddress: string): Promise<{ txHash: string; toAddress: string }> {
+    if (!this.blockchain.isEvmReady || !this.vaultAddress || !this.vaultUsdcAddress) {
+      throw new ServiceUnavailableException(
+        'EVM vault not configured — check AMOY_RPC_URL, AMOY_VAULT_ADDRESS, AMOY_USDC_ADDRESS',
+      );
+    }
+    this.logger.log(`evmWithdraw initiated [to=${toAddress}]`);
+    const txHash = await this.blockchain.withdrawFromVault(
+      this.vaultAddress, toAddress, this.vaultUsdcAddress, this.VAULT_CHAIN_ID,
+    );
+    this.logger.log(`evmWithdraw settled [txHash=${txHash}] [to=${toAddress}]`);
+    return { txHash, toAddress };
   }
 }
