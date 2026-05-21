@@ -39,6 +39,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { Providers } from '@/lib/providers';
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 
 export const viewport: Viewport = {
   themeColor: '#0a0904',
@@ -113,6 +114,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster position="top-center" />
         </Providers>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
