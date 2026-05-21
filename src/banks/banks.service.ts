@@ -702,8 +702,31 @@ export class BanksService {
         // Transaction stays PENDING until the webhook fires transfer.success
       }
     } catch (err) {
+      const errMsg = (err as Error).message ?? '';
+      const isTimeout = errMsg.toLowerCase().includes('timed out');
+
+      if (isTimeout) {
+        // Timeout ≠ rejection. PulseMFB may have received and is processing the
+        // request. Do NOT refund yet — the webhook or sync endpoint will resolve it.
+        this.logger.error(
+          `Banking provider timed out for ${reference} — leaving PROCESSING, awaiting webhook`,
+        );
+        await this.transferRepo.update(
+          { id: transfer.id },
+          {
+            status: BankTransferStatus.PROCESSING,
+            failureReason: errMsg,
+          },
+        );
+        // Transaction stays PENDING until webhook or sync resolves it
+        throw new BadRequestException(
+          'The banking provider did not respond in time. Your USDC has been deducted and the transfer is being verified — you will be notified once it settles.',
+        );
+      }
+
+      // Definitive rejection (not a timeout) — safe to refund immediately
       this.logger.error(
-        `Banking provider failed for ${reference} — refunding USDC: ${(err as Error).message}`,
+        `Banking provider failed for ${reference} — refunding USDC: ${errMsg}`,
       );
 
       // USDC is already on the platform wallet; send it back to the user
@@ -712,25 +735,24 @@ export class BanksService {
         toPublicKey: user.stellarPublicKey,
         amountUsdc,
         reference,
-        reason: (err as Error).message,
+        reason: errMsg,
       });
 
       await this.transferRepo.update(
         { id: transfer.id },
         {
           status: BankTransferStatus.FAILED,
-          failureReason: (err as Error).message,
+          failureReason: errMsg,
         },
       );
       await this.txService.update(tx.id, {
         status: TxStatus.FAILED,
-        failureReason: `Banking provider failed — USDC refunded. ${(err as Error).message}`,
+        failureReason: `Banking provider failed — USDC refunded. ${errMsg}`,
       });
 
-      const rawMsg = (err as Error).message ?? '';
-      const userMsg = isPulseMfbInternalError(rawMsg)
+      const userMsg = isPulseMfbInternalError(errMsg)
         ? 'The banking provider could not process this transfer. Your USDC balance has been refunded — please try again in a few minutes.'
-        : `Bank transfer failed: ${rawMsg}`;
+        : `Bank transfer failed: ${errMsg}`;
       throw new BadRequestException(userMsg);
     }
 
@@ -967,18 +989,19 @@ export class BanksService {
       };
     }
 
-    if (!transfer.providerReference) {
-      // PulseMFB never accepted the transfer — nothing to poll
+    // Query by providerReference when available, otherwise fall back to our
+    // own reference (handles the timeout case where we never got a response).
+    const queryRef = transfer.providerReference ?? transfer.reference;
+    let remote: Awaited<ReturnType<typeof this.pulseMfb.getTransferStatus>>;
+    try {
+      remote = await this.pulseMfb.getTransferStatus(queryRef);
+    } catch {
       return {
         reference: transfer.reference,
         status: transfer.status,
         synced: false,
       };
     }
-
-    const remote = await this.pulseMfb.getTransferStatus(
-      transfer.providerReference,
-    );
 
     if (remote.status === 'completed') {
       await this.processWebhook({
