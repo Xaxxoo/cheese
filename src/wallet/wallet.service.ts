@@ -11,6 +11,10 @@ import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { User, WalletStatus } from '../auth/entities/user.entity';
+import {
+  BlockchainWallet,
+  WalletStatus as BlockchainWalletStatus,
+} from '../blockchain/entities/blockchain-wallet.entity';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -28,8 +32,7 @@ export interface WalletBalance {
 
 export interface DepositAddress {
   stellarAddress: string;
-  evmAddress: string | null;
-  network: string;
+  evmAddresses: Record<number, { address: string; chainName: string }>;
   asset: 'USDC';
   memo: null;
 }
@@ -40,6 +43,8 @@ export class WalletService {
 
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(BlockchainWallet)
+    private readonly blockchainWalletRepo: Repository<BlockchainWallet>,
     private readonly blockchainService: BlockchainService,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
@@ -83,10 +88,29 @@ export class WalletService {
     if (!user?.stellarPublicKey)
       throw new NotFoundException('Wallet not initialised');
 
+    // Build per-chain EVM address map from active blockchain_wallets rows
+    const evmWallets = await this.blockchainWalletRepo.find({
+      where: { userId, status: BlockchainWalletStatus.ACTIVE },
+    });
+
+    const configuredChains = this.blockchainService.getConfiguredEvmChains();
+    const chainNameMap = new Map(
+      configuredChains.map(({ chainId, name }) => [chainId, name]),
+    );
+
+    const evmAddresses: Record<number, { address: string; chainName: string }> = {};
+    for (const w of evmWallets) {
+      if (w.walletAddress) {
+        evmAddresses[w.chainId] = {
+          address: w.walletAddress,
+          chainName: chainNameMap.get(w.chainId) ?? `chain-${w.chainId}`,
+        };
+      }
+    }
+
     return {
       stellarAddress: user.stellarPublicKey,
-      evmAddress: user.evmAddress ?? null,
-      network: 'Stellar',
+      evmAddresses,
       asset: 'USDC',
       memo: null,
     };

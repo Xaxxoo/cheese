@@ -29,12 +29,12 @@ export enum TokenSymbol {
 }
 
 @Entity('blockchain_wallets')
-@Index('UQ_blockchain_wallets_user_id', ['userId'], { unique: true })
+@Index('UQ_blockchain_wallets_user_chain', ['userId', 'chainId'], { unique: true })
 @Index('UQ_blockchain_wallets_address', ['walletAddress'], {
   unique: true,
   where: '"wallet_address" IS NOT NULL',
 })
-@Index('UQ_blockchain_wallets_username', ['registeredUsername'], {
+@Index('UQ_blockchain_wallets_username_chain', ['registeredUsername', 'chainId'], {
   unique: true,
 })
 @Index('IDX_blockchain_wallets_status', ['status'])
@@ -44,9 +44,10 @@ export class BlockchainWallet {
   id: string;
 
   /**
-   * FK to users.id — one wallet per user, enforced at DB level by unique index.
+   * FK to users.id — one wallet per user per chain, enforced at DB level
+   * by the composite unique index UQ_blockchain_wallets_user_chain.
    */
-  @Column({ type: 'uuid', unique: true })
+  @Column({ type: 'uuid' })
   userId: string;
 
   /**

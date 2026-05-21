@@ -97,9 +97,8 @@ export interface WalletBalance {
 
 export interface WalletAddress {
   stellarAddress: string;
-  evmAddress: string | null;
-  network: string;
-  asset: string;
+  evmAddresses: Record<number, { address: string; chainName: string }>;
+  asset: 'USDC';
   memo: null;
 }
 

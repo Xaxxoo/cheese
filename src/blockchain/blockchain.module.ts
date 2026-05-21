@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BlockchainWallet } from './entities/blockchain-wallet.entity';
 import { BlockchainTransaction } from './entities/blockchain-transaction.entity';
+import { EvmChainCursor } from './entities/evm-chain-cursor.entity';
 import { BlockchainService } from './services/blockchain.service';
 import { WalletService } from './services/wallet.service';
 import { BlockchainTransactionService } from './services/blockchain-transaction.service';
@@ -13,7 +14,7 @@ import { User } from '../auth/entities/user.entity';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    TypeOrmModule.forFeature([BlockchainWallet, BlockchainTransaction, User]),
+    TypeOrmModule.forFeature([BlockchainWallet, BlockchainTransaction, User, EvmChainCursor]),
   ],
   controllers: [BlockchainController],
   providers: [

@@ -50,32 +50,46 @@ function NetworkCard({ net }: { net: DepositNetwork }) {
   )
 }
 
-// ── Chain type ─────────────────────────────────────────────
-type ChainType = 'stellar' | 'evm'
+// ── Chain tabs definition ──────────────────────────────────
+type ChainKey = 'stellar' | 137 | 42161 | 56 | 42220
 
-// ── Network selector tabs ──────────────────────────────────
+const CHAIN_TABS: Array<{ key: ChainKey; label: string }> = [
+  { key: 'stellar', label: 'Stellar'   },
+  { key: 137,       label: 'Polygon'   },
+  { key: 42161,     label: 'Arbitrum'  },
+  { key: 56,        label: 'BNB Chain' },
+  { key: 42220,     label: 'Celo'      },
+]
+
+// ── Chain selector ─────────────────────────────────────────
 function ChainSelector({
   selected,
   onSelect,
+  availableEvmChainIds,
 }: {
-  selected: ChainType
-  onSelect: (c: ChainType) => void
+  selected: ChainKey
+  onSelect: (c: ChainKey) => void
+  availableEvmChainIds: number[]
 }) {
+  const visibleTabs = CHAIN_TABS.filter(
+    (t) => t.key === 'stellar' || availableEvmChainIds.includes(t.key as number),
+  )
+
   return (
-    <div className="flex gap-1 w-full p-1 rounded-2xl bg-white/6">
-      {(['stellar', 'evm'] as const).map((c) => (
+    <div className="flex gap-1 w-full p-1 rounded-2xl bg-white/6 overflow-x-auto">
+      {visibleTabs.map((t) => (
         <button
-          key={c}
+          key={String(t.key)}
           type="button"
-          onClick={() => onSelect(c)}
+          onClick={() => onSelect(t.key)}
           className={cn(
-            'flex-1 py-2 rounded-xl text-xs font-medium transition-all',
-            selected === c
+            'flex-shrink-0 flex-1 py-2 px-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap',
+            selected === t.key
               ? 'bg-[#d4a843] text-black'
               : 'text-white/50 hover:text-white',
           )}
         >
-          {c === 'stellar' ? 'Stellar' : 'EVM (Arbitrum, Base…)'}
+          {t.label}
         </button>
       ))}
     </div>
@@ -83,15 +97,13 @@ function ChainSelector({
 }
 
 // ── Warning banner ─────────────────────────────────────────
-function NetworkWarning({ chain }: { chain: ChainType }) {
+function NetworkWarning({ chainLabel }: { chainLabel: string }) {
   return (
     <div className="w-full flex gap-2.5 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
       <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
       <p className="text-xs text-amber-200/80 leading-relaxed">
         Only send USDC on the{' '}
-        <span className="font-semibold text-amber-300">
-          {chain === 'stellar' ? 'Stellar network' : 'EVM network (Arbitrum, Base, etc.)'}
-        </span>{' '}
+        <span className="font-semibold text-amber-300">{chainLabel} network</span>{' '}
         to this address. Sending on the wrong network will result in permanent loss of funds.
       </p>
     </div>
@@ -103,7 +115,7 @@ export default function ReceivePage() {
   const [copiedAddr, setCopiedAddr] = useState(false)
   const [copiedUser, setCopiedUser] = useState(false)
   const [activeTab, setActiveTab]   = useState<'address' | 'username'>('address')
-  const [chain, setChain]           = useState<ChainType>('stellar')
+  const [chain, setChain]           = useState<ChainKey>('stellar')
 
   const { user } = useAuthStore()
 
@@ -122,9 +134,22 @@ export default function ReceivePage() {
   })
 
   const stellarAddr = addrQ.data?.stellarAddress ?? ''
-  const evmAddr     = addrQ.data?.evmAddress ?? null
-  const activeAddr  = chain === 'stellar' ? stellarAddr : (evmAddr ?? '')
-  const username    = user?.username ?? ''
+  const evmAddresses = addrQ.data?.evmAddresses ?? {}
+  const availableEvmChainIds = Object.keys(evmAddresses).map(Number)
+
+  // Resolve active address for selected chain
+  const activeAddr: string = (() => {
+    if (chain === 'stellar') return stellarAddr
+    return evmAddresses[chain as number]?.address ?? ''
+  })()
+
+  // Resolve chain label for warning banner
+  const chainLabel: string = (() => {
+    if (chain === 'stellar') return 'Stellar'
+    return CHAIN_TABS.find((t) => t.key === chain)?.label ?? 'EVM'
+  })()
+
+  const username = user?.username ?? ''
 
   async function copyAddress() {
     if (!activeAddr) return
@@ -148,10 +173,13 @@ export default function ReceivePage() {
     }
   }
 
-  function handleChainSelect(c: ChainType) {
+  function handleChainSelect(c: ChainKey) {
     setChain(c)
     setCopiedAddr(false)
   }
+
+  const isEvmChain = chain !== 'stellar'
+  const evmEntry = isEvmChain ? evmAddresses[chain as number] : null
 
   return (
     <div className="flex flex-col pb-8">
@@ -189,7 +217,11 @@ export default function ReceivePage() {
       {activeTab === 'address' && (
         <div className="flex flex-col items-center px-4 gap-5">
           {/* Chain selector */}
-          <ChainSelector selected={chain} onSelect={handleChainSelect} />
+          <ChainSelector
+            selected={chain}
+            onSelect={handleChainSelect}
+            availableEvmChainIds={availableEvmChainIds}
+          />
 
           {/* QR */}
           <div className="rounded-3xl overflow-hidden border border-white/8 bg-[#1a1a1a] p-4 flex items-center justify-center">
@@ -212,14 +244,14 @@ export default function ReceivePage() {
             {addrQ.data && chain === 'stellar' && stellarAddr && (
               <QrCode value={stellarAddr} />
             )}
-            {addrQ.data && chain === 'evm' && evmAddr && (
-              <QrCode value={evmAddr} />
+            {addrQ.data && isEvmChain && evmEntry?.address && (
+              <QrCode value={evmEntry.address} />
             )}
-            {addrQ.data && chain === 'evm' && !evmAddr && (
+            {addrQ.data && isEvmChain && !evmEntry?.address && (
               <div className="w-[180px] h-[180px] flex flex-col items-center justify-center gap-3 text-center px-4">
                 <RefreshCw size={20} className="text-white/20 animate-spin" />
                 <p className="text-xs text-white/30 leading-relaxed">
-                  EVM wallet is being set up. Check back shortly.
+                  {chainLabel} wallet is being set up. Check back shortly.
                 </p>
               </div>
             )}
@@ -228,10 +260,10 @@ export default function ReceivePage() {
           {/* Address display */}
           <div className="w-full rounded-2xl bg-white/5 border border-white/8 px-4 py-3.5">
             <p className="text-[10px] text-white/30 mb-1.5 tracking-widest uppercase">
-              {chain === 'stellar' ? 'Stellar' : 'EVM'} address
+              {chainLabel} address
             </p>
-            {chain === 'evm' && !evmAddr && !addrQ.isLoading ? (
-              <p className="text-xs text-white/30 italic">Setting up your EVM wallet…</p>
+            {isEvmChain && !evmEntry?.address && !addrQ.isLoading ? (
+              <p className="text-xs text-white/30 italic">Setting up…</p>
             ) : (
               <p className="text-xs text-white/60 font-mono leading-relaxed break-all">
                 {activeAddr || '—'}
@@ -253,7 +285,7 @@ export default function ReceivePage() {
           </button>
 
           {/* Network warning */}
-          <NetworkWarning chain={chain} />
+          <NetworkWarning chainLabel={chainLabel} />
         </div>
       )}
 

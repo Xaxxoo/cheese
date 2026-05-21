@@ -8,6 +8,11 @@ import { User, WalletStatus } from '../auth/entities/user.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
+import {
+  BlockchainWallet,
+  WalletStatus as BlockchainWalletStatus,
+} from '../blockchain/entities/blockchain-wallet.entity';
+import { EvmChainCursor } from '../blockchain/entities/evm-chain-cursor.entity';
 
 @Injectable()
 export class WalletDepositScheduler {
@@ -16,6 +21,10 @@ export class WalletDepositScheduler {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(BlockchainWallet)
+    private readonly blockchainWalletRepo: Repository<BlockchainWallet>,
+    @InjectRepository(EvmChainCursor)
+    private readonly cursorRepo: Repository<EvmChainCursor>,
     private readonly blockchainService: BlockchainService,
     private readonly txService: TransactionsService,
   ) {}
@@ -220,5 +229,120 @@ export class WalletDepositScheduler {
         { stellarDepositCursor: latestCursor },
       );
     }
+  }
+
+  // ── Poll EVM deposits (every 2 minutes) ──────────────────────────────────
+  // For each configured EVM chain:
+  //   1. Load all ACTIVE wallet addresses for the chain
+  //   2. Load/initialise the block cursor from evm_chain_cursors
+  //   3. Scan Transfer events from lastProcessedBlock+1 → current block
+  //   4. Record new deposits (INSERT ON CONFLICT DO NOTHING for dedup)
+  //   5. Advance cursor to toBlock
+  @Cron('*/2 * * * *')
+  async pollEvmDeposits() {
+    if (!this.blockchainService.isEvmReady) return;
+
+    const chains = this.blockchainService.getConfiguredEvmChains();
+
+    for (const { chainId, name } of chains) {
+      try {
+        await this.pollEvmDepositsForChain(chainId, name);
+      } catch (err) {
+        this.logger.error(
+          `EVM deposit poll failed [chain=${name}/${chainId}]: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  private async pollEvmDepositsForChain(
+    chainId: number,
+    chainName: string,
+  ): Promise<void> {
+    // Load all ACTIVE wallet addresses for this chain
+    const wallets = await this.blockchainWalletRepo.find({
+      where: { chainId, status: BlockchainWalletStatus.ACTIVE },
+      select: ['id', 'walletAddress', 'userId'],
+    });
+
+    if (wallets.length === 0) return; // no active wallets on this chain yet
+
+    const addresses = wallets
+      .filter((w) => w.walletAddress)
+      .map((w) => w.walletAddress!);
+
+    if (addresses.length === 0) return;
+
+    // Build address → userId map for deposit recording
+    const addrToUserId = new Map(
+      wallets
+        .filter((w) => w.walletAddress)
+        .map((w) => [w.walletAddress!.toLowerCase(), w.userId]),
+    );
+
+    // Load cursor (upsert 0 on first run)
+    let cursor = await this.cursorRepo.findOne({ where: { chainId } });
+    if (!cursor) {
+      cursor = this.cursorRepo.create({ chainId, lastProcessedBlock: 0 });
+      await this.cursorRepo.save(cursor);
+    }
+
+    // Get current chain head
+    const toBlock = await this.blockchainService.getEvmBlockNumber(chainId);
+    const fromBlock = cursor.lastProcessedBlock + 1;
+
+    if (fromBlock > toBlock) return; // already up to date
+
+    const usdcAddress = this.blockchainService.getEvmUsdcAddress(chainId);
+    const usdtAddress = this.blockchainService.getEvmUsdtAddress(chainId);
+
+    const tokenAddresses = [usdcAddress];
+    if (usdtAddress) tokenAddresses.push(usdtAddress);
+
+    for (const tokenAddress of tokenAddresses) {
+      try {
+        const events = await this.blockchainService.getEvmDepositEvents(
+          chainId,
+          tokenAddress,
+          addresses,
+          fromBlock,
+          toBlock,
+        );
+
+        for (const event of events) {
+          const userId = addrToUserId.get(event.to.toLowerCase());
+          if (!userId) continue;
+
+          const reference = `CW-DEP-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
+
+          const inserted = await this.txService.createDeposit({
+            userId,
+            type: TxType.DEPOSIT,
+            status: TxStatus.COMPLETED,
+            amountUsdc: event.amount,
+            txHash: event.txHash,
+            network: chainName,
+            reference,
+            description: `USDC deposit on ${chainName} from ${event.from}`,
+          });
+
+          if (inserted) {
+            this.logger.log(
+              `EVM deposit recorded [chain=${chainName}] [user=${userId}] [amount=${event.amount}] [hash=${event.txHash}]`,
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          `EVM event scan failed [chain=${chainName}] [token=${tokenAddress}]: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // Advance cursor
+    await this.cursorRepo.upsert(
+      { chainId, lastProcessedBlock: toBlock },
+      ['chainId'],
+    );
   }
 }

@@ -84,6 +84,7 @@ const EVM_CHAIN_DEFINITIONS = [
   { chainId: 8453,  name: 'base',     envPrefix: 'BASE'     },
   { chainId: 42220, name: 'celo',     envPrefix: 'CELO'     },
   { chainId: 137,   name: 'polygon',  envPrefix: 'POLYGON'  },
+  { chainId: 56,    name: 'bnb',      envPrefix: 'BNB'      },
   { chainId: 10,    name: 'optimism', envPrefix: 'OPTIMISM' },
   { chainId: 1135,  name: 'lisk',     envPrefix: 'LISK'     },
   { chainId: 1,     name: 'ethereum', envPrefix: 'ETHEREUM' },
@@ -552,6 +553,60 @@ export class BlockchainService implements OnModuleInit {
     } catch (err) {
       throw this.wrapError('getEvmBalance', err);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EVM — Deposit event scanning
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Scan eth_getLogs for ERC-20 Transfer events directed at any of toAddresses.
+   * One RPC call covers all wallet addresses on the chain.
+   *
+   * @param chainId       EVM chain to query.
+   * @param tokenAddress  ERC-20 contract address (USDC or USDT).
+   * @param toAddresses   Array of wallet addresses to match as recipients.
+   * @param fromBlock     First block to scan (inclusive).
+   * @param toBlock       Last block to scan (inclusive).
+   */
+  async getEvmDepositEvents(
+    chainId: number,
+    tokenAddress: string,
+    toAddresses: string[],
+    fromBlock: number,
+    toBlock: number,
+  ): Promise<Array<{ from: string; to: string; amount: string; txHash: string; blockNumber: number }>> {
+    this.requireEvm('getEvmDepositEvents', chainId);
+    const ctx = this.getChainContext(chainId);
+
+    // keccak256("Transfer(address,address,uint256)")
+    const transferTopic = ethers.id('Transfer(address,address,uint256)');
+    // Pad each recipient address to 32 bytes for the indexed `to` filter
+    const toTopics = toAddresses.map(addr =>
+      ethers.zeroPadValue(ethers.getAddress(addr).toLowerCase(), 32),
+    );
+
+    const logs = await ctx.provider.getLogs({
+      address: tokenAddress,
+      fromBlock,
+      toBlock,
+      topics: [transferTopic, null, toTopics.length === 1 ? toTopics[0] : toTopics],
+    });
+
+    const iface = new ethers.Interface([
+      'event Transfer(address indexed from, address indexed to, uint256 value)',
+    ]);
+
+    return logs.map(log => {
+      const parsed = iface.parseLog({ topics: [...log.topics], data: log.data });
+      return {
+        from: parsed!.args.from as string,
+        to: parsed!.args.to as string,
+        amount: this.toHuman(parsed!.args.value as bigint),
+        txHash: log.transactionHash,
+        blockNumber: log.blockNumber,
+      };
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1233,6 +1288,13 @@ export class BlockchainService implements OnModuleInit {
   /** Returns all configured EVM chains. */
   getConfiguredEvmChains(): Array<{ chainId: number; name: string }> {
     return [...this.evmChains.values()].map(({ chainId, name }) => ({ chainId, name }));
+  }
+
+  /** Return the current block number for the given chain. */
+  async getEvmBlockNumber(chainId?: number): Promise<number> {
+    this.requireEvm('getEvmBlockNumber', chainId);
+    const ctx = this.getChainContext(chainId);
+    return ctx.provider.getBlockNumber();
   }
 
   /** Check if a specific chain is ready. */
