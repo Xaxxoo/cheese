@@ -12,6 +12,7 @@ import { getTransactions, syncBankTransferStatus } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction } from '@/types'
 import { notify } from '@/lib/toast'
+import { TransactionSheet } from '@/components/TransactionSheet'
 
 type TxType = Transaction['type']
 
@@ -53,7 +54,7 @@ const STATUS_COLORS: Record<string, string> = {
   reversed: 'bg-orange-400/15 text-orange-400',
 }
 
-function TxRow({ tx, onSync }: { tx: Transaction; onSync?: () => void }) {
+function TxRow({ tx, onSync, onOpen }: { tx: Transaction; onSync?: () => void; onOpen: () => void }) {
   const [syncing, setSyncing] = useState(false)
   const isIn = tx.type === 'deposit' || tx.type === 'yield_credit' || tx.type === 'referral_bonus'
   const amountColor = isIn ? 'text-emerald-400' : 'text-white'
@@ -82,7 +83,11 @@ function TxRow({ tx, onSync }: { tx: Transaction; onSync?: () => void }) {
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 transition-colors rounded-2xl">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 active:bg-white/6 transition-colors rounded-2xl text-left"
+    >
       <div className={cn('w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0', cfg.color)}>
         <Icon size={18} />
       </div>
@@ -106,21 +111,20 @@ function TxRow({ tx, onSync }: { tx: Transaction; onSync?: () => void }) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {isPendingBankTransfer && (
-          <button
-            type="button"
-            onClick={handleSync}
-            disabled={syncing}
+          <div
+            role="button"
+            onClick={(e) => { e.stopPropagation(); void handleSync(e as unknown as React.MouseEvent) }}
             title="Check transfer status"
-            className="w-7 h-7 rounded-full flex items-center justify-center text-amber-400/60 hover:text-amber-400 hover:bg-amber-400/10 transition-all disabled:opacity-40"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-amber-400/60 hover:text-amber-400 hover:bg-amber-400/10 transition-all"
           >
             <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-          </button>
+          </div>
         )}
         <p className={cn('text-sm font-semibold tabular-nums', amountColor)}>
           {isIn ? '+' : '-'}${parseFloat(tx.amountUsdc).toFixed(2)}
         </p>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -164,6 +168,7 @@ export default function HistoryPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages,  setTotalPages]  = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [selectedTx,  setSelectedTx]  = useState<Transaction | null>(null)
 
   function handleSync() {
     void qc.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(1) })
@@ -288,7 +293,9 @@ export default function HistoryPage() {
           {grouped.map(({ date, txs }) => (
             <div key={date}>
               <p className="text-xs text-white/30 font-medium px-4 pt-4 pb-1.5">{date}</p>
-              {txs.map(tx => <TxRow key={tx.id} tx={tx} onSync={handleSync} />)}
+              {txs.map(tx => (
+              <TxRow key={tx.id} tx={tx} onSync={handleSync} onOpen={() => setSelectedTx(tx)} />
+            ))}
             </div>
           ))}
 
@@ -310,6 +317,8 @@ export default function HistoryPage() {
           )}
         </div>
       )}
+
+      <TransactionSheet tx={selectedTx} onClose={() => setSelectedTx(null)} />
     </div>
   )
 }

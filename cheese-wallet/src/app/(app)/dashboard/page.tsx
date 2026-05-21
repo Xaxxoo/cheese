@@ -13,6 +13,7 @@ import { getBalance, getTransactions, getWalletAddress } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Transaction } from '@/types'
 import { notify } from '@/lib/toast'
+import { TransactionSheet } from '@/components/TransactionSheet'
 
 // ── Skeleton ───────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -146,7 +147,7 @@ function BalanceCard() {
 }
 
 // ── Transaction row ───────────────────────────────────────
-function TxRow({ tx }: { tx: Transaction }) {
+function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   const isIn = tx.type === 'deposit' || tx.type === 'yield_credit' || tx.type === 'referral_bonus'
   const sign = isIn ? '+' : '-'
   const color = isIn ? 'text-emerald-400' : 'text-white'
@@ -173,7 +174,11 @@ function TxRow({ tx }: { tx: Transaction }) {
   const subtitle = tx.recipientUsername ?? tx.recipientAddress ?? tx.bank ?? null
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 transition-colors rounded-2xl">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 active:bg-white/6 transition-colors rounded-2xl text-left"
+    >
       <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0 text-lg">
         {isIn ? '↓' : '↑'}
       </div>
@@ -200,12 +205,14 @@ function TxRow({ tx }: { tx: Transaction }) {
       <p className={cn('text-sm font-semibold tabular-nums shrink-0', color)}>
         {sign}${parseFloat(tx.amountUsdc).toFixed(2)}
       </p>
-    </div>
+    </button>
   )
 }
 
 // ── Transactions section ──────────────────────────────────
 function RecentTransactions() {
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+
   const txQ = useQuery({
     queryKey: QUERY_KEYS.TRANSACTIONS(1),
     queryFn:  () => getTransactions(1, 5),
@@ -267,9 +274,13 @@ function RecentTransactions() {
 
       {txQ.isSuccess && txQ.data.items.length > 0 && (
         <div className="flex flex-col">
-          {txQ.data.items.map(tx => <TxRow key={tx.id} tx={tx} />)}
+          {txQ.data.items.map(tx => (
+            <TxRow key={tx.id} tx={tx} onClick={() => setSelectedTx(tx)} />
+          ))}
         </div>
       )}
+
+      <TransactionSheet tx={selectedTx} onClose={() => setSelectedTx(null)} />
     </section>
   )
 }
