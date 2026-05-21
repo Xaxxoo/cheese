@@ -1,14 +1,39 @@
 // src/notifications/notifications.controller.ts
-import { Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { NotificationsService } from './notifications.service';
+
+class SubscribeDto {
+  @IsString()
+  endpoint: string;
+
+  @IsString()
+  p256dh: string;
+
+  @IsString()
+  authKey: string;
+}
+
+class UnsubscribeDto {
+  @IsString()
+  endpoint: string;
+}
 
 @ApiTags('Notifications')
 @ApiBearerAuth('access-token')
@@ -43,5 +68,21 @@ export class NotificationsController {
   })
   markRead(@CurrentUser() user: User) {
     return this.notifService.markAllRead(user.id);
+  }
+
+  @Post('subscribe')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Subscribe to push notifications' })
+  @ApiResponse({ status: 200, description: 'Subscription saved' })
+  subscribe(@CurrentUser() user: User, @Body() dto: SubscribeDto) {
+    return this.notifService.subscribe(user.id, dto.endpoint, dto.p256dh, dto.authKey);
+  }
+
+  @Delete('subscribe')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Unsubscribe from push notifications' })
+  @ApiResponse({ status: 204, description: 'Subscription removed' })
+  unsubscribe(@CurrentUser() user: User, @Body() dto: UnsubscribeDto) {
+    return this.notifService.unsubscribe(user.id, dto.endpoint);
   }
 }

@@ -3,10 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import {
-  ArrowLeft, Bell, DollarSign, Shield, Info, RefreshCw, CheckCheck,
+  ArrowLeft, Bell, BellOff, BellRing, DollarSign, Shield, Info, RefreshCw, CheckCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getNotifications, markNotificationsRead } from '@/lib/api/wallet'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { Notification } from '@/lib/api/wallet'
 
@@ -71,6 +72,54 @@ function groupByDate(notifs: Notification[]): { date: string; items: Notificatio
   return groups
 }
 
+// ── Push banner ────────────────────────────────────────────
+function PushBanner() {
+  const { status, subscribe, unsubscribe } = usePushNotifications()
+
+  if (status === 'unsupported') return null
+
+  if (status === 'denied') {
+    return (
+      <div className="mx-4 mb-3 flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/4">
+        <BellOff size={14} className="text-white/30 shrink-0" />
+        <p className="text-xs text-white/30">Notifications blocked in browser settings</p>
+      </div>
+    )
+  }
+
+  if (status === 'subscribed') {
+    return (
+      <div className="mx-4 mb-3 flex items-center justify-between px-4 py-3 rounded-2xl bg-white/4">
+        <div className="flex items-center gap-2">
+          <BellRing size={14} className="text-emerald-400 shrink-0" />
+          <p className="text-xs text-white/50">Push notifications on</p>
+        </div>
+        <button
+          type="button"
+          onClick={unsubscribe}
+          className="text-xs text-white/30 hover:text-white/60 transition-colors"
+        >
+          Disable
+        </button>
+      </div>
+    )
+  }
+
+  // default
+  return (
+    <div className="mx-4 mb-3">
+      <button
+        type="button"
+        onClick={subscribe}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#d4a843]/10 border border-[#d4a843]/20 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/15 transition-colors"
+      >
+        <Bell size={15} />
+        Enable Push Notifications
+      </button>
+    </div>
+  )
+}
+
 // ── Page ───────────────────────────────────────────────────
 export default function NotificationsPage() {
   const qc = useQueryClient()
@@ -124,6 +173,9 @@ export default function NotificationsPage() {
           </button>
         )}
       </div>
+
+      {/* Push notification banner */}
+      <PushBanner />
 
       {/* Loading */}
       {notifsQ.isLoading && (

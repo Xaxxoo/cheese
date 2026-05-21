@@ -96,6 +96,7 @@ export const ENDPOINTS = {
   NOTIFICATIONS: {
     LIST:             '/notifications',
     MARK_READ:        '/notifications/read',
+    SUBSCRIBE:        '/notifications/subscribe',
   },
 
   // ── Devices ───────────────────────────────────────────

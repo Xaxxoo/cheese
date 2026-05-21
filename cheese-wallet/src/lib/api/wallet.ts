@@ -217,6 +217,18 @@ export async function markNotificationsRead(): Promise<void> {
   await apiClient.post(ENDPOINTS.NOTIFICATIONS.MARK_READ)
 }
 
+export async function subscribePush(sub: {
+  endpoint: string
+  p256dh: string
+  authKey: string
+}): Promise<void> {
+  await apiClient.post(ENDPOINTS.NOTIFICATIONS.SUBSCRIBE, sub)
+}
+
+export async function unsubscribePush(endpoint: string): Promise<void> {
+  await apiClient.delete(ENDPOINTS.NOTIFICATIONS.SUBSCRIBE, { data: { endpoint } })
+}
+
 // ── Earn / Yield ──────────────────────────────────────────
 export interface EarnBalance {
   balance:      number

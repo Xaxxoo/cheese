@@ -1,15 +1,27 @@
 // src/notifications/notifications.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as webpush from 'web-push';
 import { Notification, NotificationType } from './entities/notification.entity';
+import { PushSubscription } from './entities/push-subscription.entity';
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
   constructor(
     @InjectRepository(Notification)
     private readonly notifRepo: Repository<Notification>,
+    @InjectRepository(PushSubscription)
+    private readonly pushSubRepo: Repository<PushSubscription>,
   ) {}
+
+  onModuleInit() {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT!,
+      process.env.VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!,
+    );
+  }
 
   // ── GET /notifications ────────────────────────────────────
   async getNotifications(userId: string): Promise<Notification[]> {
@@ -25,6 +37,46 @@ export class NotificationsService {
     await this.notifRepo.update({ userId, read: false }, { read: true });
   }
 
+  // ── POST /notifications/subscribe ────────────────────────
+  async subscribe(
+    userId: string,
+    endpoint: string,
+    p256dh: string,
+    authKey: string,
+  ): Promise<void> {
+    await this.pushSubRepo.upsert(
+      { userId, endpoint, p256dh, authKey },
+      { conflictPaths: ['endpoint'] },
+    );
+  }
+
+  // ── DELETE /notifications/subscribe ──────────────────────
+  async unsubscribe(userId: string, endpoint: string): Promise<void> {
+    await this.pushSubRepo.delete({ userId, endpoint });
+  }
+
+  // ── Internal: fire-and-forget push to all user devices ───
+  private async sendPush(
+    userId: string,
+    title: string,
+    body: string,
+    url: string,
+  ): Promise<void> {
+    const subs = await this.pushSubRepo.find({ where: { userId } });
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.authKey } },
+          JSON.stringify({ title, body, url, tag: 'cheese-notification' }),
+        );
+      } catch (err: any) {
+        if (err?.statusCode === 410 || err?.statusCode === 404) {
+          await this.pushSubRepo.delete({ id: sub.id });
+        }
+      }
+    }
+  }
+
   // ── Internal: create a notification ──────────────────────
   async create(params: {
     userId: string;
@@ -33,7 +85,14 @@ export class NotificationsService {
     body: string;
     deepLink?: string;
   }): Promise<Notification> {
-    return this.notifRepo.save(this.notifRepo.create(params));
+    const notification = await this.notifRepo.save(this.notifRepo.create(params));
+    void this.sendPush(
+      params.userId,
+      params.title,
+      params.body,
+      params.deepLink ?? '/notifications',
+    );
+    return notification;
   }
 
   // ── Internal: send money received notification ────────────
