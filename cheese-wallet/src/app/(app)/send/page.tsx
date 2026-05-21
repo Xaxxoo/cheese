@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
   X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle,
-  AtSign, Wallet, ChevronRight, Loader2, Building2, User, Layers, Search,
+  AtSign, Wallet, ChevronRight, Loader2, Building2, User, Layers, Search, Share2,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
@@ -1562,8 +1562,78 @@ function SuccessScreen({
   onDone: () => void
   onSendAnother: () => void
 }) {
+  const receiptRef = useRef<HTMLDivElement>(null)
+  const [sharing, setSharing] = useState(false)
+
+  const rows = [
+    { label: 'To',     value: recipient.display },
+    { label: 'Amount', value: `$${parseFloat(amount).toFixed(2)} USDC` },
+    { label: 'Status', value: tx.status === 'pending' ? '⏳ Pending' : '✓ Confirmed' },
+    ...(tx.txHash ? [{ label: 'Tx hash', value: `${tx.txHash.slice(0, 10)}…` }] : []),
+  ] as { label: string; value: string }[]
+
+  async function shareReceipt() {
+    if (!receiptRef.current || sharing) return
+    setSharing(true)
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(receiptRef.current, {
+        backgroundColor: '#0c0a06',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+      await new Promise<void>((resolve) => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) { resolve(); return }
+          const file = new File([blob], 'cheese-receipt.png', { type: 'image/png' })
+          try {
+            if (navigator.share && (navigator as any).canShare?.({ files: [file] })) {
+              await navigator.share({ files: [file], title: 'Cheese Pay Receipt' })
+            } else {
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = 'cheese-receipt.png'
+              a.click()
+              URL.revokeObjectURL(url)
+            }
+          } finally { resolve() }
+        }, 'image/png')
+      })
+    } catch (err) {
+      console.error('[share receipt]', err)
+    } finally {
+      setSharing(false)
+    }
+  }
+
   return (
     <div className="flex flex-col items-center flex-1 pt-8 pb-4">
+      {/* Hidden receipt card captured by html2canvas */}
+      <div
+        ref={receiptRef}
+        aria-hidden
+        style={{
+          position: 'fixed', left: '-9999px', top: 0,
+          width: '340px', backgroundColor: '#0c0a06',
+          padding: '32px 24px 28px',
+        }}
+      >
+        <p style={{ color: '#d4a843', fontSize: '15px', fontWeight: '600', letterSpacing: '0.06em', textAlign: 'center', marginBottom: '20px' }}>cheese pay</p>
+        <p style={{ color: 'white', fontSize: '22px', fontWeight: '600', textAlign: 'center', marginBottom: '4px' }}>Sent!</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textAlign: 'center', marginBottom: '20px' }}>Transfer submitted successfully</p>
+        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '4px 16px', marginBottom: '20px' }}>
+          {rows.map(({ label, value }, i) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: '500' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center' }}>cheesepay.xyz</p>
+      </div>
+
       <div className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mb-6">
         <CheckCircle2 size={38} className="text-emerald-400" />
       </div>
@@ -1572,12 +1642,7 @@ function SuccessScreen({
       <p className="text-sm text-white/40 mb-8">Transfer submitted successfully</p>
 
       <div className="w-full rounded-3xl border border-white/8 bg-white/4 p-5 mb-8">
-        {([
-          { label: 'To',     value: recipient.display },
-          { label: 'Amount', value: `$${parseFloat(amount).toFixed(2)} USDC` },
-          { label: 'Status', value: tx.status === 'pending' ? '⏳ Pending' : '✓ Confirmed' },
-          ...(tx.txHash ? [{ label: 'Tx hash', value: `${tx.txHash.slice(0, 10)}…` }] : []),
-        ] as { label: string; value: string }[]).map(({ label, value }) => (
+        {rows.map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
             <span className="text-xs text-white/35 uppercase tracking-wide">{label}</span>
             <span className="text-sm text-white/80 font-medium">{value}</span>
@@ -1588,6 +1653,15 @@ function SuccessScreen({
       <Button fullWidth size="lg" onClick={onDone} className="mb-3">
         Back to home
       </Button>
+      <button
+        type="button"
+        onClick={shareReceipt}
+        disabled={sharing}
+        className="flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors mb-3 disabled:opacity-40"
+      >
+        {sharing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
+        Share receipt
+      </button>
       <button
         type="button"
         onClick={onSendAnother}
@@ -1615,13 +1689,85 @@ function BankSuccessScreen({
   onDone: () => void
   onSendAnother: () => void
 }) {
+  const receiptRef = useRef<HTMLDivElement>(null)
+  const [sharing, setSharing] = useState(false)
+
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
   const isCompleted = transfer?.status === 'completed'
   const statusLabel = isCompleted ? '✓ Completed' : '⏳ Processing'
   const subtitle = transfer?.message ?? 'Bank transfer initiated'
 
+  const rows = [
+    { label: 'To',      value: recipient.accountName },
+    { label: 'Bank',    value: recipient.bankName },
+    { label: 'Account', value: recipient.accountNumber },
+    { label: 'Amount',  value: `₦${formattedAmount}` },
+    { label: 'Status',  value: statusLabel },
+    ...(transfer?.reference ? [{ label: 'Reference', value: transfer.reference }] : []),
+  ]
+
+  async function shareReceipt() {
+    if (!receiptRef.current || sharing) return
+    setSharing(true)
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(receiptRef.current, {
+        backgroundColor: '#0c0a06',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+      await new Promise<void>((resolve) => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) { resolve(); return }
+          const file = new File([blob], 'cheese-receipt.png', { type: 'image/png' })
+          try {
+            if (navigator.share && (navigator as any).canShare?.({ files: [file] })) {
+              await navigator.share({ files: [file], title: 'Cheese Pay Receipt' })
+            } else {
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = 'cheese-receipt.png'
+              a.click()
+              URL.revokeObjectURL(url)
+            }
+          } finally { resolve() }
+        }, 'image/png')
+      })
+    } catch (err) {
+      console.error('[share receipt]', err)
+    } finally {
+      setSharing(false)
+    }
+  }
+
   return (
     <div className="flex flex-col items-center flex-1 pt-8 pb-4">
+      {/* Hidden receipt card captured by html2canvas */}
+      <div
+        ref={receiptRef}
+        aria-hidden
+        style={{
+          position: 'fixed', left: '-9999px', top: 0,
+          width: '340px', backgroundColor: '#0c0a06',
+          padding: '32px 24px 28px',
+        }}
+      >
+        <p style={{ color: '#d4a843', fontSize: '15px', fontWeight: '600', letterSpacing: '0.06em', textAlign: 'center', marginBottom: '20px' }}>cheese pay</p>
+        <p style={{ color: 'white', fontSize: '22px', fontWeight: '600', textAlign: 'center', marginBottom: '4px' }}>Sent!</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textAlign: 'center', marginBottom: '20px' }}>{subtitle}</p>
+        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '4px 16px', marginBottom: '20px' }}>
+          {rows.map(({ label, value }, i) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: '500' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center' }}>cheesepay.xyz</p>
+      </div>
+
       <div className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mb-6">
         <CheckCircle2 size={38} className="text-emerald-400" />
       </div>
@@ -1630,14 +1776,7 @@ function BankSuccessScreen({
       <p className="text-sm text-white/40 mb-8 text-center">{subtitle}</p>
 
       <div className="w-full rounded-3xl border border-white/8 bg-white/4 p-5 mb-8">
-        {[
-          { label: 'To',      value: recipient.accountName },
-          { label: 'Bank',    value: recipient.bankName },
-          { label: 'Account', value: recipient.accountNumber },
-          { label: 'Amount',  value: `₦${formattedAmount}` },
-          { label: 'Status',  value: statusLabel },
-          ...(transfer?.reference ? [{ label: 'Reference', value: transfer.reference }] : []),
-        ].map(({ label, value }) => (
+        {rows.map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
             <span className="text-xs text-white/35 uppercase tracking-wide">{label}</span>
             <span className="text-sm text-white/80 font-medium">{value}</span>
@@ -1648,6 +1787,15 @@ function BankSuccessScreen({
       <Button fullWidth size="lg" onClick={onDone} className="mb-3">
         Back to home
       </Button>
+      <button
+        type="button"
+        onClick={shareReceipt}
+        disabled={sharing}
+        className="flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors mb-3 disabled:opacity-40"
+      >
+        {sharing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
+        Share receipt
+      </button>
       <button
         type="button"
         onClick={onSendAnother}
