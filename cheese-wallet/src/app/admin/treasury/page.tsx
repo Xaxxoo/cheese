@@ -368,21 +368,17 @@ function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
   const { admin } = useAdminAuthStore();
   const canWithdraw = admin?.adminRole === 'super_admin' || admin?.adminRole === 'treasurer';
 
-  const [toAddress,  setToAddress]  = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [result,     setResult]     = useState<{ txHash: string } | null>(null);
+  const [result,     setResult]     = useState<{ txHash: string; toAddress: string } | null>(null);
   const [error,      setError]      = useState('');
 
   async function handleSweep() {
     setError('');
     setResult(null);
-    if (!toAddress.trim()) { setError('Destination address is required.'); return; }
-    if (!/^0x[a-fA-F0-9]{40}$/.test(toAddress.trim())) { setError('Invalid EVM address — must be 0x followed by 40 hex characters.'); return; }
     setSubmitting(true);
     try {
-      const res = await evmTreasuryWithdraw(toAddress.trim());
+      const res = await evmTreasuryWithdraw();
       setResult(res);
-      setToAddress('');
       onSent();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Sweep failed';
@@ -396,13 +392,6 @@ function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
     background: c.surface, border: `1px solid ${c.border}`,
     borderRadius: 14, padding: '20px 24px',
     display: 'flex', flexDirection: 'column', gap: 14,
-  };
-
-  const inp: CSSProperties = {
-    background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`,
-    borderRadius: 9, padding: '10px 14px', color: c.text, fontSize: 13,
-    outline: 'none', width: '100%', boxSizing: 'border-box',
-    fontFamily: 'monospace',
   };
 
   if (!canWithdraw) {
@@ -419,20 +408,8 @@ function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
     <div style={card}>
       <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sweep Vault Funds</div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <label style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Destination EVM Address
-        </label>
-        <input
-          style={inp}
-          placeholder="0x…"
-          value={toAddress}
-          onChange={(e) => setToAddress(e.target.value)}
-        />
-      </div>
-
       <div style={{ fontSize: 12, color: c.textDim, background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`, borderRadius: 8, padding: '8px 12px' }}>
-        This sweeps all available payments and fees in one transaction.
+        Sweeps all available payments and fees to the configured withdrawal address in one transaction.
       </div>
 
       {error && (
@@ -443,8 +420,12 @@ function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
 
       {result && (
         <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
-          Swept! TX hash:{' '}
-          <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
+          Swept to{' '}
+          <span style={{ fontFamily: 'monospace' }}>
+            {result.toAddress.slice(0, 6)}…{result.toAddress.slice(-4)}
+          </span>
+          {' '}· TX:{' '}
+          <span style={{ fontFamily: 'monospace' }}>
             {result.txHash.slice(0, 20)}…
           </span>
         </div>

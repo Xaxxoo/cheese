@@ -317,12 +317,10 @@ export async function treasuryTransfer(
   return data.data
 }
 
-export async function evmTreasuryWithdraw(
-  toAddress: string,
-): Promise<{ txHash: string; toAddress: string }> {
+export async function evmTreasuryWithdraw(): Promise<{ txHash: string; toAddress: string }> {
   const { data } = await adminApiClient.post<
     ApiResponse<{ txHash: string; toAddress: string }>
-  >('/admin/treasury/evm-withdraw', { toAddress })
+  >('/admin/treasury/evm-withdraw')
   return data.data
 }
 

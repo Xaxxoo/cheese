@@ -25,6 +25,16 @@ export class AdminTreasuryService {
     return this.config.get<string>('AMOY_USDC_ADDRESS') ?? '';
   }
 
+  private get withdrawalDestination(): string {
+    const addr = this.config.get<string>('AMOY_WITHDRAWAL_ADDRESS') ?? '';
+    if (!addr || !/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+      throw new ServiceUnavailableException(
+        'AMOY_WITHDRAWAL_ADDRESS not configured or invalid — set it to a cold wallet or multisig address',
+      );
+    }
+    return addr;
+  }
+
   private readonly VAULT_CHAIN_ID = 80002;
 
   // ── GET /admin/treasury ──────────────────────────────────────────────────
@@ -112,12 +122,13 @@ export class AdminTreasuryService {
   }
 
   // ── POST /admin/treasury/evm-withdraw ────────────────────────────────────
-  async evmWithdraw(toAddress: string): Promise<{ txHash: string; toAddress: string }> {
+  async evmWithdraw(): Promise<{ txHash: string; toAddress: string }> {
     if (!this.blockchain.isEvmReady || !this.vaultAddress || !this.vaultUsdcAddress) {
       throw new ServiceUnavailableException(
         'EVM vault not configured — check AMOY_RPC_URL, AMOY_VAULT_ADDRESS, AMOY_USDC_ADDRESS',
       );
     }
+    const toAddress = this.withdrawalDestination;
     this.logger.log(`evmWithdraw initiated [to=${toAddress}]`);
     const txHash = await this.blockchain.withdrawFromVault(
       this.vaultAddress, toAddress, this.vaultUsdcAddress, this.VAULT_CHAIN_ID,
