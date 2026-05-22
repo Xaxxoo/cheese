@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { login } from '@/lib/api/auth';
-import { signDeviceChallenge } from '@/lib/crypto/deviceSigning';
+import { generateDeviceKey, signDeviceChallenge } from '@/lib/crypto/deviceSigning';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,16 +45,35 @@ export default function LoginPage() {
     try {
       const deviceId = ensureDeviceId();
 
-      // Sign the raw deviceId string — backend verifies message === deviceId (UTF-8).
-      // signDeviceChallenge throws if no key exists locally, which is caught below
-      // and directs the user to the add-device registration flow.
-      const deviceSignature = await signDeviceChallenge(deviceId);
+      // Attempt to sign with the existing local key.
+      // If IndexedDB was cleared the key won't be there — catch that case and
+      // transparently recover by generating a fresh key pair for the same
+      // deviceId, then asking the backend to update its stored public key.
+      let deviceSignature: string;
+      let keyRecovery = false;
+      let newPublicKey: string | undefined;
+
+      try {
+        deviceSignature = await signDeviceChallenge(deviceId);
+      } catch (keyErr) {
+        const isKeyMissing =
+          keyErr instanceof Error &&
+          /device key not found/i.test(keyErr.message);
+        if (!isKeyMissing) throw keyErr;
+
+        // Regenerate key for the same deviceId — IndexedDB was cleared.
+        const generated = await generateDeviceKey(deviceId);
+        newPublicKey = generated.publicKey;
+        deviceSignature = await signDeviceChallenge(deviceId);
+        keyRecovery = true;
+      }
 
       const { user, tokens } = await login({
         identifier: identifier.trim(),
         password,
         deviceId,
         deviceSignature,
+        ...(keyRecovery && newPublicKey ? { keyRecovery: true, newPublicKey } : {}),
       });
 
       setAuth(user, tokens.accessToken);
@@ -79,8 +98,8 @@ export default function LoginPage() {
 
       const msg =
         err instanceof Error ? err.message : 'Login failed. Please try again.';
-      // If the backend rejects the device signature the user needs to register
-      // this device first via the add-device OTP flow
+      // If the backend rejects the device (e.g. device was deactivated, or
+      // recovery failed), direct the user to the add-device flow.
       const isDeviceError = /device|signature|unrecognized/i.test(msg);
       if (isDeviceError) {
         notify.error(

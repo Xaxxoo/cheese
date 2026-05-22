@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { BlockchainTransaction } from './blockchain-transaction.entity';
 
-export enum WalletStatus {
+export enum BlockchainWalletStatus {
   /**
    * createWallet() submitted to chain but tx not yet mined.
    * The scheduler retries these until confirmed or max retries exceeded.
@@ -22,6 +22,9 @@ export enum WalletStatus {
   /** Permanently deactivated. Cannot be reactivated. */
   REVOKED = 'revoked',
 }
+
+/** @deprecated Use BlockchainWalletStatus — kept for zero-diff migration */
+export { BlockchainWalletStatus as WalletStatus };
 
 export enum TokenSymbol {
   USDC = 'USDC',
@@ -100,8 +103,8 @@ export class BlockchainWallet {
   @Column({ type: 'smallint', default: 6 })
   tokenDecimals: number;
 
-  @Column({ type: 'enum', enum: WalletStatus, default: WalletStatus.PENDING })
-  status: WalletStatus;
+  @Column({ type: 'enum', enum: BlockchainWalletStatus, default: BlockchainWalletStatus.PENDING })
+  status: BlockchainWalletStatus;
 
   /**
    * On-chain tx hash of the createWallet() call.
@@ -140,6 +143,6 @@ export class BlockchainWallet {
   transactions: BlockchainTransaction[];
 
   get isReady(): boolean {
-    return this.status === WalletStatus.ACTIVE && this.walletAddress !== null;
+    return this.status === BlockchainWalletStatus.ACTIVE && this.walletAddress !== null;
   }
 }

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   BlockchainWallet,
-  WalletStatus,
+  BlockchainWalletStatus,
   TokenSymbol,
 } from '../entities/blockchain-wallet.entity';
 import {
@@ -110,7 +110,7 @@ export class WalletService {
         contractAddress,
         tokenSymbol: TokenSymbol.USDC,
         tokenDecimals: 6,
-        status: WalletStatus.PENDING,
+        status: BlockchainWalletStatus.PENDING,
         retryCount: 0,
       }),
     );
@@ -136,7 +136,7 @@ export class WalletService {
       await this.walletRepo.update(wallet.id, {
         walletAddress: result.walletAddress,
         creationTxHash: result.txHash,
-        status: WalletStatus.ACTIVE,
+        status: BlockchainWalletStatus.ACTIVE,
         activatedAt: new Date(),
       });
 
@@ -171,7 +171,7 @@ export class WalletService {
    */
   async retryWalletCreation(walletId: string): Promise<void> {
     const wallet = await this.walletRepo.findOne({ where: { id: walletId } });
-    if (!wallet || wallet.status !== WalletStatus.PENDING) return;
+    if (!wallet || wallet.status !== BlockchainWalletStatus.PENDING) return;
 
     if (wallet.retryCount >= MAX_CREATION_RETRIES) {
       throw new WalletCreationMaxRetriesException(
@@ -206,7 +206,7 @@ export class WalletService {
       await this.walletRepo.update(walletId, {
         walletAddress: result.walletAddress,
         creationTxHash: result.txHash,
-        status: WalletStatus.ACTIVE,
+        status: BlockchainWalletStatus.ACTIVE,
         activatedAt: new Date(),
       });
 
@@ -570,7 +570,7 @@ export class WalletService {
     const wallet = await this.walletRepo.findOne({ where: { userId } });
     if (!wallet) throw new WalletNotFoundException(userId);
     await this.walletRepo.update(wallet.id, {
-      status: WalletStatus.SUSPENDED,
+      status: BlockchainWalletStatus.SUSPENDED,
       suspensionReason: reason,
     });
     return WalletResponseDto.from(
@@ -582,7 +582,7 @@ export class WalletService {
     const wallet = await this.walletRepo.findOne({ where: { userId } });
     if (!wallet) throw new WalletNotFoundException(userId);
     await this.walletRepo.update(wallet.id, {
-      status: WalletStatus.ACTIVE,
+      status: BlockchainWalletStatus.ACTIVE,
       suspensionReason: null,
     });
     return WalletResponseDto.from(
@@ -595,7 +595,7 @@ export class WalletService {
   // ─────────────────────────────────────────────────────────────────────────
 
   async findPendingWallets(): Promise<BlockchainWallet[]> {
-    return this.walletRepo.find({ where: { status: WalletStatus.PENDING } });
+    return this.walletRepo.find({ where: { status: BlockchainWalletStatus.PENDING } });
   }
 
   /**
@@ -615,7 +615,7 @@ export class WalletService {
 
     if (!wallet) throw new WalletNotFoundException(userId);
 
-    if (wallet.status === WalletStatus.SUSPENDED) {
+    if (wallet.status === BlockchainWalletStatus.SUSPENDED) {
       throw new WalletSuspendedException(wallet.walletAddress ?? userId);
     }
 
@@ -638,7 +638,7 @@ export class WalletService {
     amount: string,
   ): Promise<BlockchainWallet> {
     const wallets = await this.walletRepo.find({
-      where: { userId, status: WalletStatus.ACTIVE },
+      where: { userId, status: BlockchainWalletStatus.ACTIVE },
     });
 
     if (wallets.length === 0) throw new WalletNotFoundException(userId);

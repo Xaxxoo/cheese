@@ -21,7 +21,7 @@ export class SendToUsernameDto {
 
   @ApiProperty({
     example: 'hmac-sha256-base64url-here',
-    description: "Sender's HMAC-SHA256(pin, deviceId) — authorises the debit",
+    description: "Sender's HMAC-SHA256(pin, userId) — authorises the debit",
   })
   @IsString()
   @IsNotEmpty()
@@ -72,7 +72,7 @@ export class SendToAddressDto {
 
   @ApiProperty({
     example: 'hmac-sha256-base64url-here',
-    description: "Sender's HMAC-SHA256(pin, deviceId) — authorises the debit",
+    description: "Sender's HMAC-SHA256(pin, userId) — authorises the debit",
   })
   @IsString()
   @IsNotEmpty()

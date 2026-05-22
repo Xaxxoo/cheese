@@ -13,7 +13,7 @@ import {
 import { Type } from 'class-transformer';
 import {
   TokenSymbol,
-  WalletStatus,
+  BlockchainWalletStatus,
 } from '../entities/blockchain-wallet.entity';
 import {
   BlockchainTxStatus,
@@ -148,7 +148,7 @@ export class WalletResponseDto {
   contractAddress: string;
   tokenSymbol: TokenSymbol;
   tokenDecimals: number;
-  status: WalletStatus;
+  status: BlockchainWalletStatus;
   creationTxHash: string | null;
   activatedAt: string | null;
   createdAt: string;

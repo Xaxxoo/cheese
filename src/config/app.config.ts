@@ -26,12 +26,25 @@ export const dbConfig = registerAs('db', () => ({
   pass: process.env.DB_PASS,
 }));
 
-export const jwtConfig = registerAs('jwt', () => ({
-  accessSecret: process.env.JWT_ACCESS_SECRET || 'access-secret',
-  accessExpires: process.env.JWT_ACCESS_EXPIRES || '15m',
-  refreshSecret: process.env.JWT_REFRESH_SECRET || 'refresh-secret',
-  refreshExpires: process.env.JWT_REFRESH_EXPIRES || '30d',
-}));
+export const jwtConfig = registerAs('jwt', () => {
+  const isProd = process.env.NODE_ENV === 'production';
+  const accessSecret = process.env.JWT_ACCESS_SECRET;
+  const refreshSecret = process.env.JWT_REFRESH_SECRET;
+
+  if (isProd && !accessSecret) {
+    throw new Error('JWT_ACCESS_SECRET must be set in production');
+  }
+  if (isProd && !refreshSecret) {
+    throw new Error('JWT_REFRESH_SECRET must be set in production');
+  }
+
+  return {
+    accessSecret: accessSecret || 'access-secret-dev-only',
+    accessExpires: process.env.JWT_ACCESS_EXPIRES || '15m',
+    refreshSecret: refreshSecret || 'refresh-secret-dev-only',
+    refreshExpires: process.env.JWT_REFRESH_EXPIRES || '30d',
+  };
+});
 
 export const redisConfig = registerAs('redis', () => ({
   url: process.env.REDIS_URL,

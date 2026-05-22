@@ -1,5 +1,6 @@
 // src/auth/dto/index.ts
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsNotEmpty,
@@ -180,6 +181,29 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   deviceId: string;
+
+  /**
+   * Key-recovery mode: set to `true` when the local IndexedDB was cleared and a
+   * fresh key pair was generated for the same deviceId.  The backend will update
+   * the stored public key (after verifying credentials + device ownership) and
+   * then verify the signature against `newPublicKey`.
+   */
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'When true the backend replaces the stored public key with newPublicKey (requires valid credentials and existing device ownership)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  keyRecovery?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'MFkwEwYHKoZIzj0CAQY...',
+    description: 'New ECDSA P-256 public key (base64url SPKI) — required when keyRecovery is true',
+  })
+  @IsOptional()
+  @IsString()
+  newPublicKey?: string;
 }
 
 export class ForgotPasswordDto {

@@ -65,7 +65,7 @@ export async function resolveUsername(username: string): Promise<{ address: stri
 export async function sendToUsername(payload: {
   username: string
   amountUsdc: string
-  pin: string
+  pinHash: string
   deviceSignature: string
   deviceId: string
 }): Promise<Transaction> {
@@ -87,7 +87,7 @@ export async function sendToAddress(payload: {
   address: string
   amountUsdc: string
   network: string
-  pin: string
+  pinHash: string
   deviceSignature: string
   deviceId: string
 }): Promise<Transaction> {

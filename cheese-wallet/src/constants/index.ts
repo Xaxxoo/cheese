@@ -99,6 +99,13 @@ export const ENDPOINTS = {
     SUBSCRIBE:        '/notifications/subscribe',
   },
 
+  // ── Device registration (unauthenticated) ─────────────
+  DEVICE_REGISTRATION: {
+    REQUEST:        '/auth/device-registration/request',
+    COMPLETE:       '/auth/device-registration/complete',
+    COMPLETE_LINK:  '/auth/device-registration/complete-link',
+  },
+
   // ── Devices ───────────────────────────────────────────
   // (DEVICE already exists above, extending with List)
 

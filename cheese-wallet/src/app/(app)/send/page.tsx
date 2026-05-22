@@ -1218,7 +1218,7 @@ function PinStep({
         ? await sendToUsername({
             username:        recipient.raw.replace(/^@/, ''),
             amountUsdc:      amount,
-            pin:             pinHash,
+            pinHash,
             deviceSignature,
             deviceId,
           })
@@ -1226,7 +1226,7 @@ function PinStep({
             address:         recipient.address,
             amountUsdc:      amount,
             network,
-            pin:             pinHash,
+            pinHash,
             deviceSignature,
             deviceId,
           })

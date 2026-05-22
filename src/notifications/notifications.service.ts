@@ -1,5 +1,5 @@
 // src/notifications/notifications.service.ts
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as webpush from 'web-push';
@@ -15,12 +15,25 @@ export class NotificationsService implements OnModuleInit {
     private readonly pushSubRepo: Repository<PushSubscription>,
   ) {}
 
+  private readonly logger = new Logger(NotificationsService.name);
+
   onModuleInit() {
-    webpush.setVapidDetails(
-      process.env.VAPID_SUBJECT!,
-      process.env.VAPID_PUBLIC_KEY!,
-      process.env.VAPID_PRIVATE_KEY!,
-    );
+    if (
+      process.env.VAPID_SUBJECT &&
+      process.env.VAPID_PUBLIC_KEY &&
+      process.env.VAPID_PRIVATE_KEY
+    ) {
+      webpush.setVapidDetails(
+        process.env.VAPID_SUBJECT,
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY,
+      );
+    } else {
+      this.logger.warn(
+        'VAPID env vars not set — push notifications disabled. ' +
+          'Set VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY to enable.',
+      );
+    }
   }
 
   // ── GET /notifications ────────────────────────────────────
@@ -62,6 +75,7 @@ export class NotificationsService implements OnModuleInit {
     body: string,
     url: string,
   ): Promise<void> {
+    if (!process.env.VAPID_PUBLIC_KEY) return; // VAPID not configured
     const subs = await this.pushSubRepo.find({ where: { userId } });
     for (const sub of subs) {
       try {

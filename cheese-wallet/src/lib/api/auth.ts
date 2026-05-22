@@ -156,7 +156,7 @@ export async function logout(): Promise<void> {
 
 // ── Device registration (unauthenticated) ─────────────────
 export async function requestDeviceRegistration(email: string): Promise<void> {
-  await apiClient.post('/auth/device-registration/request', { email })
+  await apiClient.post(ENDPOINTS.DEVICE_REGISTRATION.REQUEST, { email })
 }
 
 export async function completeDeviceRegistration(payload: {
@@ -165,16 +165,14 @@ export async function completeDeviceRegistration(payload: {
   deviceId:  string
   publicKey: string
 }): Promise<void> {
-  await apiClient.post('/auth/device-registration/complete', payload)
+  await apiClient.post(ENDPOINTS.DEVICE_REGISTRATION.COMPLETE, payload)
 }
 
 // Magic-link variant — token comes from the ?token= query param in the email link.
-// Backend endpoint: POST /auth/device-registration/complete-link
-// Body: { token, deviceId, publicKey }
 export async function completeDeviceRegistrationByLink(payload: {
   token:     string
   deviceId:  string
   publicKey: string
 }): Promise<void> {
-  await apiClient.post('/auth/device-registration/complete-link', payload)
+  await apiClient.post(ENDPOINTS.DEVICE_REGISTRATION.COMPLETE_LINK, payload)
 }

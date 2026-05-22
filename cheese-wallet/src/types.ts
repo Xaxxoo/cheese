@@ -57,6 +57,8 @@ export interface LoginPayload {
   password: string;
   deviceId: string;
   deviceSignature: string;
+  keyRecovery?: boolean;
+  newPublicKey?: string;
 }
 
 export interface SignupPayload {

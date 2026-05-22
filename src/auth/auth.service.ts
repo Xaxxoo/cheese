@@ -418,8 +418,26 @@ export class AuthService {
     });
     if (!device) throw new UnauthorizedException('Device not registered');
 
+    // ── Key-recovery path ─────────────────────────────────────────────────
+    // When the client's IndexedDB was cleared a fresh ECDSA key pair was
+    // generated for the same deviceId.  We update the stored public key ONLY
+    // after verifying: (a) credentials are valid (checked above), (b) the
+    // deviceId already belongs to this user (checked above), and (c) the
+    // signature is valid against the new public key (checked below).
+    let verifyKey = device.publicKey;
+    if (dto.keyRecovery && dto.newPublicKey) {
+      await this.deviceRepo.update(
+        { id: device.id },
+        { publicKey: dto.newPublicKey },
+      );
+      verifyKey = dto.newPublicKey;
+      this.logger.log(
+        `Device key recovered [deviceId=${dto.deviceId}] [user=${user.id}]`,
+      );
+    }
+
     const signatureValid = this.blockchainService.verifyDeviceSignature({
-      publicKey: device.publicKey,
+      publicKey: verifyKey,
       signature: dto.deviceSignature,
       message: dto.deviceId,
     });
@@ -427,6 +445,14 @@ export class AuthService {
       !signatureValid &&
       !isInsecureDeviceSignatureBypassEnabled(this.config)
     ) {
+      // If recovery just updated the key we need to roll back the change so we
+      // don't leave a phantom key that could never be verified.
+      if (dto.keyRecovery && dto.newPublicKey) {
+        await this.deviceRepo.update(
+          { id: device.id },
+          { publicKey: device.publicKey },
+        );
+      }
       throw new UnauthorizedException('Invalid device signature');
     }
 
