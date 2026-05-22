@@ -24,6 +24,7 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AdminAuthService {
@@ -54,6 +55,7 @@ export class AdminAuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly blockchainService: BlockchainService,
+    private readonly emailService: EmailService,
   ) {}
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -565,6 +567,20 @@ export class AdminAuthService {
     if (!user) throw new NotFoundException('User not found');
     user.kycStatus = KycStatus.VERIFIED;
     await this.userRepo.save(user);
+    // Fire-and-forget — same email the automatic KYC path sends
+    if (user.email) {
+      this.emailService
+        .sendKycApproved({
+          to: user.email,
+          fullName: user.fullName ?? user.username,
+          tier: user.tier,
+        })
+        .catch((err: Error) =>
+          this.logger.error(
+            `KYC approval email failed [userId=${id}]: ${err.message}`,
+          ),
+        );
+    }
     return { id: user.id, kycStatus: user.kycStatus };
   }
 
