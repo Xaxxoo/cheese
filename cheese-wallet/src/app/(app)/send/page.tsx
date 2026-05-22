@@ -17,6 +17,7 @@ import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
 import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import { captureAndShare, type ShareFormat } from '@/lib/shareReceipt'
+import { playChaChing } from '@/lib/sound'
 import type { BankTransferResponse, Transaction, NigerianBank } from '@/types'
 
 // ─────────────────────────────────────────────────────────
@@ -1567,6 +1568,8 @@ function SuccessScreen({
   const [sharing, setSharing] = useState<ShareFormat | false>(false)
   const [showPicker, setShowPicker] = useState(false)
 
+  useEffect(() => { playChaChing() }, [])
+
   const statusLabel = tx.status === 'pending' ? 'Pending' : 'Completed'
   const statusColor = tx.status === 'pending' ? '#fbbf24' : '#34d399'
   const statusBg    = tx.status === 'pending' ? 'rgba(251,191,36,0.15)' : 'rgba(52,211,153,0.12)'
@@ -1747,6 +1750,8 @@ function BankSuccessScreen({
   const receiptRef = useRef<HTMLDivElement>(null)
   const [sharing, setSharing] = useState<ShareFormat | false>(false)
   const [showPicker, setShowPicker] = useState(false)
+
+  useEffect(() => { playChaChing() }, [])
 
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
   const isCompleted = transfer?.status === 'completed'
