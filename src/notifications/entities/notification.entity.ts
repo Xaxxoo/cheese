@@ -13,6 +13,7 @@ export enum NotificationType {
   MONEY = 'money',
   SECURITY = 'security',
   SYSTEM = 'system',
+  KYC_VERIFIED = 'kyc_verified',
   REFERRAL_JOINED = 'referral_joined',
   POINTS_AWARDED = 'points_awarded',
   MILESTONE_REACHED = 'milestone_reached',

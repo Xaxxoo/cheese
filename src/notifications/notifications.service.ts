@@ -110,6 +110,17 @@ export class NotificationsService implements OnModuleInit {
   }
 
   // ── Internal: send money received notification ────────────
+  async notifyKycVerified(userId: string, tier: string) {
+    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
+    return this.create({
+      userId,
+      type: NotificationType.KYC_VERIFIED,
+      title: 'Identity Verified',
+      body: `Your identity has been verified. You're now on the ${tierLabel} tier with full access to all features.`,
+      deepLink: '/profile',
+    });
+  }
+
   async notifyMoneyReceived(
     userId: string,
     amountUsdc: string,

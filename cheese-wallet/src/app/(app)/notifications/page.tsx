@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import {
-  ArrowLeft, Bell, BellOff, BellRing, DollarSign, Shield, Info, RefreshCw, CheckCheck,
+  ArrowLeft, Bell, BellOff, BellRing, DollarSign, Shield, Info, RefreshCw, CheckCheck, BadgeCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getNotifications, markNotificationsRead } from '@/lib/api/wallet'
@@ -18,9 +18,10 @@ function Skeleton({ className }: { className?: string }) {
 
 // ── Notification icon ──────────────────────────────────────
 const TYPE_CFG = {
-  money:    { icon: DollarSign, bg: 'bg-emerald-400/10', color: 'text-emerald-400' },
-  security: { icon: Shield,     bg: 'bg-red-400/10',     color: 'text-red-400' },
-  system:   { icon: Info,       bg: 'bg-sky-400/10',     color: 'text-sky-400' },
+  money:        { icon: DollarSign,  bg: 'bg-emerald-400/10',  color: 'text-emerald-400' },
+  security:     { icon: Shield,      bg: 'bg-red-400/10',      color: 'text-red-400' },
+  system:       { icon: Info,        bg: 'bg-sky-400/10',      color: 'text-sky-400' },
+  kyc_verified: { icon: BadgeCheck,  bg: 'bg-[#d4a843]/10',    color: 'text-[#d4a843]' },
 }
 
 function NotifRow({ n }: { n: Notification }) {

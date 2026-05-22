@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, KycStatus, Tier } from '../auth/entities/user.entity';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { DojahClient } from './dojah.client';
 import {
   KycAttempt,
@@ -30,6 +31,7 @@ export class KycService {
     private readonly attemptRepo: Repository<KycAttempt>,
     private readonly dojah: DojahClient,
     private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── BVN verification ────────────────────────────────────────────────────────
@@ -427,6 +429,13 @@ export class KycService {
   }
 
   private async sendApprovedEmail(user: User): Promise<void> {
+    // In-app notification — fire-and-forget, non-blocking
+    void this.notificationsService
+      .notifyKycVerified(user.id, user.tier)
+      .catch((e: Error) =>
+        this.logger.warn(`KYC notification failed [userId=${user.id}]: ${e.message}`),
+      );
+
     if (!user.email) return;
     await this.emailService.sendKycApproved({
       to: user.email,

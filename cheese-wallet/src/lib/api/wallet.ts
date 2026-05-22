@@ -198,7 +198,7 @@ export async function syncBankTransferStatus(
 // ── Notifications ─────────────────────────────────────────
 export interface Notification {
   id:        string
-  type:      'money' | 'security' | 'system'
+  type:      'money' | 'security' | 'system' | 'kyc_verified'
   title:     string
   body:      string
   read:      boolean

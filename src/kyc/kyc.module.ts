@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { KycAttempt } from './entities/kyc-attempt.entity';
 import { DojahClient } from './dojah.client';
 import { KycService } from './kyc.service';
@@ -15,6 +16,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
     TypeOrmModule.forFeature([KycAttempt, User]),
     EmailModule,
     TransactionsModule,
+    NotificationsModule,
   ],
   controllers: [KycController],
   providers: [KycService, DojahClient, TierMilestoneService],

@@ -19,6 +19,7 @@ import { AdminTreasuryService } from './admin-treasury.service';
 import { RatesModule } from '../rates/rates.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { EmailModule } from '../email/email.module';
     RatesModule,
     BlockchainModule,
     EmailModule,
+    NotificationsModule,
   ],
   controllers: [AdminAuthController, AdminRatesController, AdminDashboardController, AdminTreasuryController],
   providers: [AdminAuthService, AdminJwtStrategy, AdminTreasuryService],

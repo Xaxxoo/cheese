@@ -25,6 +25,7 @@ import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AdminAuthService {
@@ -56,6 +57,7 @@ export class AdminAuthService {
     private readonly config: ConfigService,
     private readonly blockchainService: BlockchainService,
     private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -567,6 +569,15 @@ export class AdminAuthService {
     if (!user) throw new NotFoundException('User not found');
     user.kycStatus = KycStatus.VERIFIED;
     await this.userRepo.save(user);
+    // Fire-and-forget — in-app notification
+    void this.notificationsService
+      .notifyKycVerified(user.id, user.tier)
+      .catch((err: Error) =>
+        this.logger.error(
+          `KYC notification failed [userId=${id}]: ${err.message}`,
+        ),
+      );
+
     // Fire-and-forget — same email the automatic KYC path sends
     if (user.email) {
       this.emailService
