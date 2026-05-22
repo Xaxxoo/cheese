@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
   X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle,
-  AtSign, Wallet, ChevronRight, Loader2, Building2, User, Layers, Search, Share2,
+  AtSign, Wallet, ChevronRight, Loader2, Building2, ArrowUpRight, User, Layers, Search, Share2,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
@@ -16,6 +16,7 @@ import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSen
 import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
 import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
+import { captureAndShare, type ShareFormat } from '@/lib/shareReceipt'
 import type { BankTransferResponse, Transaction, NigerianBank } from '@/types'
 
 // ─────────────────────────────────────────────────────────
@@ -1563,7 +1564,17 @@ function SuccessScreen({
   onSendAnother: () => void
 }) {
   const receiptRef = useRef<HTMLDivElement>(null)
-  const [sharing, setSharing] = useState(false)
+  const [sharing, setSharing] = useState<ShareFormat | false>(false)
+  const [showPicker, setShowPicker] = useState(false)
+
+  const statusLabel = tx.status === 'pending' ? 'Pending' : 'Completed'
+  const statusColor = tx.status === 'pending' ? '#fbbf24' : '#34d399'
+  const statusBg    = tx.status === 'pending' ? 'rgba(251,191,36,0.15)' : 'rgba(52,211,153,0.12)'
+
+  const date = new Date(tx.createdAt).toLocaleString('en-NG', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 
   const rows = [
     { label: 'To',     value: recipient.display },
@@ -1572,66 +1583,76 @@ function SuccessScreen({
     ...(tx.txHash ? [{ label: 'Tx hash', value: `${tx.txHash.slice(0, 10)}…` }] : []),
   ] as { label: string; value: string }[]
 
-  async function shareReceipt() {
+  const detailRows = [
+    { label: 'TYPE',   value: 'Sent' },
+    { label: 'DATE',   value: date },
+    { label: 'TO',     value: recipient.display },
+    { label: 'AMOUNT', value: `$${parseFloat(amount).toFixed(2)} USDC` },
+  ]
+
+  const refRows = [
+    { label: 'REFERENCE', value: tx.reference },
+    ...(tx.txHash ? [{ label: 'TX HASH', value: tx.txHash.length > 22 ? `${tx.txHash.slice(0, 22)}…` : tx.txHash }] : []),
+  ]
+
+  async function shareReceipt(format: ShareFormat) {
     if (!receiptRef.current || sharing) return
-    setSharing(true)
+    setSharing(format)
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const canvas = await html2canvas(receiptRef.current, {
-        backgroundColor: '#0c0a06',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      })
-      await new Promise<void>((resolve) => {
-        canvas.toBlob(async (blob) => {
-          if (!blob) { resolve(); return }
-          const file = new File([blob], 'cheese-receipt.png', { type: 'image/png' })
-          try {
-            if (navigator.share && (navigator as any).canShare?.({ files: [file] })) {
-              await navigator.share({ files: [file], title: 'Cheese Pay Receipt' })
-            } else {
-              const url = URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url
-              a.download = 'cheese-receipt.png'
-              a.click()
-              URL.revokeObjectURL(url)
-            }
-          } finally { resolve() }
-        }, 'image/png')
-      })
+      await captureAndShare(receiptRef.current, format)
     } catch (err) {
       console.error('[share receipt]', err)
     } finally {
       setSharing(false)
+      setShowPicker(false)
     }
   }
 
   return (
     <div className="flex flex-col items-center flex-1 pt-8 pb-4">
-      {/* Hidden receipt card captured by html2canvas */}
+      {/* Off-screen receipt card — matches Transaction Detail design */}
       <div
         ref={receiptRef}
         aria-hidden
         style={{
           position: 'fixed', left: '-9999px', top: 0,
-          width: '340px', backgroundColor: '#0c0a06',
-          padding: '32px 24px 28px',
+          width: '375px', background: '#141414',
+          borderRadius: '24px', padding: '32px 20px 28px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}
       >
-        <p style={{ color: '#d4a843', fontSize: '15px', fontWeight: '600', letterSpacing: '0.06em', textAlign: 'center', marginBottom: '20px' }}>cheese pay</p>
-        <p style={{ color: 'white', fontSize: '22px', fontWeight: '600', textAlign: 'center', marginBottom: '4px' }}>Sent!</p>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textAlign: 'center', marginBottom: '20px' }}>Transfer submitted successfully</p>
-        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '4px 16px', marginBottom: '20px' }}>
-          {rows.map(({ label, value }, i) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
-              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: '500' }}>{value}</span>
+        <p style={{ color: '#d4a843', fontSize: '13px', fontWeight: '700', letterSpacing: '0.1em', textAlign: 'center', marginBottom: '24px', textTransform: 'uppercase' }}>cheese pay</p>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowUpRight size={28} style={{ color: 'rgba(255,255,255,0.7)' }} />
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+          <span style={{ color: 'white', fontSize: '32px', fontWeight: '700', letterSpacing: '-0.02em' }}>
+            -${parseFloat(amount).toFixed(2)}
+          </span>
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '16px', fontWeight: '500', marginLeft: '6px' }}>USDC</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+          <span style={{ background: statusBg, color: statusColor, fontSize: '12px', fontWeight: '500', padding: '4px 14px', borderRadius: '20px' }}>{statusLabel}</span>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '0 16px', marginBottom: '12px' }}>
+          {detailRows.map(({ label, value }, i) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', padding: '12px 0', borderBottom: i < detailRows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', fontWeight: '500', textAlign: 'right' }}>{value}</span>
             </div>
           ))}
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center' }}>cheesepay.xyz</p>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '0 16px', marginBottom: '24px' }}>
+          {refRows.map(({ label, value }, i) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', padding: '12px 0', borderBottom: i < refRows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontFamily: 'monospace', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', letterSpacing: '0.04em' }}>cheesepay.xyz</p>
       </div>
 
       <div className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mb-6">
@@ -1653,15 +1674,49 @@ function SuccessScreen({
       <Button fullWidth size="lg" onClick={onDone} className="mb-3">
         Back to home
       </Button>
-      <button
-        type="button"
-        onClick={shareReceipt}
-        disabled={sharing}
-        className="flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors mb-3 disabled:opacity-40"
-      >
-        {sharing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
-        Share receipt
-      </button>
+
+      {/* Share receipt — format picker */}
+      {!showPicker ? (
+        <button
+          type="button"
+          onClick={() => setShowPicker(true)}
+          disabled={!!sharing}
+          className="flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors mb-3 disabled:opacity-40"
+        >
+          <Share2 size={14} />
+          Share receipt
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => shareReceipt('jpeg')}
+            disabled={!!sharing}
+            className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
+          >
+            {sharing === 'jpeg' ? <Loader2 size={12} className="animate-spin" /> : null}
+            JPEG
+          </button>
+          <button
+            type="button"
+            onClick={() => shareReceipt('pdf')}
+            disabled={!!sharing}
+            className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
+          >
+            {sharing === 'pdf' ? <Loader2 size={12} className="animate-spin" /> : null}
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPicker(false)}
+            disabled={!!sharing}
+            className="px-3 py-2 rounded-xl bg-white/6 text-white/40 text-sm hover:bg-white/10 transition-colors disabled:opacity-40"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={onSendAnother}
@@ -1690,12 +1745,22 @@ function BankSuccessScreen({
   onSendAnother: () => void
 }) {
   const receiptRef = useRef<HTMLDivElement>(null)
-  const [sharing, setSharing] = useState(false)
+  const [sharing, setSharing] = useState<ShareFormat | false>(false)
+  const [showPicker, setShowPicker] = useState(false)
 
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
   const isCompleted = transfer?.status === 'completed'
   const statusLabel = isCompleted ? '✓ Completed' : '⏳ Processing'
   const subtitle = transfer?.message ?? 'Bank transfer initiated'
+
+  const statusColor = isCompleted ? '#34d399' : '#fbbf24'
+  const statusBg    = isCompleted ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.15)'
+  const statusBadge = isCompleted ? 'Completed' : 'Processing'
+
+  const date = new Date().toLocaleString('en-NG', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 
   const rows = [
     { label: 'To',      value: recipient.accountName },
@@ -1706,66 +1771,84 @@ function BankSuccessScreen({
     ...(transfer?.reference ? [{ label: 'Reference', value: transfer.reference }] : []),
   ]
 
-  async function shareReceipt() {
+  const detailRows = [
+    { label: 'TYPE',      value: 'Bank Transfer' },
+    { label: 'DATE',      value: date },
+    { label: 'RECIPIENT', value: recipient.accountName },
+    { label: 'BANK',      value: recipient.bankName },
+    { label: 'ACCOUNT',   value: recipient.accountNumber },
+    { label: 'AMOUNT',    value: `₦${formattedAmount}` },
+    ...(transfer?.amountUsdc ? [{ label: 'USDC', value: `$${parseFloat(transfer.amountUsdc).toFixed(2)}` }] : []),
+  ]
+
+  const refRows = [
+    ...(transfer?.reference ? [{ label: 'REFERENCE', value: transfer.reference }] : []),
+    ...(transfer?.stellarTxHash ? [{ label: 'TX HASH', value: transfer.stellarTxHash.length > 22 ? `${transfer.stellarTxHash.slice(0, 22)}…` : transfer.stellarTxHash }] : []),
+  ]
+
+  async function shareReceipt(format: ShareFormat) {
     if (!receiptRef.current || sharing) return
-    setSharing(true)
+    setSharing(format)
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const canvas = await html2canvas(receiptRef.current, {
-        backgroundColor: '#0c0a06',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      })
-      await new Promise<void>((resolve) => {
-        canvas.toBlob(async (blob) => {
-          if (!blob) { resolve(); return }
-          const file = new File([blob], 'cheese-receipt.png', { type: 'image/png' })
-          try {
-            if (navigator.share && (navigator as any).canShare?.({ files: [file] })) {
-              await navigator.share({ files: [file], title: 'Cheese Pay Receipt' })
-            } else {
-              const url = URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url
-              a.download = 'cheese-receipt.png'
-              a.click()
-              URL.revokeObjectURL(url)
-            }
-          } finally { resolve() }
-        }, 'image/png')
-      })
+      await captureAndShare(receiptRef.current, format)
     } catch (err) {
       console.error('[share receipt]', err)
     } finally {
       setSharing(false)
+      setShowPicker(false)
     }
   }
 
   return (
     <div className="flex flex-col items-center flex-1 pt-8 pb-4">
-      {/* Hidden receipt card captured by html2canvas */}
+      {/* Off-screen receipt card — matches Transaction Detail design */}
       <div
         ref={receiptRef}
         aria-hidden
         style={{
           position: 'fixed', left: '-9999px', top: 0,
-          width: '340px', backgroundColor: '#0c0a06',
-          padding: '32px 24px 28px',
+          width: '375px', background: '#141414',
+          borderRadius: '24px', padding: '32px 20px 28px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}
       >
-        <p style={{ color: '#d4a843', fontSize: '15px', fontWeight: '600', letterSpacing: '0.06em', textAlign: 'center', marginBottom: '20px' }}>cheese pay</p>
-        <p style={{ color: 'white', fontSize: '22px', fontWeight: '600', textAlign: 'center', marginBottom: '4px' }}>Sent!</p>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', textAlign: 'center', marginBottom: '20px' }}>{subtitle}</p>
-        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', padding: '4px 16px', marginBottom: '20px' }}>
-          {rows.map(({ label, value }, i) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
-              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', fontWeight: '500' }}>{value}</span>
+        <p style={{ color: '#d4a843', fontSize: '13px', fontWeight: '700', letterSpacing: '0.1em', textAlign: 'center', marginBottom: '24px', textTransform: 'uppercase' }}>cheese pay</p>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(56,189,248,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Building2 size={28} style={{ color: '#38bdf8' }} />
+          </div>
+        </div>
+        {transfer?.amountUsdc && (
+          <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+            <span style={{ color: 'white', fontSize: '32px', fontWeight: '700', letterSpacing: '-0.02em' }}>
+              -${parseFloat(transfer.amountUsdc).toFixed(2)}
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '16px', fontWeight: '500', marginLeft: '6px' }}>USDC</span>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px', marginTop: '4px' }}>≈ ₦{formattedAmount}</p>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+          <span style={{ background: statusBg, color: statusColor, fontSize: '12px', fontWeight: '500', padding: '4px 14px', borderRadius: '20px' }}>{statusBadge}</span>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '0 16px', marginBottom: '12px' }}>
+          {detailRows.map(({ label, value }, i) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', padding: '12px 0', borderBottom: i < detailRows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', fontWeight: '500', textAlign: 'right' }}>{value}</span>
             </div>
           ))}
         </div>
-        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center' }}>cheesepay.xyz</p>
+        {refRows.length > 0 && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '0 16px', marginBottom: '24px' }}>
+            {refRows.map(({ label, value }, i) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', padding: '12px 0', borderBottom: i < refRows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>{label}</span>
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontFamily: 'monospace', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', letterSpacing: '0.04em' }}>cheesepay.xyz</p>
       </div>
 
       <div className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mb-6">
@@ -1787,15 +1870,49 @@ function BankSuccessScreen({
       <Button fullWidth size="lg" onClick={onDone} className="mb-3">
         Back to home
       </Button>
-      <button
-        type="button"
-        onClick={shareReceipt}
-        disabled={sharing}
-        className="flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors mb-3 disabled:opacity-40"
-      >
-        {sharing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
-        Share receipt
-      </button>
+
+      {/* Share receipt — format picker */}
+      {!showPicker ? (
+        <button
+          type="button"
+          onClick={() => setShowPicker(true)}
+          disabled={!!sharing}
+          className="flex items-center gap-2 text-sm text-white/50 hover:text-white/80 transition-colors mb-3 disabled:opacity-40"
+        >
+          <Share2 size={14} />
+          Share receipt
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => shareReceipt('jpeg')}
+            disabled={!!sharing}
+            className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
+          >
+            {sharing === 'jpeg' ? <Loader2 size={12} className="animate-spin" /> : null}
+            JPEG
+          </button>
+          <button
+            type="button"
+            onClick={() => shareReceipt('pdf')}
+            disabled={!!sharing}
+            className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
+          >
+            {sharing === 'pdf' ? <Loader2 size={12} className="animate-spin" /> : null}
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPicker(false)}
+            disabled={!!sharing}
+            className="px-3 py-2 rounded-xl bg-white/6 text-white/40 text-sm hover:bg-white/10 transition-colors disabled:opacity-40"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={onSendAnother}

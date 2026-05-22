@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  X, Share2, Copy, CheckCheck,
+  X, Share2, Loader2,
   ArrowUpRight, ArrowDownLeft, Building2,
 } from 'lucide-react'
-import { useState } from 'react'
 import { cn } from '@/lib/cn'
-import { notify } from '@/lib/toast'
+import { captureAndShare, type ShareFormat } from '@/lib/shareReceipt'
 import type { Transaction } from '@/types'
 
 // ── Config maps (mirrors history page) ──────────────────────
@@ -44,47 +43,25 @@ const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   reversed:  { label: 'Reversed',  cls: 'bg-orange-400/15 text-orange-400'   },
 }
 
-// ── Receipt text builder ─────────────────────────────────────
-function buildReceiptText(tx: Transaction): string {
-  const isIn = tx.type === 'deposit' || tx.type === 'yield_credit' || tx.type === 'referral_bonus'
-  const sign  = isIn ? '+' : '-'
-  const date  = new Date(tx.createdAt).toLocaleString('en-NG', {
-    day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+// Inline-style equivalents used inside the off-screen receipt card (html2canvas reads computed styles)
+const RECEIPT_ICON_STYLE: Record<string, { bg: string; color: string }> = {
+  send_username:  { bg: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' },
+  send_address:   { bg: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' },
+  bank_transfer:  { bg: 'rgba(56,189,248,0.12)',  color: '#38bdf8' },
+  withdrawal:     { bg: 'rgba(56,189,248,0.12)',  color: '#38bdf8' },
+  deposit:        { bg: 'rgba(52,211,153,0.12)',  color: '#34d399' },
+  yield_credit:   { bg: 'rgba(52,211,153,0.12)',  color: '#34d399' },
+  referral_bonus: { bg: 'rgba(52,211,153,0.12)',  color: '#34d399' },
+  card_payment:   { bg: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' },
+  fee:            { bg: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' },
+  pay_request:    { bg: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' },
+}
 
-  const lines: string[] = [
-    '🧀 CHEESE PAY — RECEIPT',
-    '──────────────────────────',
-    `Type:       ${TX_LABELS[tx.type] ?? tx.type}`,
-    `Amount:     ${sign}$${parseFloat(tx.amountUsdc).toFixed(2)} USDC`,
-  ]
-
-  if (tx.amountNgn) {
-    lines.push(`NGN:        ₦${parseFloat(tx.amountNgn).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`)
-  }
-
-  lines.push(
-    `Status:     ${STATUS_STYLE[tx.status]?.label ?? tx.status}`,
-    `Date:       ${date}`,
-    '──────────────────────────',
-  )
-
-  if (tx.recipientName)    lines.push(`Recipient:  ${tx.recipientName}`)
-  if (tx.recipientUsername) lines.push(`To:         @${tx.recipientUsername}`)
-  if (tx.recipientAddress) lines.push(`Address:    ${tx.recipientAddress}`)
-  if (tx.bank)             lines.push(`Bank:       ${tx.bank}`)
-  if (tx.accountNumber)    lines.push(`Account:    ${tx.accountNumber}`)
-  if (tx.network)          lines.push(`Network:    ${tx.network}`)
-  if (tx.txHash)           lines.push(`Tx Hash:    ${tx.txHash}`)
-
-  lines.push(
-    `Reference:  ${tx.reference}`,
-    '──────────────────────────',
-    'Powered by Cheese Pay',
-  )
-
-  return lines.join('\n')
+const RECEIPT_STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
+  completed: { label: 'Completed', color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  pending:   { label: 'Pending',   color: '#fbbf24', bg: 'rgba(251,191,36,0.15)' },
+  failed:    { label: 'Failed',    color: '#f87171', bg: 'rgba(248,113,113,0.15)' },
+  reversed:  { label: 'Reversed',  color: '#fb923c', bg: 'rgba(251,146,60,0.15)' },
 }
 
 // ── Row helper ───────────────────────────────────────────────
@@ -115,7 +92,9 @@ interface TransactionSheetProps {
 }
 
 export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
-  const [copied, setCopied] = useState(false)
+  const receiptRef = useRef<HTMLDivElement>(null)
+  const [sharing, setSharing] = useState<ShareFormat | false>(false)
+  const [showPicker, setShowPicker] = useState(false)
 
   // Lock body scroll while open
   useEffect(() => {
@@ -139,33 +118,115 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
   const cfg   = TX_ICON[tx.type] ?? TX_ICON.deposit
   const { Icon } = cfg
   const status = STATUS_STYLE[tx.status] ?? { label: tx.status, cls: 'bg-white/8 text-white/50' }
+  const receiptIcon = RECEIPT_ICON_STYLE[tx.type] ?? RECEIPT_ICON_STYLE.deposit
+  const receiptStatus = RECEIPT_STATUS_STYLE[tx.status] ?? { label: tx.status, color: 'rgba(255,255,255,0.5)', bg: 'rgba(255,255,255,0.08)' }
 
   const date = new Date(tx.createdAt).toLocaleString('en-NG', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
 
-  async function handleShare() {
-    const text = buildReceiptText(tx!)
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'Cheese Pay Receipt', text })
-        return
-      } catch { /* user cancelled or not supported */ }
-    }
-    // Fallback: copy to clipboard
+  async function shareReceipt(format: ShareFormat) {
+    if (!receiptRef.current || sharing) return
+    setSharing(format)
     try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
-      notify.success('Receipt copied to clipboard')
-    } catch {
-      notify.error('Could not share receipt')
+      await captureAndShare(receiptRef.current, format)
+    } catch (err) {
+      console.error('[share receipt]', err)
+    } finally {
+      setSharing(false)
+      setShowPicker(false)
     }
   }
 
+  // Build detail rows for the receipt card
+  const detailRows: { label: string; value: string; mono?: boolean }[] = [
+    { label: 'TYPE', value: TX_LABELS[tx.type] ?? tx.type },
+    { label: 'DATE', value: date },
+    ...(tx.recipientName     ? [{ label: 'RECIPIENT', value: tx.recipientName }] : []),
+    ...(tx.recipientUsername ? [{ label: 'TO',        value: `@${tx.recipientUsername}` }] : []),
+    ...(tx.recipientAddress  ? [{ label: 'ADDRESS',   value: `${tx.recipientAddress.slice(0, 14)}…${tx.recipientAddress.slice(-6)}`, mono: true }] : []),
+    ...(tx.bank              ? [{ label: 'BANK',      value: tx.bank }] : []),
+    ...(tx.accountNumber     ? [{ label: 'ACCOUNT',   value: tx.accountNumber, mono: true }] : []),
+    ...(tx.network           ? [{ label: 'NETWORK',   value: tx.network }] : []),
+    ...(tx.description       ? [{ label: 'NOTE',      value: tx.description }] : []),
+    ...(tx.fee && parseFloat(tx.fee) > 0 ? [{ label: 'FEE', value: `$${parseFloat(tx.fee).toFixed(4)} USDC` }] : []),
+  ]
+
+  const refRows: { label: string; value: string }[] = [
+    { label: 'REFERENCE', value: tx.reference },
+    ...(tx.txHash ? [{ label: 'TX HASH', value: tx.txHash.length > 22 ? `${tx.txHash.slice(0, 22)}…` : tx.txHash }] : []),
+  ]
+
   return (
     <>
+      {/* Off-screen receipt card — captured by html2canvas */}
+      <div
+        ref={receiptRef}
+        aria-hidden
+        style={{
+          position: 'fixed', left: '-9999px', top: 0,
+          width: '375px', background: '#141414',
+          borderRadius: '24px', padding: '32px 20px 28px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        }}
+      >
+        {/* Logo */}
+        <p style={{ color: '#d4a843', fontSize: '13px', fontWeight: '700', letterSpacing: '0.1em', textAlign: 'center', marginBottom: '24px', textTransform: 'uppercase' }}>
+          cheese pay
+        </p>
+
+        {/* Icon */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: receiptIcon.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon size={28} style={{ color: receiptIcon.color }} />
+          </div>
+        </div>
+
+        {/* Amount */}
+        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+          <span style={{ color: isIn ? '#34d399' : 'white', fontSize: '32px', fontWeight: '700', letterSpacing: '-0.02em' }}>
+            {sign}${parseFloat(tx.amountUsdc).toFixed(2)}
+          </span>
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '16px', fontWeight: '500', marginLeft: '6px' }}>USDC</span>
+          {tx.amountNgn && (
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px', marginTop: '4px' }}>
+              ≈ ₦{parseFloat(tx.amountNgn).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+            </p>
+          )}
+        </div>
+
+        {/* Status badge */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+          <span style={{ background: receiptStatus.bg, color: receiptStatus.color, fontSize: '12px', fontWeight: '500', padding: '4px 14px', borderRadius: '20px' }}>
+            {receiptStatus.label}
+          </span>
+        </div>
+
+        {/* Detail rows */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '0 16px', marginBottom: '12px' }}>
+          {detailRows.map(({ label, value, mono }, i) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', padding: '12px 0', borderBottom: i < detailRows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>{label}</span>
+              <span style={{ color: mono ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.85)', fontSize: '12px', fontWeight: mono ? '400' : '500', fontFamily: mono ? 'monospace' : 'inherit', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Reference rows */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px', padding: '0 16px', marginBottom: '24px' }}>
+          {refRows.map(({ label, value }, i) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', padding: '12px 0', borderBottom: i < refRows.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontFamily: 'monospace', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', letterSpacing: '0.04em' }}>cheesepay.xyz</p>
+      </div>
+
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm"
@@ -254,16 +315,43 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
           className="shrink-0 px-5 pt-3 pb-3"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
-          <button
-            type="button"
-            onClick={handleShare}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors active:scale-[0.98]"
-          >
-            {copied
-              ? <><CheckCheck size={16} /> Copied to clipboard</>
-              : <><Share2 size={16} /> Share Receipt</>
-            }
-          </button>
+          {!showPicker ? (
+            <button
+              type="button"
+              onClick={() => setShowPicker(true)}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors active:scale-[0.98]"
+            >
+              <Share2 size={16} />
+              Share Receipt
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => shareReceipt('jpeg')}
+                disabled={!!sharing}
+                className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors disabled:opacity-50 active:scale-[0.98]"
+              >
+                {sharing === 'jpeg' ? <Loader2 size={14} className="animate-spin" /> : 'JPEG'}
+              </button>
+              <button
+                type="button"
+                onClick={() => shareReceipt('pdf')}
+                disabled={!!sharing}
+                className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors disabled:opacity-50 active:scale-[0.98]"
+              >
+                {sharing === 'pdf' ? <Loader2 size={14} className="animate-spin" /> : 'PDF'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPicker(false)}
+                disabled={!!sharing}
+                className="px-4 py-3.5 rounded-2xl bg-white/8 text-white/50 text-sm hover:bg-white/12 transition-colors disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
