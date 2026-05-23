@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, Query, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Post, Param, Query, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
@@ -165,6 +165,49 @@ export class AdminDashboardController {
   @ApiOperation({ summary: 'Activate or deactivate a user account' })
   setUserStatus(@Param('id') id: string, @Body('isActive') isActive: boolean) {
     return this.adminAuthService.setUserActive(id, isActive);
+  }
+
+  // ── GET /admin/kyc ────────────────────────────────────────────────────────
+  @Get('kyc')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List users with KYC info (filterable, paginated)' })
+  listKycUsers(
+    @Query('page')         page?:         string,
+    @Query('limit')        limit?:        string,
+    @Query('search')       search?:       string,
+    @Query('tier')         tier?:         string,
+    @Query('kyc')          kyc?:          string,
+    @Query('pendingBlack') pendingBlack?: string,
+  ) {
+    return this.adminAuthService.listKycUsers({
+      page:         Math.max(1, parseInt(page  ?? '1',  10)),
+      limit:        Math.min(100, parseInt(limit ?? '20', 10)),
+      search,
+      tier,
+      kyc,
+      pendingBlack: pendingBlack === 'true',
+    });
+  }
+
+  // ── POST /admin/kyc/:id/approve ────────────────────────────────────────────
+  @Post('kyc/:id/approve')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve Black tier for a user' })
+  approveBlack(@Param('id') id: string) {
+    return this.adminAuthService.approveBlackTier(id);
+  }
+
+  // ── POST /admin/kyc/:id/reject ─────────────────────────────────────────────
+  @Post('kyc/:id/reject')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject Black tier request for a user' })
+  rejectBlack(@Param('id') id: string, @Body('reason') reason: string) {
+    return this.adminAuthService.rejectBlackTier(id, reason ?? '');
   }
 
   // ── GET /admin/cards ───────────────────────────────────────────────────────

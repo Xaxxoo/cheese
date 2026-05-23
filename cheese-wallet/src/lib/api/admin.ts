@@ -144,6 +144,7 @@ export interface AdminStats {
   verifiedUsers:            number
   premiumUsers:             number
   pendingKyc:               number
+  pendingBlackCount:        number
   totalTransactions:        number
   activeWallets:            number
   pendingWallets:           number
@@ -187,6 +188,54 @@ export async function listAdminUsers(params?: {
     page:  number
     limit: number
   }>>('/admin/users', { params })
+  return data.data
+}
+
+// ── KYC listing ───────────────────────────────────────────────────────────
+export interface AdminKycUserItem {
+  id:                   string
+  name:                 string
+  username:             string
+  email:                string
+  tier:                 string
+  kycStatus:            string
+  pendingBlackApproval: boolean
+  updatedAt:            string
+  createdAt:            string
+}
+
+export async function listAdminKyc(params?: {
+  page?:         number
+  limit?:        number
+  search?:       string
+  tier?:         string
+  kyc?:          string
+  pendingBlack?: boolean
+}): Promise<{ users: AdminKycUserItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    users: AdminKycUserItem[]
+    total: number
+    page:  number
+    limit: number
+  }>>('/admin/kyc', { params })
+  return data.data
+}
+
+export async function approveBlackTier(userId: string): Promise<{ id: string; tier: string }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ id: string; tier: string }>>(
+    `/admin/kyc/${userId}/approve`,
+  )
+  return data.data
+}
+
+export async function rejectBlackTier(
+  userId: string,
+  reason: string,
+): Promise<{ id: string; rejected: boolean }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ id: string; rejected: boolean }>>(
+    `/admin/kyc/${userId}/reject`,
+    { reason },
+  )
   return data.data
 }
 

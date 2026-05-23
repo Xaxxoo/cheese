@@ -135,6 +135,20 @@ export class NotificationsService implements OnModuleInit {
     });
   }
 
+  async notifyBankTransferFailed(
+    userId: string,
+    amountNgn: string,
+    reason: string,
+  ) {
+    return this.create({
+      userId,
+      type: NotificationType.MONEY,
+      title: 'Withdrawal Failed — USDC Refunded',
+      body: `Your ₦${parseFloat(amountNgn).toLocaleString()} withdrawal could not be completed. Your USDC has been refunded to your wallet. Reason: ${reason}`,
+      deepLink: '/history',
+    });
+  }
+
   async notifyTransactionComplete(
     userId: string,
     reference: string,

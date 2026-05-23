@@ -380,7 +380,9 @@ export class PayLinkService {
         amountUsdc: amount.toFixed(2),
         appUrl: `${frontendUrl}/wallet`,
       })
-      .catch(() => {});
+      .catch((e: Error) =>
+        this.logger.error(`PayLink creator email failed [ref=${ref}]: ${e.message}`),
+      );
 
     // 13. Notify payer (sent confirmation)
     this.emailService
@@ -393,7 +395,9 @@ export class PayLinkService {
         fee: fee.toFixed(4),
         appUrl: `${frontendUrl}/wallet/history`,
       })
-      .catch(() => {});
+      .catch((e: Error) =>
+        this.logger.error(`PayLink payer email failed [ref=${ref}]: ${e.message}`),
+      );
 
     this.logger.log(
       `PayLink settled: @${payer.username} → @${pr.creator.username} $${amount} | hash:${txHash}`,

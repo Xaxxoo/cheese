@@ -27,6 +27,8 @@ import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_NGN_LIMIT, formatNgnLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
+import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type BankDirectoryEntry = {
   code: string;
@@ -402,6 +404,8 @@ export class BanksService {
     private readonly txService: TransactionsService,
     private readonly pulseMfb: PulseMfbClient,
     private readonly tierMilestone: TierMilestoneService,
+    private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
@@ -819,6 +823,40 @@ export class BanksService {
           `Bank transfer settled [ref=${transfer.reference}] ` +
             `[providerRef=${transfer.providerReference ?? dto.reference}]`,
         );
+
+        // Fire-and-forget user notifications
+        const successUser = await this.userRepo.findOne({
+          where: { id: transfer.userId },
+          select: ['id', 'email', 'fullName', 'username'],
+        });
+        if (successUser) {
+          void this.notificationsService
+            .notifyTransactionComplete(
+              successUser.id,
+              transfer.reference,
+              transfer.amountUsdc,
+            )
+            .catch((e: Error) =>
+              this.logger.warn(`Bank transfer notification failed [ref=${transfer.reference}]: ${e.message}`),
+            );
+          if (successUser.email) {
+            this.emailService
+              .sendMoneySent({
+                to: successUser.email,
+                fullName: successUser.fullName ?? successUser.username,
+                amountUsdc: transfer.amountUsdc,
+                amountNgn: transfer.amountNgn,
+                recipientName: `${transfer.accountName} · ${transfer.bankName}`,
+                reference: transfer.reference,
+                fee: transfer.feeUsdc ?? '0',
+                appUrl: this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz'),
+              })
+              .catch((e: Error) =>
+                this.logger.error(`Bank transfer success email failed [ref=${transfer.reference}]: ${e.message}`),
+              );
+          }
+        }
+
         return {
           processed: true,
           reference: transfer.reference,
@@ -872,6 +910,20 @@ export class BanksService {
             `[providerRef=${transfer.providerReference ?? dto.reference}] — ` +
             `USDC refund initiated`,
         );
+
+        // Fire-and-forget failure notification
+        if (user) {
+          void this.notificationsService
+            .notifyBankTransferFailed(
+              user.id,
+              transfer.amountNgn,
+              dto.failureReason ?? dto.event,
+            )
+            .catch((e: Error) =>
+              this.logger.warn(`Bank transfer failure notification failed [ref=${transfer.reference}]: ${e.message}`),
+            );
+        }
+
         return {
           processed: true,
           reference: transfer.reference,

@@ -12,6 +12,8 @@ import { BanksScheduler } from './banks.scheduler';
 import { PulseMfbClient } from './pulsemfb.client';
 import { BankTransfer } from './entities/bank-transfer.entity';
 import { KycModule } from '../kyc/kyc.module';
+import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { KycModule } from '../kyc/kyc.module';
     RatesModule,
     TransactionsModule,
     KycModule,
+    EmailModule,
+    NotificationsModule,
   ],
   controllers: [BanksController],
   providers: [BanksService, BanksScheduler, PulseMfbClient],

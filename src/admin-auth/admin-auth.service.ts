@@ -14,6 +14,7 @@ import { In, MoreThanOrEqual, Repository } from 'typeorm';
 import { createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { User, AdminRole, KycStatus, Tier, WalletStatus } from '../auth/entities/user.entity';
+import { NotificationType } from '../notifications/entities/notification.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { Transaction, TxStatus } from '../transactions/entities/transaction.entity';
 import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfer.entity';
@@ -286,6 +287,7 @@ export class AdminAuthService {
       verifiedUsers,
       premiumUsers,
       pendingKyc,
+      pendingBlackCount,
       totalTransactions,
       activeWallets,
       pendingWallets,
@@ -301,6 +303,7 @@ export class AdminAuthService {
       this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.VERIFIED } }),
       this.userRepo.count({ where: { isAdmin: false, tier: In([Tier.GOLD, Tier.BLACK]) } }),
       this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.SUBMITTED } }),
+      this.userRepo.count({ where: { isAdmin: false, pendingBlackApproval: true } }),
       this.txRepo.count(),
       this.userRepo.count({ where: { isAdmin: false, stellarWalletStatus: WalletStatus.ACTIVE  } }),
       this.userRepo.count({ where: { isAdmin: false, stellarWalletStatus: WalletStatus.PENDING } }),
@@ -322,6 +325,7 @@ export class AdminAuthService {
       verifiedUsers,
       premiumUsers,
       pendingKyc,
+      pendingBlackCount,
       totalTransactions,
       activeWallets,
       pendingWallets,
@@ -397,6 +401,138 @@ export class AdminAuthService {
       page,
       limit,
     };
+  }
+
+  // ── KYC listing ───────────────────────────────────────────────────────────
+
+  async listKycUsers(query: {
+    page: number;
+    limit: number;
+    search?: string;
+    tier?: string;
+    kyc?: string;
+    pendingBlack?: boolean;
+  }) {
+    const { page, limit, search, tier, kyc, pendingBlack } = query;
+
+    const kycMap: Record<string, string> = {
+      reviewing: KycStatus.SUBMITTED,
+      failed:    KycStatus.REJECTED,
+    };
+
+    const qb = this.userRepo
+      .createQueryBuilder('u')
+      .where('u.is_admin = :isAdmin', { isAdmin: false })
+      .orderBy('u.pending_black_approval', 'DESC')
+      .addOrderBy('u.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (search) {
+      qb.andWhere(
+        '(LOWER(u.username) LIKE :q OR LOWER(u.full_name) LIKE :q OR LOWER(u.email) LIKE :q)',
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+    if (tier && tier.toLowerCase() !== 'all') {
+      qb.andWhere('u.tier = :tier', { tier: tier.toLowerCase() });
+    }
+    if (kyc && kyc.toLowerCase() !== 'all') {
+      const mapped = kycMap[kyc.toLowerCase()] ?? kyc.toLowerCase();
+      qb.andWhere('u.kyc_status = :kyc', { kyc: mapped });
+    }
+    if (pendingBlack) {
+      qb.andWhere('u.pending_black_approval = :pba', { pba: true });
+    }
+
+    const [users, total] = await qb.getManyAndCount();
+
+    const kycDisplay: Record<string, string> = {
+      [KycStatus.PENDING]:   'Pending',
+      [KycStatus.SUBMITTED]: 'Reviewing',
+      [KycStatus.VERIFIED]:  'Verified',
+      [KycStatus.REJECTED]:  'Failed',
+    };
+
+    return {
+      users: users.map((u) => ({
+        id:                   u.id,
+        name:                 u.fullName || u.username,
+        username:             `@${u.username}`,
+        email:                u.email,
+        tier:                 u.tier.charAt(0).toUpperCase() + u.tier.slice(1),
+        kycStatus:            kycDisplay[u.kycStatus] ?? u.kycStatus,
+        pendingBlackApproval: u.pendingBlackApproval,
+        updatedAt:            u.updatedAt,
+        createdAt:            u.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── KYC actions ───────────────────────────────────────────────────────────
+
+  async approveBlackTier(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.pendingBlackApproval) {
+      throw new BadRequestException('No pending Black tier request for this user');
+    }
+
+    user.tier = Tier.BLACK;
+    user.pendingBlackApproval = false;
+    await this.userRepo.save(user);
+
+    void this.notificationsService
+      .notifyKycVerified(user.id, 'black')
+      .catch((err: Error) =>
+        this.logger.error(`Black tier notification failed [userId=${userId}]: ${err.message}`),
+      );
+
+    if (user.email) {
+      this.emailService
+        .sendKycApproved({
+          to: user.email,
+          fullName: user.fullName ?? user.username,
+          tier: 'black',
+        })
+        .catch((err: Error) =>
+          this.logger.error(`Black tier email failed [userId=${userId}]: ${err.message}`),
+        );
+    }
+
+    this.logger.log(`Black tier approved [userId=${userId}]`);
+    return { id: user.id, tier: user.tier };
+  }
+
+  async rejectBlackTier(userId: string, reason: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.pendingBlackApproval) {
+      throw new BadRequestException('No pending Black tier request for this user');
+    }
+
+    user.pendingBlackApproval = false;
+    await this.userRepo.save(user);
+
+    void this.notificationsService
+      .create({
+        userId: user.id,
+        type: NotificationType.KYC_VERIFIED,
+        title: 'Black Tier Request Declined',
+        body: reason
+          ? `Your Black tier upgrade was not approved: ${reason}`
+          : 'Your Black tier upgrade request was not approved. You may resubmit.',
+        deepLink: '/profile',
+      })
+      .catch((err: Error) =>
+        this.logger.error(`Black tier rejection notification failed [userId=${userId}]: ${err.message}`),
+      );
+
+    this.logger.log(`Black tier rejected [userId=${userId}]: ${reason}`);
+    return { id: user.id, rejected: true };
   }
 
   // ── Transfers listing ─────────────────────────────────────────────────────
@@ -635,6 +771,36 @@ export class AdminAuthService {
     if (tx) {
       await this.txRepo.update({ id: tx.id }, { status: TxStatus.COMPLETED });
     }
+
+    // Fire-and-forget notifications
+    const user = await this.userRepo.findOne({
+      where: { id: transfer.userId },
+      select: ['id', 'email', 'fullName', 'username'],
+    });
+    if (user) {
+      void this.notificationsService
+        .notifyTransactionComplete(user.id, transfer.reference, transfer.amountUsdc)
+        .catch((e: Error) =>
+          this.logger.error(`Admin complete-transfer notification failed [ref=${transfer.reference}]: ${e.message}`),
+        );
+      if (user.email) {
+        this.emailService
+          .sendMoneySent({
+            to: user.email,
+            fullName: user.fullName ?? user.username,
+            amountUsdc: transfer.amountUsdc,
+            amountNgn: transfer.amountNgn,
+            recipientName: `${transfer.accountName} · ${transfer.bankName}`,
+            reference: transfer.reference,
+            fee: transfer.feeUsdc ?? '0',
+            appUrl: this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz'),
+          })
+          .catch((e: Error) =>
+            this.logger.error(`Admin complete-transfer email failed [ref=${transfer.reference}]: ${e.message}`),
+          );
+      }
+    }
+
     return { id, status: BankTransferStatus.COMPLETED };
   }
 

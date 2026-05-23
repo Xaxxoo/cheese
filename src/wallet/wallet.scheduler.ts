@@ -7,6 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { User, WalletStatus } from '../auth/entities/user.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { TransactionsService } from '../transactions/transactions.service';
+import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import {
   BlockchainWallet,
@@ -27,6 +29,8 @@ export class WalletDepositScheduler {
     private readonly cursorRepo: Repository<EvmChainCursor>,
     private readonly blockchainService: BlockchainService,
     private readonly txService: TransactionsService,
+    private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── Auto-provision missing Stellar wallets ────────────────────────────────
@@ -140,7 +144,7 @@ export class WalletDepositScheduler {
     // Load only users with active Stellar wallets
     const users = await this.userRepo.find({
       where: { stellarWalletStatus: WalletStatus.ACTIVE },
-      select: ['id', 'stellarPublicKey', 'stellarDepositCursor'],
+      select: ['id', 'email', 'fullName', 'username', 'stellarPublicKey', 'stellarDepositCursor'],
     });
 
     for (const user of users) {
@@ -156,7 +160,7 @@ export class WalletDepositScheduler {
   }
 
   private async processDepositsForUser(
-    user: Pick<User, 'id' | 'stellarPublicKey' | 'stellarDepositCursor'>,
+    user: Pick<User, 'id' | 'email' | 'fullName' | 'username' | 'stellarPublicKey' | 'stellarDepositCursor'>,
   ) {
     const payments = await this.blockchainService.fetchInboundStellarUsdc(
       user.stellarPublicKey!,
@@ -208,6 +212,29 @@ export class WalletDepositScheduler {
       this.logger.log(
         `Deposit recorded [user=${user.id}] [amount=${payment.amount} USDC] [hash=${payment.txHash}]`,
       );
+
+      // In-app notification
+      void this.notificationsService
+        .notifyMoneyReceived(user.id, payment.amount, 'external wallet')
+        .catch((e: Error) =>
+          this.logger.warn(`Deposit notification failed [user=${user.id}]: ${e.message}`),
+        );
+
+      // Email confirmation
+      if (user.email) {
+        this.emailService
+          .sendMoneyReceived({
+            to: user.email,
+            fullName: user.fullName ?? user.username,
+            amountUsdc: payment.amount,
+            txHash: payment.txHash,
+            network: 'stellar',
+            appUrl: 'https://cheesepay.xyz',
+          })
+          .catch((e: Error) =>
+            this.logger.error(`Deposit email failed [user=${user.id}]: ${e.message}`),
+          );
+      }
 
       // Notify the Soroban contract of the deposit (fire-and-forget).
       // Routing is purely by destination address — memo is never used.
@@ -330,6 +357,38 @@ export class WalletDepositScheduler {
             this.logger.log(
               `EVM deposit recorded [chain=${chainName}] [user=${userId}] [amount=${event.amount}] [hash=${event.txHash}]`,
             );
+
+            // Fire-and-forget notifications
+            void this.userRepo
+              .findOne({
+                where: { id: userId },
+                select: ['id', 'email', 'fullName', 'username'],
+              })
+              .then((depositUser) => {
+                if (!depositUser) return;
+                void this.notificationsService
+                  .notifyMoneyReceived(depositUser.id, event.amount, 'external wallet')
+                  .catch((e: Error) =>
+                    this.logger.warn(`EVM deposit notification failed [user=${userId}]: ${e.message}`),
+                  );
+                if (depositUser.email) {
+                  this.emailService
+                    .sendMoneyReceived({
+                      to: depositUser.email,
+                      fullName: depositUser.fullName ?? depositUser.username,
+                      amountUsdc: event.amount,
+                      txHash: event.txHash,
+                      network: chainName,
+                      appUrl: 'https://cheesepay.xyz',
+                    })
+                    .catch((e: Error) =>
+                      this.logger.error(`EVM deposit email failed [user=${userId}]: ${e.message}`),
+                    );
+                }
+              })
+              .catch((e: Error) =>
+                this.logger.warn(`EVM deposit user lookup failed [user=${userId}]: ${e.message}`),
+              );
           }
         }
       } catch (err) {
