@@ -40,9 +40,8 @@ Cheese Pay solves both problems at once:
 3. Cheese converts and delivers Naira to the recipient's bank account instantly
 4. The sender's balance remains in USDC for future use
 
-## Waitlist
-- https://cheesepay.xyz/waitlist
-- 319+ people already registered
+## Get started
+- https://cheesepay.xyz
 
 ## Built on
 - Stellar blockchain for USDC payments and Naira settlement

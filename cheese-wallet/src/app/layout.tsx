@@ -47,9 +47,9 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   applicationName: 'Cheese Pay',
-  title: 'Cheese Wallet — Reserve Your Username',
-  description: 'Cheese is a USD wallet where you send money with a username. Reserve yours before launch.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://cheese.app'),
+  title: 'Cheese Pay — Hold Dollars, Send Naira',
+  description: 'Hold your money in USDC to protect against naira inflation. Send instantly to any Nigerian bank account in Naira — no crypto knowledge needed.',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://cheesepay.xyz'),
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -57,17 +57,17 @@ export const metadata: Metadata = {
     title: 'Cheese',
   },
   openGraph: {
-    title: 'Reserve your @username on Cheese Wallet',
-    description: 'Send money to anyone with just a username. Secure yours before launch.',
+    title: 'Cheese Pay — Hold Dollars, Send Naira',
+    description: 'Hold your money in USDC to protect against naira inflation. Send instantly to any Nigerian bank account in Naira — no crypto knowledge needed.',
     images: ['/og-image.png'],
-    url: 'https://cheese.app',
-    siteName: 'Cheese Wallet',
+    url: 'https://cheesepay.xyz',
+    siteName: 'Cheese Pay',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Reserve your @username on Cheese Wallet',
-    description: 'Send money to anyone with just a username. Secure yours before launch.',
+    title: 'Cheese Pay — Hold Dollars, Send Naira',
+    description: 'Hold your money in USDC to protect against naira inflation. Send instantly to any Nigerian bank account in Naira — no crypto knowledge needed.',
     images: ['/og-image.png'],
   },
   icons: {
