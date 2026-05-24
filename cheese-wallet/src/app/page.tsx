@@ -6,6 +6,7 @@ import { DashboardSection } from '@/components/landing/DashboardSection'
 import { NetworksSection } from '@/components/landing/NetworksSection'
 import { SecuritySection } from '@/components/landing/SecuritySection'
 import { CtaSection } from '@/components/landing/CtaSection'
+import { FaqSection } from '@/components/landing/FaqSection'
 import { LandingFooter } from '@/components/landing/LandingFooter'
 
 export default function HomePage() {
@@ -19,6 +20,7 @@ export default function HomePage() {
       <NetworksSection />
       <SecuritySection />
       <CtaSection />
+      <FaqSection />
       <LandingFooter />
     </main>
   )
