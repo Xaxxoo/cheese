@@ -1110,4 +1110,99 @@ export class AdminAuthService {
 
     return { accessToken, refreshToken };
   }
+
+  // ── Fee revenue stats ─────────────────────────────────────────────────────
+
+  async getFeeStats(query: { page: number; limit: number; search?: string }) {
+    const { page, limit, search } = query;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    // Aggregate totals — only completed transfers carry real fee revenue
+    const [allTimeResult, todayResult, monthResult] = await Promise.all([
+      this.bankTransferRepo
+        .createQueryBuilder('bt')
+        .select('SUM(CAST(bt.fee_usdc AS DECIMAL(20,6)))', 'total')
+        .addSelect('COUNT(*)', 'count')
+        .where('bt.status = :s', { s: BankTransferStatus.COMPLETED })
+        .getRawOne<{ total: string; count: string }>(),
+
+      this.bankTransferRepo
+        .createQueryBuilder('bt')
+        .select('SUM(CAST(bt.fee_usdc AS DECIMAL(20,6)))', 'total')
+        .where('bt.status = :s', { s: BankTransferStatus.COMPLETED })
+        .andWhere('bt.created_at >= :d', { d: todayStart })
+        .getRawOne<{ total: string }>(),
+
+      this.bankTransferRepo
+        .createQueryBuilder('bt')
+        .select('SUM(CAST(bt.fee_usdc AS DECIMAL(20,6)))', 'total')
+        .where('bt.status = :s', { s: BankTransferStatus.COMPLETED })
+        .andWhere('bt.created_at >= :d', { d: monthStart })
+        .getRawOne<{ total: string }>(),
+    ]);
+
+    // Paginated list — all completed bank transfers with their fee
+    const qb = this.bankTransferRepo
+      .createQueryBuilder('bt')
+      .where('bt.status = :s', { s: BankTransferStatus.COMPLETED })
+      .orderBy('bt.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (search) {
+      qb.andWhere(
+        `(LOWER(bt.reference) LIKE :q
+          OR LOWER(bt.account_name) LIKE :q
+          OR LOWER(bt.bank_name) LIKE :q
+          OR bt.account_number LIKE :q)`,
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [transfers, total] = await qb.getManyAndCount();
+
+    // Resolve owner usernames
+    const uniqueUserIds = [...new Set(transfers.map((t) => t.userId))];
+    const usernameMap = new Map<string, string>();
+    if (uniqueUserIds.length > 0) {
+      const users = await this.userRepo.find({
+        where: { id: In(uniqueUserIds) },
+        select: ['id', 'username'],
+      });
+      users.forEach((u) => usernameMap.set(u.id, u.username));
+    }
+
+    return {
+      summary: {
+        totalFeesUsdc:       parseFloat(allTimeResult?.total ?? '0') || 0,
+        totalCompletedCount: parseInt(allTimeResult?.count  ?? '0', 10) || 0,
+        todayFeesUsdc:       parseFloat(todayResult?.total  ?? '0') || 0,
+        monthFeesUsdc:       parseFloat(monthResult?.total  ?? '0') || 0,
+      },
+      transfers: transfers.map((t) => ({
+        id:            t.id,
+        reference:     t.reference,
+        userId:        t.userId,
+        username:      usernameMap.get(t.userId) ?? '—',
+        accountName:   t.accountName,
+        bankName:      t.bankName,
+        accountNumber: t.accountNumber,
+        amountNgn:     t.amountNgn,
+        amountUsdc:    t.amountUsdc,
+        feeUsdc:       t.feeUsdc,
+        rateApplied:   t.rateApplied,
+        status:        t.status,
+        createdAt:     t.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
 }

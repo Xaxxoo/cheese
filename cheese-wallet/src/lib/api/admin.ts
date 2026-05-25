@@ -413,6 +413,51 @@ export async function listAdminTransactions(params?: {
   return data.data
 }
 
+// ── Fee revenue ───────────────────────────────────────────────────────────
+export interface AdminFeeTransferItem {
+  id:            string
+  reference:     string
+  userId:        string
+  username:      string
+  accountName:   string
+  bankName:      string
+  accountNumber: string
+  amountNgn:     string
+  amountUsdc:    string
+  feeUsdc:       string
+  rateApplied:   string
+  status:        string
+  createdAt:     string
+}
+
+export interface AdminFeeSummary {
+  totalFeesUsdc:       number
+  totalCompletedCount: number
+  todayFeesUsdc:       number
+  monthFeesUsdc:       number
+}
+
+export async function getAdminFeeStats(params?: {
+  page?:   number
+  limit?:  number
+  search?: string
+}): Promise<{
+  summary:   AdminFeeSummary
+  transfers: AdminFeeTransferItem[]
+  total:     number
+  page:      number
+  limit:     number
+}> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    summary:   AdminFeeSummary
+    transfers: AdminFeeTransferItem[]
+    total:     number
+    page:      number
+    limit:     number
+  }>>('/admin/fees', { params })
+  return data.data
+}
+
 // ── Pay links ─────────────────────────────────────────────────────────────
 export interface AdminPayLinkItem {
   id:              string

@@ -229,6 +229,23 @@ export class AdminDashboardController {
     });
   }
 
+  // ── GET /admin/fees ────────────────────────────────────────────────────────
+  @Get('fees')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Fee revenue summary and per-transfer breakdown' })
+  getFees(
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+    @Query('search') search?: string,
+  ) {
+    return this.adminAuthService.getFeeStats({
+      page:  Math.max(1, parseInt(page  ?? '1',  10)),
+      limit: Math.min(100, parseInt(limit ?? '20', 10)),
+      search,
+    });
+  }
+
   // ── GET /admin/waitlist ────────────────────────────────────────────────────
   @Get('waitlist')
   @UseGuards(AdminJwtGuard)
