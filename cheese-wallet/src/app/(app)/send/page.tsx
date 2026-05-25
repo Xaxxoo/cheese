@@ -78,6 +78,13 @@ function formatNgn(usdc: number, rate: number) {
   })
 }
 
+function getBankTransferFeeUsdc(amountNgn: number): number {
+  if (amountNgn < 50_000)  return 0.02
+  if (amountNgn < 150_000) return 0.05
+  if (amountNgn < 500_000) return 0.10
+  return 0.30
+}
+
 // ─────────────────────────────────────────────────────────
 // Mode Selector — first screen
 // ─────────────────────────────────────────────────────────
@@ -518,7 +525,14 @@ function BankDetailsStep({
     queryFn:  getBalance,
     staleTime: STALE_TIMES.BALANCE,
   })
-  const maxNgn = parseFloat((balanceQ.data?.ngnEquivalent ?? '0').replace(/[^0-9.]/g, ''))
+  const rateQ = useQuery({
+    queryKey: QUERY_KEYS.EXCHANGE_RATE,
+    queryFn:  getExchangeRate,
+    staleTime: STALE_TIMES.EXCHANGE_RATE,
+    retry: 1,
+  })
+  const maxNgn     = parseFloat((balanceQ.data?.ngnEquivalent ?? '0').replace(/[^0-9.]/g, ''))
+  const usdcBalance = parseFloat(balanceQ.data?.totalUsdc ?? '0')
 
   function handleAcctNum(v: string) {
     const clean = v.replace(/\D/g, '').slice(0, 10)
@@ -572,16 +586,21 @@ function BankDetailsStep({
   function handleAmountInput(v: string) {
     const raw = v.replace(/\D/g, '')
     setAmountRaw(raw)
-    const parsed = parseInt(raw, 10) || 0
-    if (maxNgn > 0 && parsed > maxNgn) {
+    const parsed   = parseInt(raw, 10) || 0
+    const parsedFee   = parsed >= 100 ? getBankTransferFeeUsdc(parsed) : 0
+    const parsedTotal = effectiveRate > 0 && parsed > 0 ? parsed / effectiveRate + parsedFee : 0
+    if (usdcBalance > 0 && parsedTotal > 0 && parsedTotal > usdcBalance) {
       setAmountError(`Insufficient balance — available: ₦${Math.floor(maxNgn).toLocaleString('en-NG')}`)
     } else {
       setAmountError('')
     }
   }
 
-  const amount     = parseInt(amountRaw, 10) || 0
-  const overBalance = maxNgn > 0 && amount > maxNgn
+  const amount         = parseInt(amountRaw, 10) || 0
+  const effectiveRate  = rateQ.data ? parseFloat(rateQ.data.effectiveRate) : 0
+  const feeUsdcAmount  = amount >= 100 ? getBankTransferFeeUsdc(amount) : 0
+  const totalUsdc      = effectiveRate > 0 && amount > 0 ? amount / effectiveRate + feeUsdcAmount : 0
+  const overBalance    = usdcBalance > 0 && totalUsdc > 0 && totalUsdc > usdcBalance
   const canConfirm = verified && !!acctName && !!selectedBank && amount >= 100 && !overBalance
 
   function handleConfirm() {
@@ -832,6 +851,23 @@ function BankDetailsStep({
           )}
           {amountRaw && amount > 0 && amount < 100 && !amountError && (
             <p className="text-xs text-amber-400 mt-2 px-1">Minimum transfer is ₦100</p>
+          )}
+
+          {amount >= 100 && !amountError && totalUsdc > 0 && (
+            <div className="rounded-2xl bg-white/4 border border-white/6 px-4 py-3 mt-3 flex flex-col gap-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-white/40">You send</span>
+                <span className="text-white/70">₦{amount.toLocaleString('en-NG')}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/40">Cheese fee</span>
+                <span className="text-white/50">${feeUsdcAmount.toFixed(2)} USDC</span>
+              </div>
+              <div className="flex justify-between text-xs border-t border-white/6 pt-1.5">
+                <span className="text-white/40">Total deducted</span>
+                <span className="text-white font-medium">${totalUsdc.toFixed(4)} USDC</span>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -1359,6 +1395,17 @@ function BankPinStep({
   const [pinError, setPinError] = useState('')
   const submittedRef            = useRef(false)
 
+  const { data: rate } = useQuery({
+    queryKey: QUERY_KEYS.EXCHANGE_RATE,
+    queryFn:  getExchangeRate,
+    staleTime: STALE_TIMES.EXCHANGE_RATE,
+    retry: 1,
+  })
+  const effectiveRate  = rate ? parseFloat(rate.effectiveRate) : 0
+  const ngnAmount      = parseInt(amountNgn, 10)
+  const feeUsdcAmount  = getBankTransferFeeUsdc(ngnAmount)
+  const totalUsdc      = effectiveRate > 0 ? ngnAmount / effectiveRate + feeUsdcAmount : 0
+
   // ── Forgot PIN reset flow ───────────────────────────────
   type ResetFlow = 'off' | 'new' | 'confirm'
   const [resetFlow, setResetFlow]   = useState<ResetFlow>('off')
@@ -1477,9 +1524,17 @@ function BankPinStep({
           <span className="text-xs text-white/40 uppercase tracking-wide">Account</span>
           <span className="text-sm text-white/80 font-mono">{recipient.accountNumber}</span>
         </div>
-        <div className="flex items-center justify-between py-2">
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
           <span className="text-xs text-white/40 uppercase tracking-wide">Amount</span>
           <span className="text-base font-semibold text-white">₦{formattedAmount}</span>
+        </div>
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Cheese fee</span>
+          <span className="text-xs text-white/50">${feeUsdcAmount.toFixed(2)} USDC</span>
+        </div>
+        <div className="flex items-center justify-between py-2">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Total</span>
+          <span className="text-sm font-semibold text-white">{totalUsdc > 0 ? `$${totalUsdc.toFixed(4)} USDC` : '…'}</span>
         </div>
       </div>
 
