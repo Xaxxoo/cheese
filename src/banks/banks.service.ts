@@ -29,6 +29,7 @@ import { TierMilestoneService } from '../kyc/tier-milestone.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AlertsService } from '../alerts/alerts.service';
 
 type BankDirectoryEntry = {
   code: string;
@@ -411,6 +412,7 @@ export class BanksService {
     private readonly tierMilestone: TierMilestoneService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
+    private readonly alertsService: AlertsService,
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
@@ -657,6 +659,25 @@ export class BanksService {
         status: TxStatus.FAILED,
         failureReason: (err as Error).message,
       });
+      void this.alertsService
+        .notifyFailedTransfer({
+          username: user.username,
+          userEmail: user.email ?? undefined,
+          amountNgn,
+          amountUsdc,
+          feeUsdc,
+          bankName,
+          accountName,
+          accountNumber: dto.accountNumber,
+          reference,
+          failureReason: (err as Error).message,
+          stage: 'stellar',
+        })
+        .catch((e: Error) =>
+          this.logger.error(
+            `Failed transfer alert error [ref=${reference}]: ${e.message}`,
+          ),
+        );
       throw new BadRequestException(
         `USDC debit failed: ${(err as Error).message}`,
       );
@@ -756,6 +777,26 @@ export class BanksService {
         status: TxStatus.FAILED,
         failureReason: `Banking provider failed — USDC refunded. ${errMsg}`,
       });
+
+      void this.alertsService
+        .notifyFailedTransfer({
+          username: user.username,
+          userEmail: user.email ?? undefined,
+          amountNgn,
+          amountUsdc,
+          feeUsdc,
+          bankName,
+          accountName,
+          accountNumber: dto.accountNumber,
+          reference,
+          failureReason: errMsg,
+          stage: 'provider',
+        })
+        .catch((e: Error) =>
+          this.logger.error(
+            `Failed transfer alert error [ref=${reference}]: ${e.message}`,
+          ),
+        );
 
       const userMsg = isPulseMfbInternalError(errMsg)
         ? 'The banking provider could not process this transfer. Your USDC balance has been refunded — please try again in a few minutes.'
@@ -913,6 +954,27 @@ export class BanksService {
             `[providerRef=${transfer.providerReference ?? dto.reference}] — ` +
             `USDC refund initiated`,
         );
+
+        // Fire-and-forget admin alert
+        void this.alertsService
+          .notifyFailedTransfer({
+            username: user?.username ?? `user:${transfer.userId}`,
+            userEmail: user?.email ?? undefined,
+            amountNgn: transfer.amountNgn,
+            amountUsdc: transfer.amountUsdc,
+            feeUsdc: transfer.feeUsdc ?? '0.000000',
+            bankName: transfer.bankName,
+            accountName: transfer.accountName,
+            accountNumber: transfer.accountNumber,
+            reference: transfer.reference,
+            failureReason: dto.failureReason ?? dto.event,
+            stage: 'webhook',
+          })
+          .catch((e: Error) =>
+            this.logger.error(
+              `Failed transfer alert error [ref=${transfer.reference}]: ${e.message}`,
+            ),
+          );
 
         // Fire-and-forget failure notification
         if (user) {

@@ -20,6 +20,7 @@ import {
   pulseMfbConfig,
   stellarConfig,
   dojahConfig,
+  alertsConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -55,6 +56,7 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { AgentsModule } from './agents/agents.module';
 import { KycModule } from './kyc/kyc.module';
 import { PayLinkModule } from './paylink/paylink.module';
+import { AlertsModule } from './alerts/alerts.module';
 
 // Active entities
 import { User } from './auth/entities/user.entity';
@@ -102,6 +104,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
         pulseMfbConfig,
         stellarConfig,
         dojahConfig,
+        alertsConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -296,6 +299,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
     AdminAuthModule,
     MerchantModule,
     PayLinkModule,
+    AlertsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },

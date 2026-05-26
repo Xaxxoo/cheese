@@ -94,3 +94,9 @@ export const pulseMfbConfig = registerAs('pulsemfb', () => ({
   debitAccount: process.env.PULSE_MFB_DEBIT_ACCOUNT, // platform's NGN account at PulseMFB
   webhookSecret: process.env.PULSE_MFB_WEBHOOK_SECRET, // for verifying inbound webhooks
 }));
+
+export const alertsConfig = registerAs('alerts', () => ({
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+  telegramChatId: process.env.TELEGRAM_CHAT_ID,
+  adminAlertEmail: process.env.ADMIN_ALERT_EMAIL,
+}));

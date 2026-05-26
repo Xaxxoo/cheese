@@ -453,4 +453,12 @@ export class EmailService {
     });
     await this.send({ to: params.to, subject, html });
   }
+
+  async sendAdminAlert(params: {
+    to: string;
+    subject: string;
+    html: string;
+  }): Promise<void> {
+    await this.send({ to: params.to, subject: params.subject, html: params.html });
+  }
 }
