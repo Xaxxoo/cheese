@@ -39,8 +39,9 @@ dotenv.config();
 
 const DRY_RUN          = !process.argv.includes('--execute');
 const BATCH_MAX        = 50;   // contract's BATCH_MAX_SIZE
-const POLL_MS          = 1500;
-const POLL_ATTEMPTS    = 20;
+const POLL_MS          = 2000;
+const POLL_ATTEMPTS    = 60;
+const SOROBAN_FEE      = '500000'; // 0.05 XLM — competitive inclusion fee on mainnet
 const NOT_FOUND_STATUS = StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND;
 const SUCCESS_STATUS   = StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS;
 
@@ -171,11 +172,11 @@ async function platformSorobanTx(
   const platformAcct = await sorobanRpc.getAccount(platformKeypair.publicKey());
 
   const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
-    fee:              StellarSdk.BASE_FEE,
+    fee:              SOROBAN_FEE,
     networkPassphrase: networkPass,
   })
     .addOperation(operation)
-    .setTimeout(30)
+    .setTimeout(300)
     .build();
 
   const sim = await sorobanRpc.simulateTransaction(rawTx);
@@ -216,7 +217,7 @@ async function sweepUserUsdc(opts: {
   const sacContract = new StellarSdk.Contract(usdcSacId);
 
   const rawTx = new StellarSdk.TransactionBuilder(userAcct, {
-    fee:               StellarSdk.BASE_FEE,
+    fee:               SOROBAN_FEE,
     networkPassphrase: networkPass,
   })
     .addOperation(
@@ -227,7 +228,7 @@ async function sweepUserUsdc(opts: {
         StellarSdk.nativeToScVal(amountStroops, { type: 'i128'    }),
       ),
     )
-    .setTimeout(30)
+    .setTimeout(300)
     .build();
 
   const sim = await sorobanRpc.simulateTransaction(rawTx);
@@ -506,6 +507,18 @@ async function main() {
       stellarPublicKey: 'GDSQFWAT3I2MOTBFHSM3YKJW2GVQEARVAGY6BSOUVLTM46LDL2JYLAWX',
       amountUsdc:       '2.0000000',
       txHash:           '20ac93a9f569ce93dab054d94100582e80da0c5d3771c81932b2bdef2c6bdc7c',
+    },
+    // xaxxoo: swept 0.0449930 USDC in prior run
+    {
+      stellarPublicKey: 'GANZPCJN3ZRHMYNULTLXAWXW3T3LSYNWSOFEFQ743YL3T57CNBTUCMJC',
+      amountUsdc:       '0.0449930',
+      txHash:           '93e1a17ce282169ea67652fc35725e7366de52d1dc4d81c50e691e3e99030f0e',
+    },
+    // nafiuishaaq: swept 0.0350767 USDC in prior run
+    {
+      stellarPublicKey: 'GCS62QMMF5572QASMKEJLRZYJYSXBSXG32OGTGL5RDLGVMYC73E22W3A',
+      amountUsdc:       '0.0350767',
+      txHash:           'b11b2bb112a6fd29b25d10e6c16b1987e6a0732912118cbc00a3220ced2c28c3',
     },
   ];
 

@@ -1514,11 +1514,11 @@ export class BlockchainService implements OnModuleInit {
     );
 
     const tx = new StellarSdk.TransactionBuilder(sourceAcct, {
-      fee: StellarSdk.BASE_FEE,
+      fee: '500000',
       networkPassphrase: this.stellarNetwork,
     })
       .addOperation(contract.call('fee_rate'))
-      .setTimeout(30)
+      .setTimeout(300)
       .build();
 
     const sim = await this.sorobanRpc.simulateTransaction(tx);
@@ -1555,7 +1555,7 @@ export class BlockchainService implements OnModuleInit {
     const platformAcct = await this.sorobanRpc.getAccount(platformKey);
 
     const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
-      fee: StellarSdk.BASE_FEE,
+      fee: '500000',
       networkPassphrase: this.stellarNetwork,
     })
       .addOperation(
@@ -1566,7 +1566,7 @@ export class BlockchainService implements OnModuleInit {
           StellarSdk.nativeToScVal(depositId, { type: 'string' }),
         ),
       )
-      .setTimeout(30)
+      .setTimeout(300)
       .build();
 
     const sim = await this.sorobanRpc.simulateTransaction(rawTx);
@@ -1586,7 +1586,7 @@ export class BlockchainService implements OnModuleInit {
     if (sendResult.status === 'ERROR') {
       throw new ContractCallException(
         'notifyContractDeposit',
-        `Submit error: ${String(sendResult.errorResult ?? 'unknown')}`,
+        `Submit error: ${(sendResult.errorResult as any)?.toXDR?.('base64') ?? 'unknown'}`,
       );
     }
 
@@ -1594,9 +1594,9 @@ export class BlockchainService implements OnModuleInit {
     let attempts = 0;
     while (
       getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
-      attempts < 20
+      attempts < 60
     ) {
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 2000));
       getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
       attempts++;
     }
@@ -1677,11 +1677,11 @@ export class BlockchainService implements OnModuleInit {
     }
 
     const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
-      fee: StellarSdk.BASE_FEE,
+      fee: '500000',
       networkPassphrase: this.stellarNetwork,
     })
       .addOperation(operation)
-      .setTimeout(30)
+      .setTimeout(300)
       .build();
 
     // Simulate to get the ledger footprint + resource fees
@@ -1703,7 +1703,7 @@ export class BlockchainService implements OnModuleInit {
     if (sendResult.status === 'ERROR') {
       throw new ContractCallException(
         'sendViaContract',
-        `Submit error: ${String(sendResult.errorResult ?? 'unknown')}`,
+        `Submit error: ${(sendResult.errorResult as any)?.toXDR?.('base64') ?? 'unknown'}`,
       );
     }
 
@@ -1712,9 +1712,9 @@ export class BlockchainService implements OnModuleInit {
     let attempts = 0;
     while (
       getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
-      attempts < 20
+      attempts < 60
     ) {
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 2000));
       getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
       attempts++;
     }
