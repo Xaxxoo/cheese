@@ -630,7 +630,7 @@ export class AdminAuthService {
         user.stellarPublicKey
           ? (this.blockchainService.isSorobanReady && user.username
               ? this.blockchainService
-                  .getContractBalance(user.username)
+                  .getSorobanBalance(user.username)
                   .then((usdc) => ({ usdc }))
               : this.blockchainService.getStellarBalance(user.stellarPublicKey)
             ).catch((e: Error) => {

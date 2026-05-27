@@ -1510,9 +1510,9 @@ export class BlockchainService implements OnModuleInit {
    * Calls balance(username) — read-only simulation, no signing required.
    * Returns a human-readable USDC string (7 decimal places).
    */
-  async getContractBalance(username: string): Promise<string> {
-    this.requireStellar('getContractBalance');
-    this.requireSoroban('getContractBalance');
+  async getSorobanBalance(username: string): Promise<string> {
+    this.requireStellar('getSorobanBalance');
+    this.requireSoroban('getSorobanBalance');
 
     const contract = new StellarSdk.Contract(this.sorobanContractId);
     const sourceAcct = await this.sorobanRpc.getAccount(
@@ -1534,7 +1534,7 @@ export class BlockchainService implements OnModuleInit {
 
     const sim = await this.sorobanRpc.simulateTransaction(tx);
     if (StellarSdk.rpc.Api.isSimulationError(sim)) {
-      throw new ContractCallException('getContractBalance', sim.error);
+      throw new ContractCallException('getSorobanBalance', sim.error);
     }
 
     const success =
