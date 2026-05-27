@@ -263,6 +263,13 @@ async function main() {
   if (!sorobanRpcUrl)                        missing.push('STELLAR_SOROBAN_RPC_URL');
   if (!contractId)                           missing.push('STELLAR_CONTRACT_ID');
 
+  // If STELLAR_CONTRACT_ID is absent the migration is intentionally disabled
+  // (e.g. during the classic-fallback window).  Exit 0 so start:prod continues.
+  if (!contractId) {
+    console.log('[migrate-to-soroban] STELLAR_CONTRACT_ID not set — skipping migration.');
+    process.exit(0);
+  }
+
   if (missing.length > 0) {
     console.error('Missing required environment variables:\n  ' + missing.join('\n  '));
     process.exit(1);
