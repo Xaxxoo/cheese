@@ -221,8 +221,10 @@ export class SendService {
             }),
           }
         : await this.blockchainService.sendViaContract({
-            fromSecretEnc: sender.stellarSecretEnc,
-            toPublicKey: params.toAddress,
+            fromUsername: sender.username,
+            fromPublicKey: sender.stellarPublicKey!,
+            toUsername: params.recipientUsername,
+            toPublicKey: params.recipientUsername ? undefined : params.toAddress,
             amountUsdc: params.amountUsdc,
           });
 

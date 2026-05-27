@@ -1535,12 +1535,13 @@ export class BlockchainService implements OnModuleInit {
 
   /**
    * Notify the Soroban contract of an inbound USDC deposit.
-   * Calls deposit(recipient: address, amount: i128) signed by the platform keypair.
-   * Routing is purely by destination address — memo is never read or used.
+   * Calls deposit_by_address(address, amount, deposit_id) signed by the platform keypair.
+   * `depositId` must be unique per deposit (use the Stellar tx hash) to prevent double-credits.
    */
   async notifyContractDeposit(
     recipientPublicKey: string,
     amountUsdc: string,
+    depositId: string,
   ): Promise<string> {
     this.requireStellar('notifyContractDeposit');
     this.requireSoroban('notifyContractDeposit');
@@ -1559,9 +1560,10 @@ export class BlockchainService implements OnModuleInit {
     })
       .addOperation(
         contract.call(
-          'deposit',
+          'deposit_by_address',
           StellarSdk.nativeToScVal(recipientPublicKey, { type: 'address' }),
           StellarSdk.nativeToScVal(amountStroops, { type: 'i128' }),
+          StellarSdk.nativeToScVal(depositId, { type: 'string' }),
         ),
       )
       .setTimeout(30)
@@ -1613,64 +1615,89 @@ export class BlockchainService implements OnModuleInit {
   }
 
   /**
-   * Call transfer(from, to, amount) on the Soroban contract.
-   * The amount is fee-inclusive — the contract splits the fee internally.
-   * USDC amounts are converted to stroops (7 decimal places on Stellar).
+   * Execute a Soroban contract send. Two modes:
+   *
+   *  P2P (toUsername provided)  — calls transfer(fromUsername, toUsername, amount).
+   *    Balances move internally; no USDC leaves the contract except the fee
+   *    which goes to the treasury.
+   *
+   *  External (toPublicKey provided) — calls withdraw(fromUsername, amount, toAddress).
+   *    Debits the sender's internal balance and pushes USDC to an external address.
+   *
+   * All calls are signed by the platform keypair (the contract's admin).
+   * The user's PIN has already been verified at the service layer.
    */
   async sendViaContract(opts: {
-    fromSecretEnc: string;
-    toPublicKey: string;
+    fromUsername: string;
+    fromPublicKey: string;
+    toUsername?: string;
+    toPublicKey?: string;
     amountUsdc: string;
-    memo?: string;
   }): Promise<StellarTransferResult> {
     this.requireStellar('sendViaContract');
-    this.requireEncryption('sendViaContract');
     this.requireSoroban('sendViaContract');
 
-    const { fromSecretEnc, toPublicKey, amountUsdc, memo } = opts;
-    const senderKeypair = StellarSdk.Keypair.fromSecret(
-      this.decryptSecret(fromSecretEnc),
-    );
-    const senderPublicKey = senderKeypair.publicKey();
-    this.logger.log(
-      `sendViaContract [from=${senderPublicKey}] [to=${toPublicKey}] [amount=${amountUsdc}]`,
-    );
-
-    const contract = new StellarSdk.Contract(this.sorobanContractId);
-    // USDC on Stellar uses 7 decimal places — convert to stroops
+    const { fromUsername, fromPublicKey, toUsername, toPublicKey, amountUsdc } = opts;
     const amountStroops = BigInt(
       Math.round(parseFloat(amountUsdc) * 10_000_000),
     );
 
-    const senderAcct = await this.sorobanRpc.getAccount(senderPublicKey);
-    const txBuilder = new StellarSdk.TransactionBuilder(senderAcct, {
+    const contract = new StellarSdk.Contract(this.sorobanContractId);
+    const platformKey = this.stellarPlatformKeypair.publicKey();
+    const platformAcct = await this.sorobanRpc.getAccount(platformKey);
+
+    let operation: StellarSdk.xdr.Operation;
+    if (toUsername) {
+      // Internal P2P transfer between two registered users
+      this.logger.log(
+        `sendViaContract transfer [from=${fromUsername}] [to=${toUsername}] [amount=${amountUsdc}]`,
+      );
+      operation = contract.call(
+        'transfer',
+        StellarSdk.nativeToScVal(fromUsername, { type: 'string' }),
+        StellarSdk.nativeToScVal(toUsername,   { type: 'string' }),
+        StellarSdk.nativeToScVal(amountStroops, { type: 'i128' }),
+      );
+    } else if (toPublicKey) {
+      // External withdrawal — contract sends USDC to an outside address
+      this.logger.log(
+        `sendViaContract withdraw [from=${fromUsername}] [to=${toPublicKey}] [amount=${amountUsdc}]`,
+      );
+      operation = contract.call(
+        'withdraw',
+        StellarSdk.nativeToScVal(fromUsername,  { type: 'string'  }),
+        StellarSdk.nativeToScVal(amountStroops, { type: 'i128'    }),
+        StellarSdk.nativeToScVal(toPublicKey,   { type: 'address' }),
+      );
+    } else {
+      throw new ContractCallException(
+        'sendViaContract',
+        'Either toUsername or toPublicKey must be provided',
+      );
+    }
+
+    const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.stellarNetwork,
-    }).addOperation(
-      contract.call(
-        'transfer',
-        StellarSdk.nativeToScVal(senderPublicKey, { type: 'address' }),
-        StellarSdk.nativeToScVal(toPublicKey, { type: 'address' }),
-        StellarSdk.nativeToScVal(amountStroops, { type: 'i128' }),
-      ),
-    );
+    })
+      .addOperation(operation)
+      .setTimeout(30)
+      .build();
 
-    const rawTx = txBuilder.setTimeout(30).build();
-
-    // Simulate to get the ledger footprint
+    // Simulate to get the ledger footprint + resource fees
     const sim = await this.sorobanRpc.simulateTransaction(rawTx);
     if (StellarSdk.rpc.Api.isSimulationError(sim)) {
       throw new ContractCallException('sendViaContract', sim.error);
     }
 
-    // Assemble (injects footprint + resource fees), then sign
+    // Assemble (injects footprint + resource fees), then sign with platform keypair
     const prepared = StellarSdk.rpc
       .assembleTransaction(
         rawTx,
         sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse,
       )
       .build();
-    prepared.sign(senderKeypair);
+    prepared.sign(this.stellarPlatformKeypair);
 
     const sendResult = await this.sorobanRpc.sendTransaction(prepared);
     if (sendResult.status === 'ERROR') {
@@ -1699,7 +1726,7 @@ export class BlockchainService implements OnModuleInit {
       );
     }
 
-    const balanceAfter = await this.getStellarUsdcBalance(senderPublicKey);
+    const balanceAfter = await this.getStellarUsdcBalance(fromPublicKey);
     this.logger.log(
       `sendViaContract confirmed [hash=${sendResult.hash}] [balanceAfter=${balanceAfter}]`,
     );
