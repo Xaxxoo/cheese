@@ -1,6 +1,6 @@
 // src/send/dto/index.ts
-import { IsNotEmpty, IsNumberString, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsNumberString, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendToUsernameDto {
   @ApiProperty({
@@ -93,4 +93,15 @@ export class SendToAddressDto {
   @IsString()
   @IsNotEmpty()
   deviceId: string;
+
+  @ApiPropertyOptional({
+    example: '1234567890',
+    description:
+      'Destination tag / memo required by some exchanges (e.g. Binance, Kraken). ' +
+      'When provided the transaction is sent via classic Stellar payment so the memo is included on-chain.',
+  })
+  @MaxLength(28)
+  @IsString()
+  @IsOptional()
+  memo?: string;
 }

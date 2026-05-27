@@ -83,6 +83,7 @@ export class SendService {
       deviceId: dto.deviceId,
       deviceSignature: dto.deviceSignature,
       network: dto.network,
+      memo: dto.memo,
       type: TxType.SEND_ADDRESS,
     });
   }
@@ -98,6 +99,7 @@ export class SendService {
       deviceSignature: string;
       recipientUsername?: string;
       network?: string;
+      memo?: string;
       type: TxType;
     },
   ) {
@@ -202,24 +204,27 @@ export class SendService {
       reference,
     });
 
-    // 8. Execute on-chain via Soroban contract (fee-inclusive).
-    //    Falls back to classic Stellar payment if contract is not yet deployed.
+    // 8. Execute on-chain.
+    //    - If the user supplied a memo (e.g. CEX destination tag), we must use
+    //      the classic Stellar payment path — Soroban transactions cannot carry memos.
+    //    - Otherwise use the Soroban contract path (fee-inclusive) when available,
+    //      falling back to classic if the contract is not yet deployed.
     try {
-      const { txHash } = this.blockchainService.isSorobanReady
-        ? await this.blockchainService.sendViaContract({
-            fromSecretEnc: sender.stellarSecretEnc,
-            toPublicKey: params.toAddress,
-            amountUsdc: params.amountUsdc,
-            memo: reference,
-          })
-        : {
+      const useClassic = !!params.memo || !this.blockchainService.isSorobanReady;
+      const { txHash } = useClassic
+        ? {
             txHash: await this.blockchainService.sendUsdc({
               fromSecretEnc: sender.stellarSecretEnc,
               toAddress: params.toAddress,
               amountUsdc: params.amountUsdc,
-              memo: reference,
+              memo: params.memo ?? reference,
             }),
-          };
+          }
+        : await this.blockchainService.sendViaContract({
+            fromSecretEnc: sender.stellarSecretEnc,
+            toPublicKey: params.toAddress,
+            amountUsdc: params.amountUsdc,
+          });
 
       await this.txService.update(tx.id, {
         status: TxStatus.COMPLETED,
