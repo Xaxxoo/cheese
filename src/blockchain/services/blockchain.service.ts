@@ -1655,7 +1655,6 @@ export class BlockchainService implements OnModuleInit {
       ),
     );
 
-    if (memo) txBuilder.addMemo(StellarSdk.Memo.text(memo.slice(0, 28)));
     const rawTx = txBuilder.setTimeout(30).build();
 
     // Simulate to get the ledger footprint
