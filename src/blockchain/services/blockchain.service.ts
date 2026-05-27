@@ -1504,6 +1504,47 @@ export class BlockchainService implements OnModuleInit {
    * Expects fee_rate() to return u32 basis points (1 bp = 0.01%).
    * Returns a decimal fraction — e.g. 10 bp → 0.001 (0.1%).
    */
+
+  /**
+   * Query a user's internal USDC balance from the Soroban contract.
+   * Calls balance(username) — read-only simulation, no signing required.
+   * Returns a human-readable USDC string (7 decimal places).
+   */
+  async getContractBalance(username: string): Promise<string> {
+    this.requireStellar('getContractBalance');
+    this.requireSoroban('getContractBalance');
+
+    const contract = new StellarSdk.Contract(this.sorobanContractId);
+    const sourceAcct = await this.sorobanRpc.getAccount(
+      this.stellarPlatformKeypair.publicKey(),
+    );
+
+    const tx = new StellarSdk.TransactionBuilder(sourceAcct, {
+      fee: '500000',
+      networkPassphrase: this.stellarNetwork,
+    })
+      .addOperation(
+        contract.call(
+          'balance',
+          StellarSdk.nativeToScVal(username, { type: 'string' }),
+        ),
+      )
+      .setTimeout(300)
+      .build();
+
+    const sim = await this.sorobanRpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      throw new ContractCallException('getContractBalance', sim.error);
+    }
+
+    const success =
+      sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
+    const balanceStroops = StellarSdk.scValToNative(
+      success.result!.retval,
+    ) as bigint;
+    return (Number(balanceStroops) / 10_000_000).toFixed(7);
+  }
+
   async getContractFeeRate(): Promise<number> {
     this.requireStellar('getContractFeeRate');
     this.requireSoroban('getContractFeeRate');
