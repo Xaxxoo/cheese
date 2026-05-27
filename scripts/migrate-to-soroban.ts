@@ -134,7 +134,10 @@ async function submitAndPoll(
   const sendResult = await sorobanRpc.sendTransaction(tx);
 
   if (sendResult.status === 'ERROR') {
-    throw new Error(`Submit error: ${String(sendResult.errorResult ?? 'unknown')}`);
+    const errDetail = sendResult.errorResult
+      ? (sendResult.errorResult as any).toXDR('base64') as string
+      : 'unknown';
+    throw new Error(`Submit error: ${errDetail}`);
   }
 
   let result = await sorobanRpc.getTransaction(sendResult.hash);
@@ -490,6 +493,28 @@ async function main() {
   }
 
   console.log(`\n  Phase 2 complete: ${sweep_ok} swept, ${sweep_zero} skipped (zero balance), ${sweep_fail} failed.\n`);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // RECOVERY — Users whose Phase 2 sweep succeeded in a prior run but whose
+  // Phase 3 credit failed (classic wallet is now 0, so Phase 2 skips them).
+  // Add entries here manually and re-run the script.  Phase 3 is idempotent —
+  // if the credit was already applied it will be skipped gracefully.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const PRIOR_SWEEPS: Array<{ stellarPublicKey: string; amountUsdc: string; txHash: string }> = [
+    // inkman: swept 2.0 USDC in prior run, Phase 3 failed because Phase 1 had not registered them yet
+    {
+      stellarPublicKey: 'GDSQFWAT3I2MOTBFHSM3YKJW2GVQEARVAGY6BSOUVLTM46LDL2JYLAWX',
+      amountUsdc:       '2.0000000',
+      txHash:           '20ac93a9f569ce93dab054d94100582e80da0c5d3771c81932b2bdef2c6bdc7c',
+    },
+  ];
+
+  for (const prior of PRIOR_SWEEPS) {
+    const user = validUsers.find(u => u.stellar_public_key === prior.stellarPublicKey);
+    if (user) {
+      sweeps.push({ user, amount: prior.amountUsdc, txHash: prior.txHash });
+    }
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // PHASE 3 — Credit each user's internal balance in the contract
