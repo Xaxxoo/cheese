@@ -4,7 +4,7 @@
 
 ## Overview
 
-Cheese is a B2B2C payment settlement platform that enables businesses and individuals to accept cryptocurrency payments (USDC) from customers while receiving instant fiat settlements in their bank accounts. Built with multi-chain support across EVM, Stellar and Solana networks, it abstracts away blockchain complexity for merchants and users while providing secure, compliant, and fast payment processing.
+Cheese is a B2C and B2B payment settlement platform that enables businesses and individuals to accept cryptocurrency payments (USDC) from customers while receiving instant fiat settlements in their bank accounts. Built with multi-chain support across EVM, Stellar and Solana networks, it abstracts away blockchain complexity for merchants and users while providing secure, compliant, and fast payment processing.
 
 ### Key Value Propositions
 
