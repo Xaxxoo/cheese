@@ -171,15 +171,37 @@ export class SendService {
       }
     }
 
-    // 5. Check balance from Soroban (the authoritative source). The migration
-    //    script seeded existing balances directly into the contract without DB
-    //    records, so the transaction ledger is incomplete for pre-migration users.
-    //    Fall back to Horizon for users without a username or when Soroban is down.
-    const useClassic = !!params.memo || !this.blockchainService.isSorobanReady;
-    const balanceRaw = useClassic || !sender.username
-      ? await this.blockchainService.getStellarUsdcBalance(sender.stellarPublicKey)
-      : await this.blockchainService.getSorobanBalance(sender.username);
-    if (parseFloat(balanceRaw) < amount) {
+    // 5. Check balance and choose send path.
+    //    Pre-migration users hold funds in the Soroban contract; users who
+    //    deposited via classic Stellar hold funds on Horizon. We read both in
+    //    parallel and route to whichever pool covers the requested amount.
+    //    Soroban is preferred for user-to-user sends (cheaper, internal);
+    //    classic Stellar is the fallback when Soroban balance is insufficient.
+    const canUseSoroban =
+      !params.memo &&
+      this.blockchainService.isSorobanReady &&
+      !!sender.username;
+
+    const [sorobanRaw, horizonRaw] = await Promise.all([
+      canUseSoroban
+        ? this.blockchainService
+            .getSorobanBalance(sender.username!)
+            .catch(() => '0.0000000')
+        : Promise.resolve('0.0000000'),
+      this.blockchainService
+        .getStellarUsdcBalance(sender.stellarPublicKey)
+        .catch(() => '0.0000000'),
+    ]);
+
+    const sorobanBal = parseFloat(sorobanRaw);
+    const horizonBal = parseFloat(horizonRaw);
+
+    // Use Soroban only when it alone has enough funds; otherwise fall back to
+    // classic Stellar so users with Horizon-only balances can still send.
+    const useClassic = !canUseSoroban || sorobanBal < amount;
+    const availableBal = useClassic ? horizonBal : sorobanBal;
+
+    if (availableBal < amount) {
       throw new BadRequestException('Insufficient USDC balance');
     }
 

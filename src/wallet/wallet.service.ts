@@ -54,27 +54,37 @@ export class WalletService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    // Soroban is the authoritative balance source: the migration script seeded
-    // existing user funds directly into the contract without creating DB records,
-    // so the transaction ledger is incomplete for pre-migration users. The admin
-    // dashboard uses the same approach.
     const [stellarRaw, evmRaw, rate] = await Promise.all([
+      // Stellar balance = Soroban contract balance + classic Horizon balance.
+      // Pre-migration users hold funds exclusively in the Soroban contract;
+      // new users who deposit via classic Stellar hold funds on Horizon.
+      // Both sources must be summed so all users see their correct balance.
       user.stellarPublicKey
-        ? (this.blockchainService.isSorobanReady && user.username
-            ? this.blockchainService.getSorobanBalance(user.username)
-            : this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey)
-          ).catch(() => this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey!))
+        ? Promise.all([
+            this.blockchainService.isSorobanReady && user.username
+              ? this.blockchainService
+                  .getSorobanBalance(user.username)
+                  .catch(() => '0.0000000')
+              : Promise.resolve('0.0000000'),
+            this.blockchainService
+              .getStellarUsdcBalance(user.stellarPublicKey)
+              .catch(() => '0.0000000'),
+          ]).then(([soroban, horizon]) =>
+            (parseFloat(soroban) + parseFloat(horizon)).toFixed(7),
+          )
         : Promise.resolve('0.0000000'),
       user.evmAddress && this.blockchainService.isEvmReady
-        ? this.blockchainService.getEvmBalance(user.evmAddress)
+        ? this.blockchainService
+            .getEvmBalance(user.evmAddress)
+            .catch(() => '0.00000000')
         : Promise.resolve('0.00000000'),
-      this.ratesService.getCurrentRate(),
+      this.ratesService.getCurrentRate().catch(() => null),
     ]);
 
     const stellarAmount = parseFloat(stellarRaw);
     const evmAmount    = parseFloat(evmRaw);
     const totalAmount  = stellarAmount + evmAmount;
-    const ngnRate      = parseFloat(rate.effectiveRate);
+    const ngnRate      = rate ? parseFloat(rate.effectiveRate) : 0;
     const ngnTotal     = totalAmount * ngnRate;
 
     return {
