@@ -108,6 +108,49 @@ export class TransactionsService {
     return parseFloat(result?.total ?? '0');
   }
 
+  /**
+   * Net USDC balance computed from the transaction ledger.
+   *
+   * Inbound  (+): DEPOSIT, YIELD_CREDIT, REFERRAL_BONUS
+   * Outbound (-): SEND_USERNAME, SEND_ADDRESS, WITHDRAWAL,
+   *               BANK_TRANSFER, CARD_PAYMENT, PAY_REQUEST, FEE
+   *
+   * Only COMPLETED transactions are counted. This is the single
+   * source of truth for a user's spendable balance regardless of
+   * whether sends went through the Soroban contract or classic Stellar.
+   */
+  async computeNetUsdcBalance(userId: string): Promise<number> {
+    const INBOUND = [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS];
+    const OUTBOUND = [
+      TxType.SEND_USERNAME,
+      TxType.SEND_ADDRESS,
+      TxType.WITHDRAWAL,
+      TxType.BANK_TRANSFER,
+      TxType.CARD_PAYMENT,
+      TxType.PAY_REQUEST,
+      TxType.FEE,
+    ];
+
+    const result = await this.txRepo
+      .createQueryBuilder('tx')
+      .select(
+        `COALESCE(SUM(
+          CASE WHEN tx.type IN (:...inbound)
+               THEN CAST(tx.amount_usdc AS DECIMAL)
+               ELSE -CAST(tx.amount_usdc AS DECIMAL)
+          END
+        ), 0)`,
+        'net',
+      )
+      .where('tx.user_id = :userId', { userId })
+      .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
+      .andWhere('tx.type IN (:...allTypes)', { allTypes: [...INBOUND, ...OUTBOUND] })
+      .setParameter('inbound', INBOUND)
+      .getRawOne<{ net: string }>();
+
+    return Math.max(0, parseFloat(result?.net ?? '0'));
+  }
+
   /** Lifetime outbound volume (USDC) and transaction count — used for tier milestone checks. */
   async getLifetimeOutboundStats(
     userId: string,
