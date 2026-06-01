@@ -55,23 +55,30 @@ export class WalletService {
     if (!user) throw new NotFoundException('User not found');
 
     const [stellarRaw, evmRaw, rate] = await Promise.all([
-      // Stellar balance = Soroban contract balance + classic Horizon balance.
-      // Pre-migration users hold funds exclusively in the Soroban contract;
-      // new users who deposit via classic Stellar hold funds on Horizon.
-      // Both sources must be summed so all users see their correct balance.
+      // Balance strategy:
+      //   1. If Soroban is ready and user has a username, read from the contract.
+      //      The contract is authoritative for migrated users AND for new users
+      //      once notifyContractDeposit credits their deposit.
+      //   2. If Soroban returns 0 (user not yet registered in the contract, or
+      //      notifyContractDeposit hasn't run yet), fall back to Horizon so new
+      //      users whose USDC still sits at their own Stellar address can see it.
+      //   3. If Soroban is unavailable or user has no username, use Horizon directly.
+      //   Each source has its own catch so a single service being down never
+      //   crashes the request — it just returns 0 for that source.
       user.stellarPublicKey
-        ? Promise.all([
-            this.blockchainService.isSorobanReady && user.username
-              ? this.blockchainService
-                  .getSorobanBalance(user.username)
-                  .catch(() => '0.0000000')
-              : Promise.resolve('0.0000000'),
-            this.blockchainService
-              .getStellarUsdcBalance(user.stellarPublicKey)
-              .catch(() => '0.0000000'),
-          ]).then(([soroban, horizon]) =>
-            (parseFloat(soroban) + parseFloat(horizon)).toFixed(7),
-          )
+        ? (async () => {
+            if (this.blockchainService.isSorobanReady && user.username) {
+              const sorobanRaw = await this.blockchainService
+                .getSorobanBalance(user.username)
+                .catch(() => '0.0000000');
+              if (parseFloat(sorobanRaw) > 0) return sorobanRaw;
+              // Soroban shows 0 — fall through to Horizon for users whose deposit
+              // hasn't been credited to the contract yet.
+            }
+            return this.blockchainService
+              .getStellarUsdcBalance(user.stellarPublicKey!)
+              .catch(() => '0.0000000');
+          })()
         : Promise.resolve('0.0000000'),
       user.evmAddress && this.blockchainService.isEvmReady
         ? this.blockchainService

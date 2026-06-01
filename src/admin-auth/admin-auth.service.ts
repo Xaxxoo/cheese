@@ -628,24 +628,24 @@ export class AdminAuthService {
           take: 5,
         }),
         user.stellarPublicKey
-          ? Promise.all([
-              this.blockchainService.isSorobanReady && user.username
-                ? this.blockchainService
-                    .getSorobanBalance(user.username)
-                    .catch((e: Error) => {
-                      this.logger.warn(`getUserDetail: Soroban balance failed for ${id}: ${e.message}`);
-                      return '0.0000000';
-                    })
-                : Promise.resolve('0.0000000'),
-              this.blockchainService
-                .getStellarUsdcBalance(user.stellarPublicKey)
+          ? (async () => {
+              if (this.blockchainService.isSorobanReady && user.username) {
+                const sorobanRaw = await this.blockchainService
+                  .getSorobanBalance(user.username)
+                  .catch((e: Error) => {
+                    this.logger.warn(`getUserDetail: Soroban balance failed for ${id}: ${e.message}`);
+                    return '0.0000000';
+                  });
+                if (parseFloat(sorobanRaw) > 0) return { usdc: sorobanRaw };
+              }
+              const horizonRaw = await this.blockchainService
+                .getStellarUsdcBalance(user.stellarPublicKey!)
                 .catch((e: Error) => {
                   this.logger.warn(`getUserDetail: Horizon balance failed for ${id}: ${e.message}`);
                   return '0.0000000';
-                }),
-            ]).then(([soroban, horizon]) => ({
-              usdc: (parseFloat(soroban) + parseFloat(horizon)).toFixed(7),
-            }))
+                });
+              return { usdc: horizonRaw };
+            })()
           : Promise.resolve(null),
       ]);
 
