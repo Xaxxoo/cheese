@@ -131,11 +131,16 @@ export class TransactionsService {
       TxType.FEE,
     ];
 
+    // Note: TypeORM only expands :...spread parameters in .where()/.andWhere(),
+    // not inside raw .select() strings. Inline the inbound enum values as SQL
+    // string literals — they are code constants, not user input.
+    const inboundLiterals = INBOUND.map((t) => `'${t}'`).join(', ');
+
     const result = await this.txRepo
       .createQueryBuilder('tx')
       .select(
         `COALESCE(SUM(
-          CASE WHEN tx.type IN (:...inbound)
+          CASE WHEN tx.type IN (${inboundLiterals})
                THEN CAST(tx.amount_usdc AS DECIMAL)
                ELSE -CAST(tx.amount_usdc AS DECIMAL)
           END
@@ -145,7 +150,6 @@ export class TransactionsService {
       .where('tx.user_id = :userId', { userId })
       .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
       .andWhere('tx.type IN (:...allTypes)', { allTypes: [...INBOUND, ...OUTBOUND] })
-      .setParameter('inbound', INBOUND)
       .getRawOne<{ net: string }>();
 
     return Math.max(0, parseFloat(result?.net ?? '0'));
