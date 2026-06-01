@@ -56,7 +56,10 @@ export class WalletService {
 
     const [stellarRaw, evmRaw, rate] = await Promise.all([
       user.stellarPublicKey
-        ? this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey)
+        ? (this.blockchainService.isSorobanReady && user.username
+            ? this.blockchainService.getSorobanBalance(user.username)
+            : this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey)
+          ).catch(() => this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey!))
         : Promise.resolve('0.0000000'),
       user.evmAddress && this.blockchainService.isEvmReady
         ? this.blockchainService.getEvmBalance(user.evmAddress)
