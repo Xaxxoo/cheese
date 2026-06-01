@@ -1208,6 +1208,7 @@ function PinStep({
   onError: (msg: string) => void
 }) {
   const { user, deviceId } = useAuthStore()
+  const queryClient             = useQueryClient()
   const [pin, setPin]           = useState('')
   const [loading, setLoading]   = useState(false)
   const [pinError, setPinError] = useState('')
@@ -1267,6 +1268,8 @@ function PinStep({
             deviceId,
           })
 
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BALANCE })
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(1) })
       onSuccess(tx)
     } catch (err) {
       submittedRef.current = false
@@ -1280,7 +1283,7 @@ function PinStep({
     } finally {
       setLoading(false)
     }
-  }, [user, deviceId, recipient, amount, network, onSuccess, onError])
+  }, [user, deviceId, queryClient, recipient, amount, network, onSuccess, onError])
 
   useEffect(() => {
     if (pin.length === 6 && !loading) {
