@@ -171,12 +171,19 @@ export class SendService {
       }
     }
 
-    // 5. Check balance — fee-inclusive: the contract deducts the fee from the
-    //    transfer amount, so the user only needs `amount` in their wallet.
-    const stellarBalance = await this.blockchainService.getStellarUsdcBalance(
-      sender.stellarPublicKey,
-    );
-    if (parseFloat(stellarBalance) < amount) {
+    // 8 (pre-flight). Determine send path first so the balance check reads from
+    //    the same source that will actually be debited.
+    //    - Classic Stellar: must be used when the caller supplies a memo (e.g. CEX
+    //      destination tag) because Soroban transactions cannot carry memos, and as
+    //      a fallback when the contract is not yet configured.
+    //    - Soroban contract: used for all other sends when the contract is ready.
+    const useClassic = !!params.memo || !this.blockchainService.isSorobanReady;
+
+    // 5. Check balance against the source that will actually be debited.
+    const availableBalance = useClassic || !sender.username
+      ? await this.blockchainService.getStellarUsdcBalance(sender.stellarPublicKey)
+      : await this.blockchainService.getSorobanBalance(sender.username);
+    if (parseFloat(availableBalance) < amount) {
       throw new BadRequestException('Insufficient USDC balance');
     }
 
@@ -204,13 +211,7 @@ export class SendService {
       reference,
     });
 
-    // 8. Execute on-chain.
-    //    - If the user supplied a memo (e.g. CEX destination tag), we must use
-    //      the classic Stellar payment path — Soroban transactions cannot carry memos.
-    //    - Otherwise use the Soroban contract path (fee-inclusive) when available,
-    //      falling back to classic if the contract is not yet deployed.
     try {
-      const useClassic = !!params.memo || !this.blockchainService.isSorobanReady;
       const { txHash } = useClassic
         ? {
             txHash: await this.blockchainService.sendUsdc({
