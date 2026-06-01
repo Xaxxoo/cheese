@@ -10,7 +10,6 @@ import { SendController } from './send.controller';
 import { SendService } from './send.service';
 import { KycModule } from '../kyc/kyc.module';
 import { EmailModule } from '../email/email.module';
-import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -20,7 +19,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TransactionsModule,
     KycModule,
     EmailModule,
-    NotificationsModule,
   ],
   controllers: [SendController],
   providers: [SendService],

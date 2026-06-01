@@ -22,7 +22,6 @@ import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
 import { EmailService } from '../email/email.service';
-import { NotificationsService } from '../notifications/notifications.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 
 const FALLBACK_FEE_RATE = 0.001; // 0.1% — used when Soroban contract is unavailable
@@ -41,7 +40,6 @@ export class SendService {
     private readonly config: ConfigService,
     private readonly tierMilestone: TierMilestoneService,
     private readonly emailService: EmailService,
-    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── GET /send/resolve/:username ───────────────────────────
@@ -235,15 +233,6 @@ export class SendService {
       // Fire-and-forget milestone check
       void this.tierMilestone.checkAndNotify(senderId);
 
-      // Fire-and-forget: sender in-app notification
-      void this.notificationsService
-        .notifyTransactionComplete(senderId, reference, params.amountUsdc)
-        .catch((err: Error) =>
-          this.logger.error(
-            `Sender notification failed [tx=${tx.id}]: ${err.message}`,
-          ),
-        );
-
       // Fire-and-forget: email to sender
       const appUrl = this.config.get<string>(
         'app.frontendUrl',
@@ -268,44 +257,12 @@ export class SendService {
           ),
         );
 
-      // Fire-and-forget: recipient deposit record + notifications (username sends only)
+      // Fire-and-forget: email to recipient (username sends only — they're a Cheese Pay user)
       if (params.recipientUsername) {
         void this.userRepo
           .findOne({ where: { username: params.recipientUsername } })
-          .then(async (recipient) => {
-            if (!recipient) return;
-
-            // Soroban sends are internal contract transfers — the deposit
-            // scheduler only detects classic Stellar payments via Horizon,
-            // so we create the recipient's deposit record and notification here.
-            if (!useClassic) {
-              await this.txService.createDeposit({
-                userId: recipient.id,
-                type: TxType.DEPOSIT,
-                status: TxStatus.COMPLETED,
-                amountUsdc: params.amountUsdc,
-                amountNgn: String(ngnAmount.toFixed(2)),
-                feeUsdc: '0.000000',
-                rateApplied: rateRecord.effectiveRate,
-                txHash,
-                network: 'stellar',
-                reference: `CW-DEP-${txHash.slice(0, 16).toUpperCase()}`,
-                description: `USDC received from @${sender.username}`,
-              });
-              void this.notificationsService
-                .notifyMoneyReceived(
-                  recipient.id,
-                  params.amountUsdc,
-                  `@${sender.username}`,
-                )
-                .catch((err: Error) =>
-                  this.logger.error(
-                    `Recipient notification failed [tx=${tx.id}]: ${err.message}`,
-                  ),
-                );
-            }
-
-            if (!recipient.email) return;
+          .then((recipient) => {
+            if (!recipient?.email) return;
             return this.emailService.sendMoneyReceived({
               to: recipient.email,
               fullName: recipient.fullName,
@@ -318,7 +275,7 @@ export class SendService {
           })
           .catch((err: Error) =>
             this.logger.error(
-              `Recipient transfer handling failed [tx=${tx.id}]: ${err.message}`,
+              `Recipient transfer email failed [tx=${tx.id}]: ${err.message}`,
             ),
           );
       }
