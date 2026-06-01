@@ -171,10 +171,15 @@ export class SendService {
       }
     }
 
-    // 5. Check balance from the transaction ledger — the only source that reflects
-    //    completed sends regardless of whether they went via Soroban or classic Stellar.
-    const availableBalance = await this.txService.computeNetUsdcBalance(senderId);
-    if (availableBalance < amount) {
+    // 5. Check balance from Soroban (the authoritative source). The migration
+    //    script seeded existing balances directly into the contract without DB
+    //    records, so the transaction ledger is incomplete for pre-migration users.
+    //    Fall back to Horizon for users without a username or when Soroban is down.
+    const useClassic = !!params.memo || !this.blockchainService.isSorobanReady;
+    const balanceRaw = useClassic || !sender.username
+      ? await this.blockchainService.getStellarUsdcBalance(sender.stellarPublicKey)
+      : await this.blockchainService.getSorobanBalance(sender.username);
+    if (parseFloat(balanceRaw) < amount) {
       throw new BadRequestException('Insufficient USDC balance');
     }
 
@@ -203,9 +208,6 @@ export class SendService {
     });
 
     try {
-      // Use classic Stellar when a memo is required (e.g. CEX destination tag)
-      // or when the Soroban contract is not yet configured.
-      const useClassic = !!params.memo || !this.blockchainService.isSorobanReady;
       const { txHash } = useClassic
         ? {
             txHash: await this.blockchainService.sendUsdc({

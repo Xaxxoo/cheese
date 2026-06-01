@@ -54,21 +54,36 @@ export class WalletService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const [totalAmount, rate] = await Promise.all([
-      this.txService.computeNetUsdcBalance(userId),
+    // Soroban is the authoritative balance source: the migration script seeded
+    // existing user funds directly into the contract without creating DB records,
+    // so the transaction ledger is incomplete for pre-migration users. The admin
+    // dashboard uses the same approach.
+    const [stellarRaw, evmRaw, rate] = await Promise.all([
+      user.stellarPublicKey
+        ? (this.blockchainService.isSorobanReady && user.username
+            ? this.blockchainService.getSorobanBalance(user.username)
+            : this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey)
+          ).catch(() => this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey!))
+        : Promise.resolve('0.0000000'),
+      user.evmAddress && this.blockchainService.isEvmReady
+        ? this.blockchainService.getEvmBalance(user.evmAddress)
+        : Promise.resolve('0.00000000'),
       this.ratesService.getCurrentRate(),
     ]);
 
-    const ngnRate = parseFloat(rate.effectiveRate);
-    const ngnTotal = totalAmount * ngnRate;
+    const stellarAmount = parseFloat(stellarRaw);
+    const evmAmount    = parseFloat(evmRaw);
+    const totalAmount  = stellarAmount + evmAmount;
+    const ngnRate      = parseFloat(rate.effectiveRate);
+    const ngnTotal     = totalAmount * ngnRate;
 
     return {
-      stellarUsdc: totalAmount.toFixed(7),
-      stellarUsdcDisplay: `$${totalAmount.toFixed(2)}`,
-      evmUsdc: '0.00000000',
-      evmUsdcDisplay: '$0.00',
-      totalUsdc: totalAmount.toFixed(6),
-      totalUsdcDisplay: `$${totalAmount.toFixed(2)}`,
+      stellarUsdc:        stellarRaw,
+      stellarUsdcDisplay: `$${stellarAmount.toFixed(2)}`,
+      evmUsdc:            evmRaw,
+      evmUsdcDisplay:     `$${evmAmount.toFixed(2)}`,
+      totalUsdc:          totalAmount.toFixed(6),
+      totalUsdcDisplay:   `$${totalAmount.toFixed(2)}`,
       ngnEquivalent: `₦${ngnTotal.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       ngnRate,
       lastUpdated: new Date().toISOString(),
