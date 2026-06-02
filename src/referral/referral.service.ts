@@ -76,12 +76,11 @@ export class ReferralService {
 
   // ── Internal: link referral on signup ─────────────────────
   async linkReferral(refereeId: string, referralCode: string): Promise<void> {
-    // Decode code → referrer username
-    const referrerUsername = this.decodeReferralCode(referralCode);
-    if (!referrerUsername) return;
+    if (!referralCode || referralCode.length < 3) return;
 
+    // Look up the referrer directly by their stored referralCode column.
     const referrer = await this.userRepo.findOne({
-      where: { username: referrerUsername },
+      where: { referralCode },
     });
     if (!referrer || referrer.id === refereeId) return;
 
@@ -161,15 +160,11 @@ export class ReferralService {
     }
   }
 
-  // ── Code helpers ─────────────────────────────────────────
+  // ── Code helper ───────────────────────────────────────────
   private generateReferralCode(user: User): string {
-    // Simple, readable code: username in uppercase
-    // Could swap for a short hash in production for obfuscation
-    return user.username.toUpperCase();
-  }
-
-  private decodeReferralCode(code: string): string | null {
-    if (!code || code.length < 3) return null;
-    return code.toLowerCase(); // maps back to username
+    // Use the unique random code generated at signup and stored on the user
+    // row.  Falls back to username (uppercased) only for legacy accounts that
+    // predate the referralCode column.
+    return user.referralCode ?? user.username.toUpperCase();
   }
 }
