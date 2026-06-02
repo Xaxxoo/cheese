@@ -51,8 +51,11 @@ export class ReferralService {
     const referralUrl = `https://cheesepay.xyz/join?ref=${referralCode}`;
 
     return {
-      referralCode,
-      referralUrl,
+      code: referralCode,
+      link: referralUrl,
+      totalReferrals: referrals.length,
+      pendingReward: pending * REFERRAL_REWARD_USDC,
+      paidReward: totalEarned,
       stats: {
         totalReferrals: referrals.length,
         pending,

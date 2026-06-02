@@ -47,7 +47,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // ── Referral section ───────────────────────────────────────
 function ReferralCard() {
-  const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   const refQ = useQuery({
     queryKey: QUERY_KEYS.REFERRAL,
@@ -61,10 +62,22 @@ function ReferralCard() {
     if (!code) return
     try {
       await navigator.clipboard.writeText(code)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopiedCode(true)
+      setTimeout(() => setCopiedCode(false), 2000)
     } catch {
       notify.error('Could not copy code')
+    }
+  }
+
+  async function copyLink() {
+    const link = refQ.data?.link
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
+    } catch {
+      notify.error('Could not copy link')
     }
   }
 
@@ -77,6 +90,7 @@ function ReferralCard() {
 
       {refQ.isLoading && (
         <div className="px-4 pb-4 flex flex-col gap-2">
+          <Skeleton className="h-8 rounded-xl" />
           <Skeleton className="h-8 rounded-xl" />
           <Skeleton className="h-4 w-40 rounded" />
         </div>
@@ -94,10 +108,28 @@ function ReferralCard() {
               <p className="text-[10px] text-white/30 mb-0.5">Your referral code</p>
               <p className="text-base font-semibold text-[#d4a843] tracking-widest">{refQ.data.code}</p>
             </div>
-            {copied
+            {copiedCode
               ? <CheckCheck size={16} className="text-emerald-400" />
               : <Copy size={14} className="text-white/30" />
             }
+          </button>
+
+          {/* Link copy */}
+          <button
+            type="button"
+            onClick={copyLink}
+            className="flex items-center justify-between w-full bg-white/6 rounded-xl px-4 py-3 hover:bg-white/10 transition-colors"
+          >
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-[10px] text-white/30 mb-0.5">Your referral link</p>
+              <p className="text-xs text-white/70 truncate">{refQ.data.link}</p>
+            </div>
+            <div className="shrink-0 ml-3">
+              {copiedLink
+                ? <CheckCheck size={16} className="text-emerald-400" />
+                : <Copy size={14} className="text-white/30" />
+              }
+            </div>
           </button>
 
           {/* Stats */}
