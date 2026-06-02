@@ -6,6 +6,7 @@ import { Not, IsNull, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User, WalletStatus } from '../auth/entities/user.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -28,6 +29,7 @@ export class WalletDepositScheduler {
     @InjectRepository(EvmChainCursor)
     private readonly cursorRepo: Repository<EvmChainCursor>,
     private readonly blockchainService: BlockchainService,
+    private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
@@ -162,12 +164,14 @@ export class WalletDepositScheduler {
   private async processDepositsForUser(
     user: Pick<User, 'id' | 'email' | 'fullName' | 'username' | 'stellarPublicKey' | 'stellarDepositCursor'>,
   ) {
-    const payments = await this.blockchainService.fetchInboundStellarUsdc(
-      user.stellarPublicKey!,
-      user.stellarDepositCursor ?? undefined,
-    );
+    const { payments, nextCursor } =
+      await this.blockchainService.fetchInboundStellarUsdc(
+        user.stellarPublicKey!,
+        user.stellarDepositCursor ?? undefined,
+      );
 
-    if (payments.length === 0) return;
+    // Horizon returned no records at all — account has no history yet.
+    if (!nextCursor && payments.length === 0) return;
 
     // Payments sent from the platform's own wallet are internal operations
     // (bank-transfer refunds, yield credits, etc.) and must not be recorded
@@ -175,13 +179,18 @@ export class WalletDepositScheduler {
     const platformPublicKey =
       this.blockchainService.getStellarPlatformPublicKey();
 
-    let latestCursor = user.stellarDepositCursor;
+    // Fetch the current NGN rate once for all deposits in this batch.
+    // Falls back gracefully so a rate-service outage never blocks deposit recording.
+    const rate = await this.ratesService.getCurrentRate().catch(() => null);
 
     for (const payment of payments) {
-      latestCursor = payment.pagingToken;
-
       // Skip internal platform payments (refunds, credits, etc.)
-      if (payment.from === platformPublicKey) continue;
+      if (payment.from === platformPublicKey) {
+        this.logger.debug(
+          `Skipping platform-originated payment [user=${user.id}] [hash=${payment.txHash}]`,
+        );
+        continue;
+      }
 
       // A missing txHash means we cannot deduplicate this payment — skip it
       // rather than risk recording it multiple times (nulls bypass UNIQUE constraint).
@@ -192,6 +201,10 @@ export class WalletDepositScheduler {
         continue;
       }
 
+      const amountNgn = rate
+        ? (parseFloat(payment.amount) * parseFloat(rate.effectiveRate)).toFixed(2)
+        : '0.00';
+
       const reference = `CW-DEP-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
 
       // Atomic INSERT ... ON CONFLICT (tx_hash) DO NOTHING — safe under concurrent
@@ -201,6 +214,9 @@ export class WalletDepositScheduler {
         type: TxType.DEPOSIT,
         status: TxStatus.COMPLETED,
         amountUsdc: payment.amount,
+        amountNgn,
+        feeUsdc: '0.000000',
+        rateApplied: rate?.effectiveRate ?? '0',
         txHash: payment.txHash,
         network: 'stellar',
         reference,
@@ -249,11 +265,15 @@ export class WalletDepositScheduler {
       }
     }
 
-    // Advance the cursor so we don't re-process these payments next run
-    if (latestCursor !== user.stellarDepositCursor) {
+    // Always advance the cursor to the last raw Horizon record seen, not just
+    // to the last USDC inbound payment.  If the page contained only non-USDC
+    // operations (XLM payments, path payments, etc.) the old code would exit
+    // early without advancing, leaving the cursor permanently stuck and hiding
+    // any USDC deposit that comes after those records.
+    if (nextCursor && nextCursor !== user.stellarDepositCursor) {
       await this.userRepo.update(
         { id: user.id },
-        { stellarDepositCursor: latestCursor },
+        { stellarDepositCursor: nextCursor },
       );
     }
   }

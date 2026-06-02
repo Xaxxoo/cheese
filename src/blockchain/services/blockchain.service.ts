@@ -1179,7 +1179,7 @@ export class BlockchainService implements OnModuleInit {
   async fetchInboundStellarUsdc(
     publicKey: string,
     cursor?: string,
-  ): Promise<StellarPayment[]> {
+  ): Promise<{ payments: StellarPayment[]; nextCursor: string | null }> {
     this.requireStellar('fetchInboundStellarUsdc');
 
     let builder = this.stellarServer
@@ -1194,8 +1194,16 @@ export class BlockchainService implements OnModuleInit {
 
     const response = await builder.call();
     const results: StellarPayment[] = [];
+    // Track the last raw paging token across ALL record types, not just USDC
+    // inbound ones.  Without this, a page of 50 non-USDC operations (XLM
+    // payments, path payments, etc.) would return an empty payments array and
+    // leave the cursor stuck at the same position forever, permanently hiding
+    // any USDC deposit that arrives after those records.
+    let nextCursor: string | null = null;
 
     for (const record of response.records) {
+      nextCursor = (record as any).paging_token as string;
+
       if (record.type !== 'payment') continue;
 
       const payment = record as any;
@@ -1217,7 +1225,7 @@ export class BlockchainService implements OnModuleInit {
       });
     }
 
-    return results;
+    return { payments: results, nextCursor };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
