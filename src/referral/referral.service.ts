@@ -36,9 +36,6 @@ export class ReferralService {
     const pending = referrals.filter(
       (r) => r.status === ReferralStatus.PENDING,
     ).length;
-    const qualified = referrals.filter(
-      (r) => r.status === ReferralStatus.QUALIFIED,
-    ).length;
     const rewarded = referrals.filter(
       (r) => r.status === ReferralStatus.REWARDED,
     );
@@ -56,21 +53,6 @@ export class ReferralService {
       totalReferrals: referrals.length,
       pendingReward: pending * REFERRAL_REWARD_USDC,
       paidReward: totalEarned,
-      stats: {
-        totalReferrals: referrals.length,
-        pending,
-        qualified,
-        rewarded: rewarded.length,
-        totalEarned: totalEarned.toFixed(6),
-        rewardPerRef: String(REFERRAL_REWARD_USDC),
-      },
-      recentReferrals: referrals.slice(0, 5).map((r) => ({
-        id: r.id,
-        status: r.status,
-        rewardUsdc: r.rewardUsdc,
-        createdAt: r.createdAt,
-        rewardedAt: r.rewardedAt,
-      })),
     };
   }
 
@@ -103,15 +85,20 @@ export class ReferralService {
   async qualifyReferral(refereeId: string): Promise<void> {
     const referral = await this.referralRepo.findOne({
       where: { refereeId, status: ReferralStatus.PENDING },
-      relations: ['referrer'],
     });
 
     if (!referral) return;
 
-    await this.referralRepo.update(
-      { id: referral.id },
+    // Conditional update: only proceed if THIS call wins the race.
+    // If two transactions complete simultaneously both read PENDING, but
+    // only one UPDATE WHERE status=PENDING will affect a row — the other
+    // gets affected=0 and exits, preventing a double reward credit.
+    const result = await this.referralRepo.update(
+      { id: referral.id, status: ReferralStatus.PENDING },
       { status: ReferralStatus.QUALIFIED },
     );
+
+    if (!result.affected) return;
 
     // Credit reward to referrer
     await this.creditReward(referral);
