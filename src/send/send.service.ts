@@ -232,22 +232,44 @@ export class SendService {
     });
 
     try {
-      const { txHash } = useClassic
-        ? {
-            txHash: await this.blockchainService.sendUsdc({
-              fromSecretEnc: sender.stellarSecretEnc,
-              toAddress: params.toAddress,
-              amountUsdc: params.amountUsdc,
-              memo: params.memo ?? reference,
-            }),
-          }
-        : await this.blockchainService.sendViaContract({
+      let txHash: string;
+      if (useClassic) {
+        txHash = await this.blockchainService.sendUsdc({
+          fromSecretEnc: sender.stellarSecretEnc,
+          toAddress: params.toAddress,
+          amountUsdc: params.amountUsdc,
+          memo: params.memo ?? reference,
+        });
+      } else {
+        try {
+          const result = await this.blockchainService.sendViaContract({
             fromUsername: sender.username,
             fromPublicKey: sender.stellarPublicKey!,
             toUsername: params.recipientUsername,
             toPublicKey: params.recipientUsername ? undefined : params.toAddress,
             amountUsdc: params.amountUsdc,
           });
+          txHash = result.txHash;
+        } catch (sorobanErr) {
+          // The contract's physical USDC token balance can fall below its internal
+          // ledger entries (e.g., when users have deposits tracked on-ledger but
+          // the corresponding USDC sits in the platform Horizon account).  If the
+          // contract can't fulfil the withdrawal, retry via classic Stellar.
+          if (horizonBal >= amount) {
+            this.logger.warn(
+              `sendViaContract failed — falling back to classic Stellar [user=${senderId}]: ${(sorobanErr as Error).message}`,
+            );
+            txHash = await this.blockchainService.sendUsdc({
+              fromSecretEnc: sender.stellarSecretEnc,
+              toAddress: params.toAddress,
+              amountUsdc: params.amountUsdc,
+              memo: params.memo ?? reference,
+            });
+          } else {
+            throw sorobanErr;
+          }
+        }
+      }
 
       await this.txService.update(tx.id, {
         status: TxStatus.COMPLETED,
