@@ -15,6 +15,7 @@ import { KycModule } from '../kyc/kyc.module';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AlertsModule } from '../alerts/alerts.module';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AlertsModule } from '../alerts/alerts.module';
     EmailModule,
     NotificationsModule,
     AlertsModule,
+    ReferralModule,
   ],
   controllers: [BanksController],
   providers: [BanksService, BanksScheduler, PulseMfbClient],

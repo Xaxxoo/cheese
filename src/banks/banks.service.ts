@@ -30,6 +30,7 @@ import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-s
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { ReferralService } from '../referral/referral.service';
 
 type BankDirectoryEntry = {
   code: string;
@@ -410,6 +411,7 @@ export class BanksService {
     private readonly txService: TransactionsService,
     private readonly pulseMfb: PulseMfbClient,
     private readonly tierMilestone: TierMilestoneService,
+    private readonly referralService: ReferralService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly alertsService: AlertsService,
@@ -718,6 +720,11 @@ export class BanksService {
         this.logger.log(
           `Bank transfer settled immediately [ref=${reference}] [provider=${providerRef}]`,
         );
+        void this.referralService
+          .qualifyReferral(user.id)
+          .catch((e: Error) =>
+            this.logger.warn(`qualifyReferral failed [user=${user.id}]: ${e.message}`),
+          );
       } else {
         // Mark PROCESSING — awaiting final settlement confirmation via webhook
         await this.transferRepo.update(
@@ -867,6 +874,11 @@ export class BanksService {
           `Bank transfer settled [ref=${transfer.reference}] ` +
             `[providerRef=${transfer.providerReference ?? dto.reference}]`,
         );
+        void this.referralService
+          .qualifyReferral(transfer.userId)
+          .catch((e: Error) =>
+            this.logger.warn(`qualifyReferral failed [user=${transfer.userId}]: ${e.message}`),
+          );
 
         // Fire-and-forget user notifications
         const successUser = await this.userRepo.findOne({

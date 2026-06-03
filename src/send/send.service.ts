@@ -21,6 +21,7 @@ import { SendToAddressDto, SendToUsernameDto } from './dto';
 import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
+import { ReferralService } from '../referral/referral.service';
 import { EmailService } from '../email/email.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 
@@ -39,6 +40,7 @@ export class SendService {
     private readonly txService: TransactionsService,
     private readonly config: ConfigService,
     private readonly tierMilestone: TierMilestoneService,
+    private readonly referralService: ReferralService,
     private readonly emailService: EmailService,
   ) {}
 
@@ -254,6 +256,13 @@ export class SendService {
 
       // Fire-and-forget milestone check
       void this.tierMilestone.checkAndNotify(senderId);
+
+      // Fire-and-forget referral qualification (no-op if already qualified)
+      void this.referralService
+        .qualifyReferral(senderId)
+        .catch((e: Error) =>
+          this.logger.warn(`qualifyReferral failed [user=${senderId}]: ${e.message}`),
+        );
 
       // Fire-and-forget: email to sender
       const appUrl = this.config.get<string>(
