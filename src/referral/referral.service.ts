@@ -8,6 +8,7 @@ import { TransactionsService } from '../transactions/transactions.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { Referral, ReferralStatus } from './entities/referral.entity';
 
 const REFERRAL_REWARD_USDC = 2.0; // $2 USDC per qualified referral
@@ -22,6 +23,7 @@ export class ReferralService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly txService: TransactionsService,
     private readonly notifService: NotificationsService,
+    private readonly blockchainService: BlockchainService,
   ) {}
 
   // ── GET /referral ─────────────────────────────────────────
@@ -106,10 +108,45 @@ export class ReferralService {
 
   // ── Private: credit USDC reward ───────────────────────────
   private async creditReward(referral: Referral): Promise<void> {
-    try {
-      const rewardUsdc = String(REFERRAL_REWARD_USDC);
-      const reference = `CW-REF-${uuidv4().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
+    const rewardUsdc = String(REFERRAL_REWARD_USDC);
+    const reference = `CW-REF-${uuidv4().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
 
+    // Load referrer to get their Stellar address
+    const referrer = await this.userRepo.findOne({
+      where: { id: referral.referrerId },
+    });
+    if (!referrer?.stellarPublicKey) {
+      this.logger.error(
+        `Cannot credit referral reward: referrer ${referral.referrerId} has no Stellar address`,
+      );
+      await this.referralRepo.update(
+        { id: referral.id },
+        { status: ReferralStatus.PENDING },
+      );
+      return;
+    }
+
+    // Send USDC on-chain from platform treasury
+    let txHash: string;
+    try {
+      txHash = await this.blockchainService.platformDepositUsdc(
+        referrer.stellarPublicKey,
+        rewardUsdc,
+      );
+    } catch (err) {
+      // Roll back to PENDING so the next qualifying transaction retries
+      this.logger.error(
+        `On-chain referral send failed for ${referral.referrerId} — rolling back to PENDING: ${(err as Error).message}`,
+      );
+      await this.referralRepo.update(
+        { id: referral.id },
+        { status: ReferralStatus.PENDING },
+      );
+      return;
+    }
+
+    // On-chain send succeeded — persist the DB records
+    try {
       await this.txService.create({
         userId: referral.referrerId,
         type: TxType.REFERRAL_BONUS,
@@ -117,6 +154,7 @@ export class ReferralService {
         amountUsdc: rewardUsdc,
         feeUsdc: '0',
         reference,
+        txHash,
         description: 'Referral bonus — friend completed first transaction',
       });
 
@@ -138,11 +176,12 @@ export class ReferralService {
       });
 
       this.logger.log(
-        `Referral reward credited: $${REFERRAL_REWARD_USDC} → ${referral.referrerId}`,
+        `Referral reward credited on-chain: $${REFERRAL_REWARD_USDC} → ${referral.referrerId} (txHash=${txHash})`,
       );
     } catch (err) {
+      // USDC already sent on-chain — log critical for manual reconciliation
       this.logger.error(
-        `Failed to credit referral reward: ${(err as Error).message}`,
+        `CRITICAL: Referral bonus sent on-chain (txHash=${txHash}) but DB update failed for referral ${referral.id}: ${(err as Error).message}`,
       );
     }
   }
