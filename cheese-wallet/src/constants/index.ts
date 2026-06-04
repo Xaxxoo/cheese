@@ -120,6 +120,13 @@ export const ENDPOINTS = {
     INFO:             '/referral',
   },
 
+  // ── KYC ───────────────────────────────────────────────
+  KYC: {
+    STATUS:           '/kyc/status',
+    VERIFY_BVN:       '/kyc/verify/bvn',
+    VERIFY_NIN:       '/kyc/verify/nin',
+  },
+
   // ── Profile / KYC ────────────────────────────────────
   PROFILE: {
     GET:              '/profile',

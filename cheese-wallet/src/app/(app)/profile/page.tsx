@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, LogOut, Copy, CheckCheck,
   Smartphone, RefreshCw, Trash2, User, Gift,
-  BadgeCheck, AlertCircle, Clock,
+  BadgeCheck, AlertCircle, Clock, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -320,6 +320,35 @@ export default function ProfilePage() {
         <InfoRow label="Member since" value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' }) : '—'} />
       </div>
 
+
+      {/* KYC action */}
+      {kyc === 'pending' && (
+        <Link
+          href="/kyc"
+          className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/5 px-4 py-3.5 hover:bg-amber-400/8 transition-colors"
+        >
+          <Clock size={16} className="text-amber-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-amber-400">Verify your identity</p>
+            <p className="text-xs text-white/40 mt-0.5">Required to send money and make transfers</p>
+          </div>
+          <ChevronRight size={14} className="text-amber-400/60 shrink-0" />
+        </Link>
+      )}
+
+      {kyc === 'rejected' && (
+        <Link
+          href="/kyc"
+          className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-red-400/20 bg-red-400/5 px-4 py-3.5 hover:bg-red-400/8 transition-colors"
+        >
+          <AlertCircle size={16} className="text-red-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-red-400">Verification failed — try again</p>
+            <p className="text-xs text-white/40 mt-0.5">Tap to retry with a different ID type</p>
+          </div>
+          <ChevronRight size={14} className="text-red-400/60 shrink-0" />
+        </Link>
+      )}
 
       {/* Wallet failure warning */}
       {(user?.stellarWalletStatus === 'failed' || user?.evmWalletStatus === 'failed') && (

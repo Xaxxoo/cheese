@@ -262,6 +262,23 @@ export async function getReferralInfo(): Promise<ReferralInfo> {
   return data.data
 }
 
+// ── KYC ───────────────────────────────────────────────────
+export async function verifyBvn(bvn: string): Promise<{ kycStatus: string; tier: string }> {
+  const { data } = await apiClient.post<ApiResponse<{ kycStatus: string; tier: string }>>(
+    ENDPOINTS.KYC.VERIFY_BVN,
+    { bvn },
+  )
+  return data.data
+}
+
+export async function verifyNin(nin: string): Promise<{ kycStatus: string; tier: string }> {
+  const { data } = await apiClient.post<ApiResponse<{ kycStatus: string; tier: string }>>(
+    ENDPOINTS.KYC.VERIFY_NIN,
+    { nin },
+  )
+  return data.data
+}
+
 // ── PayLink ───────────────────────────────────────────────
 import type {
   CreatePayLinkPayload, CreatePayLinkResponse,
