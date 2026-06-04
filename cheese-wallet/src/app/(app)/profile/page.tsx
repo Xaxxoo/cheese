@@ -96,6 +96,20 @@ function ReferralCard() {
         </div>
       )}
 
+      {refQ.isError && (
+        <div className="px-4 pb-4 flex items-center gap-2">
+          <p className="text-xs text-white/30">Could not load referral info</p>
+          <button
+            type="button"
+            onClick={() => refQ.refetch()}
+            className="text-xs text-[#d4a843]/70 hover:text-[#d4a843] flex items-center gap-1 transition-colors"
+          >
+            <RefreshCw size={11} />
+            Retry
+          </button>
+        </div>
+      )}
+
       {refQ.data && (
         <div className="px-4 pb-4 flex flex-col gap-3">
           {/* Code copy */}
