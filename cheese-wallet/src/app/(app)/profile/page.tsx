@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, LogOut, Copy, CheckCheck,
   Smartphone, RefreshCw, Trash2, User, Gift,
-  BadgeCheck, AlertCircle, Clock, ChevronRight,
+  BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -321,6 +321,21 @@ export default function ProfilePage() {
       </div>
 
 
+      {/* PIN setup banner */}
+      {!user?.hasPin && (
+        <Link
+          href="/pin"
+          className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/5 px-4 py-3.5 hover:bg-amber-400/8 transition-colors"
+        >
+          <KeyRound size={16} className="text-amber-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-amber-400">Set up your PIN</p>
+            <p className="text-xs text-white/40 mt-0.5">Required to send money and make transfers</p>
+          </div>
+          <ChevronRight size={14} className="text-amber-400/60 shrink-0" />
+        </Link>
+      )}
+
       {/* KYC action */}
       {kyc === 'pending' && (
         <Link
@@ -364,6 +379,20 @@ export default function ProfilePage() {
               to resolve this.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Security */}
+      {user?.hasPin && (
+        <div className="mx-4 mt-2 rounded-2xl border border-white/8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <Link
+            href="/pin"
+            className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors"
+          >
+            <KeyRound size={14} className="text-white/40 shrink-0" />
+            <span className="text-xs text-white flex-1">Change PIN</span>
+            <ChevronRight size={14} className="text-white/25 shrink-0" />
+          </Link>
         </div>
       )}
 
