@@ -352,6 +352,16 @@ export default function ProfilePage() {
         </Link>
       )}
 
+      {kyc === 'submitted' && (
+        <div className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/5 px-4 py-3.5">
+          <Clock size={16} className="text-sky-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-sky-400">Verification under review</p>
+            <p className="text-xs text-white/40 mt-0.5">We're reviewing your submission — nothing to do</p>
+          </div>
+        </div>
+      )}
+
       {kyc === 'rejected' && (
         <Link
           href="/kyc"
