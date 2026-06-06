@@ -7,11 +7,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, LogOut, Copy, CheckCheck,
   Smartphone, RefreshCw, Trash2, User, Gift,
-  BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound,
+  BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound, MailWarning,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
 import { getReferralInfo, listDevices, revokeDevice } from '@/lib/api/wallet'
+import { resendOtp } from '@/lib/api/auth'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import { notify } from '@/lib/toast'
 
@@ -266,6 +267,21 @@ export default function ProfilePage() {
   const router  = useRouter()
   const { user, signOut, deviceId } = useAuthStore()
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
+  const [resendingEmail, setResendingEmail]       = useState(false)
+  const [emailResent, setEmailResent]             = useState(false)
+
+  async function handleResendVerification() {
+    if (!user?.email || resendingEmail || emailResent) return
+    setResendingEmail(true)
+    try {
+      await resendOtp(user.email, 'email_verify')
+      setEmailResent(true)
+    } catch {
+      notify.error('Could not resend verification email')
+    } finally {
+      setResendingEmail(false)
+    }
+  }
 
   function handleSignOut() {
     signOut()
@@ -321,6 +337,29 @@ export default function ProfilePage() {
         <InfoRow label="Member since" value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' }) : '—'} />
       </div>
 
+
+      {/* Email not verified */}
+      {user?.emailVerified === false && (
+        <div className="mx-4 mt-3 flex items-center gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/5 px-4 py-3.5">
+          <MailWarning size={16} className="text-amber-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-amber-400">Email not verified</p>
+            <p className="text-xs text-white/40 mt-0.5">
+              {emailResent ? 'Verification email sent — check your inbox' : 'Check your inbox or resend the verification email'}
+            </p>
+          </div>
+          {!emailResent && (
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resendingEmail}
+              className="shrink-0 text-[11px] font-medium text-[#d4a843] hover:text-[#d4a843]/80 disabled:opacity-40 transition-opacity"
+            >
+              {resendingEmail ? 'Sending…' : 'Resend'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* PIN setup banner */}
       {!user?.hasPin && (
