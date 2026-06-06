@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, LogOut, Copy, CheckCheck,
   Smartphone, RefreshCw, Trash2, User, Gift,
-  BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound, MailWarning,
+  BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound, MailWarning, Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -304,7 +304,13 @@ export default function ProfilePage() {
         >
           <ArrowLeft size={16} />
         </Link>
-        <h1 className="text-base font-semibold text-white">Profile</h1>
+        <h1 className="text-base font-semibold text-white flex-1">Profile</h1>
+        <Link
+          href="/profile/edit"
+          className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/12 transition-all"
+        >
+          <Pencil size={15} />
+        </Link>
       </div>
 
       {/* Avatar + name */}
