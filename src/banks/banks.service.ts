@@ -470,7 +470,7 @@ export class BanksService {
       });
 
       throw new BadRequestException(
-        `Banking provider error: ${providerMessage}`,
+        'Could not verify the recipient account. Please check the account number and bank.',
       );
     } catch (err) {
       const errorMessage = (err as Error).message;

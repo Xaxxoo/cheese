@@ -283,7 +283,13 @@ export class PulseMfbClient implements OnModuleInit {
       this.logger.error(
         `PulseMFB error [${path}] ${res.status}: ${msg} — body: ${JSON.stringify(json)}`,
       );
-      throw new BadRequestException(`Banking provider error: ${msg}`);
+      // Never expose raw provider messages (they can contain internal balances,
+      // account numbers, or other sensitive details).  Log the real reason above
+      // and return a generic user-facing message instead.
+      const userMessage = /insufficient|balance|liquidity|funds/i.test(msg)
+        ? 'Bank transfer is temporarily unavailable due to liquidity. Please try again shortly.'
+        : 'Bank transfer failed. Please try again or contact support.';
+      throw new BadRequestException(userMessage);
     }
     return json as T;
   }
