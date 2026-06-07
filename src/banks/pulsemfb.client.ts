@@ -287,7 +287,7 @@ export class PulseMfbClient implements OnModuleInit {
       // account numbers, or other sensitive details).  Log the real reason above
       // and return a generic user-facing message instead.
       const userMessage = /insufficient|balance|liquidity|funds/i.test(msg)
-        ? 'Bank transfer is temporarily unavailable due to liquidity. Please try again shortly.'
+        ? 'Bank transfer is temporarily unavailable. Please try again shortly.'
         : 'Bank transfer failed. Please try again or contact support.';
       throw new BadRequestException(userMessage);
     }
