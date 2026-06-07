@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { getMe } from '@/lib/api/auth'
@@ -11,10 +11,6 @@ import { BottomNav } from '@/components/app/BottomNav'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { user, setAuth, updateUser, signOut, isBooting, setBooting } = useAuthStore()
-  // During the background boot refresh, suppress auth-expired events so a
-  // stale cookie doesn't immediately log the user out — they'll be prompted
-  // the next time they hit a protected endpoint instead.
-  const suppressExpiredRef = useRef(false)
 
   useEffect(() => {
     // Try to restore session using httpOnly refresh cookie.
@@ -36,15 +32,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       // No persisted user — check the server for an active session
       boot()
     } else {
-      // User exists in store — render immediately, refresh profile in the
-      // background.  Suppress auth-expired during this window so a cold-start
-      // cookie hiccup doesn't force an immediate logout.
+      // User exists in store — do a background refresh but don't block render
       setBooting(false)
-      suppressExpiredRef.current = true
-      getMe()
-        .then(updateUser)
-        .catch(() => { /* session gone — next user action will trigger logout */ })
-        .finally(() => { suppressExpiredRef.current = false })
+      getMe().then(updateUser).catch(() => {
+        // Refresh failed silently; token interceptor will catch 401s
+      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -52,7 +44,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Listen for token expiry from the API client
   useEffect(() => {
     function onExpired() {
-      if (suppressExpiredRef.current) return
       signOut()
       router.replace('/login')
     }

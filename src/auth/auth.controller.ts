@@ -406,19 +406,12 @@ export class AuthController {
 
   private getRefreshCookieOptions(): CookieOptions {
     const days = 30;
-    const cookieDomain = this.config.get<string>('app.cookieDomain');
     return {
       httpOnly: true,
       secure: true,
-      // When a shared parent domain is configured (e.g. .cheesepay.xyz), the
-      // cookie is first-party across all subdomains — use 'lax' which iOS
-      // Safari's ITP will not block.  Without a domain (local dev / cross-
-      // origin staging), fall back to 'none' so the cross-origin cookie is
-      // still sent (requires secure:true).
-      sameSite: cookieDomain ? 'lax' : 'none',
+      sameSite: 'none',
       maxAge: days * 24 * 60 * 60 * 1000,
       path: '/',
-      ...(cookieDomain ? { domain: cookieDomain } : {}),
     };
   }
 }
