@@ -8,6 +8,10 @@ export const appConfig = registerAs('app', () => ({
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   allowInsecureDeviceSignatures:
     process.env.ALLOW_INSECURE_DEVICE_SIGNATURES === 'true',
+  // Set to the shared parent domain (e.g. .cheesepay.xyz) so the refresh-token
+  // cookie is first-party for all subdomains — required for iOS Safari ITP.
+  // Leave unset in local dev (no shared domain between localhost and the API).
+  cookieDomain: process.env.COOKIE_DOMAIN || undefined,
 }));
 
 // export const dbConfig = registerAs('db', () => ({
