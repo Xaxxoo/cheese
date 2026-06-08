@@ -181,6 +181,7 @@ export async function listAdminUsers(params?: {
   search?: string
   tier?:   string
   kyc?:    string
+  wallet?: string
 }): Promise<{ users: AdminUserItem[]; total: number; page: number; limit: number }> {
   const { data } = await adminApiClient.get<ApiResponse<{
     users: AdminUserItem[]

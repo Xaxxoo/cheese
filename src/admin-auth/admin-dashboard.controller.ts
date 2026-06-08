@@ -30,6 +30,7 @@ export class AdminDashboardController {
     @Query('search') search?: string,
     @Query('tier')   tier?:   string,
     @Query('kyc')    kyc?:    string,
+    @Query('wallet') wallet?: string,
   ) {
     return this.adminAuthService.listUsers({
       page:  Math.max(1, parseInt(page  ?? '1',  10)),
@@ -37,6 +38,7 @@ export class AdminDashboardController {
       search,
       tier,
       kyc,
+      wallet,
     });
   }
 
