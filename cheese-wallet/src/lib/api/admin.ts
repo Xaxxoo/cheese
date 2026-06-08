@@ -176,12 +176,13 @@ export interface AdminUserItem {
 }
 
 export async function listAdminUsers(params?: {
-  page?:   number
-  limit?:  number
-  search?: string
-  tier?:   string
-  kyc?:    string
-  wallet?: string
+  page?:    number
+  limit?:   number
+  search?:  string
+  tier?:    string
+  kyc?:     string
+  wallet?:  string
+  flagged?: boolean
 }): Promise<{ users: AdminUserItem[]; total: number; page: number; limit: number }> {
   const { data } = await adminApiClient.get<ApiResponse<{
     users: AdminUserItem[]

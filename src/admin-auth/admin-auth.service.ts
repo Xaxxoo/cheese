@@ -348,8 +348,9 @@ export class AdminAuthService {
     tier?: string;
     kyc?: string;
     wallet?: string;
+    flagged?: boolean;
   }) {
-    const { page, limit, search, tier, kyc, wallet } = query;
+    const { page, limit, search, tier, kyc, wallet, flagged } = query;
 
     const kycMap: Record<string, string> = {
       reviewing: KycStatus.SUBMITTED,
@@ -378,6 +379,9 @@ export class AdminAuthService {
     }
     if (wallet && wallet.toLowerCase() !== 'all') {
       qb.andWhere('u.stellar_wallet_status = :wallet', { wallet: wallet.toLowerCase() });
+    }
+    if (flagged !== undefined) {
+      qb.andWhere('u.is_flagged = :flagged', { flagged });
     }
 
     const [users, total] = await qb.getManyAndCount();
