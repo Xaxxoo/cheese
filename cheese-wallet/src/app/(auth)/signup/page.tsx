@@ -148,6 +148,8 @@ export default function SignupPage() {
   const searchParams = useSearchParams();
   const { setAuth, ensureDeviceId, setBooting } = useAuthStore();
 
+  const refCode = searchParams.get('ref') ?? undefined;
+
   const [step, setStep] = useState<SignupStep>(1);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<SignupData>({
@@ -281,6 +283,7 @@ export default function SignupPage() {
         password: form.password,
         devicePublicKey: publicKey,
         deviceId,
+        referralCode: refCode,
       });
 
       setStep(3);

@@ -55,6 +55,7 @@ export interface SignupPayload {
   password: string;
   devicePublicKey: string;
   deviceId: string;
+  referralCode?: string;
 }
 
 export interface OtpVerifyPayload {

@@ -47,7 +47,7 @@ export class ReferralService {
     );
 
     const referralCode = this.generateReferralCode(user);
-    const referralUrl = `https://cheesepay.xyz/join?ref=${referralCode}`;
+    const referralUrl = `https://cheesepay.xyz/signup?ref=${referralCode}`;
 
     return {
       code: referralCode,
