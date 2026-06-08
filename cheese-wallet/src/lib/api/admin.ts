@@ -398,6 +398,20 @@ export interface AdminTransactionItem {
   createdAt:         string
 }
 
+export interface AdminTransactionDetail extends AdminTransactionItem {
+  rateApplied:   string | null
+  recipientName: string | null
+  accountNumber: string | null
+  network:       string | null
+  description:   string | null
+  updatedAt:     string
+}
+
+export async function getAdminTransaction(id: string): Promise<AdminTransactionDetail> {
+  const { data } = await adminApiClient.get<ApiResponse<AdminTransactionDetail>>(`/admin/transactions/${id}`)
+  return data.data
+}
+
 export async function listAdminTransactions(params?: {
   page?:   number
   limit?:  number

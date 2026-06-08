@@ -110,6 +110,15 @@ export class AdminDashboardController {
     return this.adminAuthService.flagUser(id, flag);
   }
 
+  // ── GET /admin/transactions/:id ───────────────────────────────────────────
+  @Get('transactions/:id')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get single transaction detail' })
+  getTransaction(@Param('id') id: string) {
+    return this.adminAuthService.getTransaction(id);
+  }
+
   // ── GET /admin/transactions ────────────────────────────────────────────────
   @Get('transactions')
   @UseGuards(AdminJwtGuard)

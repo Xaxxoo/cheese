@@ -900,6 +900,42 @@ export class AdminAuthService {
     };
   }
 
+  // ── Single transaction detail ─────────────────────────────────────────────
+
+  async getTransaction(id: string) {
+    const t = await this.txRepo.findOne({ where: { id } });
+    if (!t) throw new NotFoundException('Transaction not found');
+
+    const user = await this.userRepo.findOne({
+      where: { id: t.userId },
+      select: ['id', 'username'],
+    });
+
+    return {
+      id:                t.id,
+      reference:         t.reference,
+      userId:            t.userId,
+      username:          user?.username ?? '—',
+      type:              t.type,
+      status:            t.status,
+      amountUsdc:        t.amountUsdc,
+      amountNgn:         t.amountNgn,
+      feeUsdc:           t.feeUsdc,
+      rateApplied:       t.rateApplied,
+      recipientUsername: t.recipientUsername,
+      recipientAddress:  t.recipientAddress,
+      recipientName:     t.recipientName,
+      bankName:          t.bankName,
+      accountNumber:     t.accountNumber,
+      network:           t.network,
+      txHash:            t.txHash,
+      description:       t.description,
+      failureReason:     t.failureReason,
+      createdAt:         t.createdAt,
+      updatedAt:         t.updatedAt,
+    };
+  }
+
   // ── Pay links listing ─────────────────────────────────────────────────────
 
   async listPaylinks(query: {

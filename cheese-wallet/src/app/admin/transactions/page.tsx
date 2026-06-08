@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, type CSSProperties } from 'react';
+import React, { useState, useEffect, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { c, IcoSearch, Pill } from '../_shared';
-import { listAdminTransactions, type AdminTransactionItem } from '@/lib/api/admin';
+import { listAdminTransactions, getAdminTransaction, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'failed' | 'reversed';
 type TypeFilter   = 'all' | 'deposit' | 'withdrawal' | 'send_username' | 'send_address'
@@ -70,15 +71,17 @@ const COL_GRID = '1.6fr 100px 110px 90px 100px 1.6fr 110px';
 interface StatCounts { total: number; completed: number; failed: number }
 
 export default function TransactionsPage() {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [typeFilter,   setTypeFilter]   = useState<TypeFilter>('all');
-  const [search,       setSearch]       = useState('');
-  const [page,         setPage]         = useState(1);
-  const [txns,         setTxns]         = useState<AdminTransactionItem[]>([]);
-  const [total,        setTotal]        = useState(0);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState<string | null>(null);
-  const [stats,        setStats]        = useState<StatCounts>({ total: 0, completed: 0, failed: 0 });
+  const [statusFilter,   setStatusFilter]   = useState<StatusFilter>('all');
+  const [typeFilter,     setTypeFilter]     = useState<TypeFilter>('all');
+  const [search,         setSearch]         = useState('');
+  const [page,           setPage]           = useState(1);
+  const [txns,           setTxns]           = useState<AdminTransactionItem[]>([]);
+  const [total,          setTotal]          = useState(0);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState<string | null>(null);
+  const [stats,          setStats]          = useState<StatCounts>({ total: 0, completed: 0, failed: 0 });
+  const [detail,         setDetail]         = useState<AdminTransactionDetail | null>(null);
+  const [detailLoading,  setDetailLoading]  = useState(false);
 
   // ── Summary counts ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -125,6 +128,15 @@ export default function TransactionsPage() {
   const handleStatus = (s: StatusFilter) => { setStatusFilter(s); setPage(1); };
   const handleType   = (t: TypeFilter)   => { setTypeFilter(t);   setPage(1); };
   const handleSearch = (q: string)       => { setSearch(q);       setPage(1); };
+
+  function openDetail(id: string) {
+    setDetailLoading(true);
+    setDetail(null);
+    getAdminTransaction(id)
+      .then(setDetail)
+      .catch(console.error)
+      .finally(() => setDetailLoading(false));
+  }
 
   const n          = (v: number) => v.toLocaleString();
   const totalPages = Math.ceil(total / LIMIT);
@@ -301,10 +313,13 @@ export default function TransactionsPage() {
                 <div
                   key={t.id}
                   className="row-hover"
+                  onClick={() => openDetail(t.id)}
                   style={{
                     display: 'grid', gridTemplateColumns: COL_GRID,
                     padding: '11px 22px', alignItems: 'center',
                     borderBottom: i < txns.length - 1 ? `1px solid ${c.border}` : 'none',
+                    cursor: 'pointer',
+                    background: detail?.id === t.id ? 'rgba(255,255,255,0.04)' : undefined,
                   }}
                 >
                   {/* User / Reference */}
@@ -397,6 +412,166 @@ export default function TransactionsPage() {
         </div>
       </div>
 
+      {/* ── Transaction detail drawer ─────────────────────────────────────── */}
+      {(detail || detailLoading) && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setDetail(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 90,
+              background: 'rgba(0,0,0,0.45)',
+            }}
+          />
+
+          {/* Drawer */}
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0,
+            width: 440, zIndex: 100,
+            background: c.surface, borderLeft: `1px solid ${c.border}`,
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '-12px 0 40px rgba(0,0,0,0.5)',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 24px', borderBottom: `1px solid ${c.border}`,
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0,
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Transaction Detail</div>
+                {detail && (
+                  <div style={{ fontSize: 11, color: c.textDim, marginTop: 3, fontFamily: 'monospace' }}>
+                    {detail.reference}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setDetail(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`,
+                  borderRadius: 8, width: 28, height: 28, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: c.textMid, fontSize: 16, lineHeight: 1, flexShrink: 0,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {detailLoading && !detail ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 13, color: c.textDim }}>
+                  Loading…
+                </div>
+              ) : detail ? (
+                <>
+                  {/* Status + type row */}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {(() => { const ss = statusStyle(detail.status); return <Pill label={detail.status.charAt(0).toUpperCase() + detail.status.slice(1)} color={ss.color} bg={ss.bg} brd={ss.brd} />; })()}
+                    {(() => { const ts = typeStyle(detail.type); return <Pill label={TYPE_LABELS[detail.type] ?? detail.type} color={ts.color} bg={ts.bg} brd={ts.brd} />; })()}
+                  </div>
+
+                  {/* Amount */}
+                  <Section label="Amount">
+                    <Row k="USDC"    v={`$${fmtUsdc(detail.amountUsdc)}`} highlight />
+                    <Row k="Fee"     v={parseFloat(detail.feeUsdc) > 0 ? `$${fmtUsdc(detail.feeUsdc)}` : '—'} />
+                    {detail.amountNgn  && <Row k="NGN"  v={`₦${parseFloat(detail.amountNgn).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`} />}
+                    {detail.rateApplied && <Row k="Rate" v={`₦${parseFloat(detail.rateApplied).toLocaleString()}`} />}
+                  </Section>
+
+                  {/* User */}
+                  <Section label="User">
+                    <Row k="Username" v={
+                      <Link href={`/admin/users/${detail.userId}`} style={{ color: c.blue, textDecoration: 'none' }}>
+                        @{detail.username}
+                      </Link>
+                    } />
+                    <Row k="User ID" v={detail.userId} mono />
+                  </Section>
+
+                  {/* Recipient */}
+                  {(detail.recipientUsername || detail.recipientAddress || detail.bankName) && (
+                    <Section label="Recipient">
+                      {detail.recipientUsername && <Row k="Username"  v={`@${detail.recipientUsername}`} />}
+                      {detail.recipientName     && <Row k="Name"      v={detail.recipientName} />}
+                      {detail.bankName          && <Row k="Bank"      v={detail.bankName} />}
+                      {detail.accountNumber     && <Row k="Account"   v={detail.accountNumber} mono />}
+                      {detail.recipientAddress  && <Row k="Address"   v={detail.recipientAddress} mono truncate />}
+                    </Section>
+                  )}
+
+                  {/* On-chain */}
+                  {(detail.txHash || detail.network) && (
+                    <Section label="On-chain">
+                      {detail.network && <Row k="Network" v={detail.network} />}
+                      {detail.txHash  && <Row k="Tx Hash" v={detail.txHash} mono truncate />}
+                    </Section>
+                  )}
+
+                  {/* Meta */}
+                  <Section label="Details">
+                    {detail.description    && <Row k="Description"    v={detail.description} />}
+                    {detail.failureReason  && <Row k="Failure reason" v={detail.failureReason} color={c.red} />}
+                    <Row k="Created"  v={new Date(detail.createdAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })} />
+                    <Row k="Updated"  v={new Date(detail.updatedAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })} />
+                    <Row k="ID" v={detail.id} mono truncate />
+                  </Section>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </>
+      )}
+
+    </div>
+  );
+}
+
+// ── Drawer helpers ─────────────────────────────────────────────────────────────
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim, marginBottom: 10 }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, background: 'rgba(255,255,255,0.03)', border: `1px solid ${c.border}`, borderRadius: 10, overflow: 'hidden' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Row({ k, v, mono, truncate, highlight, color }: {
+  k: string;
+  v: React.ReactNode;
+  mono?: boolean;
+  truncate?: boolean;
+  highlight?: boolean;
+  color?: string;
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '9px 14px', gap: 12,
+      borderBottom: `1px solid ${c.border}`,
+    }}
+    >
+      <span style={{ fontSize: 11.5, color: c.textDim, flexShrink: 0 }}>{k}</span>
+      <span style={{
+        fontSize: highlight ? 15 : 12,
+        fontWeight: highlight ? 600 : 400,
+        color: color ?? (highlight ? c.text : c.textMid),
+        fontFamily: mono ? 'monospace' : undefined,
+        overflow: truncate ? 'hidden' : undefined,
+        textOverflow: truncate ? 'ellipsis' : undefined,
+        whiteSpace: truncate ? 'nowrap' : undefined,
+        maxWidth: truncate ? 220 : undefined,
+        textAlign: 'right',
+      }}>
+        {v}
+      </span>
     </div>
   );
 }
