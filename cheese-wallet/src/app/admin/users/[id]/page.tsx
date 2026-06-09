@@ -222,6 +222,19 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   <div style={{ fontSize: 12.5, color: c.text, textAlign: 'right', maxWidth: '65%', wordBreak: 'break-all' }}>{v}</div>
                 </div>
               ))}
+              {user.referralCode && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                  <div style={lbl}>Referral Link</div>
+                  <a
+                    href={`https://cheesepay.xyz/signup?ref=${user.referralCode}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: c.blue, textAlign: 'right', maxWidth: '65%', wordBreak: 'break-all', textDecoration: 'none' }}
+                  >
+                    cheesepay.xyz/signup?ref={user.referralCode}
+                  </a>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={lbl}>Email Verified</div>
                 <Pill
