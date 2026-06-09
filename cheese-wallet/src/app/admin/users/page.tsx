@@ -81,7 +81,7 @@ export default function UsersPage() {
   const KYCS:  KycFilter[]  = ['All', 'Verified', 'Pending', 'Reviewing', 'Failed'];
 
   const COLS     = ['User', 'Tier', 'KYC', 'Wallet', 'Email', 'Joined', ''];
-  const COL_GRID = '2.4fr 80px 90px 90px 1.4fr 100px 36px';
+  const COL_GRID = '2fr 90px 100px 110px 1.6fr 110px 36px';
 
   const from = total === 0 ? 0 : (page - 1) * LIMIT + 1;
   const to   = Math.min(page * LIMIT, total);
@@ -197,7 +197,7 @@ export default function UsersPage() {
 
         {/* Column headers */}
         <div style={{
-          display: 'grid', gridTemplateColumns: COL_GRID,
+          display: 'grid', gridTemplateColumns: COL_GRID, columnGap: 12,
           padding: '9px 22px', borderBottom: `1px solid ${c.border}`,
           flexShrink: 0,
         }}>
@@ -228,7 +228,7 @@ export default function UsersPage() {
               return (
                 <Link key={u.id} href={`/admin/users/${u.id}`} className="row-hover"
                   style={{
-                    display: 'grid', gridTemplateColumns: COL_GRID,
+                    display: 'grid', gridTemplateColumns: COL_GRID, columnGap: 12,
                     padding: '11px 22px', alignItems: 'center', cursor: 'pointer',
                     borderBottom: i < users.length - 1 ? `1px solid ${c.border}` : 'none',
                     textDecoration: 'none', color: 'inherit',
