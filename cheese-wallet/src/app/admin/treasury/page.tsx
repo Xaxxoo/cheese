@@ -267,8 +267,7 @@ function TransferPanel({ onSent }: { onSent: () => void }) {
       setAmount('');
       onSent();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Transfer failed';
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Transfer failed');
     } finally {
       setSubmitting(false);
     }
@@ -381,8 +380,7 @@ function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
       setResult(res);
       onSent();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Sweep failed';
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Sweep failed');
     } finally {
       setSubmitting(false);
     }
