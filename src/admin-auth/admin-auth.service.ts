@@ -17,6 +17,7 @@ import { User, AdminRole, KycStatus, Tier, WalletStatus } from '../auth/entities
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { Transaction, TxStatus } from '../transactions/entities/transaction.entity';
+import { Referral } from '../referral/entities/referral.entity';
 import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfer.entity';
 import { PaymentRequest } from '../paylink/entities/payment-request.entity';
 import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
@@ -53,6 +54,9 @@ export class AdminAuthService {
 
     @InjectRepository(VirtualCard)
     private readonly cardRepo: Repository<VirtualCard>,
+
+    @InjectRepository(Referral)
+    private readonly referralRepo: Repository<Referral>,
 
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -893,6 +897,59 @@ export class AdminAuthService {
         txHash:            t.txHash,
         failureReason:     t.failureReason,
         createdAt:         t.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // ── Referrals listing ────────────────────────────────────────────────────
+
+  async listReferrals(query: { page: number; limit: number; status?: string; search?: string }) {
+    const { page, limit, status, search } = query;
+
+    const qb = this.referralRepo
+      .createQueryBuilder('r')
+      .orderBy('r.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status && status !== 'all') {
+      qb.andWhere('r.status = :status', { status });
+    }
+    if (search) {
+      qb.andWhere(
+        `(r.referrer_id IN (SELECT u.id FROM users u WHERE LOWER(u.username) LIKE :q)
+          OR r.referee_id IN (SELECT u.id FROM users u WHERE LOWER(u.username) LIKE :q))`,
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const [referrals, total] = await qb.getManyAndCount();
+
+    const userIds = [...new Set([
+      ...referrals.map((r) => r.referrerId),
+      ...referrals.map((r) => r.refereeId),
+    ])];
+
+    const usernameMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      const users = await this.userRepo.find({ where: { id: In(userIds) }, select: ['id', 'username'] });
+      users.forEach((u) => usernameMap.set(u.id, u.username));
+    }
+
+    return {
+      referrals: referrals.map((r) => ({
+        id:              r.id,
+        referrerId:      r.referrerId,
+        referrerUsername: usernameMap.get(r.referrerId) ?? '—',
+        refereeId:       r.refereeId,
+        refereeUsername: usernameMap.get(r.refereeId)  ?? '—',
+        status:          r.status,
+        rewardUsdc:      r.rewardUsdc,
+        rewardedAt:      r.rewardedAt,
+        createdAt:       r.createdAt,
       })),
       total,
       page,

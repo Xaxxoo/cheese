@@ -110,6 +110,25 @@ export class AdminDashboardController {
     return this.adminAuthService.flagUser(id, flag);
   }
 
+  // ── GET /admin/referrals ───────────────────────────────────────────────────
+  @Get('referrals')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List all referrals (paginated, filterable)' })
+  listReferrals(
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.adminAuthService.listReferrals({
+      page:  Math.max(1, parseInt(page  ?? '1',  10)),
+      limit: Math.min(100, parseInt(limit ?? '25', 10)),
+      status,
+      search,
+    });
+  }
+
   // ── GET /admin/transactions/:id ───────────────────────────────────────────
   @Get('transactions/:id')
   @UseGuards(AdminJwtGuard)

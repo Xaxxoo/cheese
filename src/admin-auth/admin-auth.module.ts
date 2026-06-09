@@ -9,6 +9,7 @@ import { BankTransfer } from '../banks/entities/bank-transfer.entity';
 import { PaymentRequest } from '../paylink/entities/payment-request.entity';
 import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
 import { VirtualCard } from '../cards/entities/virtual-card.entity';
+import { Referral } from '../referral/entities/referral.entity';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
@@ -23,7 +24,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken, Transaction, BankTransfer, PaymentRequest, WaitlistEntry, VirtualCard]),
+    TypeOrmModule.forFeature([User, RefreshToken, Transaction, BankTransfer, PaymentRequest, WaitlistEntry, VirtualCard, Referral]),
     PassportModule,
     JwtModule.register({}),
     RatesModule,

@@ -398,6 +398,34 @@ export interface AdminTransactionItem {
   createdAt:         string
 }
 
+// ── Referrals ──────────────────────────────────────────────────────────────
+export interface AdminReferralItem {
+  id:               string
+  referrerId:       string
+  referrerUsername: string
+  refereeId:        string
+  refereeUsername:  string
+  status:           string
+  rewardUsdc:       string | null
+  rewardedAt:       string | null
+  createdAt:        string
+}
+
+export async function listAdminReferrals(params?: {
+  page?:   number
+  limit?:  number
+  status?: string
+  search?: string
+}): Promise<{ referrals: AdminReferralItem[]; total: number; page: number; limit: number }> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    referrals: AdminReferralItem[]
+    total:     number
+    page:      number
+    limit:     number
+  }>>('/admin/referrals', { params })
+  return data.data
+}
+
 export interface AdminTransactionDetail extends AdminTransactionItem {
   rateApplied:   string | null
   recipientName: string | null
