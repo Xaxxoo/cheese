@@ -225,14 +225,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
               {user.referralCode && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
                   <div style={lbl}>Referral Link</div>
-                  <a
-                    href={`https://cheesepay.xyz/signup?ref=${user.referralCode}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: 12, color: c.blue, textAlign: 'right', maxWidth: '65%', wordBreak: 'break-all', textDecoration: 'none' }}
-                  >
-                    cheesepay.xyz/signup?ref={user.referralCode}
-                  </a>
+                  <CopyField value={`https://cheesepay.xyz/signup?ref=${user.referralCode}`} />
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -523,6 +516,38 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
 
         </div>
       </div>
+    </div>
+  );
+}
+
+function CopyField({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '65%' }}>
+      <span style={{ fontSize: 12, color: c.textMid, wordBreak: 'break-all', textAlign: 'right' }}>
+        {value.replace('https://', '')}
+      </span>
+      <button
+        onClick={copy}
+        style={{
+          flexShrink: 0,
+          background: copied ? c.greenDim : 'rgba(255,255,255,0.06)',
+          border: `1px solid ${copied ? 'rgba(34,197,94,0.2)' : c.border}`,
+          borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+          fontSize: 11, color: copied ? c.green : c.textMid,
+          fontFamily: 'inherit', whiteSpace: 'nowrap',
+        }}
+      >
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
     </div>
   );
 }
