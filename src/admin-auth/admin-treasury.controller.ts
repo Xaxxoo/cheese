@@ -92,4 +92,16 @@ export class AdminTreasuryController {
       amountUsdc: dto.amountUsdc,
     });
   }
+
+  // ── POST /admin/treasury/contract-drain-all ────────────────────────────────
+  @Post('contract-drain-all')
+  @ApiOperation({
+    summary: 'Drain ALL USDC from the Soroban contract back to the platform treasury (tracked balances + excess)',
+  })
+  contractDrainAll(@CurrentUser() admin: User) {
+    if (admin.adminRole !== AdminRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only super_admin can drain the contract');
+    }
+    return this.treasury.contractDrainAll();
+  }
 }

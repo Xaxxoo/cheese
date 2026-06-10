@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, IsNull, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { User } from '../auth/entities/user.entity';
@@ -196,6 +196,83 @@ export class AdminTreasuryService {
       amountUsdc: opts.amountUsdc,
       toAddress: user.stellarPublicKey,
       contractBalanceBefore,
+    };
+  }
+
+  // ── POST /admin/treasury/contract-drain-all ───────────────────────────────
+  // Moves ALL USDC out of the Soroban contract back to the platform treasury:
+  //   Step 1 — For every registered user with internal balance > 0,
+  //             calls withdraw(username, balance, platform) to debit their
+  //             tracked balance and send USDC to the treasury.
+  //   Step 2 — Calls sweep_excess(platform) to recover any untracked USDC
+  //             (e.g. from users whose migration Phase 3 failed).
+  // After this call the contract holds 0 USDC. Users will see $0 until
+  // the platform manually credits them.
+  async contractDrainAll(): Promise<{
+    trackedWithdrawn:  { username: string; amountUsdc: string; txHash: string }[];
+    excessSweepTxHash: string | null;
+    totalTrackedUsdc:  string;
+  }> {
+    if (!this.blockchain.isSorobanReady) {
+      throw new ServiceUnavailableException(
+        'Soroban not configured — check STELLAR_CONTRACT_ID, STELLAR_SOROBAN_RPC_URL',
+      );
+    }
+
+    const platformAddress = this.blockchain.platformPublicKey;
+    if (!platformAddress) {
+      throw new ServiceUnavailableException('Platform wallet not initialised');
+    }
+
+    // Load all users who have a Stellar wallet and a username
+    const users = await this.userRepo.find({
+      where: { stellarPublicKey: Not(IsNull()), username: Not(IsNull()) },
+      select: ['id', 'username', 'stellarPublicKey'],
+    });
+
+    const trackedWithdrawn: { username: string; amountUsdc: string; txHash: string }[] = [];
+    let totalTracked = 0;
+
+    // Step 1: Drain tracked balances for all registered users
+    for (const user of users) {
+      if (!user.username || !user.stellarPublicKey) continue;
+
+      const balance = await this.blockchain.getSorobanBalance(user.username);
+      const balanceNum = parseFloat(balance);
+      if (balanceNum <= 0) continue;
+
+      try {
+        const result = await this.blockchain.sendViaContract({
+          fromUsername:  user.username,
+          fromPublicKey: user.stellarPublicKey,
+          amountUsdc:    balance,
+          toPublicKey:   platformAddress,
+        });
+        trackedWithdrawn.push({ username: user.username, amountUsdc: balance, txHash: result.txHash });
+        totalTracked += balanceNum;
+        this.logger.log(
+          `contractDrainAll: withdrew ${balance} USDC from @${user.username} → treasury [hash=${result.txHash}]`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `contractDrainAll: failed to withdraw from @${user.username}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // Step 2: Sweep any remaining untracked excess to treasury
+    let excessSweepTxHash: string | null = null;
+    try {
+      excessSweepTxHash = await this.blockchain.sweepContractExcess(platformAddress);
+      this.logger.log(`contractDrainAll: sweep_excess → treasury [hash=${excessSweepTxHash}]`);
+    } catch (err) {
+      this.logger.warn(`contractDrainAll: sweep_excess failed (may be 0 excess): ${(err as Error).message}`);
+    }
+
+    return {
+      trackedWithdrawn,
+      excessSweepTxHash,
+      totalTrackedUsdc: totalTracked.toFixed(7),
     };
   }
 }

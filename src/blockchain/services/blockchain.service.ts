@@ -1542,6 +1542,10 @@ export class BlockchainService implements OnModuleInit {
 
     const sim = await this.sorobanRpc.simulateTransaction(tx);
     if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      // MissingValue means the username is not registered in the contract
+      // (never registered, or TTL expired). Treat as zero — the caller will
+      // fall back to Horizon. Throw for any other simulation error.
+      if (sim.error.includes('MissingValue')) return '0.0000000';
       throw new ContractCallException('getSorobanBalance', sim.error);
     }
 
@@ -1676,6 +1680,79 @@ export class BlockchainService implements OnModuleInit {
    * All calls are signed by the platform keypair (the contract's admin).
    * The user's PIN has already been verified at the service layer.
    */
+
+  /**
+   * Calls sweep_excess(recipient) on the Soroban contract.
+   * Transfers any USDC held by the contract above its tracked internal balance
+   * sum to `recipientPublicKey`. Safe to call any time — no-ops if there is
+   * no excess. Returns the Stellar transaction hash.
+   */
+  async sweepContractExcess(recipientPublicKey: string): Promise<string> {
+    this.requireStellar('sweepContractExcess');
+    this.requireSoroban('sweepContractExcess');
+
+    const contract   = new StellarSdk.Contract(this.sorobanContractId);
+    const platformKey = this.stellarPlatformKeypair.publicKey();
+    const platformAcct = await this.sorobanRpc.getAccount(platformKey);
+
+    const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
+      fee: '500000',
+      networkPassphrase: this.stellarNetwork,
+    })
+      .addOperation(
+        contract.call(
+          'sweep_excess',
+          StellarSdk.nativeToScVal(recipientPublicKey, { type: 'address' }),
+        ),
+      )
+      .setTimeout(300)
+      .build();
+
+    const sim = await this.sorobanRpc.simulateTransaction(rawTx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      throw new ContractCallException('sweepContractExcess', sim.error);
+    }
+
+    const prepared = StellarSdk.rpc
+      .assembleTransaction(
+        rawTx,
+        sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse,
+      )
+      .build();
+    prepared.sign(this.stellarPlatformKeypair);
+
+    const sendResult = await this.sorobanRpc.sendTransaction(prepared);
+    if (sendResult.status === 'ERROR') {
+      throw new ContractCallException(
+        'sweepContractExcess',
+        `Submit error: ${(sendResult.errorResult as any)?.toXDR?.('base64') ?? 'unknown'}`,
+      );
+    }
+
+    let getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+    let attempts = 0;
+    while (
+      getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
+      attempts < 60
+    ) {
+      await new Promise((r) => setTimeout(r, 2000));
+      getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+      attempts++;
+    }
+
+    if (getResult.status !== StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS) {
+      throw new ContractCallException(
+        'sweepContractExcess',
+        `Transaction did not confirm: status=${getResult.status}`,
+      );
+    }
+
+    this.logger.log(
+      `sweepContractExcess confirmed [recipient=${recipientPublicKey}] [hash=${sendResult.hash}]`,
+    );
+    return sendResult.hash;
+  }
+
   async sendViaContract(opts: {
     fromUsername: string;
     fromPublicKey: string;
