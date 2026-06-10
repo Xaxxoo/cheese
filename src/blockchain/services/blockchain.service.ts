@@ -1557,6 +1557,31 @@ export class BlockchainService implements OnModuleInit {
     return (Number(balanceStroops) / 10_000_000).toFixed(7);
   }
 
+  async getContractAdmin(): Promise<string> {
+    this.requireStellar('getContractAdmin');
+    this.requireSoroban('getContractAdmin');
+
+    const contract  = new StellarSdk.Contract(this.sorobanContractId);
+    const sourceAcct = await this.sorobanRpc.getAccount(
+      this.stellarPlatformKeypair.publicKey(),
+    );
+    const tx = new StellarSdk.TransactionBuilder(sourceAcct, {
+      fee: '500000',
+      networkPassphrase: this.stellarNetwork,
+    })
+      .addOperation(contract.call('get_admin'))
+      .setTimeout(300)
+      .build();
+
+    const sim = await this.sorobanRpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      throw new ContractCallException('getContractAdmin', sim.error);
+    }
+    const success = sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
+    const adminVal = StellarSdk.scValToNative(success.result!.retval) as string;
+    return adminVal;
+  }
+
   async getContractFeeRate(): Promise<number> {
     this.requireStellar('getContractFeeRate');
     this.requireSoroban('getContractFeeRate');

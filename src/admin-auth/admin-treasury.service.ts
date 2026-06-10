@@ -45,9 +45,10 @@ export class AdminTreasuryService {
 
   // ── GET /admin/treasury ──────────────────────────────────────────────────
   async getBalance(): Promise<{
-    address:       string;
-    balanceUsdc:   string;
-    contractUsdc?: string;
+    address:        string;
+    balanceUsdc:    string;
+    contractUsdc?:  string;
+    contractAdmin?: string;
     evmVault?: {
       vaultAddress: string;
       payments:     string;
@@ -65,11 +66,17 @@ export class AdminTreasuryService {
     const balanceUsdc = await this.blockchain.getStellarUsdcBalance(address);
 
     let contractUsdc: string | undefined;
+    let contractAdmin: string | undefined;
     if (this.blockchain.isSorobanReady) {
       try {
         contractUsdc = await this.blockchain.getSorobanContractUsdcBalance();
       } catch (err) {
         this.logger.warn(`Contract USDC balance fetch failed: ${(err as Error).message}`);
+      }
+      try {
+        contractAdmin = await this.blockchain.getContractAdmin();
+      } catch (err) {
+        this.logger.warn(`getContractAdmin failed: ${(err as Error).message}`);
       }
     }
 
@@ -90,7 +97,8 @@ export class AdminTreasuryService {
     return {
       address,
       balanceUsdc,
-      ...(contractUsdc !== undefined ? { contractUsdc } : {}),
+      ...(contractUsdc  !== undefined ? { contractUsdc  } : {}),
+      ...(contractAdmin !== undefined ? { contractAdmin } : {}),
       ...(evmVault ? { evmVault } : {}),
     };
   }
