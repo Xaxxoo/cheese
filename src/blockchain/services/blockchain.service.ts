@@ -453,6 +453,20 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
+  /**
+   * Load a Stellar account for use as a Soroban transaction source.
+   * Falls back to Horizon when the Soroban RPC can't find the account
+   * (transient RPC sync issues).
+   */
+  private async getSorobanAccount(publicKey: string): Promise<StellarSdk.Account> {
+    try {
+      return await this.sorobanRpc.getAccount(publicKey);
+    } catch {
+      const horizonAcct = await this.stellarServer.loadAccount(publicKey);
+      return new StellarSdk.Account(publicKey, horizonAcct.sequenceNumber());
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // EVM — helpers
   // ─────────────────────────────────────────────────────────────────────────
@@ -1523,7 +1537,7 @@ export class BlockchainService implements OnModuleInit {
     this.requireSoroban('getSorobanBalance');
 
     const contract = new StellarSdk.Contract(this.sorobanContractId);
-    const sourceAcct = await this.sorobanRpc.getAccount(
+    const sourceAcct = await this.getSorobanAccount(
       this.stellarPlatformKeypair.publicKey(),
     );
 
@@ -1562,7 +1576,7 @@ export class BlockchainService implements OnModuleInit {
     this.requireSoroban('getContractAdmin');
 
     const contract  = new StellarSdk.Contract(this.sorobanContractId);
-    const sourceAcct = await this.sorobanRpc.getAccount(
+    const sourceAcct = await this.getSorobanAccount(
       this.stellarPlatformKeypair.publicKey(),
     );
     const tx = new StellarSdk.TransactionBuilder(sourceAcct, {
@@ -1587,7 +1601,7 @@ export class BlockchainService implements OnModuleInit {
     this.requireSoroban('getContractFeeRate');
 
     const contract = new StellarSdk.Contract(this.sorobanContractId);
-    const sourceAcct = await this.sorobanRpc.getAccount(
+    const sourceAcct = await this.getSorobanAccount(
       this.stellarPlatformKeypair.publicKey(),
     );
 
@@ -1630,7 +1644,7 @@ export class BlockchainService implements OnModuleInit {
 
     const contract = new StellarSdk.Contract(this.sorobanContractId);
     const platformKey = this.stellarPlatformKeypair.publicKey();
-    const platformAcct = await this.sorobanRpc.getAccount(platformKey);
+    const platformAcct = await this.getSorobanAccount(platformKey);
 
     const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
       fee: '500000',
@@ -1720,7 +1734,8 @@ export class BlockchainService implements OnModuleInit {
     const platformKey = this.stellarPlatformKeypair.publicKey();
 
     // sweep_excess() takes no arguments — the contract computes excess internally
-    const sourceAcct = await this.sorobanRpc.getAccount(platformKey);
+    const sourceAcct = await this.getSorobanAccount(platformKey);
+
     const rawTx = new StellarSdk.TransactionBuilder(sourceAcct, {
       fee: '500000',
       networkPassphrase: this.stellarNetwork,
@@ -1789,7 +1804,7 @@ export class BlockchainService implements OnModuleInit {
 
     const contract = new StellarSdk.Contract(this.sorobanContractId);
     const platformKey = this.stellarPlatformKeypair.publicKey();
-    const platformAcct = await this.sorobanRpc.getAccount(platformKey);
+    const platformAcct = await this.getSorobanAccount(platformKey);
 
     let operation: StellarSdk.xdr.Operation;
     if (toUsername) {
@@ -1936,7 +1951,7 @@ export class BlockchainService implements OnModuleInit {
     const sacContractId = usdcAsset.contractId(this.stellarNetwork);
     const sacContract = new StellarSdk.Contract(sacContractId);
 
-    const sourceAcct = await this.sorobanRpc.getAccount(
+    const sourceAcct = await this.getSorobanAccount(
       this.stellarPlatformKeypair.publicKey(),
     );
 
