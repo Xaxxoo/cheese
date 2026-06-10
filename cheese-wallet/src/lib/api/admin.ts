@@ -393,6 +393,7 @@ export async function recoverContractBalance(
 export interface ContractDrainResult {
   trackedWithdrawn:  { username: string; amountUsdc: string; txHash: string }[]
   excessSweepTxHash: string | null
+  excessSweepError:  string | null
   totalTrackedUsdc:  string
 }
 

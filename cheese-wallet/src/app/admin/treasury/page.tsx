@@ -545,10 +545,19 @@ function ContractDrainPanel({ onDrained }: { onDrained: () => void }) {
       )}
 
       {result && (
-        <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontWeight: 600 }}>Drain complete</div>
+        <div style={{ fontSize: 12, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4,
+          color: result.excessSweepError ? c.red : c.green,
+          background: result.excessSweepError ? c.redDim : c.greenDim,
+          border: `1px solid ${result.excessSweepError ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`,
+        }}>
+          <div style={{ fontWeight: 600 }}>{result.excessSweepError ? 'Drain incomplete — sweep failed' : 'Drain complete'}</div>
           <div>Tracked USDC drained: <b>${parseFloat(result.totalTrackedUsdc).toFixed(4)}</b></div>
           <div>Users drained: <b>{result.trackedWithdrawn.length}</b></div>
+          {result.excessSweepError && (
+            <div style={{ marginTop: 4, fontFamily: 'monospace', fontSize: 10.5, wordBreak: 'break-all', color: c.red }}>
+              Sweep error: {result.excessSweepError}
+            </div>
+          )}
           {result.excessSweepTxHash && (
             <div style={{ fontFamily: 'monospace', fontSize: 10.5, wordBreak: 'break-all' }}>
               Sweep tx: {result.excessSweepTxHash}
