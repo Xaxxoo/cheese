@@ -1742,7 +1742,7 @@ export class BlockchainService implements OnModuleInit {
       .addOperation(
         contract.call(
           'sweep_excess',
-          new StellarSdk.Address(platformKey).toScVal(),
+          StellarSdk.nativeToScVal(platformKey, { type: 'address' }),
         ),
       )
       .setTimeout(300)
