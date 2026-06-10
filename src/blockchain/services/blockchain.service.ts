@@ -1753,19 +1753,37 @@ export class BlockchainService implements OnModuleInit {
       throw new ContractCallException('sweepContractExcess', sim.error);
     }
 
+    const simSuccess = sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
+    this.logger.log(
+      `sweepContractExcess sim OK ` +
+      `[authEntries=${simSuccess.result?.auth?.length ?? 0}] ` +
+      `[minResourceFee=${simSuccess.minResourceFee}]`,
+    );
+    if (simSuccess.result?.auth?.length) {
+      simSuccess.result.auth.forEach((entry, i) => {
+        this.logger.log(`sweepContractExcess auth[${i}]: ${JSON.stringify(entry.toXDR?.('base64'))}`);
+      });
+    }
+
     const prepared = StellarSdk.rpc
       .assembleTransaction(
         rawTx,
-        sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse,
+        simSuccess,
       )
       .build();
+    this.logger.log(
+      `sweepContractExcess prepared [networkPassphrase="${prepared.networkPassphrase}"] ` +
+      `[fee=${prepared.fee}] [sourceAccount=${prepared.source}]`,
+    );
     prepared.sign(this.stellarPlatformKeypair);
 
     const sendResult = await this.sorobanRpc.sendTransaction(prepared);
     if (sendResult.status === 'ERROR') {
+      const errorXdr = (sendResult.errorResult as any)?.toXDR?.('base64') ?? 'unknown';
+      const errorCode = (sendResult.errorResult as any)?.result?.()?.code?.().name ?? '';
       throw new ContractCallException(
         'sweepContractExcess',
-        `Submit error: ${(sendResult.errorResult as any)?.toXDR?.('base64') ?? 'unknown'}`,
+        `Submit error [code=${errorCode}]: ${errorXdr}`,
       );
     }
 
