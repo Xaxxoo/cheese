@@ -398,6 +398,8 @@ export interface ContractDrainResult {
 export async function contractDrainAll(): Promise<ContractDrainResult> {
   const { data } = await adminApiClient.post<ApiResponse<ContractDrainResult>>(
     '/admin/treasury/contract-drain-all',
+    undefined,
+    { timeout: 300_000 }, // 5 min — drains one Soroban tx per user
   )
   return data.data
 }
