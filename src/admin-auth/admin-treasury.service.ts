@@ -282,7 +282,7 @@ export class AdminTreasuryService {
     // Step 2: Sweep any remaining untracked excess to treasury
     let excessSweepTxHash: string | null = null;
     try {
-      excessSweepTxHash = await this.blockchain.sweepContractExcess(platformAddress);
+      excessSweepTxHash = await this.blockchain.sweepContractExcess();
       this.logger.log(`contractDrainAll: sweep_excess → treasury [hash=${excessSweepTxHash}]`);
     } catch (err) {
       this.logger.warn(`contractDrainAll: sweep_excess failed (may be 0 excess): ${(err as Error).message}`);

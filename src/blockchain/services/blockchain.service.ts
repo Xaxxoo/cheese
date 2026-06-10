@@ -1682,27 +1682,80 @@ export class BlockchainService implements OnModuleInit {
    */
 
   /**
-   * Calls sweep_excess(recipient) on the Soroban contract.
-   * Transfers any USDC held by the contract above its tracked internal balance
-   * sum to `recipientPublicKey`. Safe to call any time — no-ops if there is
-   * no excess. Returns the Stellar transaction hash.
+   * Calls sweep_excess(amount) on the Soroban contract.
+   * The contract sends the excess USDC to its configured fee_treasury address.
+   * Computes excess = actual_usdc_balance - total_internal_balance, then sweeps it.
+   * Returns the Stellar transaction hash, or null if there is nothing to sweep.
    */
-  async sweepContractExcess(recipientPublicKey: string): Promise<string> {
+  async sweepContractExcess(): Promise<string | null> {
     this.requireStellar('sweepContractExcess');
     this.requireSoroban('sweepContractExcess');
 
-    const contract   = new StellarSdk.Contract(this.sorobanContractId);
+    const contract    = new StellarSdk.Contract(this.sorobanContractId);
     const platformKey = this.stellarPlatformKeypair.publicKey();
-    const platformAcct = await this.sorobanRpc.getAccount(platformKey);
 
-    const rawTx = new StellarSdk.TransactionBuilder(platformAcct, {
+    // ── Step 1: compute excess = actual USDC balance − tracked internal balance ──
+    // Get actual USDC held by the contract via the USDC SAC
+    const usdcAsset    = new StellarSdk.Asset('USDC', this.stellarUsdcIssuer);
+    const sacContractId = usdcAsset.contractId(this.stellarNetwork);
+    const sacContract  = new StellarSdk.Contract(sacContractId);
+    const contractAddr = new StellarSdk.Address(this.sorobanContractId).toScVal();
+
+    const sourceAcct = await this.sorobanRpc.getAccount(platformKey);
+
+    const sacSim = await this.sorobanRpc.simulateTransaction(
+      new StellarSdk.TransactionBuilder(sourceAcct, {
+        fee: '500000', networkPassphrase: this.stellarNetwork,
+      })
+        .addOperation(sacContract.call('balance', contractAddr))
+        .setTimeout(300)
+        .build(),
+    );
+    if (StellarSdk.rpc.Api.isSimulationError(sacSim)) {
+      if (sacSim.error.includes('MissingValue')) return null; // contract holds no USDC
+      throw new ContractCallException('sweepContractExcess/sacBalance', sacSim.error);
+    }
+    const actualStroops = StellarSdk.scValToNative(
+      (sacSim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse).result!.retval,
+    ) as bigint;
+
+    // Get total tracked internal balance from the contract
+    const sourceAcct2 = await this.sorobanRpc.getAccount(platformKey);
+    const internalSim = await this.sorobanRpc.simulateTransaction(
+      new StellarSdk.TransactionBuilder(sourceAcct2, {
+        fee: '500000', networkPassphrase: this.stellarNetwork,
+      })
+        .addOperation(contract.call('total_internal_balance'))
+        .setTimeout(300)
+        .build(),
+    );
+    if (StellarSdk.rpc.Api.isSimulationError(internalSim)) {
+      throw new ContractCallException('sweepContractExcess/totalInternal', internalSim.error);
+    }
+    const internalStroops = StellarSdk.scValToNative(
+      (internalSim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse).result!.retval,
+    ) as bigint;
+
+    const excessStroops = actualStroops - internalStroops;
+    if (excessStroops <= 0n) {
+      this.logger.log('sweepContractExcess: no excess to sweep');
+      return null;
+    }
+
+    this.logger.log(
+      `sweepContractExcess: excess=${excessStroops} stroops (actual=${actualStroops}, internal=${internalStroops})`,
+    );
+
+    // ── Step 2: call sweep_excess(amount) — contract sends to its fee_treasury ──
+    const sourceAcct3 = await this.sorobanRpc.getAccount(platformKey);
+    const rawTx = new StellarSdk.TransactionBuilder(sourceAcct3, {
       fee: '500000',
       networkPassphrase: this.stellarNetwork,
     })
       .addOperation(
         contract.call(
           'sweep_excess',
-          StellarSdk.nativeToScVal(recipientPublicKey, { type: 'address' }),
+          StellarSdk.nativeToScVal(excessStroops, { type: 'i128' }),
         ),
       )
       .setTimeout(300)
@@ -1747,9 +1800,7 @@ export class BlockchainService implements OnModuleInit {
       );
     }
 
-    this.logger.log(
-      `sweepContractExcess confirmed [recipient=${recipientPublicKey}] [hash=${sendResult.hash}]`,
-    );
+    this.logger.log(`sweepContractExcess confirmed [hash=${sendResult.hash}]`);
     return sendResult.hash;
   }
 
