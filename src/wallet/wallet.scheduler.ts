@@ -252,17 +252,6 @@ export class WalletDepositScheduler {
           );
       }
 
-      // Notify the Soroban contract of the deposit (fire-and-forget).
-      // Routing is purely by destination address — memo is never used.
-      if (this.blockchainService.isSorobanReady) {
-        void this.blockchainService
-          .notifyContractDeposit(user.stellarPublicKey!, payment.amount, payment.txHash)
-          .catch((err: Error) =>
-            this.logger.warn(
-              `notifyContractDeposit failed [user=${user.id}] [hash=${payment.txHash}]: ${err.message}`,
-            ),
-          );
-      }
     }
 
     // Always advance the cursor to the last raw Horizon record seen, not just

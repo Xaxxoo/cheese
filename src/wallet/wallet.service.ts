@@ -67,13 +67,16 @@ export class WalletService {
       //   crashes the request — it just returns 0 for that source.
       user.stellarPublicKey
         ? (async () => {
-            if (this.blockchainService.isSorobanReady && user.username) {
+            if (this.blockchainService.isSorobanReady) {
+              // Query the contract by Stellar address — this matches how
+              // deposit_by_address stores funds (keyed by address, not username).
               const sorobanRaw = await this.blockchainService
-                .getSorobanBalance(user.username)
+                .getSorobanBalanceByAddress(user.stellarPublicKey!)
                 .catch(() => '0.0000000');
               if (parseFloat(sorobanRaw) > 0) return sorobanRaw;
-              // Soroban shows 0 — fall through to Horizon for users whose deposit
-              // hasn't been credited to the contract yet.
+              // Soroban shows 0 — fall through to Horizon for users whose USDC
+              // sits at their own Stellar address and hasn't been deposited into
+              // the contract yet.
             }
             return this.blockchainService
               .getStellarUsdcBalance(user.stellarPublicKey!)
