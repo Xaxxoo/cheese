@@ -242,6 +242,7 @@ export class AdminTreasuryService {
   async contractDrainAll(): Promise<{
     trackedWithdrawn:  { username: string; amountUsdc: string; txHash: string }[];
     excessSweepTxHash: string | null;
+    excessSweepError:  string | null;
     totalTrackedUsdc:  string;
   }> {
     if (!this.blockchain.isSorobanReady) {
