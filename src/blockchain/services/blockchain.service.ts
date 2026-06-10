@@ -1776,11 +1776,18 @@ export class BlockchainService implements OnModuleInit {
       `[fee=${prepared.fee}] [sourceAccount=${prepared.source}]`,
     );
     prepared.sign(this.stellarPlatformKeypair);
+    this.logger.log(
+      `sweepContractExcess txEnvelope: ${prepared.toEnvelope().toXDR('base64')}`,
+    );
 
     const sendResult = await this.sorobanRpc.sendTransaction(prepared);
     if (sendResult.status === 'ERROR') {
       const errorXdr = (sendResult.errorResult as any)?.toXDR?.('base64') ?? 'unknown';
-      const errorCode = (sendResult.errorResult as any)?.result?.()?.code?.().name ?? '';
+      let errorCode = '';
+      try {
+        const resultObj = StellarSdk.xdr.TransactionResult.fromXDR(errorXdr, 'base64');
+        errorCode = resultObj.result().switch().name;
+      } catch (_) { /* ignore */ }
       throw new ContractCallException(
         'sweepContractExcess',
         `Submit error [code=${errorCode}]: ${errorXdr}`,
