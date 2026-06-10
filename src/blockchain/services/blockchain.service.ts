@@ -1721,9 +1721,9 @@ export class BlockchainService implements OnModuleInit {
    */
 
   /**
-   * Calls sweep_excess() on the Soroban contract (no arguments).
+   * Calls sweep_excess(recipient: Address) on the Soroban contract.
    * The contract computes excess = actual_usdc_balance - total_internal_balance
-   * and transfers it to its configured fee_treasury address.
+   * and transfers it to the given recipient address.
    * Returns the Stellar transaction hash, or null if there is nothing to sweep.
    */
   async sweepContractExcess(): Promise<string | null> {
@@ -1733,14 +1733,18 @@ export class BlockchainService implements OnModuleInit {
     const contract    = new StellarSdk.Contract(this.sorobanContractId);
     const platformKey = this.stellarPlatformKeypair.publicKey();
 
-    // sweep_excess() takes no arguments — the contract computes excess internally
     const sourceAcct = await this.getSorobanAccount(platformKey);
 
     const rawTx = new StellarSdk.TransactionBuilder(sourceAcct, {
       fee: '500000',
       networkPassphrase: this.stellarNetwork,
     })
-      .addOperation(contract.call('sweep_excess'))
+      .addOperation(
+        contract.call(
+          'sweep_excess',
+          new StellarSdk.Address(platformKey).toScVal(),
+        ),
+      )
       .setTimeout(300)
       .build();
 
