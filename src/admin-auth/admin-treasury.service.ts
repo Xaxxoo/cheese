@@ -233,6 +233,8 @@ export class AdminTreasuryService {
     const trackedWithdrawn: { username: string; amountUsdc: string; txHash: string }[] = [];
     let totalTracked = 0;
 
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
     // Step 1: Drain tracked balances for all registered users
     for (const user of users) {
       if (!user.username || !user.stellarPublicKey) continue;
@@ -258,6 +260,9 @@ export class AdminTreasuryService {
           `contractDrainAll: failed to withdraw from @${user.username}: ${(err as Error).message}`,
         );
       }
+
+      // Avoid hammering the Soroban RPC and hitting 429 rate limits
+      await sleep(1500);
     }
 
     // Step 2: Sweep any remaining untracked excess to treasury
