@@ -146,6 +146,13 @@ export const ENDPOINTS = {
     PAY:              (token: string) => `/paylink/${token}/pay`,
     CANCEL:           (token: string) => `/paylink/${token}`,
   },
+
+  // ── Bills ─────────────────────────────────────────────
+  BILLS: {
+    VARIATIONS: '/bills/variations',
+    VERIFY:     '/bills/verify',
+    PAY:        '/bills/pay',
+  },
 } as const
 
 // ── React Query Keys ──────────────────────────────────────

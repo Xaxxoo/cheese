@@ -21,6 +21,7 @@ import {
   stellarConfig,
   dojahConfig,
   alertsConfig,
+  vtpassConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -57,6 +58,7 @@ import { AgentsModule } from './agents/agents.module';
 import { KycModule } from './kyc/kyc.module';
 import { PayLinkModule } from './paylink/paylink.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { BillsModule } from './bills/bills.module';
 
 // Active entities
 import { User } from './auth/entities/user.entity';
@@ -105,6 +107,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
         stellarConfig,
         dojahConfig,
         alertsConfig,
+        vtpassConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -300,6 +303,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
     MerchantModule,
     PayLinkModule,
     AlertsModule,
+    BillsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },

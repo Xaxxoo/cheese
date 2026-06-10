@@ -100,3 +100,9 @@ export const alertsConfig = registerAs('alerts', () => ({
   telegramChatId: process.env.TELEGRAM_CHAT_ID,
   adminAlertEmail: process.env.ADMIN_ALERT_EMAIL,
 }));
+
+export const vtpassConfig = registerAs('vtpass', () => ({
+  baseUrl: process.env.VTPASS_BASE_URL || 'https://sandbox.vtpass.com/api',
+  apiKey: process.env.VTPASS_API_KEY,
+  secretKey: process.env.VTPASS_SECRET_KEY,
+}));

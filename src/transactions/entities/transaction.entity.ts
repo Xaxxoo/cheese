@@ -21,6 +21,7 @@ export enum TxType {
   CARD_PAYMENT = 'card_payment',
   FEE = 'fee',
   PAY_REQUEST = 'pay_request', // payment via PayLink
+  BILL_PAYMENT = 'bill_payment',
 }
 
 export enum TxStatus {

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowUpRight, ArrowDownLeft, Link2, Eye, EyeOff,
-  TrendingUp, RefreshCw, Copy, CheckCheck,
+  TrendingUp, RefreshCw, Copy, CheckCheck, Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -124,11 +124,12 @@ function BalanceCard() {
       </div>
 
       {/* Action row */}
-      <div className="grid grid-cols-3 border-t border-white/6">
+      <div className="grid grid-cols-4 border-t border-white/6">
         {[
-          { label: 'Send',     icon: ArrowUpRight,   href: '/send',          color: 'text-[#d4a843]' },
-          { label: 'Receive',  icon: ArrowDownLeft,  href: '/receive',       color: 'text-emerald-400' },
-          { label: 'Pay Link',  icon: Link2,          href: '/paylink',       color: 'text-violet-400' },
+          { label: 'Send',      icon: ArrowUpRight,  href: '/send',     color: 'text-[#d4a843]' },
+          { label: 'Receive',   icon: ArrowDownLeft, href: '/receive',  color: 'text-emerald-400' },
+          { label: 'Pay Link',  icon: Link2,         href: '/paylink',  color: 'text-violet-400' },
+          { label: 'Pay Bills', icon: Receipt,       href: '/bills',    color: 'text-amber-400' },
         ].map(({ label, icon: Icon, href, color }) => (
           <Link
             key={label}
@@ -163,6 +164,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
     card_payment:   'Card Payment',
     fee:            'Fee',
     pay_request:    'Pay Request',
+    bill_payment:   'Bill Payment',
   }
 
   const statusColor: Record<string, string> = {
