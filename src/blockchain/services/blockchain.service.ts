@@ -1787,15 +1787,24 @@ export class BlockchainService implements OnModuleInit {
       );
     }
 
+    // Poll with a short window (15 × 2 s = 30 s) to stay inside Railway's
+    // 60-second proxy timeout.  Soroban txs normally confirm in < 10 s.
     let getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
     let attempts = 0;
     while (
       getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
-      attempts < 60
+      attempts < 15
     ) {
       await new Promise((r) => setTimeout(r, 2000));
       getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
       attempts++;
+    }
+
+    if (getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND) {
+      // Still pending — return the hash so the caller can surface it.
+      // The tx will confirm on-chain regardless.
+      this.logger.warn(`sweepContractExcess still pending after ${attempts} polls [hash=${sendResult.hash}]`);
+      return sendResult.hash;
     }
 
     if (getResult.status !== StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS) {
