@@ -396,6 +396,20 @@ export interface ContractDrainResult {
   totalTrackedUsdc:  string
 }
 
+export interface AddressLookupItem {
+  address:  string
+  username: string | null
+  id:       string | null
+}
+
+export async function lookupStellarAddresses(addresses: string[]): Promise<AddressLookupItem[]> {
+  const { data } = await adminApiClient.get<ApiResponse<AddressLookupItem[]>>(
+    '/admin/treasury/lookup-addresses',
+    { params: { addresses: addresses.join(',') } },
+  )
+  return data.data
+}
+
 export async function contractDrainAll(): Promise<ContractDrainResult> {
   const { data } = await adminApiClient.post<ApiResponse<ContractDrainResult>>(
     '/admin/treasury/contract-drain-all',

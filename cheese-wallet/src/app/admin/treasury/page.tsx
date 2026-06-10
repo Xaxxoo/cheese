@@ -7,10 +7,12 @@ import {
   treasuryTransfer,
   evmTreasuryWithdraw,
   contractDrainAll,
+  lookupStellarAddresses,
   listAdminTransfers,
   type TreasuryBalance,
   type EvmVaultBalance,
   type ContractDrainResult,
+  type AddressLookupItem,
   type AdminTransferItem,
 } from '@/lib/api/admin';
 import { useAdminAuthStore } from '@/store/adminAuthStore';
@@ -600,6 +602,71 @@ function ContractDrainPanel({ onDrained }: { onDrained: () => void }) {
   );
 }
 
+// ── Swept-users panel ─────────────────────────────────────────────────────
+const SWEPT: { address: string; totalSwept: string }[] = [
+  { address: 'GBZVQXOIXVKE6WL7TJFRE6CQE7QIOG75FELA3B7MUCZ6XRUMXSMTHORX', totalSwept: '3.0584790' },
+  { address: 'GANZPCJN3ZRHMYNULTLXAWXW3T3LSYNWSOFEFQ743YL3T57CNBTUCMJC', totalSwept: '2.0449930' },
+  { address: 'GDSQFWAT3I2MOTBFHSM3YKJW2GVQEARVAGY6BSOUVLTM46LDL2JYLAWX', totalSwept: '2.0097260' },
+  { address: 'GAUR4DDZ3BWO4OVAEOU2Q2KOPIWJRR7VVUFSSGAT35JT73TNQ4WJVZVK',  totalSwept: '2.0000000' },
+  { address: 'GAQE4356TN37QQ7YVDWX6RYXIEFDYFIR6UT7OQGK6ELTU7ZQFIQ54NI4', totalSwept: '1.0000000' },
+  { address: 'GAUGHDOQHDDJCEDCVUNJVY7JNEKH7HYST3HTGWCSFH6YHLH2P2BCFG2M', totalSwept: '0.0442470' },
+  { address: 'GBT7S5S4TZ7GZEAM5NP7A5M2EZYL2IHWTWNU6T7V5AYGCGIPEUPWKUOY',  totalSwept: '0.0079740' },
+];
+
+function SweptUsersPanel() {
+  const [rows,    setRows]    = useState<(typeof SWEPT[0] & AddressLookupItem)[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void lookupStellarAddresses(SWEPT.map((s) => s.address)).then((lookup) => {
+      const map = new Map(lookup.map((l) => [l.address, l]));
+      setRows(SWEPT.map((s) => ({ ...s, ...(map.get(s.address) ?? { username: null, id: null }) })));
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`,
+    borderRadius: 14, overflow: 'hidden',
+  };
+
+  const colGrid = '1fr 1fr 130px';
+
+  return (
+    <div style={card}>
+      <div style={{ display: 'grid', gridTemplateColumns: colGrid, padding: '8px 18px', borderBottom: `1px solid ${c.border}` }}>
+        {['Stellar Address', 'Username', 'USDC Swept In'].map((h) => (
+          <div key={h} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>{h}</div>
+        ))}
+      </div>
+      {loading ? (
+        <div style={{ padding: '24px 18px', fontSize: 13, color: c.textDim }}>Loading…</div>
+      ) : rows.map((r, i) => (
+        <div key={r.address} style={{ display: 'grid', gridTemplateColumns: colGrid, padding: '10px 18px', alignItems: 'center', borderBottom: i < rows.length - 1 ? `1px solid ${c.border}` : 'none' }}>
+          <div style={{ fontFamily: 'monospace', fontSize: 11, color: c.textDim }}>
+            {r.address.slice(0, 8)}…{r.address.slice(-6)}
+          </div>
+          <div style={{ fontSize: 12.5, color: r.username ? c.text : c.textDim }}>
+            {r.username ? `@${r.username}` : '—'}
+            {r.id && (
+              <a href={`/admin/users/${r.id}`} style={{ marginLeft: 8, fontSize: 10.5, color: c.blue }}>view →</a>
+            )}
+          </div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(167,139,250)', fontVariantNumeric: 'tabular-nums' }}>
+            ${parseFloat(r.totalSwept).toFixed(4)}
+          </div>
+        </div>
+      ))}
+      <div style={{ padding: '8px 18px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end' }}>
+        <span style={{ fontSize: 11, color: c.textDim }}>
+          Total swept in: <b style={{ color: c.text }}>$10.1654 USDC</b>
+          <span style={{ marginLeft: 8, color: c.textDim }}>· Contract holds: <b style={{ color: 'rgb(167,139,250)' }}>$7.9329</b> · Difference already used: <b>~$2.23</b></span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
   const [treasury,    setTreasury]    = useState<TreasuryBalance | null>(null);
@@ -676,11 +743,17 @@ export default function TreasuryPage() {
       </div>
 
       {/* Soroban Contract section */}
-      <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={sectionLabel('Soroban Contract', 'rgb(167,139,250)')}>Soroban Contract</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
           <ContractBalanceCard contractUsdc={treasury?.contractUsdc} loading={balLoading} />
           <ContractDrainPanel onDrained={loadBalance} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Users whose USDC was swept into the contract
+          </div>
+          <SweptUsersPanel />
         </div>
       </div>
 

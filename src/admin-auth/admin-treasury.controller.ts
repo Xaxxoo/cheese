@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { IsNumberString, IsString, IsUUID, Matches } from 'class-validator';
@@ -91,6 +92,14 @@ export class AdminTreasuryController {
       userId: dto.userId,
       amountUsdc: dto.amountUsdc,
     });
+  }
+
+  // ── GET /admin/treasury/lookup-addresses ─────────────────────────────────
+  @Get('lookup-addresses')
+  @ApiOperation({ summary: 'Map Stellar addresses to usernames' })
+  lookupAddresses(@Query('addresses') addresses: string) {
+    const list = (addresses ?? '').split(',').map((a) => a.trim()).filter(Boolean);
+    return this.treasury.lookupAddresses(list);
   }
 
   // ── POST /admin/treasury/contract-drain-all ────────────────────────────────

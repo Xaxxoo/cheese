@@ -95,6 +95,23 @@ export class AdminTreasuryService {
     };
   }
 
+  // ── GET /admin/treasury/lookup-addresses ─────────────────────────────────
+  async lookupAddresses(
+    addresses: string[],
+  ): Promise<{ address: string; username: string | null; id: string | null }[]> {
+    if (!addresses.length) return [];
+    const users = await this.userRepo.find({
+      where: addresses.map((a) => ({ stellarPublicKey: a })),
+      select: ['id', 'username', 'stellarPublicKey'],
+    });
+    const map = new Map(users.map((u) => [u.stellarPublicKey, u]));
+    return addresses.map((a) => ({
+      address: a,
+      username: map.get(a)?.username ?? null,
+      id: map.get(a)?.id ?? null,
+    }));
+  }
+
   // ── POST /admin/treasury/transfer ────────────────────────────────────────
   async transfer(
     toAddress: string,
