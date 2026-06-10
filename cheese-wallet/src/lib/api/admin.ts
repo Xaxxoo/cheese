@@ -351,9 +351,10 @@ export interface EvmVaultBalance {
 }
 
 export interface TreasuryBalance {
-  address:     string
-  balanceUsdc: string
-  evmVault?:   EvmVaultBalance   // absent if Amoy not configured
+  address:        string
+  balanceUsdc:    string
+  contractUsdc?:  string         // USDC held by the Soroban contract (absent if Soroban not configured)
+  evmVault?:      EvmVaultBalance
 }
 
 export async function getTreasuryBalance(): Promise<TreasuryBalance> {

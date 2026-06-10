@@ -1905,6 +1905,46 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // USDC SAC balance — how much USDC the Soroban contract itself holds
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async getSorobanContractUsdcBalance(): Promise<string> {
+    this.requireStellar('getSorobanContractUsdcBalance');
+    this.requireSoroban('getSorobanContractUsdcBalance');
+
+    // Derive the USDC SAC contract ID from the on-chain asset
+    const usdcAsset = new StellarSdk.Asset('USDC', this.stellarUsdcIssuer);
+    const sacContractId = usdcAsset.contractId(this.stellarNetwork);
+    const sacContract = new StellarSdk.Contract(sacContractId);
+
+    const sourceAcct = await this.sorobanRpc.getAccount(
+      this.stellarPlatformKeypair.publicKey(),
+    );
+
+    // Call balance(Address(our_contract)) on the USDC SAC
+    const contractAddress = new StellarSdk.Address(this.sorobanContractId).toScVal();
+
+    const tx = new StellarSdk.TransactionBuilder(sourceAcct, {
+      fee: '500000',
+      networkPassphrase: this.stellarNetwork,
+    })
+      .addOperation(sacContract.call('balance', contractAddress))
+      .setTimeout(300)
+      .build();
+
+    const sim = await this.sorobanRpc.simulateTransaction(tx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      // Contract holds no USDC (no entry in SAC storage)
+      if (sim.error.includes('MissingValue')) return '0.0000000';
+      throw new ContractCallException('getSorobanContractUsdcBalance', sim.error);
+    }
+
+    const success = sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
+    const balanceStroops = StellarSdk.scValToNative(success.result!.retval) as bigint;
+    return (Number(balanceStroops) / 10_000_000).toFixed(7);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Ready state — used by schedulers to bail early if chains not configured
   // ─────────────────────────────────────────────────────────────────────────
 

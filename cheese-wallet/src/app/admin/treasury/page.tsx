@@ -451,6 +451,38 @@ function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
   );
 }
 
+// ── Soroban Contract balance card ─────────────────────────────────────────
+function ContractBalanceCard({ contractUsdc, loading }: { contractUsdc?: string; loading: boolean }) {
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`,
+    borderRadius: 14, padding: '22px 26px',
+    display: 'flex', alignItems: 'center', gap: 16,
+  };
+  return (
+    <div style={card}>
+      <div style={{
+        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+        background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'rgb(167,139,250)', fontSize: 18,
+      }}>◈</div>
+      <div>
+        <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>
+          Contract USDC Balance
+        </div>
+        {loading && contractUsdc === undefined ? (
+          <div style={{ fontSize: 26, fontWeight: 700, color: c.textDim }}>—</div>
+        ) : (
+          <div style={{ fontSize: 26, fontWeight: 700, color: c.text, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+            ${parseFloat(contractUsdc ?? '0').toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+            <span style={{ fontSize: 13, color: c.textDim, fontWeight: 500, marginLeft: 6 }}>USDC</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Soroban Contract Drain panel ──────────────────────────────────────────
 function ContractDrainPanel({ onDrained }: { onDrained: () => void }) {
   const { admin } = useAdminAuthStore();
@@ -646,7 +678,10 @@ export default function TreasuryPage() {
       {/* Soroban Contract section */}
       <div>
         <div style={sectionLabel('Soroban Contract', 'rgb(167,139,250)')}>Soroban Contract</div>
-        <ContractDrainPanel onDrained={loadBalance} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
+          <ContractBalanceCard contractUsdc={treasury?.contractUsdc} loading={balLoading} />
+          <ContractDrainPanel onDrained={loadBalance} />
+        </div>
       </div>
 
       {/* Completed transfers table */}

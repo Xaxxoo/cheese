@@ -45,8 +45,9 @@ export class AdminTreasuryService {
 
   // ── GET /admin/treasury ──────────────────────────────────────────────────
   async getBalance(): Promise<{
-    address:     string;
-    balanceUsdc: string;
+    address:       string;
+    balanceUsdc:   string;
+    contractUsdc?: string;
     evmVault?: {
       vaultAddress: string;
       payments:     string;
@@ -63,6 +64,15 @@ export class AdminTreasuryService {
     }
     const balanceUsdc = await this.blockchain.getStellarUsdcBalance(address);
 
+    let contractUsdc: string | undefined;
+    if (this.blockchain.isSorobanReady) {
+      try {
+        contractUsdc = await this.blockchain.getSorobanContractUsdcBalance();
+      } catch (err) {
+        this.logger.warn(`Contract USDC balance fetch failed: ${(err as Error).message}`);
+      }
+    }
+
     let evmVault: { vaultAddress: string; payments: string; fees: string; total: string; chainId: number } | undefined;
     if (this.blockchain.isEvmReady && this.vaultAddress && this.vaultUsdcAddress) {
       try {
@@ -74,11 +84,15 @@ export class AdminTreasuryService {
         evmVault = { vaultAddress: this.vaultAddress, chainId: this.VAULT_CHAIN_ID, ...vb };
       } catch (err) {
         this.logger.warn(`EVM vault balance fetch failed: ${(err as Error).message}`);
-        // Graceful degradation — Stellar section still works
       }
     }
 
-    return { address, balanceUsdc, ...(evmVault ? { evmVault } : {}) };
+    return {
+      address,
+      balanceUsdc,
+      ...(contractUsdc !== undefined ? { contractUsdc } : {}),
+      ...(evmVault ? { evmVault } : {}),
+    };
   }
 
   // ── POST /admin/treasury/transfer ────────────────────────────────────────
