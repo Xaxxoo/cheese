@@ -389,6 +389,19 @@ export async function recoverContractBalance(
   return data.data
 }
 
+export interface ContractDrainResult {
+  trackedWithdrawn:  { username: string; amountUsdc: string; txHash: string }[]
+  excessSweepTxHash: string | null
+  totalTrackedUsdc:  string
+}
+
+export async function contractDrainAll(): Promise<ContractDrainResult> {
+  const { data } = await adminApiClient.post<ApiResponse<ContractDrainResult>>(
+    '/admin/treasury/contract-drain-all',
+  )
+  return data.data
+}
+
 // ── Transactions ──────────────────────────────────────────────────────────
 export interface AdminTransactionItem {
   id:                string

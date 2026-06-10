@@ -6,9 +6,11 @@ import {
   getTreasuryBalance,
   treasuryTransfer,
   evmTreasuryWithdraw,
+  contractDrainAll,
   listAdminTransfers,
   type TreasuryBalance,
   type EvmVaultBalance,
+  type ContractDrainResult,
   type AdminTransferItem,
 } from '@/lib/api/admin';
 import { useAdminAuthStore } from '@/store/adminAuthStore';
@@ -449,6 +451,123 @@ function EvmWithdrawPanel({ onSent }: { onSent: () => void }) {
   );
 }
 
+// ── Soroban Contract Drain panel ──────────────────────────────────────────
+function ContractDrainPanel({ onDrained }: { onDrained: () => void }) {
+  const { admin } = useAdminAuthStore();
+  const isSuperAdmin = admin?.adminRole === 'super_admin';
+
+  const [confirm,    setConfirm]    = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [result,     setResult]     = useState<ContractDrainResult | null>(null);
+  const [error,      setError]      = useState('');
+
+  async function handleDrain() {
+    setError('');
+    setResult(null);
+    setSubmitting(true);
+    try {
+      const res = await contractDrainAll();
+      setResult(res);
+      setConfirm(false);
+      onDrained();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (err as Error)?.message
+        ?? 'Drain failed';
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`,
+    borderRadius: 14, padding: '20px 24px',
+    display: 'flex', flexDirection: 'column', gap: 14,
+  };
+
+  if (!isSuperAdmin) {
+    return (
+      <div style={{ ...card, alignItems: 'center', padding: '24px', textAlign: 'center' }}>
+        <div style={{ color: c.textDim, fontSize: 13 }}>
+          Only <span style={{ color: 'rgb(167,139,250)' }}>super_admin</span> can drain the contract.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Drain Contract → Treasury</div>
+      <div style={{ fontSize: 12, color: c.textDim, background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
+        Withdraws all tracked user balances and sweeps untracked excess USDC from the Soroban contract
+        directly to the platform treasury wallet. Irreversible.
+      </div>
+
+      {error && (
+        <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontWeight: 600 }}>Drain complete</div>
+          <div>Tracked USDC drained: <b>${parseFloat(result.totalTrackedUsdc).toFixed(4)}</b></div>
+          <div>Users drained: <b>{result.trackedWithdrawn.length}</b></div>
+          {result.excessSweepTxHash && (
+            <div style={{ fontFamily: 'monospace', fontSize: 10.5, wordBreak: 'break-all' }}>
+              Sweep tx: {result.excessSweepTxHash}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!confirm ? (
+        <button
+          onClick={() => setConfirm(true)}
+          style={{
+            background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)',
+            color: 'rgb(167,139,250)', borderRadius: 9, padding: '10px 18px',
+            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          Drain All Contract USDC
+        </button>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 12, color: c.red }}>This will empty the contract. Are you sure?</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleDrain}
+              disabled={submitting}
+              style={{
+                flex: 1, background: 'rgb(139,92,246)', border: 'none', color: '#fff',
+                borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 600,
+                cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.6 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              {submitting ? 'Draining…' : 'Yes, drain now'}
+            </button>
+            <button
+              onClick={() => setConfirm(false)}
+              disabled={submitting}
+              style={{
+                padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+                background: 'transparent', border: `1px solid ${c.border}`, color: c.textMid,
+                fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
   const [treasury,    setTreasury]    = useState<TreasuryBalance | null>(null);
@@ -522,6 +641,12 @@ export default function TreasuryPage() {
           <EvmVaultCard vault={treasury?.evmVault} loading={balLoading} onRefresh={loadBalance} />
           <EvmWithdrawPanel onSent={loadBalance} />
         </div>
+      </div>
+
+      {/* Soroban Contract section */}
+      <div>
+        <div style={sectionLabel('Soroban Contract', 'rgb(167,139,250)')}>Soroban Contract</div>
+        <ContractDrainPanel onDrained={loadBalance} />
       </div>
 
       {/* Completed transfers table */}
