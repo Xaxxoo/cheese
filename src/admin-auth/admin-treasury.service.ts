@@ -3,16 +3,22 @@ import {
   BadRequestException,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { User } from '../auth/entities/user.entity';
 
 @Injectable()
 export class AdminTreasuryService {
   private readonly logger = new Logger(AdminTreasuryService.name);
 
   constructor(
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly blockchain: BlockchainService,
     private readonly config: ConfigService,
   ) {}
@@ -135,5 +141,61 @@ export class AdminTreasuryService {
     );
     this.logger.log(`evmWithdraw settled [txHash=${txHash}] [to=${toAddress}]`);
     return { txHash, toAddress };
+  }
+
+  // ── POST /admin/treasury/recover-contract-balance ─────────────────────────
+  // Calls withdraw(username, amount, stellarAddress) on the Soroban contract,
+  // which debits the user's internal balance and sends USDC back to their
+  // Stellar address. Use when a user's USDC is stuck in the contract
+  // (e.g. after migration) but is not showing on their balance.
+  async recoverContractBalance(opts: {
+    userId: string;
+    amountUsdc: string;
+  }): Promise<{ txHash: string; amountUsdc: string; toAddress: string; contractBalanceBefore: string }> {
+    const user = await this.userRepo.findOne({ where: { id: opts.userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.username) throw new BadRequestException('User has no username — cannot query contract');
+    if (!user.stellarPublicKey) throw new BadRequestException('User has no Stellar wallet');
+
+    const amount = parseFloat(opts.amountUsdc);
+    if (isNaN(amount) || amount <= 0) throw new BadRequestException('Invalid amount');
+
+    if (!this.blockchain.isSorobanReady) {
+      throw new ServiceUnavailableException(
+        'Soroban not configured — check STELLAR_CONTRACT_ID, STELLAR_SOROBAN_RPC_URL',
+      );
+    }
+
+    const contractBalanceBefore = await this.blockchain.getSorobanBalance(user.username);
+    if (parseFloat(contractBalanceBefore) < amount) {
+      throw new BadRequestException(
+        `Insufficient contract balance for @${user.username}. ` +
+        `Available: ${contractBalanceBefore} USDC, requested: ${opts.amountUsdc} USDC`,
+      );
+    }
+
+    this.logger.log(
+      `recoverContractBalance initiated [user=@${user.username}] [amount=${opts.amountUsdc}] [to=${user.stellarPublicKey}]`,
+    );
+
+    // contract withdraw(username, amount, to_address) — debits internal balance
+    // and executes usdc.transfer(contract → user's Stellar address) atomically.
+    const result = await this.blockchain.sendViaContract({
+      fromUsername: user.username,
+      fromPublicKey: user.stellarPublicKey,
+      amountUsdc: opts.amountUsdc,
+      toPublicKey: user.stellarPublicKey,
+    });
+
+    this.logger.log(
+      `recoverContractBalance settled [user=@${user.username}] [hash=${result.txHash}] [to=${user.stellarPublicKey}]`,
+    );
+
+    return {
+      txHash: result.txHash,
+      amountUsdc: opts.amountUsdc,
+      toAddress: user.stellarPublicKey,
+      contractBalanceBefore,
+    };
   }
 }

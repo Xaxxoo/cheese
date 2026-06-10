@@ -7,7 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { IsNumberString, IsString, Matches } from 'class-validator';
+import { IsNumberString, IsString, IsUUID, Matches } from 'class-validator';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminTreasuryService } from './admin-treasury.service';
@@ -18,6 +18,14 @@ class TreasuryTransferDto {
   @IsString()
   @Matches(/^G[A-Z0-9]{55}$/, { message: 'Invalid Stellar address' })
   toAddress: string;
+
+  @IsNumberString({}, { message: 'amountUsdc must be a numeric string' })
+  amountUsdc: string;
+}
+
+class RecoverContractBalanceDto {
+  @IsUUID()
+  userId: string;
 
   @IsNumberString({}, { message: 'amountUsdc must be a numeric string' })
   amountUsdc: string;
@@ -62,5 +70,26 @@ export class AdminTreasuryController {
       throw new ForbiddenException('Only super_admin or treasurer roles can withdraw from the vault');
     }
     return this.treasury.evmWithdraw();
+  }
+
+  // ── POST /admin/treasury/recover-contract-balance ─────────────────────────
+  @Post('recover-contract-balance')
+  @ApiOperation({
+    summary: 'Return a user\'s USDC from the Soroban contract back to their Stellar address',
+  })
+  recoverContractBalance(
+    @CurrentUser() admin: User,
+    @Body() dto: RecoverContractBalanceDto,
+  ) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException(
+        'Only super_admin or treasurer roles can recover contract balances',
+      );
+    }
+    return this.treasury.recoverContractBalance({
+      userId: dto.userId,
+      amountUsdc: dto.amountUsdc,
+    });
   }
 }

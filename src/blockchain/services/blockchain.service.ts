@@ -1553,47 +1553,6 @@ export class BlockchainService implements OnModuleInit {
     return (Number(balanceStroops) / 10_000_000).toFixed(7);
   }
 
-  /**
-   * Query a user's internal USDC balance from the Soroban contract by Stellar address.
-   * Calls balance(address) using the ScAddress type — this matches how deposit_by_address
-   * stores funds (keyed by Stellar public key, not by username).
-   * Returns a human-readable USDC string (7 decimal places).
-   */
-  async getSorobanBalanceByAddress(stellarPublicKey: string): Promise<string> {
-    this.requireStellar('getSorobanBalanceByAddress');
-    this.requireSoroban('getSorobanBalanceByAddress');
-
-    const contract = new StellarSdk.Contract(this.sorobanContractId);
-    const sourceAcct = await this.sorobanRpc.getAccount(
-      this.stellarPlatformKeypair.publicKey(),
-    );
-
-    const tx = new StellarSdk.TransactionBuilder(sourceAcct, {
-      fee: '500000',
-      networkPassphrase: this.stellarNetwork,
-    })
-      .addOperation(
-        contract.call(
-          'balance',
-          new StellarSdk.Address(stellarPublicKey).toScVal(),
-        ),
-      )
-      .setTimeout(300)
-      .build();
-
-    const sim = await this.sorobanRpc.simulateTransaction(tx);
-    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
-      throw new ContractCallException('getSorobanBalanceByAddress', sim.error);
-    }
-
-    const success =
-      sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse;
-    const balanceStroops = StellarSdk.scValToNative(
-      success.result!.retval,
-    ) as bigint;
-    return (Number(balanceStroops) / 10_000_000).toFixed(7);
-  }
-
   async getContractFeeRate(): Promise<number> {
     this.requireStellar('getContractFeeRate');
     this.requireSoroban('getContractFeeRate');

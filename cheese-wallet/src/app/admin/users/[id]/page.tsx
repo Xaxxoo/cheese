@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  setAdminUserKycVerified, deleteAdminUser, type AdminUserDetail,
+  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, type AdminUserDetail,
 } from '@/lib/api/admin';
 
 const fmtDate = (s: string) =>
@@ -31,6 +31,9 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [notFound, setNotFound] = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [recoverAmount, setRecoverAmount] = useState('');
+  const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
+  const [recoverError,  setRecoverError]  = useState('');
 
   useEffect(() => {
     getAdminUserDetail(params.id)
@@ -78,6 +81,25 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       router.replace('/admin/users');
     } catch { /* ignore */ }
     finally { setSaving(false); setConfirmDelete(false); }
+  };
+
+  const handleRecover = async () => {
+    if (!user || saving || !recoverAmount) return;
+    setSaving(true);
+    setRecoverError('');
+    setRecoverResult(null);
+    try {
+      const result = await recoverContractBalance(user.id, recoverAmount);
+      setRecoverResult({ txHash: result.txHash, amountUsdc: result.amountUsdc });
+      setRecoverAmount('');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (err as Error)?.message
+        ?? 'Recovery failed';
+      setRecoverError(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCompleteTransfer = async (transferId: string) => {
@@ -344,6 +366,57 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   {user.isActive ? 'Block user access' : 'Restore user access'}
                 </span>
               </button>
+
+              {/* Divider */}
+              <div style={{ borderTop: `1px solid ${c.border}`, margin: '4px 0' }} />
+
+              {/* Recover Contract Balance */}
+              <div style={{
+                borderRadius: 10, border: `1px solid rgba(139,92,246,0.25)`,
+                background: 'rgba(139,92,246,0.06)', padding: '12px 16px',
+                display: 'flex', flexDirection: 'column', gap: 8,
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(167,139,250)' }}>
+                  Recover Contract Balance
+                </div>
+                <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
+                  Returns USDC from the Soroban contract back to the user's Stellar address.
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Amount USDC (e.g. 1.0)"
+                    value={recoverAmount}
+                    onChange={e => setRecoverAmount(e.target.value)}
+                    style={{
+                      flex: 1, padding: '6px 10px', borderRadius: 7,
+                      background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
+                      color: c.text, fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={handleRecover}
+                    disabled={saving || !recoverAmount}
+                    style={{
+                      padding: '6px 14px', borderRadius: 7, cursor: (saving || !recoverAmount) ? 'default' : 'pointer',
+                      background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
+                      color: 'rgb(167,139,250)', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                      opacity: (saving || !recoverAmount) ? 0.5 : 1, whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {saving ? 'Processing…' : 'Recover'}
+                  </button>
+                </div>
+                {recoverResult && (
+                  <div style={{ fontSize: 11, color: 'rgb(34,197,94)', wordBreak: 'break-all' }}>
+                    Recovered ${recoverResult.amountUsdc} USDC — tx: {recoverResult.txHash.slice(0, 20)}…
+                  </div>
+                )}
+                {recoverError && (
+                  <div style={{ fontSize: 11, color: c.red }}>{recoverError}</div>
+                )}
+              </div>
 
               {/* Divider */}
               <div style={{ borderTop: `1px solid ${c.border}`, margin: '4px 0' }} />

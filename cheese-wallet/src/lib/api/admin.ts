@@ -379,6 +379,16 @@ export async function evmTreasuryWithdraw(): Promise<{ txHash: string; toAddress
   return data.data
 }
 
+export async function recoverContractBalance(
+  userId: string,
+  amountUsdc: string,
+): Promise<{ txHash: string; amountUsdc: string; toAddress: string; contractBalanceBefore: string }> {
+  const { data } = await adminApiClient.post<
+    ApiResponse<{ txHash: string; amountUsdc: string; toAddress: string; contractBalanceBefore: string }>
+  >('/admin/treasury/recover-contract-balance', { userId, amountUsdc })
+  return data.data
+}
+
 // ── Transactions ──────────────────────────────────────────────────────────
 export interface AdminTransactionItem {
   id:                string

@@ -56,27 +56,25 @@ export class WalletService {
 
     const [stellarRaw, evmRaw, rate] = await Promise.all([
       // Balance strategy:
-      //   1. If Soroban is ready and user has a username, read from the contract.
-      //      The contract is authoritative for migrated users AND for new users
-      //      once notifyContractDeposit credits their deposit.
-      //   2. If Soroban returns 0 (user not yet registered in the contract, or
-      //      notifyContractDeposit hasn't run yet), fall back to Horizon so new
-      //      users whose USDC still sits at their own Stellar address can see it.
-      //   3. If Soroban is unavailable or user has no username, use Horizon directly.
+      //   1. If Soroban is ready and user has a username, query balance(username)
+      //      from the contract. The contract stores balances keyed by username
+      //      (deposit_by_address resolves address → username before crediting).
+      //   2. If Soroban shows 0, or user has no username, fall back to Horizon
+      //      for users whose USDC is still at their own Stellar address.
+      //   3. If Soroban is unavailable, use Horizon directly.
       //   Each source has its own catch so a single service being down never
       //   crashes the request — it just returns 0 for that source.
       user.stellarPublicKey
         ? (async () => {
-            if (this.blockchainService.isSorobanReady) {
-              // Query the contract by Stellar address — this matches how
-              // deposit_by_address stores funds (keyed by address, not username).
+            if (this.blockchainService.isSorobanReady && user.username) {
+              // balance(username: String) — the contract keys balances by
+              // username, not by Stellar address.
               const sorobanRaw = await this.blockchainService
-                .getSorobanBalanceByAddress(user.stellarPublicKey!)
+                .getSorobanBalance(user.username)
                 .catch(() => '0.0000000');
               if (parseFloat(sorobanRaw) > 0) return sorobanRaw;
-              // Soroban shows 0 — fall through to Horizon for users whose USDC
-              // sits at their own Stellar address and hasn't been deposited into
-              // the contract yet.
+              // Soroban shows 0 — fall through to Horizon for users whose
+              // USDC is still at their Stellar address (pre-migration).
             }
             return this.blockchainService
               .getStellarUsdcBalance(user.stellarPublicKey!)
