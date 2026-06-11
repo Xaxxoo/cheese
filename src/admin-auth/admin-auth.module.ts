@@ -17,6 +17,7 @@ import { AdminRatesController } from './admin-rates.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminTreasuryController } from './admin-treasury.controller';
 import { AdminTreasuryService } from './admin-treasury.service';
+import { AdminBroadcastController } from './admin-broadcast.controller';
 import { RatesModule } from '../rates/rates.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { EmailModule } from '../email/email.module';
@@ -32,7 +33,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     EmailModule,
     NotificationsModule,
   ],
-  controllers: [AdminAuthController, AdminRatesController, AdminDashboardController, AdminTreasuryController],
+  controllers: [AdminAuthController, AdminRatesController, AdminDashboardController, AdminTreasuryController, AdminBroadcastController],
   providers: [AdminAuthService, AdminJwtStrategy, AdminTreasuryService],
   exports: [AdminJwtStrategy],
 })
