@@ -41,7 +41,7 @@ function buildBetaWelcomeEmail(name: string): { subject: string; html: string; t
 </head>
 <body style="background-color:#0A0A0A;margin:0;padding:0;width:100%;">
   <div style="display:none;max-height:0;overflow:hidden;color:transparent;opacity:0;font-size:1px;line-height:1px;">
-    A personal note from Rejoice, co-founder of Cheese Pay — your beta access explained.&nbsp;&#8204;&nbsp;&#8204;&nbsp;
+    A personal note from Rejoice at Cheese Pay — your beta access explained.&nbsp;&#8204;&nbsp;&#8204;&nbsp;
   </div>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -90,8 +90,8 @@ function buildBetaWelcomeEmail(name: string): { subject: string; html: string; t
               <tr>
                 <td style="padding:32px 40px 0;">
                   <p style="font-size:15px;color:#CCCCCC;font-family:'Inter',sans-serif;line-height:1.8;margin:0 0 20px;">
-                    My name is <strong style="color:#F5F5F5;">Rejoice</strong>, and I'm one of the founders of Cheese Pay.
-                    I wanted to reach out personally — not as a notification, but as a genuine thank-you for being part of what we are building.
+                    My name is <strong style="color:#F5F5F5;">Rejoice</strong>, and I lead customer success and communications here at Cheese Pay.
+                    I wanted to reach out personally to welcome you and let you know how glad we are to have you with us.
                   </p>
                   <p style="font-size:15px;color:#CCCCCC;font-family:'Inter',sans-serif;line-height:1.8;margin:0 0 28px;">
                     We are currently in a <strong style="color:#C9A84C;">private beta</strong>, deliberately keeping our doors open
@@ -105,7 +105,7 @@ function buildBetaWelcomeEmail(name: string): { subject: string; html: string; t
                         <p style="font-size:11px;font-weight:600;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;font-family:'Inter',sans-serif;margin:0 0 10px;">If your KYC was approved</p>
                         <p style="font-size:14px;color:#CCCCCC;font-family:'Inter',sans-serif;line-height:1.75;margin:0;">
                           You were approved because we know you personally or you came through a trusted referral in our early network.
-                          You have <strong style="color:#F5F5F5;">full access</strong> to Cheese Pay right now — fund your wallet, make transfers, and withdraw to your bank account.
+                          You have <strong style="color:#F5F5F5;">full access</strong> to Cheese Pay right now and can fund your wallet, make transfers, and withdraw to your bank account.
                           Thank you for your trust; it means everything to us.
                         </p>
                       </td>
@@ -122,7 +122,7 @@ function buildBetaWelcomeEmail(name: string): { subject: string; html: string; t
                           Once we launch beyond the beta, KYC will be available to everyone and you will be able to complete verification and carry out all transactions freely.
                         </p>
                         <p style="font-size:14px;color:#CCCCCC;font-family:'Inter',sans-serif;line-height:1.75;margin:0;">
-                          If you would like to be considered for beta access sooner, you are welcome to reach out directly to me on Telegram:
+                          If you would like to be considered for beta access sooner, you are welcome to reach out directly to our founder on Telegram:
                           <a href="https://t.me/xaxxoo23" style="color:#C9A84C;font-weight:600;">@xaxxoo23</a>
                         </p>
                       </td>
@@ -139,10 +139,7 @@ function buildBetaWelcomeEmail(name: string): { subject: string; html: string; t
                     <tr>
                       <td>
                         <p style="font-size:15px;color:#F5F5F5;font-family:'Inter',sans-serif;font-weight:600;margin:0;">Rejoice</p>
-                        <p style="font-size:13px;color:#999999;font-family:'Inter',sans-serif;margin:4px 0 0;">Co-founder, Cheese Pay</p>
-                        <p style="font-size:12px;color:#555555;font-family:'Inter',sans-serif;margin:6px 0 0;">
-                          <a href="https://t.me/xaxxoo23" style="color:#C9A84C;">t.me/xaxxoo23</a>
-                        </p>
+                        <p style="font-size:13px;color:#999999;font-family:'Inter',sans-serif;margin:4px 0 0;">Head of Customer Success &amp; Communications, Cheese Pay</p>
                       </td>
                     </tr>
                   </table>
@@ -197,22 +194,21 @@ function buildBetaWelcomeEmail(name: string): { subject: string; html: string; t
 
   const text = `Hi ${name},
 
-My name is Rejoice, and I'm one of the founders of Cheese Pay. I wanted to reach out personally to welcome you and share a quick update on where we stand.
+My name is Rejoice, and I lead customer success and communications at Cheese Pay. I wanted to reach out personally to welcome you and let you know how glad we are to have you with us.
 
 We are currently in a private beta, keeping our doors open to a small trusted group as we refine the product.
 
 IF YOUR KYC WAS APPROVED
-You were approved because we know you personally or you came through a trusted early referral. You have full access to Cheese Pay right now — fund your wallet, make transfers, and withdraw to your bank.
+You were approved because we know you personally or you came through a trusted early referral. You have full access to Cheese Pay right now and can fund your wallet, make transfers, and withdraw to your bank.
 
 IF YOUR KYC HAS NOT BEEN APPROVED YET
-This is not a rejection. Once we launch publicly, KYC will be open to everyone. If you would like to be considered for beta access sooner, feel free to message me directly on Telegram: @xaxxoo23
+This is not a rejection. Once we launch publicly, KYC will be open to everyone. If you would like to be considered for beta access sooner, you are welcome to reach out directly to our founder on Telegram: @xaxxoo23
 
 We are building something we are proud of, and we are grateful to have you here.
 
 With warmth,
 Rejoice
-Co-founder, Cheese Pay
-t.me/xaxxoo23
+Head of Customer Success & Communications, Cheese Pay
 
 ---
 Cheese Pay · cheesepay.xyz
