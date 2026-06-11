@@ -1721,6 +1721,100 @@ export class BlockchainService implements OnModuleInit {
    */
 
   /**
+   * Restores an expired persistent Balance(username) entry in the Soroban
+   * contract using RestoreFootprintOp.  Must be called before drain/withdraw
+   * when getSorobanBalance returns MissingValue for a user whose balance still
+   * counts toward TotalBalance.
+   *
+   * Returns the tx hash on success, or null if the entry does not exist in
+   * the archive (never created, or permanently deleted).
+   */
+  async restoreContractBalance(username: string): Promise<string | null> {
+    this.requireStellar('restoreContractBalance');
+    this.requireSoroban('restoreContractBalance');
+
+    // DataKey::Balance(username) is stored as ScvVec([Symbol("Balance"), String(username)])
+    const balanceKey = StellarSdk.xdr.ScVal.scvVec([
+      StellarSdk.xdr.ScVal.scvSymbol('Balance'),
+      StellarSdk.xdr.ScVal.scvString(username),
+    ]);
+
+    const ledgerKey = StellarSdk.xdr.LedgerKey.contractData(
+      new StellarSdk.xdr.LedgerKeyContractData({
+        contract: new StellarSdk.Address(this.sorobanContractId).toScAddress(),
+        key: balanceKey,
+        durability: StellarSdk.xdr.ContractDataDurability.persistent(),
+      }),
+    );
+
+    const sorobanData = new StellarSdk.SorobanDataBuilder()
+      .setReadWrite([ledgerKey])
+      .build();
+
+    const platformKey = this.stellarPlatformKeypair.publicKey();
+    const sourceAcct  = await this.getSorobanAccount(platformKey);
+
+    const rawTx = new StellarSdk.TransactionBuilder(sourceAcct, {
+      fee: '500000',
+      networkPassphrase: this.stellarNetwork,
+    })
+      .addOperation(StellarSdk.Operation.restoreFootprint({}))
+      .setSorobanData(sorobanData)
+      .setTimeout(300)
+      .build();
+
+    const sim = await this.sorobanRpc.simulateTransaction(rawTx);
+    if (StellarSdk.rpc.Api.isSimulationError(sim)) {
+      // Entry not in archive (never existed or permanently deleted) — skip.
+      this.logger.warn(
+        `restoreContractBalance: no archive entry for @${username}: ${sim.error}`,
+      );
+      return null;
+    }
+
+    const prepared = StellarSdk.rpc
+      .assembleTransaction(
+        rawTx,
+        sim as StellarSdk.rpc.Api.SimulateTransactionSuccessResponse,
+      )
+      .build();
+    prepared.sign(this.stellarPlatformKeypair);
+
+    const sendResult = await this.sorobanRpc.sendTransaction(prepared);
+    if (sendResult.status === 'ERROR') {
+      this.logger.error(
+        `restoreContractBalance: submit error for @${username}: ` +
+        `${(sendResult.errorResult as any)?.toXDR?.('base64') ?? 'unknown'}`,
+      );
+      return null;
+    }
+
+    let getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+    let attempts = 0;
+    while (
+      getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND &&
+      attempts < 15
+    ) {
+      await new Promise((r) => setTimeout(r, 2000));
+      getResult = await this.sorobanRpc.getTransaction(sendResult.hash);
+      attempts++;
+    }
+
+    if (getResult.status === StellarSdk.rpc.Api.GetTransactionStatus.NOT_FOUND) {
+      this.logger.warn(`restoreContractBalance: tx still pending for @${username} [hash=${sendResult.hash}]`);
+      return sendResult.hash;
+    }
+
+    if (getResult.status !== StellarSdk.rpc.Api.GetTransactionStatus.SUCCESS) {
+      this.logger.error(`restoreContractBalance: tx failed for @${username} [status=${getResult.status}]`);
+      return null;
+    }
+
+    this.logger.log(`restoreContractBalance: restored @${username} [hash=${sendResult.hash}]`);
+    return sendResult.hash;
+  }
+
+  /**
    * Calls sweep_excess(recipient: Address) on the Soroban contract.
    * The contract computes excess = actual_usdc_balance - total_internal_balance
    * and transfers it to the given recipient address.

@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsNumberString, IsString, IsUUID, Matches } from 'class-validator';
+import { IsArray, IsNumberString, IsString, IsUUID, Matches } from 'class-validator';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminTreasuryService } from './admin-treasury.service';
@@ -100,6 +100,21 @@ export class AdminTreasuryController {
   lookupAddresses(@Query('addresses') addresses: string) {
     const list = (addresses ?? '').split(',').map((a) => a.trim()).filter(Boolean);
     return this.treasury.lookupAddresses(list);
+  }
+
+  // ── POST /admin/treasury/restore-contract-balances ───────────────────────
+  @Post('restore-contract-balances')
+  @ApiOperation({
+    summary: 'Restore expired Soroban Balance entries for given usernames so drain can process them',
+  })
+  restoreContractBalances(
+    @CurrentUser() admin: User,
+    @Body() body: { usernames: string[] },
+  ) {
+    if (admin.adminRole !== AdminRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only super_admin can restore contract balances');
+    }
+    return this.treasury.restoreContractBalances(body.usernames ?? []);
   }
 
   // ── POST /admin/treasury/contract-drain-all ────────────────────────────────

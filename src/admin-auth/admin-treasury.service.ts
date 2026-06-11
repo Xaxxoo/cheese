@@ -238,6 +238,45 @@ export class AdminTreasuryService {
     };
   }
 
+  // ── POST /admin/treasury/restore-contract-balances ───────────────────────
+  // Restores expired persistent Balance(username) ledger entries so that the
+  // drain can withdraw them.  Pass the usernames whose entries have expired
+  // (getSorobanBalance returns 0 / MissingValue but TotalBalance still counts
+  // their amounts).  After this succeeds, trigger contract-drain-all again.
+  async restoreContractBalances(usernames: string[]): Promise<{
+    restored: { username: string; txHash: string | null }[];
+    skipped:  string[];
+  }> {
+    if (!this.blockchain.isSorobanReady) {
+      throw new ServiceUnavailableException(
+        'Soroban not configured — check STELLAR_CONTRACT_ID, STELLAR_SOROBAN_RPC_URL',
+      );
+    }
+    if (!usernames.length) {
+      return { restored: [], skipped: [] };
+    }
+
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+    const restored: { username: string; txHash: string | null }[] = [];
+    const skipped: string[] = [];
+
+    for (const username of usernames) {
+      this.logger.log(`restoreContractBalances: attempting @${username}`);
+      const txHash = await this.blockchain.restoreContractBalance(username);
+      if (txHash !== null) {
+        restored.push({ username, txHash });
+      } else {
+        skipped.push(username);
+      }
+      await sleep(2000); // avoid RPC rate limits
+    }
+
+    this.logger.log(
+      `restoreContractBalances done: restored=${restored.length} skipped=${skipped.length}`,
+    );
+    return { restored, skipped };
+  }
+
   // ── POST /admin/treasury/contract-drain-all ───────────────────────────────
   // Moves ALL USDC out of the Soroban contract back to the platform treasury:
   //   Step 1 — For every registered user with internal balance > 0,

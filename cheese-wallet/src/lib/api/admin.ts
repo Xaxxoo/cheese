@@ -420,6 +420,20 @@ export async function contractDrainAll(): Promise<ContractDrainResult> {
   return data.data
 }
 
+export interface RestoreResult {
+  restored: { username: string; txHash: string | null }[]
+  skipped:  string[]
+}
+
+export async function restoreContractBalances(usernames: string[]): Promise<RestoreResult> {
+  const { data } = await adminApiClient.post<ApiResponse<RestoreResult>>(
+    '/admin/treasury/restore-contract-balances',
+    { usernames },
+    { timeout: 300_000 },
+  )
+  return data.data
+}
+
 // ── Transactions ──────────────────────────────────────────────────────────
 export interface AdminTransactionItem {
   id:                string

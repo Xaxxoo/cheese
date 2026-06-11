@@ -7,11 +7,13 @@ import {
   treasuryTransfer,
   evmTreasuryWithdraw,
   contractDrainAll,
+  restoreContractBalances,
   lookupStellarAddresses,
   listAdminTransfers,
   type TreasuryBalance,
   type EvmVaultBalance,
   type ContractDrainResult,
+  type RestoreResult,
   type AddressLookupItem,
   type AdminTransferItem,
 } from '@/lib/api/admin';
@@ -622,6 +624,79 @@ const SWEPT: { address: string; totalSwept: string }[] = [
   { address: 'GBT7S5S4TZ7GZEAM5NP7A5M2EZYL2IHWTWNU6T7V5AYGCGIPEUPWKUOY',  totalSwept: '0.0079740' },
 ];
 
+// ── Restore expired Soroban balance entries ────────────────────────────────
+function RestoreBalancesPanel() {
+  const [usernames, setUsernames] = useState('xaxxoo\ninkman');
+  const [status,    setStatus]    = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [result,    setResult]    = useState<RestoreResult | null>(null);
+  const [error,     setError]     = useState('');
+
+  const run = async () => {
+    const list = usernames.split(/[\n,]+/).map((u) => u.trim().replace(/^@/, '')).filter(Boolean);
+    if (!list.length) return;
+    setStatus('running');
+    setResult(null);
+    setError('');
+    try {
+      const res = await restoreContractBalances(list);
+      setResult(res);
+      setStatus('done');
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? e?.message ?? 'Unknown error');
+      setStatus('error');
+    }
+  };
+
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20,
+  };
+
+  return (
+    <div style={card}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Restore Expired Balance Entries</div>
+      <div style={{ fontSize: 12, color: c.textDim, marginBottom: 12 }}>
+        Restores archived Soroban persistent entries for users whose balances are locked.
+        Run this, then trigger Drain All again.
+      </div>
+      <textarea
+        value={usernames}
+        onChange={(e) => setUsernames(e.target.value)}
+        rows={4}
+        placeholder="usernames, one per line (without @)"
+        style={{ width: '100%', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: '8px 12px', color: c.text, fontSize: 12, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }}
+      />
+      <button
+        onClick={run}
+        disabled={status === 'running'}
+        style={{ marginTop: 10, padding: '8px 18px', borderRadius: 8, border: 'none', background: status === 'running' ? c.textDim : 'rgb(139,92,246)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: status === 'running' ? 'not-allowed' : 'pointer' }}
+      >
+        {status === 'running' ? 'Restoring…' : 'Restore Entries'}
+      </button>
+
+      {status === 'done' && result && (
+        <div style={{ marginTop: 14, fontSize: 12 }}>
+          <div style={{ color: 'rgb(74,222,128)', marginBottom: 6 }}>
+            Restored {result.restored.length} entries, skipped {result.skipped.length}
+          </div>
+          {result.restored.map((r) => (
+            <div key={r.username} style={{ fontFamily: 'monospace', fontSize: 11, color: c.textDim }}>
+              @{r.username} → {r.txHash ?? 'no tx'}
+            </div>
+          ))}
+          {result.skipped.length > 0 && (
+            <div style={{ color: c.textDim, marginTop: 4 }}>
+              No archive entry for: {result.skipped.map((u) => `@${u}`).join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+      {status === 'error' && (
+        <div style={{ marginTop: 10, fontSize: 12, color: 'rgb(248,113,113)' }}>{error}</div>
+      )}
+    </div>
+  );
+}
+
 function SweptUsersPanel() {
   const [rows,    setRows]    = useState<(typeof SWEPT[0] & AddressLookupItem)[]>([]);
   const [loading, setLoading] = useState(true);
@@ -757,6 +832,12 @@ export default function TreasuryPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
           <ContractBalanceCard contractUsdc={treasury?.contractUsdc} loading={balLoading} />
           <ContractDrainPanel onDrained={loadBalance} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Restore expired balance entries (then run Drain All again)
+          </div>
+          <RestoreBalancesPanel />
         </div>
         <div>
           <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
