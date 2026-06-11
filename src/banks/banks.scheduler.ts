@@ -20,6 +20,10 @@ import { PulseMfbClient } from './pulsemfb.client';
 // Gives normal webhook delivery time to arrive first.
 const POLL_AFTER_MINUTES = 10;
 
+// Transfers older than this are considered permanently stuck and will be
+// marked failed with a refund on the next poll, regardless of provider response.
+const FAIL_AFTER_HOURS = 24;
+
 // Maximum transfers to process per run — prevents thundering-herd against PulseMFB.
 const MAX_PER_RUN = 20;
 
@@ -68,18 +72,58 @@ export class BanksScheduler {
     // by our own reference (PulseMFB also indexes by external reference).
     const queryRef = transfer.providerReference ?? transfer.reference;
 
+    const ageMin = Math.round((Date.now() - transfer.createdAt.getTime()) / 60_000);
+
     let remoteStatus: string;
     try {
       const remote = await this.pulseMfb.getTransferStatus(queryRef);
       remoteStatus = remote.status;
     } catch (err) {
+      // PulseMFB has no record of this transfer — it was never received (likely
+      // our initial request timed out before reaching them).  Mark it failed so
+      // the user's USDC is refunded and we stop polling.
+      if ((err as { notFoundAtProvider?: boolean }).notFoundAtProvider) {
+        this.logger.warn(
+          `Transfer not found at PulseMFB [ref=${transfer.reference}] [age=${ageMin}m] — marking failed and refunding`,
+        );
+        try {
+          await this.banksService.processWebhook({
+            reference: transfer.reference,
+            event: 'transfer.failed',
+            failureReason: 'Transfer not found at provider — request never received',
+          });
+        } catch (webhookErr) {
+          this.logger.error(
+            `processWebhook(failed) for not-found transfer [ref=${transfer.reference}]: ${(webhookErr as Error).message}`,
+          );
+        }
+        return;
+      }
+
+      // Age-based fallback: after 24 h we give up regardless of the error.
+      if (ageMin >= FAIL_AFTER_HOURS * 60) {
+        this.logger.warn(
+          `Transfer exceeded ${FAIL_AFTER_HOURS}h with no resolution [ref=${transfer.reference}] — marking failed and refunding`,
+        );
+        try {
+          await this.banksService.processWebhook({
+            reference: transfer.reference,
+            event: 'transfer.failed',
+            failureReason: `Transfer unresolved after ${FAIL_AFTER_HOURS}h — timed out`,
+          });
+        } catch (webhookErr) {
+          this.logger.error(
+            `processWebhook(failed) for aged-out transfer [ref=${transfer.reference}]: ${(webhookErr as Error).message}`,
+          );
+        }
+        return;
+      }
+
       this.logger.warn(
         `Could not poll PulseMFB for [ref=${transfer.reference}]: ${(err as Error).message}`,
       );
       return;
     }
-
-    const ageMin = Math.round((Date.now() - transfer.createdAt.getTime()) / 60_000);
 
     if (remoteStatus === 'completed') {
       try {

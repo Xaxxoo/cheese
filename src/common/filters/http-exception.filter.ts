@@ -45,6 +45,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         details = extra;
       }
     } else if (exception instanceof Error) {
+      // "Cannot set headers after they are sent to the client" means the proxy
+      // (Railway) already closed the connection due to its 60 s timeout. The
+      // response is gone — nothing to do, and logging it as an unhandled error
+      // is misleading noise.
+      if (response.headersSent) return;
       message = exception.message;
       this.logger.error(
         `Unhandled error: ${exception.message}`,

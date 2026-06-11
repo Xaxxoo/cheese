@@ -215,7 +215,7 @@ export class PulseMfbClient implements OnModuleInit {
   private async post<T>(
     path: string,
     body: unknown,
-    timeoutMs = 30_000,
+    timeoutMs = 20_000,
   ): Promise<T> {
     this.requireReady(path);
     const requestPath = this.buildRequestPath(path);
@@ -247,7 +247,7 @@ export class PulseMfbClient implements OnModuleInit {
     }
   }
 
-  private async get<T>(path: string, timeoutMs = 30_000): Promise<T> {
+  private async get<T>(path: string, timeoutMs = 20_000): Promise<T> {
     this.requireReady(path);
     const requestPath = this.buildRequestPath(path);
     const headers = this.buildHeaders('GET', requestPath, null);
@@ -289,7 +289,13 @@ export class PulseMfbClient implements OnModuleInit {
       const userMessage = /insufficient|balance|liquidity|funds/i.test(msg)
         ? 'Bank transfer is temporarily unavailable. Please try again shortly.'
         : 'Bank transfer failed. Please try again or contact support.';
-      throw new BadRequestException(userMessage);
+      const err = new BadRequestException(userMessage);
+      // Tag "not found" responses so the scheduler can detect them and stop
+      // polling (the transfer was never received by PulseMFB).
+      if (res.status === 404 || (res.status === 400 && /not found/i.test(msg))) {
+        (err as BadRequestException & { notFoundAtProvider: boolean }).notFoundAtProvider = true;
+      }
+      throw err;
     }
     return json as T;
   }
