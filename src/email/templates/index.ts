@@ -139,28 +139,21 @@ export function appLaunch(params: { username: string; appUrl: string }): {
           <tr>
             <td width="50%" style="padding:0 6px 12px 0;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
-                <div style="margin-bottom:10px;">${ICONS.trendingUp(BRAND.gold, 20)}</div>
-                <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Earn 5% APY</p>
-                <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">On your USDC balance</p>
-              </div>
-            </td>
-            <td width="50%" style="padding:0 0 12px 6px;vertical-align:top;">
-              <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
                 <div style="margin-bottom:10px;">${ICONS.zap(BRAND.gold, 20)}</div>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Instant Withdrawals</p>
                 <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">To any Nigerian bank</p>
               </div>
             </td>
-          </tr>
-          <tr>
-            <td width="50%" style="padding:0 6px 0 0;vertical-align:top;">
+            <td width="50%" style="padding:0 0 12px 6px;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
                 <div style="margin-bottom:10px;">${ICONS.creditCard(BRAND.gold, 20)}</div>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Virtual Dollar Card</p>
                 <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">Shop globally, instantly</p>
               </div>
             </td>
-            <td width="50%" style="padding:0 0 0 6px;vertical-align:top;">
+          </tr>
+          <tr>
+            <td colspan="2" style="padding:0;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
                 <div style="margin-bottom:10px;">${ICONS.target(BRAND.gold, 20)}</div>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Send by Username</p>
@@ -170,7 +163,7 @@ export function appLaunch(params: { username: string; appUrl: string }): {
           </tr>
         </table>
 
-        ${infoBox(`As an early reserver, your first 3 months of earn are at <strong style="color:${BRAND.gold};">boosted 6% APY</strong>. This offer expires 30 days after launch.`, 'success')}
+        ${infoBox(`<strong style="color:${BRAND.textLight};">Stellar USDC wallets are live now.</strong> Fund your wallet using the Stellar network and start transacting immediately. Support for additional wallet types is coming soon.`)}
       </div>
     `,
   });
