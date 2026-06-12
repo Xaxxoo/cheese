@@ -4,6 +4,7 @@
 // the beta-welcome campaign is complete.
 //
 import {
+  Body,
   Controller,
   ForbiddenException,
   Logger,
@@ -16,7 +17,9 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User, AdminRole } from '../auth/entities/user.entity';
+import { WaitlistEntry, WaitlistStatus } from '../waitlist/entities/waitlist-entry.entity';
 import { EmailService } from '../email/email.service';
+import { appLaunch } from '../email/templates';
 
 const PREVIEW_ADDRESS = 'bnahmad83@gmail.com';
 
@@ -227,6 +230,7 @@ export class AdminBroadcastController {
 
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(WaitlistEntry) private readonly waitlistRepo: Repository<WaitlistEntry>,
     private readonly emailService: EmailService,
   ) {}
 
@@ -283,6 +287,79 @@ export class AdminBroadcastController {
     }
 
     this.logger.log(`Beta-welcome broadcast done — sent=${sent} failed=${failed}`);
+    return { sent, failed, total: eligible.length, errors };
+  }
+
+  // ── POST /admin/broadcast/launch/preview ──────────────────────────────────
+  // Sends the "we're live" email to the approval address only.
+  @Post('launch/preview')
+  @ApiOperation({ summary: 'Send waitlist-launch preview to approval inbox' })
+  async previewLaunch() {
+    const { subject, html } = appLaunch({ username: 'there', appUrl: 'https://cheesepay.xyz' });
+    await (this.emailService as any).send({
+      to:      PREVIEW_ADDRESS,
+      subject: `[PREVIEW] ${subject}`,
+      html,
+      text:    `Cheese Pay is live! Visit https://cheesepay.xyz to claim your account.`,
+    });
+    this.logger.log(`Launch preview sent to ${PREVIEW_ADDRESS}`);
+    return { sent: 1, to: PREVIEW_ADDRESS };
+  }
+
+  // ── POST /admin/broadcast/launch/send ────────────────────────────────────
+  // Sends to PENDING waitlist entries, up to `limit` at a time.
+  // Re-running picks up the remainder automatically (sent entries are NOTIFIED).
+  // Super-admin only.
+  @Post('launch/send')
+  @ApiOperation({ summary: 'Send "we\'re live" email to waitlist (super_admin only, batched by limit)' })
+  async sendLaunch(
+    @CurrentUser() admin: User,
+    @Body() body: { limit?: number },
+  ) {
+    if (admin.adminRole !== AdminRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only super_admin can send broadcast emails');
+    }
+
+    const batchSize = body?.limit && body.limit > 0 ? body.limit : 100;
+
+    const entries = await this.waitlistRepo.find({
+      where: { status: WaitlistStatus.PENDING },
+      order: { createdAt: 'ASC' },
+      take: batchSize,
+    });
+
+    const eligible = entries.filter((e) => e.email && e.username);
+    this.logger.log(`Launch broadcast started — ${eligible.length} recipients (limit=${batchSize})`);
+
+    let sent = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const entry of eligible) {
+      const { subject, html } = appLaunch({
+        username: entry.username!,
+        appUrl:   'https://cheesepay.xyz',
+      });
+      const text =
+        `Hi @${entry.username},\n\n` +
+        `Cheese Pay is officially live. You reserved your spot early — your username is locked and your wallet is ready.\n\n` +
+        `Visit https://cheesepay.xyz to claim your account now.\n\n` +
+        `Cheese Pay · cheesepay.xyz`;
+      try {
+        await (this.emailService as any).send({ to: entry.email!, subject, html, text });
+        entry.status     = WaitlistStatus.NOTIFIED;
+        entry.notifiedAt = new Date();
+        await this.waitlistRepo.save(entry);
+        sent++;
+        await new Promise((r) => setTimeout(r, 200));
+      } catch (err) {
+        failed++;
+        errors.push(`${entry.email}: ${(err as Error).message}`);
+        this.logger.error(`Launch broadcast failed for ${entry.email}: ${(err as Error).message}`);
+      }
+    }
+
+    this.logger.log(`Launch broadcast done — sent=${sent} failed=${failed}`);
     return { sent, failed, total: eligible.length, errors };
   }
 }
