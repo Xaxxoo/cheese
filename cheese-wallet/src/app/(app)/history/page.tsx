@@ -33,6 +33,7 @@ const TX_ICON_CFG: Record<TxType, { icon: React.ElementType; color: string }> = 
   card_payment:   { icon: ArrowUpRight,  color: 'text-white/60' },
   fee:            { icon: ArrowUpRight,  color: 'text-white/60' },
   pay_request:    { icon: ArrowUpRight,  color: 'text-white/60' },
+  bill_payment:   { icon: ArrowUpRight,  color: 'text-white/60' },
 }
 
 const TX_LABELS: Record<TxType, string> = {
@@ -40,12 +41,13 @@ const TX_LABELS: Record<TxType, string> = {
   send_address:   'Sent',
   bank_transfer:  'Bank Transfer',
   withdrawal:     'Withdrawal',
-  deposit:        'Deposit',
+  deposit:        'Received',
   yield_credit:   'Yield',
   referral_bonus: 'Referral Bonus',
   card_payment:   'Card Payment',
   fee:            'Fee',
   pay_request:    'Pay Request',
+  bill_payment:   'Bill Payment',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -60,7 +62,7 @@ function TxRow({ tx, onSync, onOpen }: { tx: Transaction; onSync?: () => void; o
   const amountColor = isIn ? 'text-emerald-400' : 'text-white'
   const cfg = TX_ICON_CFG[tx.type] ?? TX_ICON_CFG.deposit
   const Icon = cfg.icon
-  const subtitle = tx.recipientUsername ?? tx.recipientAddress ?? tx.bank ?? null
+  const subtitle = tx.recipientUsername ?? tx.recipientAddress ?? tx.bank ?? tx.description ?? null
   const isPendingBankTransfer = tx.type === 'bank_transfer' && tx.status === 'pending'
 
   async function handleSync(e: React.MouseEvent) {

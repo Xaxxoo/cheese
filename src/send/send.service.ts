@@ -312,35 +312,65 @@ export class SendService {
           ),
         );
 
-      // Fire-and-forget: push + email to recipient (username sends only — they're a Cheese Pay user)
-      if (params.recipientUsername) {
-        void this.userRepo
-          .findOne({ where: { username: params.recipientUsername } })
-          .then(async (recipient) => {
-            if (!recipient) return;
-            const senderLabel = sender.username ? `@${sender.username}` : 'someone';
-            void this.notificationsService
-              .notifyMoneyReceived(recipient.id, params.amountUsdc, senderLabel)
-              .catch((err: Error) =>
-                this.logger.warn(`Recipient push failed [tx=${tx.id}]: ${err.message}`),
-              );
-            if (!recipient.email) return;
-            return this.emailService.sendMoneyReceived({
-              to: recipient.email,
-              fullName: recipient.fullName,
+      // Record receipt + notify recipient (SEND_USERNAME only — they're a Cheese Pay user)
+      if (params.type === TxType.SEND_USERNAME && params.recipientUsername) {
+        const recipientUser = await this.userRepo.findOne({
+          where: { username: params.recipientUsername },
+        });
+        if (recipientUser) {
+          // Create the recipient's inbound deposit record.
+          // Uses createDeposit (ON CONFLICT DO NOTHING) so the wallet scheduler
+          // won't create a duplicate when it next polls Horizon for this user.
+          const recvRef = `CW-RECV-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
+          await this.txService
+            .createDeposit({
+              userId: recipientUser.id,
+              type: TxType.DEPOSIT,
+              status: TxStatus.COMPLETED,
               amountUsdc: params.amountUsdc,
               amountNgn: String(ngnAmount.toFixed(2)),
+              feeUsdc: '0.000000',
+              rateApplied: rateRecord.effectiveRate,
               txHash,
               network: 'stellar',
-              senderName: senderLabel,
-              appUrl,
-            });
-          })
-          .catch((err: Error) =>
-            this.logger.error(
-              `Recipient transfer email failed [tx=${tx.id}]: ${err.message}`,
-            ),
-          );
+              reference: recvRef,
+              description: `from @${sender.username ?? 'someone'}`,
+            })
+            .catch((e: Error) =>
+              this.logger.warn(
+                `Recipient deposit record failed [tx=${tx.id}]: ${e.message}`,
+              ),
+            );
+
+          const senderLabel = sender.username ? `@${sender.username}` : 'someone';
+
+          // Push notification (fire-and-forget)
+          void this.notificationsService
+            .notifyMoneyReceived(recipientUser.id, params.amountUsdc, senderLabel)
+            .catch((err: Error) =>
+              this.logger.warn(`Recipient push failed [tx=${tx.id}]: ${err.message}`),
+            );
+
+          // Email (fire-and-forget)
+          if (recipientUser.email) {
+            void this.emailService
+              .sendMoneyReceived({
+                to: recipientUser.email,
+                fullName: recipientUser.fullName,
+                amountUsdc: params.amountUsdc,
+                amountNgn: String(ngnAmount.toFixed(2)),
+                txHash,
+                network: 'stellar',
+                senderName: senderLabel,
+                appUrl,
+              })
+              .catch((err: Error) =>
+                this.logger.error(
+                  `Recipient transfer email failed [tx=${tx.id}]: ${err.message}`,
+                ),
+              );
+          }
+        }
       }
 
       return this.txService.getById(senderId, tx.id);

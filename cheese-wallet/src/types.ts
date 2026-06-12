@@ -128,7 +128,8 @@ export interface Transaction {
     | 'referral_bonus'
     | 'card_payment'
     | 'fee'
-    | 'pay_request';
+    | 'pay_request'
+    | 'bill_payment';
   status: 'pending' | 'completed' | 'failed' | 'reversed';
   amountUsdc: string;
   amountNgn: string | null;

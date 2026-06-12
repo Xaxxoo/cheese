@@ -94,7 +94,9 @@ export class Transaction {
   accountNumber: string | null;
 
   // Stellar on-chain
-  @Column({ name: 'tx_hash', type: 'varchar', nullable: true, unique: true })
+  // Uniqueness is enforced at the DB level as a per-user composite index
+  // (user_id, tx_hash) — see migration PerUserTxHashUnique1600000000012.
+  @Column({ name: 'tx_hash', type: 'varchar', nullable: true })
   txHash: string | null;
 
   @Column({ type: 'varchar', nullable: true })
