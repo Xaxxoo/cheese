@@ -23,6 +23,7 @@ import { DAILY_CRYPTO_LIMIT_USDC, formatCryptoLimit } from '../kyc/tier.limits';
 import { TierMilestoneService } from '../kyc/tier-milestone.service';
 import { ReferralService } from '../referral/referral.service';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 
 const FALLBACK_FEE_RATE = 0.001; // 0.1% — used when Soroban contract is unavailable
@@ -42,6 +43,7 @@ export class SendService {
     private readonly tierMilestone: TierMilestoneService,
     private readonly referralService: ReferralService,
     private readonly emailService: EmailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── GET /send/resolve/:username ───────────────────────────
@@ -310,12 +312,19 @@ export class SendService {
           ),
         );
 
-      // Fire-and-forget: email to recipient (username sends only — they're a Cheese Pay user)
+      // Fire-and-forget: push + email to recipient (username sends only — they're a Cheese Pay user)
       if (params.recipientUsername) {
         void this.userRepo
           .findOne({ where: { username: params.recipientUsername } })
-          .then((recipient) => {
-            if (!recipient?.email) return;
+          .then(async (recipient) => {
+            if (!recipient) return;
+            const senderLabel = sender.username ? `@${sender.username}` : 'someone';
+            void this.notificationsService
+              .notifyMoneyReceived(recipient.id, params.amountUsdc, senderLabel)
+              .catch((err: Error) =>
+                this.logger.warn(`Recipient push failed [tx=${tx.id}]: ${err.message}`),
+              );
+            if (!recipient.email) return;
             return this.emailService.sendMoneyReceived({
               to: recipient.email,
               fullName: recipient.fullName,

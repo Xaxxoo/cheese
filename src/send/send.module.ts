@@ -11,6 +11,7 @@ import { SendService } from './send.service';
 import { KycModule } from '../kyc/kyc.module';
 import { ReferralModule } from '../referral/referral.module';
 import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EmailModule } from '../email/email.module';
     KycModule,
     ReferralModule,
     EmailModule,
+    NotificationsModule,
   ],
   controllers: [SendController],
   providers: [SendService],
