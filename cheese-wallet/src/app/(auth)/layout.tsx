@@ -31,9 +31,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-[430px] min-h-screen flex flex-col px-6 py-10">
         {/* Logo */}
         <div className="mb-8">
-          <span className="text-[#d4a843] font-display text-2xl font-semibold tracking-tight">
-            cheese
-          </span>
+          <img src="/logo.png" alt="Cheese Pay" style={{ width: 48, height: 48, objectFit: 'contain', display: 'block' }} />
         </div>
         {children}
       </div>

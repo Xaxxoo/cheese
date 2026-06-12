@@ -14,9 +14,7 @@ export function LandingFooter() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)' }}>
-                <span className="text-black text-xs font-bold">C</span>
-              </div>
+              <img src="/logo.png" alt="Cheese Pay" className="w-7 h-7 rounded-lg object-contain" />
               <span className="text-white font-semibold text-sm">CheesePay</span>
             </div>
             <p className="text-[#555] text-xs leading-relaxed max-w-[180px]">

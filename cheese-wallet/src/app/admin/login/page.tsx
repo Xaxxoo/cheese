@@ -94,14 +94,7 @@ export default function AdminLoginPage() {
 
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 36 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 13,
-              background: c.amber,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: 20, color: '#09090b',
-              boxShadow: '0 0 20px rgba(245,158,11,0.3)',
-              flexShrink: 0,
-            }}>C</div>
+            <img src="/logo.png" alt="Cheese Pay" style={{ width: 40, height: 40, borderRadius: 13, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, color: c.text, lineHeight: 1.1 }}>Cheese Pay</div>
               <div style={{ fontSize: 11.5, color: c.textDim, marginTop: 3 }}>Admin Console</div>
