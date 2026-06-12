@@ -70,9 +70,7 @@ export function HeroSection() {
       <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 md:px-10 py-5"
         style={{ background: 'rgba(5,5,5,0.85)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #D4AF37, #B8941F)' }}>
-            <span className="text-black text-xs font-bold">C</span>
-          </div>
+          <img src="/logo.png" alt="Cheese Pay" className="w-7 h-7 rounded-lg object-contain" />
           <span className="text-white font-semibold tracking-tight">CheesePay</span>
         </div>
         <div className="hidden md:flex items-center gap-8">

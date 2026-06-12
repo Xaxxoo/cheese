@@ -56,20 +56,8 @@ function buildBetaWelcomeEmail(name: string): { subject: string; html: string; t
         <!-- Header -->
         <tr>
           <td style="padding-bottom:36px;text-align:center;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
-              <tr>
-                <td style="vertical-align:middle;padding-right:16px;">
-                  <span style="font-family:Georgia,serif;font-size:34px;font-weight:300;color:#C9A84C;letter-spacing:2px;line-height:1;">C</span>
-                </td>
-                <td style="vertical-align:middle;padding-right:16px;">
-                  <div style="width:1px;height:34px;background:linear-gradient(180deg,transparent,#C9A84C88,transparent);"></div>
-                </td>
-                <td style="vertical-align:middle;">
-                  <p style="font-size:11px;font-weight:500;letter-spacing:6px;color:#C9A84C;font-family:'Inter',sans-serif;text-transform:uppercase;line-height:1;margin:0;">CHEESE PAY</p>
-                  <p style="font-size:7.5px;font-weight:300;letter-spacing:3px;color:#555555;font-family:'Inter',sans-serif;text-transform:uppercase;margin:5px 0 0 0;line-height:1;">THE GOLDEN STANDARD</p>
-                </td>
-              </tr>
-            </table>
+            <img src="https://cheesepay.xyz/logo.png" alt="Cheese Pay" width="72" height="72"
+              style="display:block;margin:0 auto;width:72px;height:72px;object-fit:contain;border-radius:12px;" />
           </td>
         </tr>
 
