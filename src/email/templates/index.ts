@@ -153,11 +153,18 @@ export function appLaunch(params: { username: string; appUrl: string }): {
             </td>
           </tr>
           <tr>
-            <td colspan="2" style="padding:0;vertical-align:top;">
+            <td width="50%" style="padding:0 6px 0 0;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
                 <div style="margin-bottom:10px;">${ICONS.target(BRAND.gold, 20)}</div>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Send by Username</p>
                 <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">No account numbers needed</p>
+              </div>
+            </td>
+            <td width="50%" style="padding:0 0 0 6px;vertical-align:top;">
+              <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
+                <div style="margin-bottom:10px;">${ICONS.zap(BRAND.gold, 20)}</div>
+                <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Pay Utilities</p>
+                <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">Airtime, data, bills from your USDC balance</p>
               </div>
             </td>
           </tr>
