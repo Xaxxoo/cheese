@@ -665,3 +665,26 @@ export async function getAdminHealth(): Promise<AdminHealth> {
   const { data } = await adminApiClient.get<ApiResponse<AdminHealth>>('/admin/health')
   return data.data
 }
+
+// ── Broadcast ─────────────────────────────────────────────────────────────
+export interface BroadcastResult {
+  sent:   number
+  failed: number
+  total:  number
+  errors: string[]
+}
+
+export async function broadcastLaunchPreview(): Promise<{ sent: number; to: string }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ sent: number; to: string }>>(
+    '/admin/broadcast/launch/preview',
+  )
+  return data.data
+}
+
+export async function broadcastLaunchSend(limit: number): Promise<BroadcastResult> {
+  const { data } = await adminApiClient.post<ApiResponse<BroadcastResult>>(
+    '/admin/broadcast/launch/send',
+    { limit },
+  )
+  return data.data
+}
