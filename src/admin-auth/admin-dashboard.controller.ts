@@ -92,6 +92,24 @@ export class AdminDashboardController {
     return this.adminAuthService.completeTransfer(id);
   }
 
+  // ── PATCH /admin/transactions/:id/complete ────────────────────────────────
+  @Patch('transactions/:id/complete')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Manually mark any transaction as completed' })
+  completeTransaction(@Param('id') id: string) {
+    return this.adminAuthService.completeTransactionById(id);
+  }
+
+  // ── POST /admin/transactions/:id/refund ───────────────────────────────────
+  @Post('transactions/:id/refund')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Refund a failed/pending transaction — returns USDC to user wallet from platform treasury' })
+  refundTransaction(@Param('id') id: string) {
+    return this.adminAuthService.refundTransaction(id);
+  }
+
   // ── PATCH /admin/users/:id/kyc ────────────────────────────────────────────
   @Patch('users/:id/kyc')
   @UseGuards(AdminJwtGuard)

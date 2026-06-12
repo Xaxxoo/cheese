@@ -323,6 +323,20 @@ export async function completeAdminTransfer(id: string): Promise<{ id: string; s
   return data.data
 }
 
+export async function completeAdminTransaction(id: string): Promise<{ id: string; status: string }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; status: string }>>(
+    `/admin/transactions/${id}/complete`,
+  )
+  return data.data
+}
+
+export async function refundAdminTransaction(id: string): Promise<{ txHash: string; amountUsdc: string; toAddress: string }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ txHash: string; amountUsdc: string; toAddress: string }>>(
+    `/admin/transactions/${id}/refund`,
+  )
+  return data.data
+}
+
 export async function setAdminUserStatus(id: string, isActive: boolean): Promise<{ id: string; isActive: boolean }> {
   const { data } = await adminApiClient.patch<ApiResponse<{ id: string; isActive: boolean }>>(
     `/admin/users/${id}/status`, { isActive },

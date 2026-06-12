@@ -11,12 +11,12 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThanOrEqual, Repository } from 'typeorm';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { User, AdminRole, KycStatus, Tier, WalletStatus } from '../auth/entities/user.entity';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
-import { Transaction, TxStatus } from '../transactions/entities/transaction.entity';
+import { Transaction, TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { Referral } from '../referral/entities/referral.entity';
 import { BankTransfer, BankTransferStatus } from '../banks/entities/bank-transfer.entity';
 import { PaymentRequest } from '../paylink/entities/payment-request.entity';
@@ -828,6 +828,114 @@ export class AdminAuthService {
     }
 
     return { id, status: BankTransferStatus.COMPLETED };
+  }
+
+  /**
+   * Mark any transaction as COMPLETED by its transaction UUID.
+   * Also syncs the linked bank_transfer row when applicable.
+   */
+  async completeTransactionById(id: string) {
+    const tx = await this.txRepo.findOne({ where: { id } });
+    if (!tx) throw new NotFoundException('Transaction not found');
+    if (tx.status === TxStatus.COMPLETED) {
+      return { id, status: TxStatus.COMPLETED };
+    }
+
+    await this.txRepo.update({ id }, { status: TxStatus.COMPLETED });
+
+    if (tx.type === TxType.BANK_TRANSFER) {
+      await this.bankTransferRepo.update(
+        { reference: tx.reference },
+        { status: BankTransferStatus.COMPLETED },
+      );
+    }
+
+    return { id, status: TxStatus.COMPLETED };
+  }
+
+  /**
+   * Refund a failed/pending transaction by sending the debited USDC back
+   * to the user's Stellar wallet from the platform treasury, then marking
+   * the transaction (and its bank_transfer record) as REVERSED.
+   */
+  async refundTransaction(id: string) {
+    const tx = await this.txRepo.findOne({ where: { id } });
+    if (!tx) throw new NotFoundException('Transaction not found');
+
+    if (tx.status !== TxStatus.PENDING && tx.status !== TxStatus.FAILED) {
+      throw new BadRequestException(
+        `Only pending or failed transactions can be refunded (current status: ${tx.status})`,
+      );
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { id: tx.userId },
+      select: ['id', 'stellarPublicKey', 'email', 'fullName', 'username'],
+    });
+    if (!user?.stellarPublicKey) {
+      throw new BadRequestException('User wallet not initialised');
+    }
+
+    // Send USDC from platform treasury → user's Stellar wallet
+    const txHash = await this.blockchainService.platformDepositUsdc(
+      user.stellarPublicKey,
+      tx.amountUsdc,
+    );
+
+    // Mark original transaction as reversed
+    await this.txRepo.update({ id }, { status: TxStatus.REVERSED });
+
+    // Keep bank_transfer in sync
+    if (tx.type === TxType.BANK_TRANSFER) {
+      await this.bankTransferRepo.update(
+        { reference: tx.reference },
+        { status: BankTransferStatus.REVERSED },
+      );
+    }
+
+    // Create a DEPOSIT record so the refund appears in the user's history
+    const refundRef = `CW-REFUND-${randomBytes(8).toString('hex').toUpperCase()}`;
+    await this.txRepo.save(
+      this.txRepo.create({
+        userId: user.id,
+        type: TxType.DEPOSIT,
+        status: TxStatus.COMPLETED,
+        amountUsdc: tx.amountUsdc,
+        amountNgn: tx.amountNgn,
+        feeUsdc: '0.000000',
+        txHash,
+        network: 'stellar',
+        reference: refundRef,
+        description: `Refund for ${tx.reference}`,
+      }),
+    );
+
+    // Notify the user (fire-and-forget)
+    void this.notificationsService
+      .notifyMoneyReceived(user.id, tx.amountUsdc, 'CheesePay (refund)')
+      .catch((e: Error) =>
+        this.logger.error(`Refund notification failed [tx=${id}]: ${e.message}`),
+      );
+
+    if (user.email) {
+      void this.emailService
+        .sendMoneyReceived({
+          to: user.email,
+          fullName: user.fullName ?? user.username,
+          amountUsdc: tx.amountUsdc,
+          senderName: 'CheesePay (refund)',
+          appUrl: this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz'),
+        })
+        .catch((e: Error) =>
+          this.logger.error(`Refund email failed [tx=${id}]: ${e.message}`),
+        );
+    }
+
+    this.logger.log(
+      `Admin refund: ${tx.amountUsdc} USDC returned to @${user.username} [original tx=${id}] [txHash=${txHash}]`,
+    );
+
+    return { txHash, amountUsdc: tx.amountUsdc, toAddress: user.stellarPublicKey };
   }
 
   // ── Transactions listing ──────────────────────────────────────────────────

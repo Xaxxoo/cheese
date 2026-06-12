@@ -3,7 +3,7 @@
 import React, { useState, useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { c, IcoSearch, Pill } from '../_shared';
-import { listAdminTransactions, getAdminTransaction, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
+import { listAdminTransactions, getAdminTransaction, completeAdminTransaction, refundAdminTransaction, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'failed' | 'reversed';
 type TypeFilter   = 'all' | 'deposit' | 'withdrawal' | 'send_username' | 'send_address'
@@ -82,6 +82,9 @@ export default function TransactionsPage() {
   const [stats,          setStats]          = useState<StatCounts>({ total: 0, completed: 0, failed: 0 });
   const [detail,         setDetail]         = useState<AdminTransactionDetail | null>(null);
   const [detailLoading,  setDetailLoading]  = useState(false);
+  const [actionBusy,     setActionBusy]     = useState(false);
+  const [actionMsg,      setActionMsg]      = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [confirmRefund,  setConfirmRefund]  = useState(false);
 
   // ── Summary counts ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -132,10 +135,49 @@ export default function TransactionsPage() {
   function openDetail(id: string) {
     setDetailLoading(true);
     setDetail(null);
+    setActionMsg(null);
+    setConfirmRefund(false);
     getAdminTransaction(id)
       .then(setDetail)
       .catch(console.error)
       .finally(() => setDetailLoading(false));
+  }
+
+  async function handleMarkComplete() {
+    if (!detail || actionBusy) return;
+    setActionBusy(true);
+    setActionMsg(null);
+    try {
+      await completeAdminTransaction(detail.id);
+      setDetail((d) => d ? { ...d, status: 'completed' } : d);
+      setTxns((prev) => prev.map((t) => t.id === detail.id ? { ...t, status: 'completed' } : t));
+      setActionMsg({ type: 'success', text: 'Transaction marked as completed.' });
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (e instanceof Error ? e.message : 'Action failed');
+      setActionMsg({ type: 'error', text: msg });
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleRefund() {
+    if (!detail || actionBusy) return;
+    setActionBusy(true);
+    setActionMsg(null);
+    setConfirmRefund(false);
+    try {
+      const result = await refundAdminTransaction(detail.id);
+      setDetail((d) => d ? { ...d, status: 'reversed' } : d);
+      setTxns((prev) => prev.map((t) => t.id === detail.id ? { ...t, status: 'reversed' } : t));
+      setActionMsg({ type: 'success', text: `$${parseFloat(result.amountUsdc).toFixed(2)} USDC refunded to user wallet.` });
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (e instanceof Error ? e.message : 'Refund failed');
+      setActionMsg({ type: 'error', text: msg });
+    } finally {
+      setActionBusy(false);
+    }
   }
 
   const n          = (v: number) => v.toLocaleString();
@@ -517,6 +559,103 @@ export default function TransactionsPage() {
                     <Row k="Updated"  v={new Date(detail.updatedAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })} />
                     <Row k="ID" v={detail.id} mono truncate />
                   </Section>
+
+                  {/* Actions */}
+                  {(detail.status === 'pending' || detail.status === 'failed') && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
+                        Actions
+                      </div>
+
+                      {/* Action feedback */}
+                      {actionMsg && (
+                        <div style={{
+                          fontSize: 12, padding: '9px 12px', borderRadius: 8,
+                          background: actionMsg.type === 'success' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                          color:      actionMsg.type === 'success' ? c.green              : c.red,
+                          border:     `1px solid ${actionMsg.type === 'success' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                        }}>
+                          {actionMsg.text}
+                        </div>
+                      )}
+
+                      {/* Mark Complete */}
+                      <button
+                        disabled={actionBusy}
+                        onClick={handleMarkComplete}
+                        style={{
+                          width: '100%', padding: '10px 16px', borderRadius: 10,
+                          background: actionBusy ? 'rgba(34,197,94,0.06)' : 'rgba(34,197,94,0.12)',
+                          border: '1px solid rgba(34,197,94,0.25)',
+                          color: c.green, fontSize: 13, fontWeight: 600,
+                          cursor: actionBusy ? 'not-allowed' : 'pointer',
+                          opacity: actionBusy ? 0.6 : 1,
+                          transition: 'opacity 0.15s',
+                        }}
+                      >
+                        {actionBusy ? 'Processing…' : 'Mark Complete'}
+                      </button>
+
+                      {/* Refund USDC */}
+                      {!confirmRefund ? (
+                        <button
+                          disabled={actionBusy}
+                          onClick={() => setConfirmRefund(true)}
+                          style={{
+                            width: '100%', padding: '10px 16px', borderRadius: 10,
+                            background: 'rgba(239,68,68,0.08)',
+                            border: '1px solid rgba(239,68,68,0.22)',
+                            color: c.red, fontSize: 13, fontWeight: 600,
+                            cursor: actionBusy ? 'not-allowed' : 'pointer',
+                            opacity: actionBusy ? 0.6 : 1,
+                            transition: 'opacity 0.15s',
+                          }}
+                        >
+                          Refund USDC to User
+                        </button>
+                      ) : (
+                        <div style={{
+                          padding: '12px 14px', borderRadius: 10,
+                          background: 'rgba(239,68,68,0.08)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          display: 'flex', flexDirection: 'column', gap: 10,
+                        }}>
+                          <div style={{ fontSize: 12, color: c.red, fontWeight: 500 }}>
+                            Send ${parseFloat(detail.amountUsdc).toFixed(2)} USDC from treasury back to this user?
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              disabled={actionBusy}
+                              onClick={handleRefund}
+                              style={{
+                                flex: 1, padding: '8px 0', borderRadius: 8,
+                                background: 'rgba(239,68,68,0.18)',
+                                border: '1px solid rgba(239,68,68,0.35)',
+                                color: c.red, fontSize: 12, fontWeight: 600,
+                                cursor: actionBusy ? 'not-allowed' : 'pointer',
+                                opacity: actionBusy ? 0.6 : 1,
+                              }}
+                            >
+                              {actionBusy ? 'Sending…' : 'Confirm Refund'}
+                            </button>
+                            <button
+                              disabled={actionBusy}
+                              onClick={() => setConfirmRefund(false)}
+                              style={{
+                                flex: 1, padding: '8px 0', borderRadius: 8,
+                                background: 'rgba(255,255,255,0.05)',
+                                border: `1px solid ${c.border}`,
+                                color: c.textMid, fontSize: 12,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : null}
             </div>
