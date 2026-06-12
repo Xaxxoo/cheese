@@ -444,6 +444,7 @@ export function moneyReceived(params: {
   amountNgn?: string;
   txHash?: string;
   network?: string;
+  senderName?: string;
   appUrl: string;
 }): { subject: string; html: string } {
   const subject = `$${params.amountUsdc} USDC received — start spending`;
@@ -461,19 +462,22 @@ export function moneyReceived(params: {
         </h1>
         <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
-          A USDC deposit has landed in your Cheese Pay. Your funds are safe and ready to use.
+          ${params.senderName
+            ? `<strong style="color:${BRAND.textLight};">${params.senderName}</strong> sent you USDC. Your funds are safe and ready to use.`
+            : 'A USDC deposit has landed in your Cheese Pay. Your funds are safe and ready to use.'}
         </p>
 
         <div style="margin-bottom:32px;">${amountDisplay(params.amountUsdc, params.amountNgn)}</div>
 
         ${
-          params.txHash
+          params.txHash || params.senderName
             ? `
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           <tbody>
+            ${params.senderName ? detailRow('From', params.senderName) : ''}
             ${params.network ? detailRow('Network', params.network) : ''}
-            ${detailRow('Transaction Hash', `${params.txHash.slice(0, 12)}...${params.txHash.slice(-8)}`)}
-            ${detailRow('Status', 'Confirmed', true)}
+            ${params.txHash ? detailRow('Transaction Hash', `${params.txHash.slice(0, 12)}...${params.txHash.slice(-8)}`) : ''}
+            ${params.txHash ? detailRow('Status', 'Confirmed', true) : ''}
           </tbody>
         </table>`
             : ''

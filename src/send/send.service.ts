@@ -332,6 +332,7 @@ export class SendService {
               amountNgn: String(ngnAmount.toFixed(2)),
               txHash,
               network: 'stellar',
+              senderName: senderLabel,
               appUrl,
             });
           })

@@ -245,6 +245,7 @@ export class WalletDepositScheduler {
             amountUsdc: payment.amount,
             txHash: payment.txHash,
             network: 'stellar',
+            senderName: 'external wallet',
             appUrl: 'https://cheesepay.xyz',
           })
           .catch((e: Error) =>
@@ -388,6 +389,7 @@ export class WalletDepositScheduler {
                       amountUsdc: event.amount,
                       txHash: event.txHash,
                       network: chainName,
+                      senderName: 'external wallet',
                       appUrl: 'https://cheesepay.xyz',
                     })
                     .catch((e: Error) =>

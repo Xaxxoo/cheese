@@ -378,6 +378,7 @@ export class PayLinkService {
         to: pr.creator.email,
         fullName: pr.creator.fullName,
         amountUsdc: amount.toFixed(2),
+        senderName: `@${payer.username}`,
         appUrl: `${frontendUrl}/wallet`,
       })
       .catch((e: Error) =>

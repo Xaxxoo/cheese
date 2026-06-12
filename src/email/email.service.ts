@@ -239,6 +239,7 @@ export class EmailService {
     amountNgn?: string;
     txHash?: string;
     network?: string;
+    senderName?: string;
     appUrl?: string;
   }): Promise<void> {
     const { subject, html } = moneyReceived({
