@@ -23,5 +23,5 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
-  "exclude": ["cheese-wallet", "node_modules", "dist"]
+  "exclude": ["cheese-wallet", "mobile", "node_modules", "dist"]
 }
