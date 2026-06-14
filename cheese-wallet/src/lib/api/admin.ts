@@ -691,6 +691,8 @@ export interface BroadcastResult {
 export async function broadcastLaunchPreview(): Promise<{ sent: number; to: string }> {
   const { data } = await adminApiClient.post<ApiResponse<{ sent: number; to: string }>>(
     '/admin/broadcast/launch/preview',
+    undefined,
+    { timeout: 120_000 },
   )
   return data.data
 }
@@ -699,6 +701,7 @@ export async function broadcastLaunchSend(limit: number): Promise<BroadcastResul
   const { data } = await adminApiClient.post<ApiResponse<BroadcastResult>>(
     '/admin/broadcast/launch/send',
     { limit },
+    { timeout: 300_000 }, // 5 min — sending to large batches takes time
   )
   return data.data
 }
