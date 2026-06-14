@@ -24,6 +24,13 @@ const POLL_AFTER_MINUTES = 10;
 // marked failed with a refund on the next poll, regardless of provider response.
 const FAIL_AFTER_HOURS = 24;
 
+// When PulseMFB returns 404 for a status look-up (transfer not found by our
+// reference), we do NOT immediately assume the transfer was never received.
+// PulseMFB may have processed the request and sent the money but be unable to
+// look it up by external reference, OR their webhook may just be delayed.
+// We wait this long before treating "not found" as a genuine non-delivery.
+const NOT_FOUND_FAIL_AFTER_MINUTES = 120; // 2 hours
+
 // Maximum transfers to process per run — prevents thundering-herd against PulseMFB.
 const MAX_PER_RUN = 20;
 
@@ -79,18 +86,31 @@ export class BanksScheduler {
       const remote = await this.pulseMfb.getTransferStatus(queryRef);
       remoteStatus = remote.status;
     } catch (err) {
-      // PulseMFB has no record of this transfer — it was never received (likely
-      // our initial request timed out before reaching them).  Mark it failed so
-      // the user's USDC is refunded and we stop polling.
+      // PulseMFB returned 404 for this reference.  This does NOT necessarily
+      // mean the transfer was never received — PulseMFB may have processed the
+      // request (and sent the money) but be unable to look it up by external
+      // reference, or their webhook may simply be delayed.
+      //
+      // We therefore wait NOT_FOUND_FAIL_AFTER_MINUTES before treating "not
+      // found" as a genuine non-delivery.  During that window the webhook can
+      // still arrive and resolve the transfer correctly.
       if ((err as { notFoundAtProvider?: boolean }).notFoundAtProvider) {
+        if (ageMin < NOT_FOUND_FAIL_AFTER_MINUTES) {
+          this.logger.warn(
+            `Transfer not found at PulseMFB [ref=${transfer.reference}] [age=${ageMin}m] — ` +
+            `waiting until ${NOT_FOUND_FAIL_AFTER_MINUTES}m before marking failed (webhook may still arrive)`,
+          );
+          return; // leave as PROCESSING, try again on next cron run
+        }
+
         this.logger.warn(
-          `Transfer not found at PulseMFB [ref=${transfer.reference}] [age=${ageMin}m] — marking failed and refunding`,
+          `Transfer not found at PulseMFB after ${ageMin}m [ref=${transfer.reference}] — marking failed and refunding`,
         );
         try {
           await this.banksService.processWebhook({
             reference: transfer.reference,
             event: 'transfer.failed',
-            failureReason: 'Transfer not found at provider — request never received',
+            failureReason: `Transfer not found at provider after ${ageMin}m — assumed not delivered`,
           });
         } catch (webhookErr) {
           this.logger.error(

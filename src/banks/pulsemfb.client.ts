@@ -126,6 +126,10 @@ export class PulseMfbClient implements OnModuleInit {
         `[account=${params.beneficiaryAccountNumber}]`,
     );
 
+    // 45 s — PulseMFB sometimes takes 25–35 s to respond even on successful
+    // transfers.  A short timeout causes us to lose the providerReference from
+    // the response, which then breaks status look-ups in the scheduler and
+    // leads to transfers being incorrectly marked as failed.
     const data = await this.post<{ data: PulseMfbTransferResult }>(
       '/transfers',
       {
@@ -138,6 +142,7 @@ export class PulseMfbClient implements OnModuleInit {
         narration: params.narration,
         reference: params.reference,
       },
+      45_000,
     );
     return data.data;
   }
