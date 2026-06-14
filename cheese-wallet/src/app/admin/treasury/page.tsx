@@ -7,14 +7,10 @@ import {
   treasuryTransfer,
   evmTreasuryWithdraw,
   contractDrainAll,
-  restoreContractBalances,
-  lookupStellarAddresses,
   listAdminTransfers,
   type TreasuryBalance,
   type EvmVaultBalance,
   type ContractDrainResult,
-  type RestoreResult,
-  type AddressLookupItem,
   type AdminTransferItem,
 } from '@/lib/api/admin';
 import { useAdminAuthStore } from '@/store/adminAuthStore';
@@ -613,143 +609,6 @@ function ContractDrainPanel({ onDrained }: { onDrained: () => void }) {
   );
 }
 
-// ── Swept-users panel ─────────────────────────────────────────────────────
-const SWEPT: { address: string; totalSwept: string }[] = [
-  { address: 'GBZVQXOIXVKE6WL7TJFRE6CQE7QIOG75FELA3B7MUCZ6XRUMXSMTHORX', totalSwept: '3.0584790' },
-  { address: 'GANZPCJN3ZRHMYNULTLXAWXW3T3LSYNWSOFEFQ743YL3T57CNBTUCMJC', totalSwept: '2.0449930' },
-  { address: 'GDSQFWAT3I2MOTBFHSM3YKJW2GVQEARVAGY6BSOUVLTM46LDL2JYLAWX', totalSwept: '2.0097260' },
-  { address: 'GAUR4DDZ3BWO4OVAEOU2Q2KOPIWJRR7VVUFSSGAT35JT73TNQ4WJVZVK',  totalSwept: '2.0000000' },
-  { address: 'GAQE4356TN37QQ7YVDWX6RYXIEFDYFIR6UT7OQGK6ELTU7ZQFIQ54NI4', totalSwept: '1.0000000' },
-  { address: 'GAUGHDOQHDDJCEDCVUNJVY7JNEKH7HYST3HTGWCSFH6YHLH2P2BCFG2M', totalSwept: '0.0442470' },
-  { address: 'GBT7S5S4TZ7GZEAM5NP7A5M2EZYL2IHWTWNU6T7V5AYGCGIPEUPWKUOY',  totalSwept: '0.0079740' },
-];
-
-// ── Restore expired Soroban balance entries ────────────────────────────────
-function RestoreBalancesPanel() {
-  const [usernames, setUsernames] = useState('xaxxoo\ninkman');
-  const [status,    setStatus]    = useState<'idle' | 'running' | 'done' | 'error'>('idle');
-  const [result,    setResult]    = useState<RestoreResult | null>(null);
-  const [error,     setError]     = useState('');
-
-  const run = async () => {
-    const list = usernames.split(/[\n,]+/).map((u) => u.trim().replace(/^@/, '')).filter(Boolean);
-    if (!list.length) return;
-    setStatus('running');
-    setResult(null);
-    setError('');
-    try {
-      const res = await restoreContractBalances(list);
-      setResult(res);
-      setStatus('done');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? e?.message ?? 'Unknown error');
-      setStatus('error');
-    }
-  };
-
-  const card: CSSProperties = {
-    background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, padding: 20,
-  };
-
-  return (
-    <div style={card}>
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Restore Expired Balance Entries</div>
-      <div style={{ fontSize: 12, color: c.textDim, marginBottom: 12 }}>
-        Restores archived Soroban persistent entries for users whose balances are locked.
-        Run this, then trigger Drain All again.
-      </div>
-      <textarea
-        value={usernames}
-        onChange={(e) => setUsernames(e.target.value)}
-        rows={4}
-        placeholder="usernames, one per line (without @)"
-        style={{ width: '100%', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: '8px 12px', color: c.text, fontSize: 12, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }}
-      />
-      <button
-        onClick={run}
-        disabled={status === 'running'}
-        style={{ marginTop: 10, padding: '8px 18px', borderRadius: 8, border: 'none', background: status === 'running' ? c.textDim : 'rgb(139,92,246)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: status === 'running' ? 'not-allowed' : 'pointer' }}
-      >
-        {status === 'running' ? 'Restoring…' : 'Restore Entries'}
-      </button>
-
-      {status === 'done' && result && (
-        <div style={{ marginTop: 14, fontSize: 12 }}>
-          <div style={{ color: 'rgb(74,222,128)', marginBottom: 6 }}>
-            Restored {result.restored.length} entries, skipped {result.skipped.length}
-          </div>
-          {result.restored.map((r) => (
-            <div key={r.username} style={{ fontFamily: 'monospace', fontSize: 11, color: c.textDim }}>
-              @{r.username} → {r.txHash ?? 'no tx'}
-            </div>
-          ))}
-          {result.skipped.length > 0 && (
-            <div style={{ color: c.textDim, marginTop: 4 }}>
-              No archive entry for: {result.skipped.map((u) => `@${u}`).join(', ')}
-            </div>
-          )}
-        </div>
-      )}
-      {status === 'error' && (
-        <div style={{ marginTop: 10, fontSize: 12, color: 'rgb(248,113,113)' }}>{error}</div>
-      )}
-    </div>
-  );
-}
-
-function SweptUsersPanel() {
-  const [rows,    setRows]    = useState<(typeof SWEPT[0] & AddressLookupItem)[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    void lookupStellarAddresses(SWEPT.map((s) => s.address)).then((lookup) => {
-      const map = new Map(lookup.map((l) => [l.address, l]));
-      setRows(SWEPT.map((s) => ({ ...s, ...(map.get(s.address) ?? { username: null, id: null }) })));
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
-
-  const card: CSSProperties = {
-    background: c.surface, border: `1px solid ${c.border}`,
-    borderRadius: 14, overflow: 'hidden',
-  };
-
-  const colGrid = '1fr 1fr 130px';
-
-  return (
-    <div style={card}>
-      <div style={{ display: 'grid', gridTemplateColumns: colGrid, padding: '8px 18px', borderBottom: `1px solid ${c.border}` }}>
-        {['Stellar Address', 'Username', 'USDC Swept In'].map((h) => (
-          <div key={h} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>{h}</div>
-        ))}
-      </div>
-      {loading ? (
-        <div style={{ padding: '24px 18px', fontSize: 13, color: c.textDim }}>Loading…</div>
-      ) : rows.map((r, i) => (
-        <div key={r.address} style={{ display: 'grid', gridTemplateColumns: colGrid, padding: '10px 18px', alignItems: 'center', borderBottom: i < rows.length - 1 ? `1px solid ${c.border}` : 'none' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: 11, color: c.textDim }}>
-            {r.address.slice(0, 8)}…{r.address.slice(-6)}
-          </div>
-          <div style={{ fontSize: 12.5, color: r.username ? c.text : c.textDim }}>
-            {r.username ? `@${r.username}` : '—'}
-            {r.id && (
-              <a href={`/admin/users/${r.id}`} style={{ marginLeft: 8, fontSize: 10.5, color: c.blue }}>view →</a>
-            )}
-          </div>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgb(167,139,250)', fontVariantNumeric: 'tabular-nums' }}>
-            ${parseFloat(r.totalSwept).toFixed(4)}
-          </div>
-        </div>
-      ))}
-      <div style={{ padding: '8px 18px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end' }}>
-        <span style={{ fontSize: 11, color: c.textDim }}>
-          Total swept in: <b style={{ color: c.text }}>$10.1654 USDC</b>
-          <span style={{ marginLeft: 8, color: c.textDim }}>· Contract holds: <b style={{ color: 'rgb(167,139,250)' }}>$7.9329</b> · Difference already used: <b>~$2.23</b></span>
-        </span>
-      </div>
-    </div>
-  );
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
@@ -832,18 +691,6 @@ export default function TreasuryPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
           <ContractBalanceCard contractUsdc={treasury?.contractUsdc} loading={balLoading} />
           <ContractDrainPanel onDrained={loadBalance} />
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Restore expired balance entries (then run Drain All again)
-          </div>
-          <RestoreBalancesPanel />
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Users whose USDC was swept into the contract
-          </div>
-          <SweptUsersPanel />
         </div>
       </div>
 
