@@ -5,7 +5,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual } from 'crypto';
@@ -169,6 +172,26 @@ function isPulseMfbInternalError(message: string): boolean {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface BankTransferJobData {
+  transferId: string;
+  txId: string;
+  userId: string;
+  userPublicKey: string;
+  userSecretEnc: string;
+  amountUsdc: string;
+  amountNgn: number;
+  feeUsdc: string;
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  reference: string;
+  username: string;
+  userEmail?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Injectable()
 export class BanksService {
   private readonly logger = new Logger(BanksService.name);
@@ -190,6 +213,8 @@ export class BanksService {
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly alertsService: AlertsService,
+    @Optional() @InjectQueue('bank-transfer')
+    private readonly bankTransferQueue: Queue | undefined,
   ) {}
 
   // ── GET /banks ────────────────────────────────────────────────────────────
@@ -412,42 +437,150 @@ export class BanksService {
       description: `Withdrawal to ${accountName} — ${bankName}`,
     });
 
-    // 9. Deduct USDC — send to the platform wallet which funds the NGN payout.
-    //    platformWithdrawUsdc reads the platform keypair from config and handles the transfer.
-    //    If this fails the user's balance is untouched, so we just mark failed and stop.
-    let stellarTxHash: string;
+    // 9. Queue the SAGA job — debit + payout run asynchronously so the HTTP
+    //    response is not held open while PulseMFB processes (25–45 s).
+    //    The user is notified via push/email once the transfer settles.
+    const jobData: BankTransferJobData = {
+      transferId: transfer.id,
+      txId: tx.id,
+      userId,
+      userPublicKey: user.stellarPublicKey,
+      userSecretEnc: user.stellarSecretEnc,
+      amountUsdc,
+      amountNgn,
+      feeUsdc,
+      bankCode: dto.bankCode,
+      bankName,
+      accountNumber: dto.accountNumber,
+      accountName,
+      reference,
+      username: user.username,
+      userEmail: user.email ?? undefined,
+    };
+
+    if (this.bankTransferQueue) {
+      try {
+        await this.bankTransferQueue.add('process', jobData, {
+          attempts: 1,           // No automatic BullMQ retries — SAGA handles errors internally
+          removeOnComplete: true,
+          removeOnFail: false,   // Keep failed jobs in Redis for inspection
+        });
+        this.logger.log(`Bank transfer queued [ref=${reference}]`);
+      } catch (queueErr) {
+        // Redis is unavailable — clean up the PENDING records immediately so the
+        // scheduler cannot later mistake them for submitted transfers and attempt
+        // a spurious USDC refund from the platform wallet.
+        // No USDC has been touched at this point so no compensation is needed.
+        this.logger.error(
+          `Bank transfer queue unavailable [ref=${reference}]: ${(queueErr as Error).message}`,
+        );
+        await this.transferRepo.update(
+          { id: transfer.id },
+          { status: BankTransferStatus.FAILED, failureReason: 'Queue unavailable — please retry' },
+        );
+        await this.txService.update(tx.id, {
+          status: TxStatus.FAILED,
+          failureReason: 'Queue unavailable — please retry',
+        });
+        throw new BadRequestException(
+          'Service temporarily unavailable. Please try again in a moment.',
+        );
+      }
+    } else {
+      // Redis not available (dev environment without queue) — fall back to sync execution
+      this.logger.warn(
+        `Bank transfer queue unavailable — processing synchronously [ref=${reference}]`,
+      );
+      await this.executeTransferSaga(jobData);
+    }
+
+    return {
+      reference,
+      providerReference: null,
+      status: BankTransferStatus.PENDING,
+      message:
+        'Your transfer is being processed. You will receive a notification once the NGN payout settles.',
+      amountNgn: dto.amountNgn,
+      amountUsdc,
+      rateApplied: rate.effectiveRate,
+      fee: feeUsdc,
+      recipientName: accountName,
+      bankName,
+      stellarTxHash: null,
+      createdAt: transfer.createdAt,
+    };
+  }
+
+  // ── Transfer SAGA ─────────────────────────────────────────────────────────
+  //
+  // Executes the two-step SAGA for a bank transfer:
+  //
+  //   Step 1 — Deduct USDC from the user's Stellar wallet → platform wallet.
+  //            On failure: mark FAILED (no USDC moved, no compensation needed).
+  //
+  //   Step 2 — Initiate NGN payout via PulseMFB.
+  //            On timeout: mark PROCESSING (scheduler + webhook resolve later).
+  //            On immediate success: mark COMPLETED, fire notifications.
+  //            On definitive rejection: compensating transaction — refund USDC,
+  //            mark FAILED, alert admin, notify user.
+  //
+  // Called by BankTransferProcessor (queue consumer) and, when Redis is not
+  // available, directly from bankTransfer() as a synchronous fallback.
+  // This method never throws — all error paths are handled internally.
+  //
+  async executeTransferSaga(data: BankTransferJobData): Promise<void> {
+    const {
+      transferId,
+      txId,
+      userId,
+      userPublicKey,
+      userSecretEnc,
+      amountUsdc,
+      amountNgn,
+      feeUsdc,
+      bankCode,
+      bankName,
+      accountNumber,
+      accountName,
+      reference,
+      username,
+      userEmail,
+    } = data;
+
+    // ── SAGA Step 1: Deduct USDC ───────────────────────────────────────────
     try {
-      stellarTxHash = await this.blockchainService.platformWithdrawUsdc(
-        user.stellarSecretEnc,
+      const stellarTxHash = await this.blockchainService.platformWithdrawUsdc(
+        userSecretEnc,
         amountUsdc,
         reference,
       );
-      await this.txService.update(tx.id, { txHash: stellarTxHash });
-    } catch (err) {
-      // USDC never left the user — safe to mark failed with no refund
-      await this.transferRepo.update(
-        { id: transfer.id },
-        {
-          status: BankTransferStatus.FAILED,
-          failureReason: (err as Error).message,
-        },
+      await this.txService.update(txId, { txHash: stellarTxHash });
+      this.logger.log(
+        `USDC deducted [ref=${reference}] [hash=${stellarTxHash}]`,
       );
-      await this.txService.update(tx.id, {
+    } catch (err) {
+      // USDC never left the user — mark FAILED, no compensating transaction needed
+      const errMsg = (err as Error).message;
+      await this.transferRepo.update(
+        { id: transferId },
+        { status: BankTransferStatus.FAILED, failureReason: errMsg },
+      );
+      await this.txService.update(txId, {
         status: TxStatus.FAILED,
-        failureReason: (err as Error).message,
+        failureReason: errMsg,
       });
       void this.alertsService
         .notifyFailedTransfer({
-          username: user.username,
-          userEmail: user.email ?? undefined,
+          username,
+          userEmail,
           amountNgn,
           amountUsdc,
           feeUsdc,
           bankName,
           accountName,
-          accountNumber: dto.accountNumber,
+          accountNumber,
           reference,
-          failureReason: (err as Error).message,
+          failureReason: errMsg,
           stage: 'stellar',
         })
         .catch((e: Error) =>
@@ -455,121 +588,82 @@ export class BanksService {
             `Failed transfer alert error [ref=${reference}]: ${e.message}`,
           ),
         );
-      throw new BadRequestException(
-        `USDC debit failed: ${(err as Error).message}`,
-      );
+      void this.notificationsService
+        .notifyBankTransferFailed(userId, String(amountNgn), errMsg)
+        .catch((e: Error) =>
+          this.logger.warn(
+            `Bank transfer failure notification error [ref=${reference}]: ${e.message}`,
+          ),
+        );
+      return;
     }
 
-    // 10. Call the banking provider to initiate the NGN payout
-    //     USDC has already moved at this point.
-    //     If the provider call fails we MUST refund the USDC immediately.
-    let finalStatus: BankTransferStatus = BankTransferStatus.PROCESSING;
-    let providerReference: string | null = null;
+    // ── SAGA Step 2: Initiate NGN payout ──────────────────────────────────
+    //
+    // IMPORTANT: The SAGA rollback catch block ONLY wraps initiateBankingTransfer.
+    // Post-success work (processWebhook, milestone check) runs OUTSIDE this scope
+    // so that a DB hiccup there cannot trigger a USDC refund for a payout that
+    // already landed at PulseMFB.
+    let sagaResult: { providerRef: string; completedImmediately: boolean };
     try {
-      const { providerRef, completedImmediately } =
-        await this.initiateBankingTransfer({
-          debitAccount: this.pulseMfb.platformDebitAccount,
-          accountNumber: dto.accountNumber,
-          bankCode: dto.bankCode,
-          bankName,
-          accountName,
-          amountNgn,
-          reference,
-        });
-
-      finalStatus = completedImmediately
-        ? BankTransferStatus.COMPLETED
-        : BankTransferStatus.PROCESSING;
-      providerReference = providerRef;
-
-      if (completedImmediately) {
-        // PulseMFB settled the transfer synchronously — mark both records final
-        await this.transferRepo.update(
-          { id: transfer.id },
-          {
-            status: BankTransferStatus.COMPLETED,
-            providerReference: providerRef,
-          },
-        );
-        await this.txService.update(tx.id, { status: TxStatus.COMPLETED });
-        this.logger.log(
-          `Bank transfer settled immediately [ref=${reference}] [provider=${providerRef}]`,
-        );
-        void this.referralService
-          .qualifyReferral(user.id)
-          .catch((e: Error) =>
-            this.logger.warn(`qualifyReferral failed [user=${user.id}]: ${e.message}`),
-          );
-      } else {
-        // Mark PROCESSING — awaiting final settlement confirmation via webhook
-        await this.transferRepo.update(
-          { id: transfer.id },
-          {
-            status: BankTransferStatus.PROCESSING,
-            providerReference: providerRef,
-          },
-        );
-        // Transaction stays PENDING until the webhook fires transfer.success
-      }
+      sagaResult = await this.initiateBankingTransfer({
+        debitAccount: this.pulseMfb.platformDebitAccount,
+        accountNumber,
+        bankCode,
+        bankName,
+        accountName,
+        amountNgn,
+        reference,
+      });
     } catch (err) {
       const errMsg = (err as Error).message ?? '';
       const isTimeout = errMsg.toLowerCase().includes('timed out');
 
       if (isTimeout) {
-        // Timeout ≠ rejection. PulseMFB may have received and is processing the
-        // request. Do NOT refund yet — the webhook or sync endpoint will resolve it.
+        // Timeout ≠ rejection — PulseMFB may have received and processed the
+        // request. Leave PROCESSING; the webhook or scheduler will resolve it.
         this.logger.error(
-          `Banking provider timed out for ${reference} — leaving PROCESSING, awaiting webhook`,
+          `Banking provider timed out for [ref=${reference}] — leaving PROCESSING, awaiting webhook`,
         );
         await this.transferRepo.update(
-          { id: transfer.id },
+          { id: transferId },
           {
             status: BankTransferStatus.PROCESSING,
             failureReason: errMsg,
           },
         );
-        // Transaction stays PENDING until webhook or sync resolves it
-        throw new BadRequestException(
-          'The banking provider did not respond in time. Your USDC has been deducted and the transfer is being verified — you will be notified once it settles.',
-        );
+        return;
       }
 
-      // Definitive rejection (not a timeout) — safe to refund immediately
+      // Definitive rejection — SAGA compensating transaction: refund USDC
       this.logger.error(
-        `Banking provider failed for ${reference} — refunding USDC: ${errMsg}`,
+        `Banking provider rejected [ref=${reference}] — refunding USDC: ${errMsg}`,
       );
-
-      // USDC is already on the platform wallet; send it back to the user
       await this.refundUsdc({
         userId,
-        toPublicKey: user.stellarPublicKey,
+        toPublicKey: userPublicKey,
         amountUsdc,
         reference,
         reason: errMsg,
       });
-
       await this.transferRepo.update(
-        { id: transfer.id },
-        {
-          status: BankTransferStatus.FAILED,
-          failureReason: errMsg,
-        },
+        { id: transferId },
+        { status: BankTransferStatus.FAILED, failureReason: errMsg },
       );
-      await this.txService.update(tx.id, {
+      await this.txService.update(txId, {
         status: TxStatus.FAILED,
         failureReason: `Banking provider failed — USDC refunded. ${errMsg}`,
       });
-
       void this.alertsService
         .notifyFailedTransfer({
-          username: user.username,
-          userEmail: user.email ?? undefined,
+          username,
+          userEmail,
           amountNgn,
           amountUsdc,
           feeUsdc,
           bankName,
           accountName,
-          accountNumber: dto.accountNumber,
+          accountNumber,
           reference,
           failureReason: errMsg,
           stage: 'provider',
@@ -579,33 +673,59 @@ export class BanksService {
             `Failed transfer alert error [ref=${reference}]: ${e.message}`,
           ),
         );
-
-      const userMsg = isPulseMfbInternalError(errMsg)
-        ? 'The banking provider could not process this transfer. Your USDC balance has been refunded — please try again in a few minutes.'
-        : `Bank transfer failed: ${errMsg}`;
-      throw new BadRequestException(userMsg);
+      void this.notificationsService
+        .notifyBankTransferFailed(userId, String(amountNgn), errMsg)
+        .catch((e: Error) =>
+          this.logger.warn(
+            `Bank transfer failure notification error [ref=${reference}]: ${e.message}`,
+          ),
+        );
+      return;
     }
 
-    // Fire-and-forget milestone check
-    void this.tierMilestone.checkAndNotify(userId);
+    // ── Post-SAGA: persist result and fire notifications ──────────────────
+    // We are outside the rollback scope here — a failure at this point must
+    // NOT trigger a USDC refund because PulseMFB has already accepted (or
+    // completed) the payout.
+    const { providerRef, completedImmediately } = sagaResult;
 
-    return {
-      reference,
-      providerReference,
-      status: finalStatus,
-      message:
-        finalStatus === BankTransferStatus.COMPLETED
-          ? 'USDC deducted and NGN payout completed successfully.'
-          : 'USDC deducted. NGN payout is being processed. You will receive a confirmation once the transfer settles.',
-      amountNgn: dto.amountNgn,
-      amountUsdc,
-      rateApplied: rate.effectiveRate,
-      fee: feeUsdc,
-      recipientName: accountName,
-      bankName,
-      stellarTxHash,
-      createdAt: transfer.createdAt,
-    };
+    if (completedImmediately) {
+      // PulseMFB settled synchronously — save provider ref then delegate to
+      // processWebhook so status update + notifications follow the same path
+      // as the webhook (push notification, email, referral qualification).
+      await this.transferRepo.update(
+        { id: transferId },
+        { providerReference: providerRef },
+      );
+      try {
+        await this.processWebhook({ reference, event: 'transfer.success' });
+      } catch (err) {
+        // The NGN payout already landed — do not refund. Log and let the
+        // scheduler or a manual webhook replay resolve the status.
+        this.logger.error(
+          `processWebhook failed for immediately-settled transfer [ref=${reference}]: ${(err as Error).message}`,
+        );
+      }
+      this.logger.log(
+        `Bank transfer settled immediately via processor [ref=${reference}] [provider=${providerRef}]`,
+      );
+    } else {
+      // PulseMFB accepted but settlement is pending — webhook or scheduler
+      // will fire transfer.success / transfer.failed when it resolves.
+      await this.transferRepo.update(
+        { id: transferId },
+        {
+          status: BankTransferStatus.PROCESSING,
+          providerReference: providerRef,
+        },
+      );
+      this.logger.log(
+        `Bank transfer submitted to provider [ref=${reference}] [provider=${providerRef}]`,
+      );
+    }
+
+    // Fire-and-forget tier milestone check
+    void this.tierMilestone.checkAndNotify(userId);
   }
 
   // ── POST /banks/webhook ───────────────────────────────────────────────────
