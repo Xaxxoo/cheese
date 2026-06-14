@@ -84,28 +84,40 @@ export class BanksController {
   @ApiOperation({
     summary: 'Withdraw USDC as NGN to a bank account',
     description:
-      "Converts the user's USDC to NGN at the current effective rate and initiates " +
-      'a bank transfer. Requires PIN hash and device ID.\n\n' +
+      "Converts the user's USDC to NGN at the current effective rate and queues a bank transfer. " +
+      'All validation runs synchronously; the actual debit and payout are processed asynchronously ' +
+      'via an internal job queue so the HTTP response is never held open while the banking provider ' +
+      'processes the request.\n\n' +
       '**Flow:**\n' +
-      "1. USDC is deducted from the user's Stellar wallet.\n" +
-      '2. The banking provider is called to initiate the NGN payout.\n' +
-      '3. The transfer stays in **processing** state until `POST /banks/webhook` ' +
-      'receives a `transfer.success` or `transfer.failed` event.\n\n' +
-      'If the banking provider call fails *after* USDC is deducted, the USDC is ' +
-      "automatically refunded to the user's wallet.",
+      '1. Request is validated (KYC, daily limit, PIN, device signature, balance, account name).\n' +
+      '2. A `pending` transfer record is created and the job is queued.\n' +
+      '3. **`200` is returned immediately** — `status` will be `"pending"`.\n' +
+      '4. The background worker deducts USDC from the Stellar wallet (SAGA step 1).\n' +
+      '5. The worker calls PulseMFB to initiate the NGN payout (SAGA step 2).\n' +
+      '6. The transfer moves to `processing` and stays there until PulseMFB settles it ' +
+      'via webhook (`POST /banks/webhook/pulsemfb`) or the status poller (`GET /banks/transfer/:reference`).\n\n' +
+      '**SAGA failure handling:**\n' +
+      '- Step 1 fails (Stellar error): transfer marked `failed`, no USDC moved, user notified.\n' +
+      '- Step 2 times out: transfer stays `processing` — the scheduler polls PulseMFB every 5 minutes.\n' +
+      '- Step 2 rejected definitively: USDC is automatically refunded (compensating transaction), ' +
+      'transfer marked `failed`, user notified.\n\n' +
+      '**Polling for final status:**\n' +
+      'Use `GET /banks/transfer/:reference` to manually sync the status, or listen for the ' +
+      'push notification / email that fires when the transfer settles.',
   })
   @ApiResponse({
     status: 200,
     description:
-      'Transfer initiated — status is "processing" until webhook confirms',
+      'Transfer accepted and queued — `status` is `"pending"`. ' +
+      'Poll `GET /banks/transfer/:reference` or wait for a push notification to get the final status.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Insufficient balance or validation error',
+    description: 'Validation error — insufficient balance, amount out of range, account mismatch, or service temporarily unavailable.',
   })
   @ApiResponse({
-    status: 401,
-    description: 'Invalid PIN or unrecognised device',
+    status: 403,
+    description: 'KYC not verified, daily limit exceeded, incorrect PIN, or unrecognised device.',
   })
   bankTransfer(@CurrentUser() user: User, @Body() dto: BankTransferDto) {
     return this.banksService.bankTransfer(user.id, dto);
@@ -140,10 +152,12 @@ export class BanksController {
       '**This is a demo endpoint for testing on Swagger.** In production this ' +
       'would be called by your banking provider when a transfer settles.\n\n' +
       '**How to test the full flow:**\n' +
-      '1. Call `POST /banks/transfer` — copy the `reference` from the response.\n' +
-      '2. Call this endpoint with that reference and `event: transfer.success` ' +
+      '1. Call `POST /banks/transfer` — the response returns `status: "pending"` and a `reference`.\n' +
+      '2. Wait for the background worker to process the job (USDC debit + PulseMFB call), ' +
+      'then call `GET /banks/transfer/:reference` to confirm the transfer is in `processing`.\n' +
+      '3. Call this endpoint with that reference and `event: transfer.success` ' +
       'to simulate a successful NGN settlement.\n' +
-      '3. Or use `transfer.failed` / `transfer.reversed` to simulate a failure — ' +
+      '4. Or use `transfer.failed` / `transfer.reversed` to simulate a failure — ' +
       "the USDC will be automatically refunded to the user's wallet.\n\n" +
       '**Events:**\n' +
       '- `transfer.success` — NGN landed in recipient account → marks transfer COMPLETED.\n' +
