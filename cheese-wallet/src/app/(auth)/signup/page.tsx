@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { notify } from '@/lib/toast';
 import { Eye, EyeOff, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/components/ui/Input'
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import { Button } from '@/components/ui/Button';
 import { PinPad } from '@/components/ui/PinPad';
 import { Spinner } from '@/components/ui/Spinner';
@@ -441,15 +442,11 @@ export default function SignupPage() {
               autoComplete="email"
               autoCapitalize="none"
             />
-            <Input
+            <PhoneInput
               label="Phone number"
-              type="tel"
-              placeholder="+234 801 234 5678"
               value={form.phone}
-              onChange={(e) => set('phone', e.target.value)}
+              onChange={(v) => set('phone', v)}
               error={errors.phone}
-              autoComplete="tel"
-              hint="Include your country code, e.g. +234 for Nigeria"
             />
           </div>
 

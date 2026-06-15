@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { updateProfile } from '@/lib/api/wallet'
 import { notify } from '@/lib/toast'
+import { PhoneInput } from '@/components/ui/PhoneInput'
 
 function Field({
   label,
@@ -27,7 +28,7 @@ function Field({
 }
 
 const inputClass =
-  'w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#d4a843]/50 transition-colors'
+  'w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#d4a843]/50 transition-colors'
 
 export default function EditProfilePage() {
   const router = useRouter()
@@ -112,15 +113,11 @@ export default function EditProfilePage() {
           </div>
         </Field>
 
-        <Field label="Phone">
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+234..."
-            className={inputClass}
-          />
-        </Field>
+        <PhoneInput
+          label="Phone"
+          value={phone}
+          onChange={setPhone}
+        />
 
         <Field label="Email" hint="Email cannot be changed">
           <input

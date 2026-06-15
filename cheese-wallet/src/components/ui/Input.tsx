@@ -48,7 +48,7 @@ export function Input({
           id={inputId}
           className={cn(
             'w-full h-12 border rounded-2xl px-4 text-sm text-white',
-            'placeholder:text-white/30',
+            'placeholder:text-white/20',
             // Only transition border-color — NOT transition-all, which would
             // animate background-color and let the browser's autofill/filled
             // white background fade in
