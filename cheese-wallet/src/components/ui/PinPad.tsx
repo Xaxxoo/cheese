@@ -48,7 +48,7 @@ export function PinPad({ value, onChange, maxLength = 6, label, error }: PinPadP
       )}
 
       {/* Keypad */}
-      <div className="grid grid-cols-3 gap-3 w-full max-w-[264px]">
+      <div className="grid grid-cols-3 gap-4 w-full">
         {KEYS.map((key, i) => {
           if (key === '') return <div key={i} />
           return (
@@ -57,14 +57,14 @@ export function PinPad({ value, onChange, maxLength = 6, label, error }: PinPadP
               type="button"
               onClick={() => press(key)}
               className={cn(
-                'aspect-square rounded-2xl text-xl font-medium transition-all duration-100',
+                'aspect-square rounded-2xl text-2xl font-medium transition-all duration-100',
                 'flex items-center justify-center active:scale-95 select-none',
                 key === '⌫'
                   ? 'bg-transparent text-white/40'
                   : 'bg-white/8 border border-white/8 text-white hover:bg-white/12',
               )}
             >
-              {key === '⌫' ? <Delete size={20} /> : key}
+              {key === '⌫' ? <Delete size={24} /> : key}
             </button>
           )
         })}
