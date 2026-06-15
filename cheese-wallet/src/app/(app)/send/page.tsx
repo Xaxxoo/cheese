@@ -631,12 +631,11 @@ function BankDetailsStep({
             <input
               type="text"
               value={bankOpen ? bankQuery : (selectedBank?.name ?? '')}
-              onChange={(e) => setBankQuery(e.target.value)}
+              onChange={(e) => { setBankOpen(true); setBankQuery(e.target.value) }}
               onFocus={() => { setBankOpen(true); setBankQuery('') }}
               onBlur={() => setTimeout(() => setBankOpen(false), 150)}
               placeholder={banksQ.isLoading ? 'Loading banks…' : 'Search for bank…'}
               className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
-              readOnly={!bankOpen}
             />
             {selectedBank && !bankOpen
               ? <button
