@@ -97,13 +97,9 @@ export function PhoneInput({ label, value, onChange, error, hint }: PhoneInputPr
   const searchRef               = useRef<HTMLInputElement>(null)
   const wrapRef                 = useRef<HTMLDivElement>(null)
 
-  // Focus search box when dropdown opens
+  // Clear search when dropdown closes
   useEffect(() => {
-    if (open) {
-      setTimeout(() => searchRef.current?.focus(), 50)
-    } else {
-      setSearch('')
-    }
+    if (!open) setSearch('')
   }, [open])
 
   // Keep internal state in sync if parent resets value externally
@@ -159,7 +155,11 @@ export function PhoneInput({ label, value, onChange, error, hint }: PhoneInputPr
           {/* Country picker trigger */}
           <button
             type="button"
-            onClick={() => setOpen(o => !o)}
+            onClick={() => {
+              const next = !open
+              setOpen(next)
+              if (next) searchRef.current?.focus()
+            }}
             className={cn(
               'flex items-center gap-1.5 px-3 h-12 rounded-2xl border transition-[border-color] duration-150',
               'text-sm text-white shrink-0 select-none',
