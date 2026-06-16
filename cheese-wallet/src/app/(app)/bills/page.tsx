@@ -1,48 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, PhoneCall, Wifi, Tv, Zap } from 'lucide-react'
-import { cn } from '@/lib/cn'
-
-const BILL_TYPES = [
-  {
-    id: 'airtime',
-    label: 'Airtime',
-    desc: 'Top up any Nigerian network',
-    icon: PhoneCall,
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-400/10',
-    href: '/bills/airtime',
-  },
-  {
-    id: 'data',
-    label: 'Data',
-    desc: 'Buy mobile data bundles',
-    icon: Wifi,
-    color: 'text-blue-400',
-    bg: 'bg-blue-400/10',
-    href: '/bills/data',
-  },
-  {
-    id: 'tv',
-    label: 'Cable TV',
-    desc: 'Pay DSTV, GOTV & StarTimes',
-    icon: Tv,
-    color: 'text-violet-400',
-    bg: 'bg-violet-400/10',
-    href: '/bills/tv',
-  },
-  {
-    id: 'electricity',
-    label: 'Electricity',
-    desc: 'Pay electricity bills & buy units',
-    icon: Zap,
-    color: 'text-amber-400',
-    bg: 'bg-amber-400/10',
-    href: '/bills/electricity',
-  },
-]
+import { ArrowLeft, Zap } from 'lucide-react'
 
 export default function BillsPage() {
   const router = useRouter()
@@ -61,26 +20,14 @@ export default function BillsPage() {
         <h1 className="text-lg font-semibold text-white">Pay Bills</h1>
       </div>
 
-      {/* Bill type cards */}
-      <div className="px-4 flex flex-col gap-3 mt-2">
-        {BILL_TYPES.map(({ id, label, desc, icon: Icon, color, bg, href }) => (
-          <Link
-            key={id}
-            href={href}
-            className="flex items-center gap-4 px-4 py-4 rounded-2xl border border-white/8 bg-white/4 hover:bg-white/7 active:bg-white/10 transition-colors"
-          >
-            <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shrink-0', bg)}>
-              <Icon size={22} className={color} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">{label}</p>
-              <p className="text-xs text-white/45 mt-0.5">{desc}</p>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-white/25 shrink-0">
-              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
-        ))}
+      <div className="flex flex-col items-center justify-center flex-1 px-6 mt-12 text-center">
+        <div className="w-20 h-20 rounded-full bg-[#d4a843]/10 flex items-center justify-center mb-5">
+          <Zap size={36} className="text-[#d4a843]" />
+        </div>
+        <h2 className="text-xl font-semibold text-white mb-2">Coming Soon</h2>
+        <p className="text-sm text-white/45 leading-relaxed max-w-xs">
+          Bill payments — airtime, data, cable TV, and electricity — are on their way. We&apos;ll let you know as soon as they&apos;re live.
+        </p>
       </div>
     </div>
   )
