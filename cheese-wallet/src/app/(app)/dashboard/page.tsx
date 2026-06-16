@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowUpRight, ArrowDownLeft, Link2, Eye, EyeOff,
-  TrendingUp, RefreshCw, Copy, CheckCheck, Receipt,
+  TrendingUp, RefreshCw, Copy, CheckCheck, Receipt, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -124,22 +124,23 @@ function BalanceCard() {
       </div>
 
       {/* Action row */}
-      <div className="grid grid-cols-4 border-t border-white/6">
+      <div className="flex border-t border-white/6 overflow-x-auto no-scrollbar">
         {[
-          { label: 'Send',      icon: ArrowUpRight,  href: '/send',     color: 'text-[#d4a843]' },
-          { label: 'Receive',   icon: ArrowDownLeft, href: '/receive',  color: 'text-emerald-400' },
-          { label: 'Pay Link',  icon: Link2,         href: '/paylink',  color: 'text-violet-400' },
-          { label: 'Pay Bills', icon: Receipt,       href: '/bills',    color: 'text-amber-400' },
+          { label: 'Send',       icon: ArrowUpRight,  href: '/send',        color: 'text-[#d4a843]' },
+          { label: 'Receive',    icon: ArrowDownLeft, href: '/receive',     color: 'text-emerald-400' },
+          { label: 'Pay Link',   icon: Link2,         href: '/paylink',     color: 'text-violet-400' },
+          { label: 'Pay Bills',  icon: Receipt,       href: '/bills',       color: 'text-amber-400' },
+          { label: 'Statements', icon: FileText,      href: '/statements',  color: 'text-sky-400' },
         ].map(({ label, icon: Icon, href, color }) => (
           <Link
             key={label}
             href={href}
-            className="flex flex-col items-center gap-1.5 py-4 hover:bg-white/5 transition-colors"
+            className="flex flex-col items-center gap-1.5 py-4 hover:bg-white/5 transition-colors flex-1 min-w-[64px]"
           >
             <div className={cn('w-9 h-9 rounded-full flex items-center justify-center bg-white/8', color)}>
               <Icon size={16} />
             </div>
-            <span className="text-xs text-white/50">{label}</span>
+            <span className="text-[11px] text-white/50 whitespace-nowrap">{label}</span>
           </Link>
         ))}
       </div>

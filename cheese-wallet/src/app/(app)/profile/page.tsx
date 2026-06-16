@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, LogOut, Copy, CheckCheck,
   Smartphone, RefreshCw, Trash2, User, Gift,
-  BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound, MailWarning, Pencil,
+  BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound, MailWarning, Pencil, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -438,9 +438,17 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Security */}
-      {user?.hasPin && (
-        <div className="mx-4 mt-2 rounded-2xl border border-white/8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+      {/* Account links */}
+      <div className="mx-4 mt-2 rounded-2xl border border-white/8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <Link
+          href="/statements"
+          className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5"
+        >
+          <FileText size={14} className="text-white/40 shrink-0" />
+          <span className="text-xs text-white flex-1">Bank Statements</span>
+          <ChevronRight size={14} className="text-white/25 shrink-0" />
+        </Link>
+        {user?.hasPin && (
           <Link
             href="/pin"
             className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors"
@@ -449,8 +457,8 @@ export default function ProfilePage() {
             <span className="text-xs text-white flex-1">Change PIN</span>
             <ChevronRight size={14} className="text-white/25 shrink-0" />
           </Link>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Referral */}
       <ReferralCard />
