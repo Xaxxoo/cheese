@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
+  Code2,
   CreditCard,
   Home,
   LayoutTemplate,
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: '/merchant/dashboard',   label: 'Dashboard',   icon: Home },
   { href: '/merchant/payments',    label: 'Payments',    icon: CreditCard },
   { href: '/merchant/settlements', label: 'Settlements', icon: ReceiptText },
+  { href: '/merchant/developer',   label: 'Developer',   icon: Code2 },
   { href: '/merchant/onboarding',  label: 'Onboarding',  icon: LayoutTemplate },
 ] as const;
 
