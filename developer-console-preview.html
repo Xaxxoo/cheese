@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Developer Console — CheesePay Merchant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── CSS variables (dark theme) ───────────────────────────────────── */
+    :root {
+      --bg:             #09090C;
+      --side:           #0C0C10;
+      --panel:          rgba(255,255,255,0.042);
+      --panel-soft:     rgba(255,255,255,0.020);
+      --panel-strong:   rgba(255,255,255,0.072);
+      --border:         rgba(255,255,255,0.082);
+      --strong-border:  rgba(255,255,255,0.155);
+      --text:           #F3F3F5;
+      --soft-text:      #9A9AAA;
+      --muted:          #5C5C6A;
+      --input-bg:       #131316;
+      --input-bg-focus: #1a1a1e;
+      --action-bg:      #EEEEF2;
+      --action-fg:      #09090C;
+      --action-hover:   #E4E4E8;
+      --gold:           #D4A843;
+    }
+
+    body {
+      background: #0a0a0e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px 60px;
+      gap: 24px;
+    }
+
+    /* ── Page label ───────────────────────────────────────────────────── */
+    .page-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* ── Browser chrome ───────────────────────────────────────────────── */
+    .browser {
+      width: 100%;
+      max-width: 1160px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.8);
+    }
+
+    .browser-bar {
+      background: #1a1a1e;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .browser-dots { display: flex; gap: 6px; }
+    .browser-dots span {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+    }
+    .browser-dots span:nth-child(1) { background: #FF5F57; }
+    .browser-dots span:nth-child(2) { background: #FEBC2E; }
+    .browser-dots span:nth-child(3) { background: #28C840; }
+
+    .browser-url {
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 7px;
+      padding: 5px 12px;
+      font-size: 12px;
+      color: var(--soft-text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .browser-url .lock { font-size: 10px; color: #28C840; }
+
+    /* ── App shell ────────────────────────────────────────────────────── */
+    .app {
+      display: flex;
+      height: 720px;
+      background: var(--bg);
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--side);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 12px;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px 16px;
+    }
+    .sidebar-logo .ico {
+      width: 28px; height: 28px;
+      background: var(--gold);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .sidebar-logo .name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .merchant-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+    }
+    .merchant-card .m-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .merchant-card .m-name .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      flex-shrink: 0;
+    }
+    .merchant-card .m-sub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--soft-text);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+      position: relative;
+    }
+    .nav-item:hover { background: var(--panel); color: var(--text); }
+    .nav-item.active {
+      background: var(--panel-strong);
+      color: var(--text);
+      font-weight: 500;
+    }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 18px;
+      background: var(--gold);
+      border-radius: 0 2px 2px 0;
+    }
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      margin-top: 8px;
+    }
+    .sidebar-footer .user {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 8px;
+    }
+    .avatar {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: rgba(212,168,67,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .user-info .u-name { font-size: 12px; font-weight: 500; color: var(--text); }
+    .user-info .u-email { font-size: 10px; color: var(--muted); }
+
+    /* ── Main area ────────────────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(9,9,12,0.88);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 12px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+    .topbar .page-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .topbar .live-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(34,197,94,0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34,197,94,0.2);
+    }
+    .topbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      background: transparent;
+    }
+    .icon-btn:hover { background: var(--panel-strong); color: var(--text); }
+    .icon-btn svg { width: 15px; height: 15px; }
+
+    /* ── Page content ─────────────────────────────────────────────────── */
+    .page-content {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+    .page-header p {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Tab switcher ─────────────────────────────────────────────────── */
+    .tab-switcher {
+      display: inline-flex;
+      gap: 4px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      background: var(--panel-strong);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .tab-btn svg { width: 14px; height: 14px; }
+
+    /* ── Card container ───────────────────────────────────────────────── */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-header h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .card-header p {
+      margin-top: 2px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-sm { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; }
+    .btn-md { height: 36px; padding: 0 14px; border-radius: 8px; font-size: 13px; }
+
+    .btn-primary {
+      background: var(--action-bg);
+      color: var(--action-fg);
+    }
+    .btn-primary:hover { background: var(--action-hover); }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background: var(--panel-strong);
+      border-color: var(--strong-border);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--soft-text);
+    }
+    .btn-ghost:hover { background: var(--panel-strong); color: var(--text); }
+
+    .btn-danger {
+      background: rgba(239,68,68,0.1);
+      color: #f87171;
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    .btn-danger:hover {
+      background: rgba(239,68,68,0.16);
+      border-color: rgba(239,68,68,0.3);
+    }
+
+    .btn svg { width: 13px; height: 13px; }
+
+    /* ── Table ────────────────────────────────────────────────────────── */
+    .tbl { width: 100%; border-collapse: collapse; text-align: left; }
+    .tbl thead tr { border-bottom: 1px solid var(--border); }
+    .tbl thead th {
+      padding: 10px 20px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+    .tbl tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    .tbl tbody tr:last-child { border-bottom: none; }
+    .tbl tbody tr:hover { background: var(--panel-strong); }
+    .tbl td { padding: 12px 20px; font-size: 12px; color: var(--text); vertical-align: middle; }
+
+    /* ── Badge ────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 99px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-neutral { background: var(--panel-strong); color: var(--muted); }
+    .badge-positive { background: rgba(34,197,94,0.1); color: #22c55e; }
+    .badge-negative { background: rgba(239,68,68,0.1); color: #f87171; }
+    .badge-warning  { background: rgba(245,158,11,0.1); color: #f59e0b; }
+
+    .badges { display: flex; flex-wrap: wrap; gap: 4px; }
+
+    code { font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace; }
+
+    /* ── Empty state ──────────────────────────────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 24px;
+      text-align: center;
+      gap: 8px;
+    }
+    .empty-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .empty-icon svg { width: 20px; height: 20px; }
+    .empty-state h3 { font-size: 13px; font-weight: 600; color: var(--text); }
+    .empty-state p { font-size: 12px; color: var(--muted); max-width: 240px; line-height: 1.5; }
+
+    /* ── Webhook card ─────────────────────────────────────────────────── */
+    .webhook-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .wh-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .wh-url {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .wh-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .wh-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 36px; height: 20px;
+      cursor: pointer;
+    }
+    .toggle input { display: none; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 99px;
+      background: var(--panel-strong);
+      transition: background 0.2s;
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      transition: transform 0.2s;
+    }
+    .toggle.on .toggle-track { background: #22c55e; }
+    .toggle.on .toggle-thumb { transform: translateX(16px); }
+
+    /* Signing secret row */
+    .secret-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+    .secret-label { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+    .secret-val {
+      flex: 1;
+      font-family: 'SF Mono', monospace;
+      font-size: 11px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 3px 7px;
+      border-radius: 5px;
+      transition: all 0.12s;
+    }
+    .copy-btn:hover { background: var(--panel-strong); color: var(--text); }
+    .copy-btn svg { width: 11px; height: 11px; }
+
+    /* Delivery log */
+    .delivery-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.12s;
+    }
+    .delivery-toggle:hover { color: var(--text); }
+    .delivery-toggle svg { width: 13px; height: 13px; }
+
+    .delivery-log {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .delivery-log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .delivery-log-header span { font-size: 11px; font-weight: 600; color: var(--muted); }
+    .delivery-rows {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .delivery-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      font-size: 11px;
+      border-bottom: 1px solid var(--border);
+    }
+    .delivery-row:last-child { border-bottom: none; }
+    .delivery-event { flex: 1; font-family: monospace; color: var(--muted); }
+    .delivery-time { color: var(--muted); flex-shrink: 0; }
+
+    /* Revoked section toggle */
+    .revoked-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .revoked-toggle:hover { color: var(--text); }
+    .revoked-toggle svg { width: 14px; height: 14px; }
+
+    /* ── Modal ────────────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.8);
+      transform: translateY(8px) scale(0.98);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.open .modal {
+      transform: translateY(0) scale(1);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-head h2 { font-size: 15px; font-weight: 600; color: var(--text); }
+    .modal-close {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.12s;
+    }
+    .modal-close:hover { background: var(--panel-strong); color: var(--text); }
+    .modal-close svg { width: 15px; height: 15px; }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Form fields */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 11px; font-weight: 500; color: var(--soft-text); }
+    .field input[type="text"], .field input[type="url"] {
+      height: 36px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 14px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: all 0.15s;
+      width: 100%;
+      font-family: inherit;
+    }
+    .field input:focus {
+      border-color: var(--strong-border);
+      background: var(--input-bg-focus);
+    }
+    .field input::placeholder { color: var(--muted); }
+
+    /* Checkboxes grid */
+    .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .checkbox-item:hover { background: var(--panel-strong); }
+    .checkbox-item.checked {
+      border-color: var(--strong-border);
+      background: var(--panel-strong);
+    }
+    .checkbox-item input { width: 13px; height: 13px; accent-color: var(--text); flex-shrink: 0; }
+    .checkbox-item code { font-size: 11px; color: var(--text); }
+
+    /* Key reveal */
+    .key-callout {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: rgba(245,158,11,0.05);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .key-callout svg { width: 15px; height: 15px; color: #f59e0b; flex-shrink: 0; margin-top: 1px; }
+    .key-callout p { font-size: 11px; line-height: 1.5; color: rgba(245,158,11,0.8); }
+
+    .key-reveal {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+    .key-reveal code { flex: 1; font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .confirm-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .confirm-check input { width: 13px; height: 13px; }
+    .confirm-check span { font-size: 12px; color: var(--muted); }
+
+    .modal-actions { display: flex; gap: 8px; }
+    .modal-actions .btn { flex: 1; }
+
+    /* ── Tabs content ─────────────────────────────────────────────────── */
+    .tab-content { display: none; flex-direction: column; gap: 16px; }
+    .tab-content.active { display: flex; }
+
+    /* ── Misc ─────────────────────────────────────────────────────────── */
+    .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+    .muted { color: var(--muted); }
+    .strikethrough { text-decoration: line-through; }
+    .opacity-50 { opacity: 0.5; }
+    .mt-3 { margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+<p class="page-label">CheesePay — Developer Console Preview</p>
+
+<div class="browser">
+  <!-- Browser chrome -->
+  <div class="browser-bar">
+    <div class="browser-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <div class="browser-url">
+      <span class="lock">🔒</span>
+      cheesepay.app/merchant/developer
+    </div>
+  </div>
+
+  <!-- App shell -->
+  <div class="app">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <div class="ico">✦</div>
+        <span class="name">CheesePay</span>
+      </div>
+
+      <div class="merchant-card">
+        <div class="m-name">
+          <span class="live-dot"></span>
+          Kola Fabrics Ltd
+        </div>
+        <div class="m-sub">Nigeria · NGN · Live</div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item" onclick="return false">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item" onclick="return false">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
+          Payments
+        </a>
+        <a class="nav-item" onclick="return false">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v14l3.5-2 3.5 2 3.5-2 3.5 2V4a2 2 0 00-2-2H5zm2.5 3a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 000 2h5a1 1 0 100-2h-5zm0 4a1 1 0 100 2h2a1 1 0 100-2h-2z" clip-rule="evenodd"/></svg>
+          Settlements
+        </a>
+        <a class="nav-item active" onclick="return false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          Developer
+        </a>
+        <a class="nav-item" onclick="return false">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg>
+          Onboarding
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user">
+          <div class="avatar">KF</div>
+          <div class="user-info">
+            <div class="u-name">Kola Fabrics</div>
+            <div class="u-email">merchant@kolafabrics.ng</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="topbar">
+        <span class="page-title">Developer</span>
+        <span class="live-badge">Live</span>
+        <div class="topbar-right">
+          <button class="icon-btn" title="Theme toggle">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+          </button>
+          <button class="icon-btn" title="Notifications">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="page-content">
+
+        <!-- Page header -->
+        <div class="page-header">
+          <h1>Developer</h1>
+          <p>Manage API keys and webhook endpoints for programmatic access.</p>
+        </div>
+
+        <!-- Tab switcher -->
+        <div class="tab-switcher">
+          <button class="tab-btn active" id="tab-btn-apikeys" onclick="switchTab('api-keys')">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/></svg>
+            API Keys
+          </button>
+          <button class="tab-btn" id="tab-btn-webhooks" onclick="switchTab('webhooks')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 012 17c.01-.7.2-1.4.57-2"/><path d="M6 17l3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 116.89-4.06"/><path d="M12 6l3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 010 8"/></svg>
+            Webhooks
+          </button>
+        </div>
+
+        <!-- API Keys tab -->
+        <div class="tab-content active" id="tab-api-keys">
+
+          <!-- Active keys card -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>API Keys</h2>
+                <p>Use API keys to authenticate server-to-server requests.</p>
+              </div>
+              <button class="btn btn-sm btn-primary" onclick="openModal('generate-modal')">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                Generate key
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Key prefix</th>
+                    <th>Scopes</th>
+                    <th>Last used</th>
+                    <th>Created</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="font-size:13px;font-weight:500">Production server</td>
+                    <td><code class="muted">cheese_live_3a8f…</code></td>
+                    <td>
+                      <div class="badges">
+                        <span class="badge badge-neutral">payments:read</span>
+                        <span class="badge badge-neutral">settlements:read</span>
+                      </div>
+                    </td>
+                    <td class="muted">Jun 16, 2026</td>
+                    <td class="muted">May 4, 2026</td>
+                    <td>
+                      <button class="btn btn-sm btn-danger" onclick="openModal('revoke-modal')">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        Revoke
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:13px;font-weight:500">Webhook dispatcher</td>
+                    <td><code class="muted">cheese_live_d19c…</code></td>
+                    <td>
+                      <div class="badges">
+                        <span class="badge badge-neutral">webhooks:read</span>
+                        <span class="badge badge-neutral">webhooks:write</span>
+                      </div>
+                    </td>
+                    <td class="muted">Never</td>
+                    <td class="muted">Jun 1, 2026</td>
+                    <td>
+                      <button class="btn btn-sm btn-danger" onclick="openModal('revoke-modal')">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        Revoke
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Revoked keys (collapsible) -->
+          <div>
+            <button class="revoked-toggle" onclick="toggleRevoked()">
+              <svg id="revoked-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              1 revoked key
+            </button>
+
+            <div id="revoked-section" style="display:none" class="mt-3">
+              <div class="card">
+                <div class="overflow-x-auto">
+                  <table class="tbl">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Key prefix</th>
+                        <th>Scopes</th>
+                        <th>Revoked</th>
+                        <th>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="opacity-50">
+                        <td class="strikethrough" style="font-size:13px;font-weight:500">Staging server</td>
+                        <td><code class="muted">cheese_live_7b2e…</code></td>
+                        <td>
+                          <div class="badges">
+                            <span class="badge badge-neutral">payments:read</span>
+                            <span class="badge badge-neutral">payments:write</span>
+                          </div>
+                        </td>
+                        <td class="muted">Mar 12, 2026</td>
+                        <td class="muted">Jan 5, 2026</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Webhooks tab -->
+        <div class="tab-content" id="tab-webhooks">
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>Webhooks</h2>
+                <p>Receive real-time event notifications at your HTTPS endpoints.</p>
+              </div>
+              <button class="btn btn-sm btn-primary" onclick="openModal('webhook-modal')">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                Add endpoint
+              </button>
+            </div>
+
+            <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+
+              <!-- Webhook card 1 -->
+              <div class="webhook-card">
+                <div class="wh-top">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <code class="wh-url">https://kolafabrics.ng/api/webhooks/cheese</code>
+                      <span class="badge badge-positive">enabled</span>
+                    </div>
+                    <div class="wh-desc">Payment notifications for orders</div>
+                  </div>
+                  <div class="wh-controls">
+                    <label class="toggle on" onclick="this.classList.toggle('on')">
+                      <div class="toggle-track"></div>
+                      <div class="toggle-thumb"></div>
+                    </label>
+                    <button class="btn btn-sm btn-ghost">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="openModal('delete-webhook-modal')">
+                      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="badges">
+                  <span class="badge badge-neutral">payment.confirmed</span>
+                  <span class="badge badge-neutral">payment.settled</span>
+                  <span class="badge badge-neutral">payment.failed</span>
+                  <span class="badge badge-neutral">settlement.completed</span>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)">
+                  <span class="badge badge-positive">200</span>
+                  Last delivery: payment.confirmed · Jun 16, 2026, 14:32
+                </div>
+
+                <div class="secret-row">
+                  <span class="secret-label">Secret</span>
+                  <span class="secret-val" id="secret1">••••••••••••••••••••••••</span>
+                  <button onclick="toggleSecret('secret1','whsec_3a8fd19c7b2e4f5a6c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f')" style="background:none;border:none;cursor:pointer;color:var(--muted);display:flex;padding:2px">
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:13px;height:13px"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
+                  </button>
+                  <button class="copy-btn">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg>
+                    Copy
+                  </button>
+                </div>
+
+                <button class="delivery-toggle" onclick="toggleDeliveries(this)">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                  View deliveries
+                </button>
+
+                <div class="delivery-log" style="display:none">
+                  <div class="delivery-log-header">
+                    <span>Recent deliveries</span>
+                    <button class="copy-btn" style="font-size:10px">
+                      <svg viewBox="0 0 20 20" fill="currentColor" style="width:10px;height:10px"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+                      Refresh
+                    </button>
+                  </div>
+                  <div class="delivery-rows">
+                    <div class="delivery-row">
+                      <span class="badge badge-positive">200</span>
+                      <span class="delivery-event">payment.confirmed</span>
+                      <span class="delivery-time">Jun 16, 14:32</span>
+                    </div>
+                    <div class="delivery-row">
+                      <span class="badge badge-positive">200</span>
+                      <span class="delivery-event">payment.settled</span>
+                      <span class="delivery-time">Jun 15, 09:14</span>
+                    </div>
+                    <div class="delivery-row">
+                      <span class="badge badge-negative">503</span>
+                      <span class="delivery-event">payment.confirmed</span>
+                      <span class="delivery-time">Jun 14, 18:05</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Webhook card 2 (disabled) -->
+              <div class="webhook-card">
+                <div class="wh-top">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <code class="wh-url">https://staging.kolafabrics.ng/webhooks</code>
+                      <span class="badge badge-neutral">disabled</span>
+                    </div>
+                  </div>
+                  <div class="wh-controls">
+                    <label class="toggle" onclick="this.classList.toggle('on')">
+                      <div class="toggle-track"></div>
+                      <div class="toggle-thumb"></div>
+                    </label>
+                    <button class="btn btn-sm btn-ghost">Edit</button>
+                    <button class="btn btn-sm btn-danger">
+                      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="badges">
+                  <span class="badge badge-neutral">payment.created</span>
+                  <span class="badge badge-neutral">payment.confirmed</span>
+                </div>
+
+                <button class="delivery-toggle" onclick="toggleDeliveries(this)">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                  View deliveries
+                </button>
+
+                <div class="delivery-log" style="display:none">
+                  <p style="text-align:center;font-size:11px;color:var(--muted);padding:16px 0">No deliveries yet</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Generate key modal ──────────────────────────────────────────────── -->
+<div class="modal-overlay" id="generate-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Generate API key</h2>
+      <button class="modal-close" onclick="closeModal('generate-modal')">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Key name</label>
+        <input type="text" placeholder="e.g. Production server" />
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:500;color:var(--soft-text);margin-bottom:8px">Scopes</div>
+        <div class="checkbox-grid">
+          <label class="checkbox-item checked">
+            <input type="checkbox" checked /> <code>payments:read</code>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" /> <code>payments:write</code>
+          </label>
+          <label class="checkbox-item checked">
+            <input type="checkbox" checked /> <code>settlements:read</code>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" /> <code>webhooks:read</code>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" /> <code>webhooks:write</code>
+          </label>
+        </div>
+      </div>
+      <button class="btn btn-md btn-primary" style="width:100%" onclick="showKeyReveal()">
+        Generate key
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Key reveal modal -->
+<div class="modal-overlay" id="key-reveal-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Save your API key</h2>
+      <button class="modal-close" onclick="closeModal('key-reveal-modal')">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="key-callout">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        <p>This key is shown once. Copy it now — you won't be able to see it again.</p>
+      </div>
+      <div class="key-reveal">
+        <code style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          cheese_live_9f4a2b8c3d5e7f1a0b6c4d8e2f9a1b3c5d7e9f
+        </code>
+        <button class="copy-btn" id="reveal-copy-btn" onclick="handleRevealCopy()">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg>
+          Copy
+        </button>
+      </div>
+      <label class="confirm-check">
+        <input type="checkbox" id="reveal-confirm" onchange="toggleDoneBtn()" />
+        <span>I've copied this key and stored it securely</span>
+      </label>
+      <button class="btn btn-md btn-primary" id="reveal-done-btn" style="width:100%" disabled onclick="closeModal('key-reveal-modal')">
+        Done
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Revoke modal ────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="revoke-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Revoke API key</h2>
+      <button class="modal-close" onclick="closeModal('revoke-modal')">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);line-height:1.6">
+        Revoke <strong style="color:var(--text)">Production server</strong>?
+        Any requests using this key will immediately fail.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-md btn-secondary" onclick="closeModal('revoke-modal')">Cancel</button>
+        <button class="btn btn-md btn-danger" onclick="closeModal('revoke-modal')">Revoke</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add webhook modal ───────────────────────────────────────────────── -->
+<div class="modal-overlay" id="webhook-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Add endpoint</h2>
+      <button class="modal-close" onclick="closeModal('webhook-modal')">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Endpoint URL</label>
+        <input type="url" placeholder="https://example.com/webhooks" />
+      </div>
+      <div class="field">
+        <label>Description (optional)</label>
+        <input type="text" placeholder="e.g. Payment notifications" />
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:500;color:var(--soft-text);margin-bottom:8px">Events to listen to</div>
+        <div class="checkbox-grid">
+          <label class="checkbox-item checked"><input type="checkbox" checked /><code>payment.created</code></label>
+          <label class="checkbox-item checked"><input type="checkbox" checked /><code>payment.confirmed</code></label>
+          <label class="checkbox-item"><input type="checkbox" /><code>payment.settled</code></label>
+          <label class="checkbox-item"><input type="checkbox" /><code>payment.failed</code></label>
+          <label class="checkbox-item"><input type="checkbox" /><code>payment.expired</code></label>
+          <label class="checkbox-item"><input type="checkbox" /><code>settlement.queued</code></label>
+          <label class="checkbox-item"><input type="checkbox" /><code>settlement.completed</code></label>
+          <label class="checkbox-item"><input type="checkbox" /><code>settlement.failed</code></label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-md btn-secondary" onclick="closeModal('webhook-modal')">Cancel</button>
+        <button class="btn btn-md btn-primary" onclick="closeModal('webhook-modal')">Add endpoint</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete webhook modal ────────────────────────────────────────────── -->
+<div class="modal-overlay" id="delete-webhook-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Delete endpoint</h2>
+      <button class="modal-close" onclick="closeModal('delete-webhook-modal')">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);line-height:1.6">
+        Delete <code style="font-size:11px;color:var(--text)">https://kolafabrics.ng/api/webhooks/cheese</code>?
+        All delivery history will be permanently removed.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-md btn-secondary" onclick="closeModal('delete-webhook-modal')">Cancel</button>
+        <button class="btn btn-md btn-danger" onclick="closeModal('delete-webhook-modal')">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  function switchTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    document.getElementById('tab-btn-' + id.replace('-', '')).classList.add('active');
+  }
+
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  // Close modal on backdrop click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  function showKeyReveal() {
+    closeModal('generate-modal');
+    document.getElementById('reveal-confirm').checked = false;
+    document.getElementById('reveal-done-btn').disabled = true;
+    openModal('key-reveal-modal');
+  }
+
+  function toggleDoneBtn() {
+    document.getElementById('reveal-done-btn').disabled =
+      !document.getElementById('reveal-confirm').checked;
+  }
+
+  function handleRevealCopy() {
+    const btn = document.getElementById('reveal-copy-btn');
+    btn.innerHTML = `<svg viewBox="0 0 20 20" fill="currentColor" style="width:11px;height:11px;color:#22c55e"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Copied`;
+    setTimeout(() => {
+      btn.innerHTML = `<svg viewBox="0 0 20 20" fill="currentColor" style="width:11px;height:11px"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg> Copy`;
+    }, 2000);
+  }
+
+  function toggleRevoked() {
+    const sec = document.getElementById('revoked-section');
+    const chev = document.getElementById('revoked-chevron');
+    const open = sec.style.display === 'none';
+    sec.style.display = open ? 'block' : 'none';
+    chev.style.transform = open ? 'rotate(90deg)' : '';
+  }
+
+  function toggleDeliveries(btn) {
+    const card = btn.closest('.webhook-card');
+    const log = card.querySelector('.delivery-log');
+    const chev = btn.querySelector('svg');
+    const open = log.style.display === 'none';
+    log.style.display = open ? 'flex' : 'none';
+    log.style.flexDirection = 'column';
+    log.style.gap = '8px';
+    chev.style.transform = open ? 'rotate(90deg)' : '';
+    btn.childNodes[1] && (btn.childNodes[1].nodeValue = open ? ' Hide deliveries' : ' View deliveries');
+  }
+
+  let secretVisible = false;
+  function toggleSecret(id, val) {
+    const el = document.getElementById(id);
+    secretVisible = !secretVisible;
+    el.textContent = secretVisible ? val : '••••••••••••••••••••••••';
+  }
+
+  // Checkbox item click-to-toggle
+  document.querySelectorAll('.checkbox-item').forEach(item => {
+    item.addEventListener('click', () => item.classList.toggle('checked'));
+  });
+</script>
+</body>
+</html>
