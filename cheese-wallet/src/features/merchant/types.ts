@@ -214,3 +214,49 @@ export interface PaymentRequestPreview {
   expiresLabel: string;
   settlementDescription: string;
 }
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  rawKey?: string;
+}
+
+export interface ApiKeysPayload {
+  active: ApiKey[];
+  revoked: ApiKey[];
+}
+
+export interface WebhookLastDelivery {
+  event: string;
+  responseStatus: number | null;
+  success: boolean;
+  createdAt: string;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  description: string | null;
+  events: string[];
+  enabled: boolean;
+  createdAt: string;
+  lastDelivery: WebhookLastDelivery | null;
+  secret?: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhookId: string;
+  event: string;
+  responseStatus: number | null;
+  responseBody: string | null;
+  attemptCount: number;
+  success: boolean;
+  createdAt: string;
+}
