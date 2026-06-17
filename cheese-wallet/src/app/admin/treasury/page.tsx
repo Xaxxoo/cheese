@@ -1,35 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback, type CSSProperties } from 'react';
-import { c, IcoSend, IcoWallet, IcoChain, Pill } from '../_shared';
+import { c, IcoSend, IcoWallet, IcoChain } from '../_shared';
 import {
   getTreasuryBalance,
   treasuryTransfer,
   evmTreasuryWithdraw,
   contractDrainAll,
-  listAdminTransfers,
   type TreasuryBalance,
   type EvmVaultBalance,
   type ContractDrainResult,
-  type AdminTransferItem,
 } from '@/lib/api/admin';
 import { useAdminAuthStore } from '@/store/adminAuthStore';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const fmt   = (v: string) => parseFloat(v).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
-const fmtUsd= (v: string) => parseFloat(v).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate= (s: string) => new Date(s).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
-
-function statusStyle(s: string) {
-  if (s === 'completed')  return { color: c.green,   bg: c.greenDim, brd: 'rgba(34,197,94,0.2)'  };
-  if (s === 'failed')     return { color: c.red,     bg: c.redDim,   brd: 'rgba(239,68,68,0.2)'  };
-  if (s === 'processing') return { color: c.blue,    bg: c.blueDim,  brd: 'rgba(96,165,250,0.2)' };
-  return { color: c.amber, bg: c.amberDim, brd: c.amberBrd };
-}
-
-const COLS     = ['User / Reference', 'Bank & Account', 'NGN', 'USDC Collected', 'Status', 'Date'];
-const COL_GRID = '1.6fr 1.8fr 120px 130px 110px 110px';
-const LIMIT    = 20;
+const fmtUsd = (v: string) => parseFloat(v).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // ── Balance card ──────────────────────────────────────────────────────────
 function BalanceCard({
@@ -612,12 +597,8 @@ function ContractDrainPanel({ onDrained }: { onDrained: () => void }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
-  const [treasury,    setTreasury]    = useState<TreasuryBalance | null>(null);
-  const [balLoading,  setBalLoading]  = useState(true);
-  const [transfers,   setTransfers]   = useState<AdminTransferItem[]>([]);
-  const [total,       setTotal]       = useState(0);
-  const [page,        setPage]        = useState(1);
-  const [txLoading,   setTxLoading]   = useState(true);
+  const [treasury,   setTreasury]  = useState<TreasuryBalance | null>(null);
+  const [balLoading, setBalLoading] = useState(true);
 
   const loadBalance = useCallback(async () => {
     setBalLoading(true);
@@ -628,22 +609,7 @@ export default function TreasuryPage() {
     finally { setBalLoading(false); }
   }, []);
 
-  const loadTransfers = useCallback(async (p: number) => {
-    setTxLoading(true);
-    try {
-      const res = await listAdminTransfers({ page: p, limit: LIMIT, status: 'completed' });
-      setTransfers(res.transfers);
-      setTotal(res.total);
-    } catch (e) { console.error(e); }
-    finally { setTxLoading(false); }
-  }, []);
-
   useEffect(() => { void loadBalance(); }, [loadBalance]);
-  useEffect(() => { void loadTransfers(page); }, [loadTransfers, page]);
-
-  const totalPages = Math.ceil(total / LIMIT);
-  const from       = total === 0 ? 0 : (page - 1) * LIMIT + 1;
-  const to         = Math.min(page * LIMIT, total);
 
   const card: CSSProperties = {
     background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14,
@@ -691,95 +657,6 @@ export default function TreasuryPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
           <ContractBalanceCard contractUsdc={treasury?.contractUsdc} loading={balLoading} />
           <ContractDrainPanel onDrained={loadBalance} />
-        </div>
-      </div>
-
-      {/* Completed transfers table */}
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: c.text, marginBottom: 12 }}>
-          Collected USDC — Completed Bank Transfers
-          <span style={{ fontSize: 11, color: c.textDim, fontWeight: 400, marginLeft: 8 }}>
-            ({total.toLocaleString()} total)
-          </span>
-        </div>
-
-        <div style={{ ...card, overflow: 'hidden' }}>
-
-          {/* Col headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: COL_GRID, padding: '9px 22px', borderBottom: `1px solid ${c.border}` }}>
-            {COLS.map((h) => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
-                {h}
-              </div>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {txLoading && transfers.length === 0 ? (
-            <div style={{ padding: '50px 22px', textAlign: 'center', fontSize: 13, color: c.textDim }}>Loading…</div>
-          ) : transfers.length === 0 ? (
-            <div style={{ padding: '50px 22px', textAlign: 'center', fontSize: 13, color: c.textDim }}>No completed transfers yet.</div>
-          ) : (
-            transfers.map((t, i) => {
-              const ss = statusStyle(t.status);
-              return (
-                <div
-                  key={t.id}
-                  className="row-hover"
-                  style={{
-                    display: 'grid', gridTemplateColumns: COL_GRID,
-                    padding: '11px 22px', alignItems: 'center',
-                    borderBottom: i < transfers.length - 1 ? `1px solid ${c.border}` : 'none',
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 500, color: c.text }}>@{t.username}</div>
-                    <div style={{ fontSize: 10.5, color: c.textDim, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.reference}
-                    </div>
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.accountName}
-                    </div>
-                    <div style={{ fontSize: 10.5, color: c.textDim, marginTop: 1 }}>
-                      {t.bankName} · {t.accountNumber}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: c.textMid, fontVariantNumeric: 'tabular-nums' }}>
-                    ₦{fmt(t.amountNgn)}
-                  </div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: c.green, fontVariantNumeric: 'tabular-nums' }}>
-                    +${fmtUsd(t.amountUsdc)}
-                  </div>
-                  <Pill
-                    label={t.status.charAt(0).toUpperCase() + t.status.slice(1)}
-                    color={ss.color} bg={ss.bg} brd={ss.brd}
-                  />
-                  <div style={{ fontSize: 11.5, color: c.textDim }}>{fmtDate(t.createdAt)}</div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px' }}>
-          <span style={{ fontSize: 12, color: c.textDim }}>
-            {total === 0 ? 'No transfers' : (
-              <>Showing <b style={{ color: c.text }}>{from}–{to}</b> of <b style={{ color: c.text }}>{total.toLocaleString()}</b></>
-            )}
-          </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className="action-btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-              style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? 'default' : 'pointer' }}>
-              ← Prev
-            </button>
-            <button className="action-btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-              style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? 'default' : 'pointer' }}>
-              Next →
-            </button>
-          </div>
         </div>
       </div>
 
