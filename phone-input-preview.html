@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phone Input + Placeholder Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 80px;
+      gap: 48px;
+      color: white;
+    }
+
+    h1 {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      text-align: center;
+    }
+
+    .comparison {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .badge.before { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
+    .badge.after  { background: rgba(212,168,67,0.15);  color: #d4a843; }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: 310px;
+      background: #0d0d0d;
+      border-radius: 38px;
+      border: 2px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    }
+
+    .phone-inner {
+      padding: 16px 16px 28px;
+    }
+
+    /* Step bar */
+    .stepbar {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 24px;
+    }
+    .step-seg {
+      height: 3px;
+      flex: 1;
+      border-radius: 2px;
+      background: #d4a843;
+    }
+    .step-seg.off { background: rgba(255,255,255,0.1); }
+
+    .page-title { font-size: 20px; font-weight: 700; margin-bottom: 3px; }
+    .page-sub   { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 20px; }
+
+    /* ── Fields ── */
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+
+    .field-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Generic input */
+    .input {
+      width: 100%;
+      height: 46px;
+      background: #191919;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 0 14px;
+      font-size: 13px;
+      font-family: inherit;
+      color: white;
+      outline: none;
+    }
+    .input::placeholder { color: rgba(255,255,255,0.30); } /* BEFORE */
+    .input.new::placeholder { color: rgba(255,255,255,0.20); } /* AFTER */
+    .input:focus { border-color: rgba(212,168,67,0.6); }
+
+    /* ── Phone input row ── */
+    .phone-row { display: flex; gap: 8px; }
+
+    .country-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      height: 46px;
+      padding: 0 10px;
+      background: #191919;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      white-space: nowrap;
+      transition: border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .country-btn:hover, .country-btn.open { border-color: rgba(212,168,67,0.6); }
+    .country-btn .flag { font-size: 16px; }
+    .chevron { font-size: 9px; color: rgba(255,255,255,0.3); transition: transform 0.15s; }
+    .chevron.flipped { transform: rotate(180deg); }
+
+    .number-input {
+      flex: 1;
+      height: 46px;
+      background: #191919;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 0 14px;
+      font-size: 13px;
+      font-family: inherit;
+      color: white;
+      outline: none;
+    }
+    .number-input::placeholder { color: rgba(255,255,255,0.20); }
+    .number-input:focus { border-color: rgba(212,168,67,0.6); }
+
+    /* ── Dropdown panel ── */
+    .dropdown-wrap { position: relative; }
+
+    .dropdown-panel {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: #191919;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      overflow: hidden;
+      z-index: 50;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      display: none;
+    }
+    .dropdown-panel.visible { display: block; }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .search-icon { font-size: 12px; color: rgba(255,255,255,0.3); }
+    .search-row input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 12px;
+      font-family: inherit;
+      color: white;
+    }
+    .search-row input::placeholder { color: rgba(255,255,255,0.25); }
+
+    .country-list {
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .country-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .country-item:hover { background: rgba(255,255,255,0.05); }
+    .country-item.selected {
+      background: rgba(212,168,67,0.08);
+      color: white;
+    }
+    .country-item .c-flag { font-size: 16px; }
+    .country-item .c-name { flex: 1; }
+    .country-item .c-code { font-size: 11px; color: rgba(255,255,255,0.3); }
+
+    /* Continue btn */
+    .btn-primary {
+      width: 100%;
+      height: 46px;
+      border-radius: 14px;
+      background: #d4a843;
+      color: black;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .hint { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+    /* ── Callout ── */
+    .callout {
+      max-width: 660px;
+      width: 100%;
+      background: rgba(212,168,67,0.07);
+      border: 1px solid rgba(212,168,67,0.2);
+      border-radius: 16px;
+      padding: 18px 22px;
+    }
+    .callout h3 { font-size: 12px; font-weight: 700; color: #d4a843; margin-bottom: 10px; }
+    .callout ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .callout li { font-size: 12px; color: rgba(255,255,255,0.6); display: flex; align-items: baseline; gap: 8px; }
+    .tag {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+    }
+    .tag.changed { background: rgba(212,168,67,0.15); color: #d4a843; }
+    .tag.new     { background: rgba(80,200,120,0.12);  color: #5bc87a; }
+    code {
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px;
+      background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 4px;
+      color: rgba(255,255,255,0.8);
+    }
+  </style>
+</head>
+<body>
+
+<h1>Signup Step 1 — Before vs After</h1>
+
+<div class="comparison">
+
+  <!-- ── BEFORE ── -->
+  <div class="col">
+    <div class="badge before">Before</div>
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="stepbar">
+          <div class="step-seg"></div>
+          <div class="step-seg off"></div>
+          <div class="step-seg off"></div>
+          <div class="step-seg off"></div>
+        </div>
+        <p class="page-title">Create your account</p>
+        <p class="page-sub">You'll use this to sign in</p>
+
+        <div class="field">
+          <div class="field-label">Full name</div>
+          <input class="input" type="text" placeholder="Ada Okonkwo" />
+        </div>
+        <div class="field">
+          <div class="field-label">Email address</div>
+          <input class="input" type="email" placeholder="ada@example.com" />
+        </div>
+        <div class="field">
+          <div class="field-label">Phone number</div>
+          <input class="input" type="tel" placeholder="+234 801 234 5678" />
+          <div class="hint">Include your country code, e.g. +234 for Nigeria</div>
+        </div>
+
+        <button class="btn-primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AFTER ── -->
+  <div class="col">
+    <div class="badge after">After</div>
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="stepbar">
+          <div class="step-seg"></div>
+          <div class="step-seg off"></div>
+          <div class="step-seg off"></div>
+          <div class="step-seg off"></div>
+        </div>
+        <p class="page-title">Create your account</p>
+        <p class="page-sub">You'll use this to sign in</p>
+
+        <div class="field">
+          <div class="field-label">Full name</div>
+          <input class="input new" type="text" placeholder="Ada Okonkwo" />
+        </div>
+        <div class="field">
+          <div class="field-label">Email address</div>
+          <input class="input new" type="email" placeholder="ada@example.com" />
+        </div>
+
+        <!-- Phone input with picker (closed state) -->
+        <div class="field">
+          <div class="field-label">Phone number</div>
+          <div class="dropdown-wrap" id="dd-closed">
+            <div class="phone-row">
+              <button class="country-btn" onclick="toggleDropdown('panel-closed', this)">
+                <span class="flag">🇳🇬</span>
+                <span>+234</span>
+                <span class="chevron" id="chev-closed">▼</span>
+              </button>
+              <input class="number-input" type="tel" placeholder="8012345678" />
+            </div>
+            <div class="dropdown-panel" id="panel-closed">
+              <div class="search-row">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Search country..." />
+              </div>
+              <div class="country-list">
+                <div class="country-item selected"><span class="c-flag">🇳🇬</span><span class="c-name">Nigeria</span><span class="c-code">+234</span></div>
+                <div class="country-item"><span class="c-flag">🇬🇭</span><span class="c-name">Ghana</span><span class="c-code">+233</span></div>
+                <div class="country-item"><span class="c-flag">🇰🇪</span><span class="c-name">Kenya</span><span class="c-code">+254</span></div>
+                <div class="country-item"><span class="c-flag">🇿🇦</span><span class="c-name">South Africa</span><span class="c-code">+27</span></div>
+                <div class="country-item"><span class="c-flag">🇬🇧</span><span class="c-name">United Kingdom</span><span class="c-code">+44</span></div>
+                <div class="country-item"><span class="c-flag">🇺🇸</span><span class="c-name">United States</span><span class="c-code">+1</span></div>
+                <div class="country-item"><span class="c-flag">🇫🇷</span><span class="c-name">France</span><span class="c-code">+33</span></div>
+                <div class="country-item"><span class="c-flag">🇩🇪</span><span class="c-name">Germany</span><span class="c-code">+49</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AFTER: dropdown open ── -->
+  <div class="col">
+    <div class="badge after">After — picker open</div>
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="stepbar">
+          <div class="step-seg"></div>
+          <div class="step-seg off"></div>
+          <div class="step-seg off"></div>
+          <div class="step-seg off"></div>
+        </div>
+        <p class="page-title">Create your account</p>
+        <p class="page-sub">You'll use this to sign in</p>
+
+        <div class="field">
+          <div class="field-label">Full name</div>
+          <input class="input new" type="text" placeholder="Ada Okonkwo" />
+        </div>
+        <div class="field">
+          <div class="field-label">Email address</div>
+          <input class="input new" type="email" placeholder="ada@example.com" />
+        </div>
+
+        <!-- Phone input with picker OPEN -->
+        <div class="field">
+          <div class="field-label">Phone number</div>
+          <div class="dropdown-wrap">
+            <div class="phone-row">
+              <button class="country-btn open">
+                <span class="flag">🇳🇬</span>
+                <span>+234</span>
+                <span class="chevron flipped">▼</span>
+              </button>
+              <input class="number-input" type="tel" placeholder="8012345678" />
+            </div>
+            <div class="dropdown-panel visible">
+              <div class="search-row">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Search country..." autofocus />
+              </div>
+              <div class="country-list">
+                <div class="country-item selected"><span class="c-flag">🇳🇬</span><span class="c-name">Nigeria</span><span class="c-code">+234</span></div>
+                <div class="country-item"><span class="c-flag">🇬🇭</span><span class="c-name">Ghana</span><span class="c-code">+233</span></div>
+                <div class="country-item"><span class="c-flag">🇰🇪</span><span class="c-name">Kenya</span><span class="c-code">+254</span></div>
+                <div class="country-item"><span class="c-flag">🇿🇦</span><span class="c-name">South Africa</span><span class="c-code">+27</span></div>
+                <div class="country-item"><span class="c-flag">🇺🇬</span><span class="c-name">Uganda</span><span class="c-code">+256</span></div>
+                <div class="country-item"><span class="c-flag">🇬🇧</span><span class="c-name">United Kingdom</span><span class="c-code">+44</span></div>
+                <div class="country-item"><span class="c-flag">🇺🇸</span><span class="c-name">United States</span><span class="c-code">+1</span></div>
+                <div class="country-item"><span class="c-flag">🇫🇷</span><span class="c-name">France</span><span class="c-code">+33</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Callout ── -->
+<div class="callout">
+  <h3>What changed</h3>
+  <ul>
+    <li>
+      <span class="tag changed">Changed</span>
+      Placeholder opacity: <code>/30</code> → <code>/20</code> across all inputs — placeholders now read clearly as hints, not pre-filled content
+    </li>
+    <li>
+      <span class="tag new">New</span>
+      <code>PhoneInput</code> component replaces the plain tel field on signup and profile/edit — shows flag + dial code picker with inline search
+    </li>
+    <li>
+      <span class="tag new">New</span>
+      54 countries included, African countries listed first (Nigeria at top). Selecting a country updates the dial code; the local number is preserved. Result is full E.164 format (+2348012345678) — backend accepts it unchanged.
+    </li>
+  </ul>
+</div>
+
+<script>
+  function toggleDropdown(panelId, btn) {
+    const panel = document.getElementById(panelId)
+    const chev  = document.getElementById('chev-' + panelId.replace('panel-',''))
+    const isOpen = panel.classList.contains('visible')
+    panel.classList.toggle('visible', !isOpen)
+    btn.classList.toggle('open', !isOpen)
+    if (chev) chev.classList.toggle('flipped', !isOpen)
+  }
+</script>
+
+</body>
+</html>

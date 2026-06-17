@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PinPad Resize Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+      gap: 48px;
+      color: white;
+    }
+
+    h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+    }
+
+    .comparison {
+      display: flex;
+      gap: 36px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .phone-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .label.before { color: rgba(255,255,255,0.35); }
+    .label.after  { color: #d4a843; }
+
+    /* Phone shell */
+    .phone {
+      width: 320px;
+      height: 640px;
+      background: #0d0d0d;
+      border-radius: 40px;
+      border: 2px solid rgba(255,255,255,0.12);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    }
+
+    /* Status bar */
+    .statusbar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .statusbar .time { font-size: 13px; font-weight: 600; }
+    .statusbar .icons { font-size: 11px; color: rgba(255,255,255,0.7); display: flex; gap: 4px; align-items: center; }
+
+    /* Progress bar */
+    .progress {
+      display: flex;
+      gap: 4px;
+      padding: 0 16px 12px;
+      flex-shrink: 0;
+    }
+    .progress-seg {
+      height: 3px;
+      flex: 1;
+      border-radius: 2px;
+      background: #d4a843;
+    }
+
+    /* Page header */
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px 12px;
+      flex-shrink: 0;
+    }
+    .back-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.5);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .page-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Title section */
+    .pin-title-block {
+      padding: 0 16px 8px;
+      flex-shrink: 0;
+    }
+    .pin-title-block h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .pin-title-block p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* ─── PIN PAD COMPONENT ─────────────────────────── */
+    .pinpad {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      padding: 0 16px;
+      justify-content: center;
+    }
+
+    /* Dots */
+    .dots {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.25);
+      background: transparent;
+    }
+
+    /* Grid — BEFORE (max-w-[264px]) */
+    .keypad-before {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 220px;   /* scaled down to match 264px on a 390px phone → 220px on 320px phone */
+    }
+
+    /* Grid — AFTER (full width) */
+    .keypad-after {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      /* no max-width — fills parent which has px-4 (16px) padding */
+    }
+
+    /* Button — BEFORE */
+    .key-before {
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.07);
+      color: white;
+      font-size: 17px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .key-before.del {
+      background: transparent;
+      border-color: transparent;
+      color: rgba(255,255,255,0.35);
+    }
+    .key-before.empty {
+      background: transparent;
+      border-color: transparent;
+    }
+
+    /* Button — AFTER */
+    .key-after {
+      aspect-ratio: 1 / 1;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.09);
+      color: white;
+      font-size: 22px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .key-after.del {
+      background: transparent;
+      border-color: transparent;
+      color: rgba(255,255,255,0.35);
+    }
+    .key-after.empty {
+      background: transparent;
+      border-color: transparent;
+    }
+
+    /* Bottom CTAs */
+    .bottom-cta {
+      padding: 12px 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      border-radius: 16px;
+      background: #b5892e;
+      color: black;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .btn-secondary {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+    }
+    .btn-tertiary {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.25);
+    }
+
+    /* ─── CHANGE CALLOUT ─────────────────────────────── */
+    .change-callout {
+      max-width: 700px;
+      width: 100%;
+      background: rgba(212,168,67,0.08);
+      border: 1px solid rgba(212,168,67,0.25);
+      border-radius: 16px;
+      padding: 20px 24px;
+    }
+    .change-callout h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #d4a843;
+      margin-bottom: 12px;
+    }
+    .change-callout ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .change-callout li {
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .change-callout li .tag {
+      background: rgba(212,168,67,0.15);
+      color: #d4a843;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    .change-callout li .tag.removed {
+      background: rgba(255,80,80,0.12);
+      color: #ff6b6b;
+    }
+    .change-callout li .tag.added {
+      background: rgba(80,200,120,0.12);
+      color: #5bc87a;
+    }
+    .change-callout code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      background: rgba(255,255,255,0.07);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* DEL icon SVG substitute */
+    .del-icon::before { content: '⌫'; font-size: 18px; }
+    .del-icon-lg::before { content: '⌫'; font-size: 22px; }
+  </style>
+</head>
+<body>
+
+  <h1>PinPad Button Size — Before vs After</h1>
+
+  <div class="comparison">
+
+    <!-- ──────────── BEFORE ──────────── -->
+    <div class="phone-wrap">
+      <div class="label before">Before</div>
+      <div class="phone">
+        <div class="statusbar">
+          <span class="time">11:18</span>
+          <span class="icons">▲▲▲ 5G 77%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-seg"></div>
+          <div class="progress-seg"></div>
+          <div class="progress-seg"></div>
+          <div class="progress-seg"></div>
+        </div>
+        <div class="pin-title-block">
+          <h2>Confirm your PIN</h2>
+          <p>Enter your PIN again to confirm</p>
+        </div>
+
+        <div class="pinpad">
+          <div class="dots">
+            <div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+          </div>
+
+          <!-- max-w-[264px] grid -->
+          <div class="keypad-before">
+            <button class="key-before">1</button>
+            <button class="key-before">2</button>
+            <button class="key-before">3</button>
+            <button class="key-before">4</button>
+            <button class="key-before">5</button>
+            <button class="key-before">6</button>
+            <button class="key-before">7</button>
+            <button class="key-before">8</button>
+            <button class="key-before">9</button>
+            <div class="key-before empty"></div>
+            <button class="key-before">0</button>
+            <button class="key-before del"><span class="del-icon"></span></button>
+          </div>
+        </div>
+
+        <div class="bottom-cta">
+          <div class="btn-primary">Confirm PIN</div>
+          <div class="btn-secondary">Change PIN</div>
+          <div class="btn-tertiary">Skip for now</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ──────────── AFTER ──────────── -->
+    <div class="phone-wrap">
+      <div class="label after">After</div>
+      <div class="phone">
+        <div class="statusbar">
+          <span class="time">11:18</span>
+          <span class="icons">▲▲▲ 5G 77%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-seg"></div>
+          <div class="progress-seg"></div>
+          <div class="progress-seg"></div>
+          <div class="progress-seg"></div>
+        </div>
+        <div class="pin-title-block">
+          <h2>Confirm your PIN</h2>
+          <p>Enter your PIN again to confirm</p>
+        </div>
+
+        <div class="pinpad">
+          <div class="dots">
+            <div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div>
+          </div>
+
+          <!-- full-width grid, no max-w cap -->
+          <div class="keypad-after">
+            <button class="key-after">1</button>
+            <button class="key-after">2</button>
+            <button class="key-after">3</button>
+            <button class="key-after">4</button>
+            <button class="key-after">5</button>
+            <button class="key-after">6</button>
+            <button class="key-after">7</button>
+            <button class="key-after">8</button>
+            <button class="key-after">9</button>
+            <div class="key-after empty"></div>
+            <button class="key-after">0</button>
+            <button class="key-after del"><span class="del-icon-lg"></span></button>
+          </div>
+        </div>
+
+        <div class="bottom-cta">
+          <div class="btn-primary">Confirm PIN</div>
+          <div class="btn-secondary">Change PIN</div>
+          <div class="btn-tertiary">Skip for now</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── WHAT CHANGES ─────────────────────────────── -->
+  <div class="change-callout">
+    <h3>Changes in PinPad.tsx</h3>
+    <ul>
+      <li>
+        <span class="tag removed">Remove</span>
+        <code>max-w-[264px]</code> from the keypad grid — buttons now fill the full container width (pages already supply <code>px-4</code> padding)
+      </li>
+      <li>
+        <span class="tag">Change</span>
+        <code>gap-3</code> → <code>gap-4</code> on the keypad grid — slightly more breathing room between larger buttons
+      </li>
+      <li>
+        <span class="tag">Change</span>
+        <code>text-xl</code> → <code>text-2xl</code> on keys — numbers scale up with the bigger buttons
+      </li>
+      <li>
+        <span class="tag">Change</span>
+        Delete icon <code>size={20}</code> → <code>size={24}</code> — icon proportional to larger button
+      </li>
+      <li>
+        <span class="tag added">Result</span>
+        On a 390px iPhone, buttons go from ~80px square → ~112px square (40% bigger tap targets)
+      </li>
+    </ul>
+  </div>
+
+</body>
+</html>
