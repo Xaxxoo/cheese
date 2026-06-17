@@ -2,6 +2,8 @@
 
 import merchantApiClient, { merchantTokenStore } from './merchant-client';
 import type {
+  ApiKey,
+  ApiKeysPayload,
   MerchantDashboardPayload,
   MerchantSession,
   Payment,
@@ -9,6 +11,8 @@ import type {
   PaymentRequestDraft,
   PaymentRequestPreview,
   SettlementsPayload,
+  Webhook,
+  WebhookDelivery,
 } from '../types';
 
 // All responses from the NestJS backend are wrapped: { data: T }
@@ -209,6 +213,77 @@ export async function setDefaultMerchantPayoutAccount(
 ): Promise<{ payoutAccount: import('../types').PayoutAccount }> {
   const res = await merchantApiClient.patch<{ data: { payoutAccount: import('../types').PayoutAccount } }>(
     `/merchant/payout-accounts/${id}/set-default`,
+  );
+  return unwrap(res);
+}
+
+// ── API Keys ───────────────────────────────────────────────────────────────────
+
+export async function listMerchantApiKeys(): Promise<ApiKeysPayload> {
+  const res = await merchantApiClient.get<{ data: ApiKeysPayload }>('/merchant/api-keys');
+  return unwrap(res);
+}
+
+export async function createMerchantApiKey(payload: {
+  name: string;
+  scopes: string[];
+}): Promise<{ apiKey: ApiKey }> {
+  const res = await merchantApiClient.post<{ data: { apiKey: ApiKey } }>(
+    '/merchant/api-keys',
+    payload,
+  );
+  return unwrap(res);
+}
+
+export async function revokeMerchantApiKey(id: string): Promise<{ apiKey: ApiKey }> {
+  const res = await merchantApiClient.delete<{ data: { apiKey: ApiKey } }>(
+    `/merchant/api-keys/${id}`,
+  );
+  return unwrap(res);
+}
+
+// ── Webhooks ───────────────────────────────────────────────────────────────────
+
+export async function listMerchantWebhooks(): Promise<{ webhooks: Webhook[] }> {
+  const res = await merchantApiClient.get<{ data: { webhooks: Webhook[] } }>('/merchant/webhooks');
+  return unwrap(res);
+}
+
+export async function createMerchantWebhook(payload: {
+  url: string;
+  description?: string;
+  events: string[];
+}): Promise<{ webhook: Webhook }> {
+  const res = await merchantApiClient.post<{ data: { webhook: Webhook } }>(
+    '/merchant/webhooks',
+    payload,
+  );
+  return unwrap(res);
+}
+
+export async function updateMerchantWebhook(
+  id: string,
+  payload: { url?: string; description?: string; events?: string[]; enabled?: boolean },
+): Promise<{ webhook: Webhook }> {
+  const res = await merchantApiClient.patch<{ data: { webhook: Webhook } }>(
+    `/merchant/webhooks/${id}`,
+    payload,
+  );
+  return unwrap(res);
+}
+
+export async function deleteMerchantWebhook(id: string): Promise<{ removed: boolean }> {
+  const res = await merchantApiClient.delete<{ data: { removed: boolean } }>(
+    `/merchant/webhooks/${id}`,
+  );
+  return unwrap(res);
+}
+
+export async function getMerchantWebhookDeliveries(
+  webhookId: string,
+): Promise<{ deliveries: WebhookDelivery[] }> {
+  const res = await merchantApiClient.get<{ data: { deliveries: WebhookDelivery[] } }>(
+    `/merchant/webhooks/${webhookId}/deliveries`,
   );
   return unwrap(res);
 }
