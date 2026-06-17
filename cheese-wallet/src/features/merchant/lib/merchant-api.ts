@@ -171,6 +171,48 @@ export async function listMerchantSettlements(): Promise<SettlementsPayload> {
   return unwrap(res);
 }
 
+// ── Payout accounts ────────────────────────────────────────────────────────────
+
+export async function addMerchantPayoutAccount(payload: {
+  label: string;
+  accountType: 'bank' | 'digital_dollar';
+  currency: string;
+  destination: string;
+}): Promise<{ payoutAccount: import('../types').PayoutAccount }> {
+  const res = await merchantApiClient.post<{ data: { payoutAccount: import('../types').PayoutAccount } }>(
+    '/merchant/payout-accounts',
+    payload,
+  );
+  return unwrap(res);
+}
+
+export async function updateMerchantPayoutAccount(
+  id: string,
+  payload: { label: string },
+): Promise<{ payoutAccount: import('../types').PayoutAccount }> {
+  const res = await merchantApiClient.patch<{ data: { payoutAccount: import('../types').PayoutAccount } }>(
+    `/merchant/payout-accounts/${id}`,
+    payload,
+  );
+  return unwrap(res);
+}
+
+export async function removeMerchantPayoutAccount(id: string): Promise<{ removed: boolean }> {
+  const res = await merchantApiClient.delete<{ data: { removed: boolean } }>(
+    `/merchant/payout-accounts/${id}`,
+  );
+  return unwrap(res);
+}
+
+export async function setDefaultMerchantPayoutAccount(
+  id: string,
+): Promise<{ payoutAccount: import('../types').PayoutAccount }> {
+  const res = await merchantApiClient.patch<{ data: { payoutAccount: import('../types').PayoutAccount } }>(
+    `/merchant/payout-accounts/${id}/set-default`,
+  );
+  return unwrap(res);
+}
+
 // ── Customers (computed from payments) ────────────────────────────────────────
 
 export async function listTopMerchantCustomers() {

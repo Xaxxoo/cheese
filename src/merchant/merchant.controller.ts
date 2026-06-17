@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -15,6 +17,8 @@ import { MerchantService } from './merchant.service';
 import { MerchantJwtGuard } from './guards/merchant-jwt.guard';
 import type { MerchantJwtContext } from './strategies/merchant-jwt.strategy';
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
+import { AddPayoutAccountDto } from './dto/add-payout-account.dto';
+import { UpdatePayoutAccountDto } from './dto/update-payout-account.dto';
 
 // @Public() bypasses the global JwtAccessGuard (user guard).
 // MerchantJwtGuard on the class requires a valid merchant JWT for all routes.
@@ -63,5 +67,41 @@ export class MerchantController {
   async getSettlements(@Req() req: Request) {
     const ctx = (req as any).user as MerchantJwtContext;
     return this.merchantService.getSettlements(ctx);
+  }
+
+  // ── Payout accounts ──────────────────────────────────────────────────────
+
+  @Post('payout-accounts')
+  async addPayoutAccount(@Req() req: Request, @Body() dto: AddPayoutAccountDto) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    return this.merchantService.addPayoutAccount(ctx, dto);
+  }
+
+  @Patch('payout-accounts/:id')
+  async updatePayoutAccount(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: UpdatePayoutAccountDto,
+  ) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    const result = await this.merchantService.updatePayoutAccount(ctx, id, dto);
+    if (!result) throw new NotFoundException('Payout account not found');
+    return result;
+  }
+
+  @Delete('payout-accounts/:id')
+  async removePayoutAccount(@Req() req: Request, @Param('id') id: string) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    const result = await this.merchantService.removePayoutAccount(ctx, id);
+    if (!result) throw new NotFoundException('Payout account not found');
+    return result;
+  }
+
+  @Patch('payout-accounts/:id/set-default')
+  async setDefaultPayoutAccount(@Req() req: Request, @Param('id') id: string) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    const result = await this.merchantService.setDefaultPayoutAccount(ctx, id);
+    if (!result) throw new NotFoundException('Payout account not found');
+    return result;
   }
 }

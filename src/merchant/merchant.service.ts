@@ -6,6 +6,8 @@ import { MerchantPayment, MerchantPaymentStatus, PaymentRequestKind } from './en
 import { MerchantSettlement } from './entities/merchant-settlement.entity';
 import { MerchantPayoutAccount } from './entities/merchant-payout-account.entity';
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
+import { AddPayoutAccountDto } from './dto/add-payout-account.dto';
+import { UpdatePayoutAccountDto } from './dto/update-payout-account.dto';
 import type { MerchantJwtContext } from './strategies/merchant-jwt.strategy';
 
 const FX_RATES: Record<string, number> = {
@@ -304,6 +306,82 @@ export class MerchantService {
       currentFxRate: `1 USDC = ${currentFxRate} ${currency}`,
       estimatedArrival: 'Within 15 seconds for instant payouts',
     };
+  }
+
+  // ── Payout accounts ───────────────────────────────────────────────────────
+
+  private serializeAccount(a: MerchantPayoutAccount) {
+    return {
+      id: a.id,
+      label: a.label,
+      accountType: a.accountType,
+      currency: a.currency,
+      destination: a.destination,
+      status: a.status,
+      defaultForInstantPayout: a.defaultForInstantPayout,
+    };
+  }
+
+  async addPayoutAccount(ctx: MerchantJwtContext, dto: AddPayoutAccountDto) {
+    const merchantId = ctx.merchant.id;
+    const existing = await this.payoutAccountRepo.find({ where: { merchantId } });
+    const isFirst = existing.length === 0;
+
+    const account = this.payoutAccountRepo.create({
+      merchantId,
+      label: dto.label,
+      accountType: dto.accountType,
+      currency: dto.currency.toUpperCase(),
+      destination: dto.destination,
+      status: 'review',
+      defaultForInstantPayout: isFirst,
+    });
+
+    const saved = await this.payoutAccountRepo.save(account);
+    return { payoutAccount: this.serializeAccount(saved) };
+  }
+
+  async updatePayoutAccount(ctx: MerchantJwtContext, id: string, dto: UpdatePayoutAccountDto) {
+    const account = await this.payoutAccountRepo.findOne({
+      where: { id, merchantId: ctx.merchant.id },
+    });
+    if (!account) return null;
+
+    account.label = dto.label;
+    const saved = await this.payoutAccountRepo.save(account);
+    return { payoutAccount: this.serializeAccount(saved) };
+  }
+
+  async removePayoutAccount(ctx: MerchantJwtContext, id: string) {
+    const merchantId = ctx.merchant.id;
+    const account = await this.payoutAccountRepo.findOne({ where: { id, merchantId } });
+    if (!account) return null;
+
+    await this.payoutAccountRepo.remove(account);
+
+    // If the deleted account was the default, promote the next one
+    if (account.defaultForInstantPayout) {
+      const remaining = await this.payoutAccountRepo.find({ where: { merchantId } });
+      if (remaining.length > 0) {
+        remaining[0].defaultForInstantPayout = true;
+        await this.payoutAccountRepo.save(remaining[0]);
+      }
+    }
+
+    return { removed: true };
+  }
+
+  async setDefaultPayoutAccount(ctx: MerchantJwtContext, id: string) {
+    const merchantId = ctx.merchant.id;
+    const accounts = await this.payoutAccountRepo.find({ where: { merchantId } });
+    const target = accounts.find((a) => a.id === id);
+    if (!target) return null;
+
+    for (const a of accounts) {
+      a.defaultForInstantPayout = a.id === id;
+    }
+    await this.payoutAccountRepo.save(accounts);
+    return { payoutAccount: this.serializeAccount(target) };
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────

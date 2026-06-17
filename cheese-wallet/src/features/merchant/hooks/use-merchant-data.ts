@@ -1,12 +1,16 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getMerchantDashboard,
   getMerchantPayment,
   listMerchantPayments,
   listMerchantSettlements,
   listTopMerchantCustomers,
+  addMerchantPayoutAccount,
+  updateMerchantPayoutAccount,
+  removeMerchantPayoutAccount,
+  setDefaultMerchantPayoutAccount,
 } from '../lib/merchant-api';
 import { MOCK_DASHBOARD, MOCK_PAYMENTS, MOCK_SETTLEMENTS } from '../lib/mock-data';
 
@@ -69,6 +73,39 @@ export function useMerchantSettlements() {
     queryKey: merchantQueryKeys.settlements,
     queryFn:  DEV_BYPASS ? () => Promise.resolve(MOCK_SETTLEMENTS) : listMerchantSettlements,
     staleTime: 10_000,
+  });
+}
+
+export function useAddPayoutAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: addMerchantPayoutAccount,
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.settlements }),
+  });
+}
+
+export function useUpdatePayoutAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, label }: { id: string; label: string }) =>
+      updateMerchantPayoutAccount(id, { label }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.settlements }),
+  });
+}
+
+export function useRemovePayoutAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => removeMerchantPayoutAccount(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.settlements }),
+  });
+}
+
+export function useSetDefaultPayoutAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => setDefaultMerchantPayoutAccount(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.settlements }),
   });
 }
 
