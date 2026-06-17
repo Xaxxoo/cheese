@@ -9,6 +9,9 @@ import { MerchantStore } from './entities/merchant-store.entity';
 import { MerchantPayment } from './entities/merchant-payment.entity';
 import { MerchantSettlement } from './entities/merchant-settlement.entity';
 import { MerchantPayoutAccount } from './entities/merchant-payout-account.entity';
+import { MerchantApiKey } from './entities/merchant-api-key.entity';
+import { MerchantWebhook } from './entities/merchant-webhook.entity';
+import { MerchantWebhookDelivery } from './entities/merchant-webhook-delivery.entity';
 import { Otp } from '../otp/entities/otp.entity';
 import { MerchantAuthController } from './merchant-auth.controller';
 import { MerchantController } from './merchant.controller';
@@ -27,6 +30,9 @@ import { EmailModule } from '../email/email.module';
       MerchantPayment,
       MerchantSettlement,
       MerchantPayoutAccount,
+      MerchantApiKey,
+      MerchantWebhook,
+      MerchantWebhookDelivery,
       Otp,
     ]),
     PassportModule,

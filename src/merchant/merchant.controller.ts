@@ -19,6 +19,9 @@ import type { MerchantJwtContext } from './strategies/merchant-jwt.strategy';
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
 import { AddPayoutAccountDto } from './dto/add-payout-account.dto';
 import { UpdatePayoutAccountDto } from './dto/update-payout-account.dto';
+import { CreateApiKeyDto } from './dto/create-api-key.dto';
+import { CreateWebhookDto } from './dto/create-webhook.dto';
+import { UpdateWebhookDto } from './dto/update-webhook.dto';
 
 // @Public() bypasses the global JwtAccessGuard (user guard).
 // MerchantJwtGuard on the class requires a valid merchant JWT for all routes.
@@ -102,6 +105,70 @@ export class MerchantController {
     const ctx = (req as any).user as MerchantJwtContext;
     const result = await this.merchantService.setDefaultPayoutAccount(ctx, id);
     if (!result) throw new NotFoundException('Payout account not found');
+    return result;
+  }
+
+  // ── API Keys ──────────────────────────────────────────────────────────────
+
+  @Get('api-keys')
+  async listApiKeys(@Req() req: Request) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    return this.merchantService.listApiKeys(ctx);
+  }
+
+  @Post('api-keys')
+  async createApiKey(@Req() req: Request, @Body() dto: CreateApiKeyDto) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    return this.merchantService.createApiKey(ctx, dto);
+  }
+
+  @Delete('api-keys/:id')
+  async revokeApiKey(@Req() req: Request, @Param('id') id: string) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    const result = await this.merchantService.revokeApiKey(ctx, id);
+    if (!result) throw new NotFoundException('API key not found');
+    return result;
+  }
+
+  // ── Webhooks ──────────────────────────────────────────────────────────────
+
+  @Get('webhooks')
+  async listWebhooks(@Req() req: Request) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    return this.merchantService.listWebhooks(ctx);
+  }
+
+  @Post('webhooks')
+  async createWebhook(@Req() req: Request, @Body() dto: CreateWebhookDto) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    return this.merchantService.createWebhook(ctx, dto);
+  }
+
+  @Patch('webhooks/:id')
+  async updateWebhook(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: UpdateWebhookDto,
+  ) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    const result = await this.merchantService.updateWebhook(ctx, id, dto);
+    if (!result) throw new NotFoundException('Webhook not found');
+    return result;
+  }
+
+  @Delete('webhooks/:id')
+  async deleteWebhook(@Req() req: Request, @Param('id') id: string) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    const result = await this.merchantService.deleteWebhook(ctx, id);
+    if (!result) throw new NotFoundException('Webhook not found');
+    return result;
+  }
+
+  @Get('webhooks/:id/deliveries')
+  async getWebhookDeliveries(@Req() req: Request, @Param('id') id: string) {
+    const ctx = (req as any).user as MerchantJwtContext;
+    const result = await this.merchantService.getWebhookDeliveries(ctx, id);
+    if (!result) throw new NotFoundException('Webhook not found');
     return result;
   }
 }

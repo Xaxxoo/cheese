@@ -1,13 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThanOrEqual } from 'typeorm';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import { MerchantPayment, MerchantPaymentStatus, PaymentRequestKind } from './entities/merchant-payment.entity';
 import { MerchantSettlement } from './entities/merchant-settlement.entity';
 import { MerchantPayoutAccount } from './entities/merchant-payout-account.entity';
+import { MerchantApiKey } from './entities/merchant-api-key.entity';
+import { MerchantWebhook } from './entities/merchant-webhook.entity';
+import { MerchantWebhookDelivery } from './entities/merchant-webhook-delivery.entity';
 import { CreatePaymentRequestDto } from './dto/create-payment-request.dto';
 import { AddPayoutAccountDto } from './dto/add-payout-account.dto';
 import { UpdatePayoutAccountDto } from './dto/update-payout-account.dto';
+import { CreateApiKeyDto } from './dto/create-api-key.dto';
+import { CreateWebhookDto } from './dto/create-webhook.dto';
+import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import type { MerchantJwtContext } from './strategies/merchant-jwt.strategy';
 
 const FX_RATES: Record<string, number> = {
@@ -39,6 +45,15 @@ export class MerchantService {
 
     @InjectRepository(MerchantPayoutAccount)
     private readonly payoutAccountRepo: Repository<MerchantPayoutAccount>,
+
+    @InjectRepository(MerchantApiKey)
+    private readonly apiKeyRepo: Repository<MerchantApiKey>,
+
+    @InjectRepository(MerchantWebhook)
+    private readonly webhookRepo: Repository<MerchantWebhook>,
+
+    @InjectRepository(MerchantWebhookDelivery)
+    private readonly webhookDeliveryRepo: Repository<MerchantWebhookDelivery>,
   ) {}
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -382,6 +397,179 @@ export class MerchantService {
     }
     await this.payoutAccountRepo.save(accounts);
     return { payoutAccount: this.serializeAccount(target) };
+  }
+
+  // ── API Keys ──────────────────────────────────────────────────────────────
+
+  private serializeApiKey(k: MerchantApiKey, rawKey?: string) {
+    return {
+      id: k.id,
+      name: k.name,
+      prefix: k.prefix,
+      scopes: k.scopes,
+      lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
+      expiresAt: k.expiresAt?.toISOString() ?? null,
+      revokedAt: k.revokedAt?.toISOString() ?? null,
+      createdAt: k.createdAt.toISOString(),
+      ...(rawKey ? { rawKey } : {}),
+    };
+  }
+
+  async listApiKeys(ctx: MerchantJwtContext) {
+    const merchantId = ctx.merchant.id;
+    const keys = await this.apiKeyRepo.find({
+      where: { merchantId },
+      order: { createdAt: 'DESC' },
+    });
+
+    const active = keys.filter((k) => !k.revokedAt);
+    const revoked = keys.filter((k) => !!k.revokedAt);
+
+    return {
+      active: active.map((k) => this.serializeApiKey(k)),
+      revoked: revoked.map((k) => this.serializeApiKey(k)),
+    };
+  }
+
+  async createApiKey(ctx: MerchantJwtContext, dto: CreateApiKeyDto) {
+    const merchantId = ctx.merchant.id;
+    const rawBytes = randomBytes(24).toString('hex'); // 48 hex chars
+    const rawKey = `cheese_live_${rawBytes}`;
+    const prefix = rawKey.slice(0, 20);
+    const keyHash = createHash('sha256').update(rawKey).digest('hex');
+
+    const key = this.apiKeyRepo.create({
+      merchantId,
+      name: dto.name,
+      keyHash,
+      prefix,
+      scopes: dto.scopes,
+    });
+
+    const saved = await this.apiKeyRepo.save(key);
+    return { apiKey: this.serializeApiKey(saved, rawKey) };
+  }
+
+  async revokeApiKey(ctx: MerchantJwtContext, id: string) {
+    const key = await this.apiKeyRepo.findOne({
+      where: { id, merchantId: ctx.merchant.id },
+    });
+    if (!key) return null;
+
+    key.revokedAt = new Date();
+    const saved = await this.apiKeyRepo.save(key);
+    return { apiKey: this.serializeApiKey(saved) };
+  }
+
+  // ── Webhooks ──────────────────────────────────────────────────────────────
+
+  private serializeWebhook(w: MerchantWebhook, lastDelivery?: MerchantWebhookDelivery | null, secret?: string) {
+    return {
+      id: w.id,
+      url: w.url,
+      description: w.description,
+      events: w.events,
+      enabled: w.enabled,
+      createdAt: w.createdAt.toISOString(),
+      lastDelivery: lastDelivery
+        ? {
+            event: lastDelivery.event,
+            responseStatus: lastDelivery.responseStatus,
+            success: lastDelivery.success,
+            createdAt: lastDelivery.createdAt.toISOString(),
+          }
+        : null,
+      ...(secret ? { secret } : {}),
+    };
+  }
+
+  async listWebhooks(ctx: MerchantJwtContext) {
+    const merchantId = ctx.merchant.id;
+    const webhooks = await this.webhookRepo.find({
+      where: { merchantId },
+      order: { createdAt: 'DESC' },
+    });
+
+    const withDeliveries = await Promise.all(
+      webhooks.map(async (w) => {
+        const lastDelivery = await this.webhookDeliveryRepo.findOne({
+          where: { webhookId: w.id },
+          order: { createdAt: 'DESC' },
+        });
+        return this.serializeWebhook(w, lastDelivery);
+      }),
+    );
+
+    return { webhooks: withDeliveries };
+  }
+
+  async createWebhook(ctx: MerchantJwtContext, dto: CreateWebhookDto) {
+    const merchantId = ctx.merchant.id;
+    const secretBytes = randomBytes(32).toString('hex'); // 64 hex chars
+    const secret = `whsec_${secretBytes}`;
+
+    const webhook = this.webhookRepo.create({
+      merchantId,
+      url: dto.url,
+      description: dto.description ?? null,
+      events: dto.events,
+      secret,
+      enabled: true,
+    });
+
+    const saved = await this.webhookRepo.save(webhook);
+    return { webhook: this.serializeWebhook(saved, null, secret) };
+  }
+
+  async updateWebhook(ctx: MerchantJwtContext, id: string, dto: UpdateWebhookDto) {
+    const webhook = await this.webhookRepo.findOne({
+      where: { id, merchantId: ctx.merchant.id },
+    });
+    if (!webhook) return null;
+
+    if (dto.url !== undefined) webhook.url = dto.url;
+    if (dto.description !== undefined) webhook.description = dto.description;
+    if (dto.events !== undefined) webhook.events = dto.events;
+    if (dto.enabled !== undefined) webhook.enabled = dto.enabled;
+
+    const saved = await this.webhookRepo.save(webhook);
+    return { webhook: this.serializeWebhook(saved) };
+  }
+
+  async deleteWebhook(ctx: MerchantJwtContext, id: string) {
+    const webhook = await this.webhookRepo.findOne({
+      where: { id, merchantId: ctx.merchant.id },
+    });
+    if (!webhook) return null;
+
+    await this.webhookRepo.remove(webhook);
+    return { removed: true };
+  }
+
+  async getWebhookDeliveries(ctx: MerchantJwtContext, webhookId: string) {
+    const webhook = await this.webhookRepo.findOne({
+      where: { id: webhookId, merchantId: ctx.merchant.id },
+    });
+    if (!webhook) return null;
+
+    const deliveries = await this.webhookDeliveryRepo.find({
+      where: { webhookId },
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+
+    return {
+      deliveries: deliveries.map((d) => ({
+        id: d.id,
+        webhookId: d.webhookId,
+        event: d.event,
+        responseStatus: d.responseStatus,
+        responseBody: d.responseBody,
+        attemptCount: d.attemptCount,
+        success: d.success,
+        createdAt: d.createdAt.toISOString(),
+      })),
+    };
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
