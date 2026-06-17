@@ -11,6 +11,14 @@ import {
   updateMerchantPayoutAccount,
   removeMerchantPayoutAccount,
   setDefaultMerchantPayoutAccount,
+  listMerchantApiKeys,
+  createMerchantApiKey,
+  revokeMerchantApiKey,
+  listMerchantWebhooks,
+  createMerchantWebhook,
+  updateMerchantWebhook,
+  deleteMerchantWebhook,
+  getMerchantWebhookDeliveries,
 } from '../lib/merchant-api';
 import { MOCK_DASHBOARD, MOCK_PAYMENTS, MOCK_SETTLEMENTS } from '../lib/mock-data';
 
@@ -19,11 +27,14 @@ const DEV_BYPASS =
   process.env.NEXT_PUBLIC_MERCHANT_DEV_BYPASS === 'true';
 
 export const merchantQueryKeys = {
-  dashboard:   ['merchant', 'dashboard'] as const,
-  payments:    ['merchant', 'payments'] as const,
-  payment:     (paymentId: string) => ['merchant', 'payments', paymentId] as const,
-  settlements: ['merchant', 'settlements'] as const,
-  customers:   ['merchant', 'customers'] as const,
+  dashboard:         ['merchant', 'dashboard'] as const,
+  payments:          ['merchant', 'payments'] as const,
+  payment:           (paymentId: string) => ['merchant', 'payments', paymentId] as const,
+  settlements:       ['merchant', 'settlements'] as const,
+  customers:         ['merchant', 'customers'] as const,
+  apiKeys:           ['merchant', 'api-keys'] as const,
+  webhooks:          ['merchant', 'webhooks'] as const,
+  webhookDeliveries: (webhookId: string) => ['merchant', 'webhooks', webhookId, 'deliveries'] as const,
 };
 
 export function useMerchantDashboard() {
@@ -116,5 +127,85 @@ export function useMerchantCustomers() {
       ? () => Promise.resolve([])
       : listTopMerchantCustomers,
     staleTime: 60_000,
+  });
+}
+
+// ── API Keys ──────────────────────────────────────────────────────────────────
+
+export function useMerchantApiKeys() {
+  return useQuery({
+    queryKey: merchantQueryKeys.apiKeys,
+    queryFn: DEV_BYPASS
+      ? () => Promise.resolve({ active: [], revoked: [] })
+      : listMerchantApiKeys,
+    staleTime: 10_000,
+  });
+}
+
+export function useCreateApiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; scopes: string[] }) => createMerchantApiKey(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.apiKeys }),
+  });
+}
+
+export function useRevokeApiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => revokeMerchantApiKey(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.apiKeys }),
+  });
+}
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+
+export function useMerchantWebhooks() {
+  return useQuery({
+    queryKey: merchantQueryKeys.webhooks,
+    queryFn: DEV_BYPASS
+      ? () => Promise.resolve({ webhooks: [] })
+      : listMerchantWebhooks,
+    staleTime: 10_000,
+  });
+}
+
+export function useCreateWebhook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { url: string; description?: string; events: string[] }) =>
+      createMerchantWebhook(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.webhooks }),
+  });
+}
+
+export function useUpdateWebhook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...payload
+    }: { id: string; url?: string; description?: string; events?: string[]; enabled?: boolean }) =>
+      updateMerchantWebhook(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.webhooks }),
+  });
+}
+
+export function useDeleteWebhook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteMerchantWebhook(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: merchantQueryKeys.webhooks }),
+  });
+}
+
+export function useMerchantWebhookDeliveries(webhookId: string) {
+  return useQuery({
+    queryKey: merchantQueryKeys.webhookDeliveries(webhookId),
+    queryFn: DEV_BYPASS
+      ? () => Promise.resolve({ deliveries: [] })
+      : () => getMerchantWebhookDeliveries(webhookId),
+    staleTime: 10_000,
+    enabled: !!webhookId,
   });
 }
