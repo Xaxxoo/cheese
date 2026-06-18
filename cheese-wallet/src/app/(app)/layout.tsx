@@ -7,6 +7,7 @@ import { getMe } from '@/lib/api/auth'
 import { Spinner } from '@/components/ui/Spinner'
 import { AppHeader } from '@/components/app/AppHeader'
 import { BottomNav } from '@/components/app/BottomNav'
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -67,12 +68,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen items-center">
-      <div className="w-full max-w-[430px] min-h-screen flex flex-col">
+      <div className="relative w-full max-w-[430px] min-h-screen flex flex-col">
         <AppHeader />
         <main className="flex-1 overflow-y-auto pb-24">
           {children}
         </main>
         <BottomNav />
+        <PWAInstallPrompt />
       </div>
     </div>
   )
