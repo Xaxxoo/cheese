@@ -322,7 +322,7 @@ export class SendService {
           // Uses createDeposit (ON CONFLICT DO NOTHING) so the wallet scheduler
           // won't create a duplicate when it next polls Horizon for this user.
           const recvRef = `CW-RECV-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
-          await this.txService
+          const recvInserted = await this.txService
             .createDeposit({
               userId: recipientUser.id,
               type: TxType.DEPOSIT,
@@ -336,11 +336,12 @@ export class SendService {
               reference: recvRef,
               description: `from @${sender.username ?? 'someone'}`,
             })
-            .catch((e: Error) =>
+            .catch((e: Error) => {
               this.logger.warn(
                 `Recipient deposit record failed [tx=${tx.id}]: ${e.message}`,
-              ),
-            );
+              );
+              return false;
+            });
 
           const senderLabel = sender.username ? `@${sender.username}` : 'someone';
 
@@ -351,8 +352,10 @@ export class SendService {
               this.logger.warn(`Recipient push failed [tx=${tx.id}]: ${err.message}`),
             );
 
-          // Email (fire-and-forget)
-          if (recipientUser.email) {
+          // Email (fire-and-forget) — only if we were the first to record this
+          // deposit. If the wallet scheduler already inserted it (race), it will
+          // have sent the email; we must not send a second one.
+          if (recvInserted && recipientUser.email) {
             void this.emailService
               .sendMoneyReceived({
                 to: recipientUser.email,
