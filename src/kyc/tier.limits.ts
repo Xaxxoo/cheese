@@ -16,7 +16,7 @@ export const DAILY_CRYPTO_LIMIT_USDC: Record<Tier, number> = {
 };
 
 export const DAILY_NGN_LIMIT: Record<Tier, number> = {
-  [Tier.SILVER]: 200_000,
+  [Tier.SILVER]: 1_000_000,
   [Tier.GOLD]: 1_000_000,
   [Tier.BLACK]: 10_000_000,
 };
