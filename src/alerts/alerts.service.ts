@@ -34,7 +34,6 @@ export class AlertsService {
   async notifyFailedTransfer(alert: FailedTransferAlert): Promise<void> {
     const results = await Promise.allSettled([
       this.sendTelegram(alert),
-      this.sendEmail(alert),
     ]);
 
     for (const r of results) {
