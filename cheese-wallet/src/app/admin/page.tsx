@@ -17,7 +17,7 @@ function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
   const min = Math.min(...data), max = Math.max(...data);
   const pts = data.map((v, i) => ({
     x: p.l + (i / (data.length - 1)) * iW,
-    y: p.t + iH - ((v - min) / (max - min)) * iH,
+    y: p.t + iH - ((v - min) / (max - min || 1)) * iH,
   }));
   let line = `M${pts[0].x},${pts[0].y}`;
   for (let i = 1; i < pts.length; i++) {
