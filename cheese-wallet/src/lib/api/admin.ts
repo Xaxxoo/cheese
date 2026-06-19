@@ -162,7 +162,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   return data.data
 }
 
-export async function getAdminVolumeChart(days: 7 | 30): Promise<{ date: string; volume: number }[]> {
+export async function getAdminVolumeChart(days: number): Promise<{ date: string; volume: number }[]> {
   const { data } = await adminApiClient.get<ApiResponse<{ date: string; volume: number }[]>>(`/admin/stats/chart?days=${days}`)
   return data.data
 }
