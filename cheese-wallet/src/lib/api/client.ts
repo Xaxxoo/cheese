@@ -27,6 +27,62 @@ export const tokenStore = {
   },
 };
 
+// ── Cross-tab refresh coordination ────────────────────────
+// Prevents multiple tabs from racing to call /auth/refresh
+// simultaneously (which would rotate and revoke each other's tokens).
+const REFRESH_LOCK_KEY = 'cheese-refresh-lock';
+const LOCK_TTL_MS = 10_000; // lock expires after 10s if holder crashes
+
+const channel =
+  typeof window !== 'undefined' ? new BroadcastChannel('cheese-auth') : null;
+
+// Receive token updates broadcast by the tab that won the refresh race
+channel?.addEventListener('message', (event: MessageEvent) => {
+  if (event.data?.type === 'token') {
+    tokenStore.set(event.data.accessToken as string);
+  }
+  if (event.data?.type === 'expired') {
+    tokenStore.clear();
+    window.dispatchEvent(new CustomEvent('cheese:auth:expired'));
+  }
+});
+
+function isRefreshLocked(): boolean {
+  if (typeof window === 'undefined') return false;
+  const lock = localStorage.getItem(REFRESH_LOCK_KEY);
+  if (!lock) return false;
+  if (Date.now() - parseInt(lock, 10) > LOCK_TTL_MS) {
+    localStorage.removeItem(REFRESH_LOCK_KEY);
+    return false;
+  }
+  return true;
+}
+
+// Wait for the winning tab to broadcast the new token (up to 12s)
+function waitForTokenBroadcast(): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      channel?.removeEventListener('message', handler);
+      reject(new Error('Token broadcast timeout'));
+    }, 12_000);
+
+    function handler(event: MessageEvent) {
+      if (event.data?.type === 'token') {
+        clearTimeout(timer);
+        channel?.removeEventListener('message', handler);
+        resolve(event.data.accessToken as string);
+      }
+      if (event.data?.type === 'expired') {
+        clearTimeout(timer);
+        channel?.removeEventListener('message', handler);
+        reject(new Error('Auth expired'));
+      }
+    }
+
+    channel?.addEventListener('message', handler);
+  });
+}
+
 // ── Create axios instance ─────────────────────────────────
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -66,22 +122,37 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Deduplicate concurrent refresh calls
+        // Deduplicate within this tab, and coordinate across tabs
         if (!_refreshPromise) {
-          _refreshPromise = axios
-            .post<{ data: AuthTokens }>(
-              `${API_URL}${ENDPOINTS.AUTH.REFRESH}`,
-              {},
-              { withCredentials: true },
-            )
-            .then((res) => {
-              const { accessToken } = res.data.data;
-              tokenStore.set(accessToken);
-              return accessToken;
-            })
-            .finally(() => {
+          if (isRefreshLocked()) {
+            // Another tab owns the refresh — wait for it to broadcast the token
+            _refreshPromise = waitForTokenBroadcast().finally(() => {
               _refreshPromise = null;
             });
+          } else {
+            // This tab wins — acquire lock, refresh, then broadcast result
+            localStorage.setItem(REFRESH_LOCK_KEY, String(Date.now()));
+            _refreshPromise = axios
+              .post<{ data: AuthTokens }>(
+                `${API_URL}${ENDPOINTS.AUTH.REFRESH}`,
+                {},
+                { withCredentials: true },
+              )
+              .then((res) => {
+                const { accessToken } = res.data.data;
+                tokenStore.set(accessToken);
+                channel?.postMessage({ type: 'token', accessToken });
+                return accessToken;
+              })
+              .catch((err: unknown) => {
+                channel?.postMessage({ type: 'expired' });
+                throw err;
+              })
+              .finally(() => {
+                localStorage.removeItem(REFRESH_LOCK_KEY);
+                _refreshPromise = null;
+              });
+          }
         }
 
         const newToken = await _refreshPromise;
