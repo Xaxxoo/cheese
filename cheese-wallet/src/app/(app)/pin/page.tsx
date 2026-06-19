@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { useAuthStore } from '@/store/authStore'
 import { setPin as apiSetPin, changePin as apiChangePin } from '@/lib/api/auth'
 import { hashPin, signDeviceChallenge } from '@/lib/crypto/deviceSigning'
@@ -197,7 +198,7 @@ export default function PinPage() {
 
       {loading ? (
         <div className="flex items-center justify-center mt-20">
-          <div className="w-8 h-8 border-2 border-[#d4a843]/40 border-t-[#d4a843] rounded-full animate-spin" />
+          <Spinner size="md" />
         </div>
       ) : (
         <div className="px-4 mt-4">

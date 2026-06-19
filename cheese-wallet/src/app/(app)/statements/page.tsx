@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, FileText } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { getTransactions } from '@/lib/api/wallet'
 import { STALE_TIMES } from '@/constants'
 import type { Transaction } from '@/types'
@@ -151,7 +152,7 @@ export default function StatementsPage() {
           <h1 className="text-base font-semibold text-white">Statements</h1>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-6 h-6 border-2 border-white/20 border-t-[#d4a843] rounded-full animate-spin" />
+          <Spinner size="sm" />
         </div>
       </div>
     )

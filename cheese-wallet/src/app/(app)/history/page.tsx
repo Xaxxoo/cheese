@@ -7,6 +7,7 @@ import {
   ArrowLeft, ArrowUpRight, ArrowDownLeft, Building2,
   RefreshCw, TrendingUp, ChevronDown,
 } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { getTransactions, syncBankTransferStatus } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
@@ -310,7 +311,7 @@ export default function HistoryPage() {
                 className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-white/8 text-white/60 text-sm hover:bg-white/12 hover:text-white transition-all disabled:opacity-40"
               >
                 {loadingMore
-                  ? <RefreshCw size={14} className="animate-spin" />
+                  ? <Spinner size="sm" />
                   : <ChevronDown size={14} />
                 }
                 {loadingMore ? 'Loading…' : 'Load more'}

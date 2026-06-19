@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCheck, AlertTriangle, Clock, XCircle, RefreshCw, ArrowLeft } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { resolvePayLink, payPayLink } from '@/lib/api/wallet'
 import { QUERY_KEYS } from '@/constants'
@@ -99,7 +100,7 @@ function SetPinFlow({ onBack }: { onBack?: () => void }) {
         {error && <p className="text-xs text-red-400 text-center">{error}</p>}
         {loading && (
           <p className="text-xs text-white/30 text-center flex items-center justify-center gap-1.5">
-            <RefreshCw size={11} className="animate-spin" /> Setting PIN…
+            <Spinner size="sm" /> Setting PIN…
           </p>
         )}
       </div>
@@ -280,7 +281,7 @@ export default function PayLinkPage() {
         {/* Loading */}
         {linkQ.isLoading && (
           <div className="rounded-3xl border border-white/8 bg-white/3 p-8 flex flex-col items-center gap-3">
-            <RefreshCw size={20} className="text-white/30 animate-spin" />
+            <Spinner size="sm" />
             <p className="text-sm text-white/30">Loading payment details…</p>
           </div>
         )}
@@ -390,7 +391,7 @@ export default function PayLinkPage() {
                 )}
                 {payMut.isPending && (
                   <p className="text-xs text-white/30 text-center flex items-center justify-center gap-1.5">
-                    <RefreshCw size={11} className="animate-spin" /> Processing…
+                    <Spinner size="sm" /> Processing…
                   </p>
                 )}
               </div>

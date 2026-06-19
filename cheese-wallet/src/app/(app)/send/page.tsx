@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
   X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle,
-  AtSign, Wallet, ChevronRight, Loader2, Building2, ArrowUpRight, User, Layers, Search, Share2,
+  AtSign, Wallet, ChevronRight, Building2, ArrowUpRight, User, Layers, Search, Share2,
 } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { PinPad } from '@/components/ui/PinPad'
@@ -350,7 +351,7 @@ function UsernameInput({
           spellCheck={false}
           className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none"
         />
-        {status === 'searching' && <Loader2 size={16} className="text-white/30 animate-spin shrink-0" />}
+        {status === 'searching' && <Spinner size="sm" />}
         {status === 'found'     && <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />}
         {status === 'not_found' && <AlertCircle  size={16} className="text-red-400 shrink-0" />}
         {value && status !== 'searching' && (
@@ -463,7 +464,7 @@ function AddressInput({
           spellCheck={false}
           className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none resize-none font-mono leading-relaxed"
         />
-        {trustlineStatus === 'checking'    && <Loader2      size={16} className="text-white/30 animate-spin shrink-0 mt-0.5" />}
+        {trustlineStatus === 'checking'    && <Spinner size="sm" />}
         {trustlineStatus === 'ok'          && <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />}
         {(trustlineStatus === 'no_trustline' || trustlineStatus === 'no_account') && (
           <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
@@ -706,7 +707,7 @@ function BankDetailsStep({
             maxLength={10}
           />
           {verifying
-            ? <Loader2      size={15} className="text-[#d4a843] animate-spin shrink-0" />
+            ? <Spinner size="sm" />
             : verified
             ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
             : <span className="text-xs text-white/25 shrink-0">{acctNum.length}/10</span>
@@ -1161,7 +1162,7 @@ function SetPinFlow({ onCancel }: { onCancel: () => void }) {
 
       {loading ? (
         <div className="flex flex-col items-center gap-4 py-6">
-          <Loader2 size={36} className="text-[#d4a843] animate-spin" />
+          <Spinner size="lg" />
           <p className="text-sm text-white/40">Setting your PIN…</p>
         </div>
       ) : (
@@ -1344,7 +1345,7 @@ function PinStep({
           <SetPinFlow onCancel={onBack} />
         ) : loading ? (
           <div className="flex flex-col items-center gap-4">
-            <Loader2 size={40} className="text-[#d4a843] animate-spin" />
+            <Spinner size="lg" />
             <p className="text-sm text-white/40">Processing transfer…</p>
           </div>
         ) : (
@@ -1545,7 +1546,7 @@ function BankPinStep({
           <SetPinFlow onCancel={onBack} />
         ) : (loading || resetLoading) ? (
           <div className="flex flex-col items-center gap-4">
-            <Loader2 size={40} className="text-[#d4a843] animate-spin" />
+            <Spinner size="lg" />
             <p className="text-sm text-white/40">
               {resetLoading ? 'Setting new PIN…' : 'Processing transfer…'}
             </p>
@@ -1754,7 +1755,7 @@ function SuccessScreen({
             disabled={!!sharing}
             className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
           >
-            {sharing === 'jpeg' ? <Loader2 size={12} className="animate-spin" /> : null}
+            {sharing === 'jpeg' ? <Spinner size="sm" /> : null}
             JPEG
           </button>
           <button
@@ -1763,7 +1764,7 @@ function SuccessScreen({
             disabled={!!sharing}
             className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
           >
-            {sharing === 'pdf' ? <Loader2 size={12} className="animate-spin" /> : null}
+            {sharing === 'pdf' ? <Spinner size="sm" /> : null}
             PDF
           </button>
           <button
@@ -1952,7 +1953,7 @@ function BankSuccessScreen({
             disabled={!!sharing}
             className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
           >
-            {sharing === 'jpeg' ? <Loader2 size={12} className="animate-spin" /> : null}
+            {sharing === 'jpeg' ? <Spinner size="sm" /> : null}
             JPEG
           </button>
           <button
@@ -1961,7 +1962,7 @@ function BankSuccessScreen({
             disabled={!!sharing}
             className="flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-[#d4a843]/15 border border-[#d4a843]/25 text-[#d4a843] text-sm font-medium hover:bg-[#d4a843]/25 transition-colors disabled:opacity-40"
           >
-            {sharing === 'pdf' ? <Loader2 size={12} className="animate-spin" /> : null}
+            {sharing === 'pdf' ? <Spinner size="sm" /> : null}
             PDF
           </button>
           <button

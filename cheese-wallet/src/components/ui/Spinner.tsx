@@ -8,7 +8,7 @@ interface SpinnerProps {
   className?: string
 }
 
-const px = { sm: 16, md: 24, lg: 32 } as const
+const px = { sm: 40, md: 60, lg: 80 } as const
 
 export function Spinner({ size = 'md', className }: SpinnerProps) {
   return (

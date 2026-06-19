@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  X, Share2, Loader2,
+  X, Share2,
   ArrowUpRight, ArrowDownLeft, Building2,
 } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { captureAndShare, type ShareFormat } from '@/lib/shareReceipt'
 import type { Transaction } from '@/types'
@@ -332,7 +333,7 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
                 disabled={!!sharing}
                 className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors disabled:opacity-50 active:scale-[0.98]"
               >
-                {sharing === 'jpeg' ? <Loader2 size={14} className="animate-spin" /> : 'JPEG'}
+                {sharing === 'jpeg' ? <Spinner size="sm" /> : 'JPEG'}
               </button>
               <button
                 type="button"
@@ -340,7 +341,7 @@ export function TransactionSheet({ tx, onClose }: TransactionSheetProps) {
                 disabled={!!sharing}
                 className="flex-1 flex items-center justify-center gap-1.5 py-3.5 rounded-2xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors disabled:opacity-50 active:scale-[0.98]"
               >
-                {sharing === 'pdf' ? <Loader2 size={14} className="animate-spin" /> : 'PDF'}
+                {sharing === 'pdf' ? <Spinner size="sm" /> : 'PDF'}
               </button>
               <button
                 type="button"

@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft, Copy, CheckCheck, RefreshCw, Download, AlertTriangle,
 } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
 import { getWalletAddress, getDepositNetworks } from '@/lib/api/wallet'
@@ -249,7 +250,7 @@ export default function ReceivePage() {
             )}
             {addrQ.data && isEvmChain && !evmEntry?.address && (
               <div className="w-[180px] h-[180px] flex flex-col items-center justify-center gap-3 text-center px-4">
-                <RefreshCw size={20} className="text-white/20 animate-spin" />
+                <Spinner size="sm" />
                 <p className="text-xs text-white/30 leading-relaxed">
                   {chainLabel} wallet is being set up. Check back shortly.
                 </p>

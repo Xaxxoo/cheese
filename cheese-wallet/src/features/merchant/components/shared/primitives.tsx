@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Spinner } from '@/components/ui/Spinner';
 
 /* ─── Button ──────────────────────────────────────────── */
 
@@ -52,7 +52,7 @@ export function MerchantButton({
       )}
       {...props}
     >
-      {loading && <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" />}
+      {loading && <Spinner size="sm" />}
       {children}
     </button>
   );

@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Copy, CheckCheck, Link2, X, Plus, RefreshCw, Clock,
 } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { createPayLink, getMyPayLinks, cancelPayLink } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
@@ -295,7 +296,7 @@ export default function PayLinkPage() {
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#d4a843] text-black text-sm font-semibold hover:bg-[#c49938] transition-colors disabled:opacity-50"
         >
           {createMut.isPending
-            ? <><RefreshCw size={15} className="animate-spin" /> Creating…</>
+            ? <><Spinner size="sm" /> Creating…</>
             : <><Plus size={15} /> Generate Link</>
           }
         </button>

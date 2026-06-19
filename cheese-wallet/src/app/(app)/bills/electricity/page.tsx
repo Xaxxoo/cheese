@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { PinPad } from '@/components/ui/PinPad'
@@ -229,7 +230,7 @@ export default function ElectricityPage() {
           <div className="flex flex-col items-center gap-6 mt-8 text-center">
             {verifying ? (
               <div className="flex flex-col items-center gap-4 py-8">
-                <Loader2 size={36} className="text-[#d4a843] animate-spin" />
+                <Spinner size="lg" />
                 <p className="text-sm text-white/50">Verifying meter…</p>
               </div>
             ) : (
@@ -311,7 +312,7 @@ export default function ElectricityPage() {
           <div className="flex flex-col items-center gap-6 mt-8">
             {loading ? (
               <div className="flex flex-col items-center gap-4 py-8">
-                <Loader2 size={36} className="text-[#d4a843] animate-spin" />
+                <Spinner size="lg" />
                 <p className="text-sm text-white/50">Processing payment…</p>
               </div>
             ) : (
