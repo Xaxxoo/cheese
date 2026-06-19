@@ -282,6 +282,31 @@ export class AdminAuthService {
 
   // ── Dashboard stats ───────────────────────────────────────────────────────
 
+  async getVolumeChart(days: number): Promise<{ date: string; volume: number }[]> {
+    const since = new Date();
+    since.setDate(since.getDate() - days + 1);
+    since.setHours(0, 0, 0, 0);
+
+    const rows = await this.txRepo
+      .createQueryBuilder('t')
+      .select("DATE(t.created_at AT TIME ZONE 'UTC')", 'date')
+      .addSelect('SUM(CAST(t.amount_usdc AS DECIMAL(20,6)))', 'volume')
+      .where('t.status = :s', { s: TxStatus.COMPLETED })
+      .andWhere('t.created_at >= :since', { since })
+      .groupBy("DATE(t.created_at AT TIME ZONE 'UTC')")
+      .orderBy("DATE(t.created_at AT TIME ZONE 'UTC')", 'ASC')
+      .getRawMany<{ date: string; volume: string }>();
+
+    const map = new Map(rows.map((r) => [r.date, parseFloat(r.volume) || 0]));
+
+    return Array.from({ length: days }, (_, i) => {
+      const d = new Date(since);
+      d.setDate(d.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      return { date: key, volume: map.get(key) ?? 0 };
+    });
+  }
+
   async getStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

@@ -7,7 +7,7 @@ import {
   IcoUsers, IcoShield, IcoWallet, IcoFile, IcoBank, IcoAlert,
   Dot, FeedLabel, greeting,
 } from './_shared';
-import { getAdminStats, type AdminStats } from '@/lib/api/admin';
+import { getAdminStats, getAdminVolumeChart, type AdminStats } from '@/lib/api/admin';
 
 // ─── SVG Components ───────────────────────────────────────────────────────────
 function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
@@ -91,12 +91,18 @@ export default function AdminDashboard() {
   const [chartRange, setChartRange] = useState<'7D' | '30D'>('30D');
   const [alertOpen, setAlertOpen]   = useState(true);
   const [stats, setStats]           = useState<AdminStats | null>(null);
+  const [volumeChart, setVolumeChart] = useState<number[]>([]);
 
   useEffect(() => {
     getAdminStats().then(setStats).catch(console.error);
     const id = setInterval(() => getAdminStats().then(setStats).catch(console.error), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const days = chartRange === '7D' ? 7 : 30;
+    getAdminVolumeChart(days).then((rows) => setVolumeChart(rows.map((r) => r.volume))).catch(console.error);
+  }, [chartRange]);
 
   const n = (v: number | undefined) => (v ?? 0).toLocaleString();
 
@@ -142,7 +148,7 @@ export default function AdminDashboard() {
     stats.failedBankTransfersToday > 0 && { msg: `${n(stats.failedBankTransfersToday)} bank transfer${stats.failedBankTransfersToday > 1 ? 's' : ''} failed today`, color: c.amber },
   ].filter(Boolean) as { msg: string; color: string }[] : [];
 
-  const chartData = Array(chartRange === '7D' ? 7 : 30).fill(Math.max(1, stats?.totalTransactions ?? 0));
+  const chartData = volumeChart.length > 0 ? volumeChart : Array(chartRange === '7D' ? 7 : 30).fill(0);
   const chartMeta = {
     total: stats ? `$${n(Math.floor(stats.totalVolumeUsdc))}` : '—',
     trend: 'All time',

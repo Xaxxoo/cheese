@@ -19,6 +19,15 @@ export class AdminDashboardController {
     return this.adminAuthService.getStats();
   }
 
+  // ── GET /admin/stats/chart ─────────────────────────────────────────────────
+  @Get('stats/chart')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Daily USDC volume breakdown for chart (7D or 30D)' })
+  getVolumeChart(@Query('days') days?: string) {
+    return this.adminAuthService.getVolumeChart(days === '7' ? 7 : 30);
+  }
+
   // ── GET /admin/users ───────────────────────────────────────────────────────
   @Get('users')
   @UseGuards(AdminJwtGuard)
