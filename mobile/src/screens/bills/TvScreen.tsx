@@ -1,29 +1,25 @@
 import React from 'react'
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
+import BillPayFlow, { type BillFlowConfig } from './BillPayFlow'
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Tv'>
 
-export default function TvScreen({ navigation }: Props) {
-  return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.container}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>TV Subscription</Text>
-        <Text style={s.sub}>Coming soon</Text>
-      </View>
-    </SafeAreaView>
-  )
+const config: BillFlowConfig = {
+  title: 'TV Subscription',
+  providers: [
+    { id: 'dstv',       name: 'DStv',      icon: '📺' },
+    { id: 'gotv',       name: 'GOtv',      icon: '📡' },
+    { id: 'startimes',  name: 'StarTimes', icon: '⭐' },
+  ],
+  billersCodeLabel:       'Smart Card / IUC Number',
+  billersCodePlaceholder: 'Enter smart card number',
+  billersCodeKeyboard:    'number-pad',
+  needsVerify:     true,
+  hasVariations:   true,
+  hasCustomAmount: false,
 }
 
-const s = StyleSheet.create({
-  safe:      { flex: 1, backgroundColor: '#0a0a0a' },
-  container: { flex: 1, padding: 20 },
-  back:      { marginBottom: 24 },
-  backText:  { color: 'rgba(255,255,255,0.5)', fontSize: 14 },
-  title:     { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 6 },
-  sub:       { fontSize: 14, color: 'rgba(255,255,255,0.35)' },
-})
+export default function TvScreen({ navigation }: Props) {
+  return <BillPayFlow config={config} onBack={() => navigation.goBack()} />
+}
