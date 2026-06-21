@@ -33,6 +33,7 @@ export type AppStackParamList = {
   Notifications:undefined
   EditProfile:  undefined
   ChangePin:    undefined
+  Referral:     undefined
 }
 
 // ── Combined root ─────────────────────────────────────────

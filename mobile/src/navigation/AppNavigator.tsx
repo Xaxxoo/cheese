@@ -22,6 +22,7 @@ import KycScreen          from '../screens/kyc/KycScreen'
 import NotificationsScreen from '../screens/notifications/NotificationsScreen'
 import EditProfileScreen  from '../screens/profile/EditProfileScreen'
 import ChangePinScreen    from '../screens/pin/ChangePinScreen'
+import ReferralScreen     from '../screens/referral/ReferralScreen'
 
 // ── Tab icons (text-based until vector icons are added) ───
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
@@ -89,6 +90,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="EditProfile"   component={EditProfileScreen} />
       <Stack.Screen name="ChangePin"     component={ChangePinScreen} />
+      <Stack.Screen name="Referral"      component={ReferralScreen} />
     </Stack.Navigator>
   )
 }
