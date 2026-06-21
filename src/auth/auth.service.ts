@@ -94,7 +94,8 @@ export class AuthService {
     private readonly blockchainService: BlockchainService,
     private readonly emailService: EmailService,
 
-    private readonly referralService: ReferralService,
+    @Optional()
+    private readonly referralService: ReferralService | null,
   ) {}
 
   // ── Signup ─────────────────────────────────────────────────────────────────
@@ -263,7 +264,7 @@ export class AuthService {
     await this.userRepo.save(user);
 
     // ── Link app referral (Phase 7) ───────────────────────────────────────
-    if (dto.referralCode) {
+    if (dto.referralCode && this.referralService) {
       await this.referralService
         .linkReferral(user.id, dto.referralCode)
         .catch((e: Error) =>
