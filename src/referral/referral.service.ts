@@ -1,7 +1,7 @@
 // src/referral/referral.service.ts
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../auth/entities/user.entity';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -62,16 +62,19 @@ export class ReferralService {
   async linkReferral(refereeId: string, referralCode: string): Promise<void> {
     if (!referralCode || referralCode.length < 3) return;
 
-    // Try exact referralCode column first (new users with 8-char random code).
-    // Fall back to username match for legacy users whose referralCode is null
-    // and whose share link therefore contains their username in uppercase.
-    let referrer = await this.userRepo.findOne({ where: { referralCode } });
+    // Case-insensitive lookup by referralCode column (new users with 8-char
+    // random code). Falls back to username match for legacy users whose
+    // referralCode is null and whose share link contains their username.
+    // Both lookups are case-insensitive so users don't need to match exact case.
+    let referrer = await this.userRepo.findOne({ where: { referralCode: ILike(referralCode) } });
     if (!referrer) {
       referrer = await this.userRepo.findOne({
-        where: { username: referralCode.toLowerCase() },
+        where: { username: ILike(referralCode) },
       });
     }
     if (!referrer || referrer.id === refereeId) return;
+
+    this.logger.log(`linkReferral: ${refereeId} used code "${referralCode}" → referrer ${referrer.username}`);
 
     // Prevent duplicate referral
     const existing = await this.referralRepo.findOne({ where: { refereeId } });

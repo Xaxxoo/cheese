@@ -94,8 +94,7 @@ export class AuthService {
     private readonly blockchainService: BlockchainService,
     private readonly emailService: EmailService,
 
-    @Optional()
-    private readonly referralService: ReferralService | null,
+    private readonly referralService: ReferralService,
   ) {}
 
   // ── Signup ─────────────────────────────────────────────────────────────────
@@ -264,10 +263,12 @@ export class AuthService {
     await this.userRepo.save(user);
 
     // ── Link app referral (Phase 7) ───────────────────────────────────────
-    if (dto.referralCode && this.referralService) {
+    if (dto.referralCode) {
       await this.referralService
         .linkReferral(user.id, dto.referralCode)
-        .catch(() => {});
+        .catch((e: Error) =>
+          this.logger.warn(`linkReferral failed [ref=${dto.referralCode}]: ${e.message}`),
+        );
     }
 
     // Queue retry job if any chain failed — exponential backoff, 5 attempts
