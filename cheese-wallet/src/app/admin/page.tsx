@@ -14,10 +14,11 @@ function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
   const W = 600, H = 100;
   const p = { t: 6, r: 2, b: 2, l: 2 };
   const iW = W - p.l - p.r, iH = H - p.t - p.b;
-  const min = Math.min(...data), max = Math.max(...data);
+  const min = 0;
+  const max = Math.max(...data, 1);
   const pts = data.map((v, i) => ({
     x: p.l + (i / (data.length - 1)) * iW,
-    y: p.t + iH - ((v - min) / (max - min || 1)) * iH,
+    y: p.t + iH - ((v - min) / (max - min)) * iH,
   }));
   let line = `M${pts[0].x},${pts[0].y}`;
   for (let i = 1; i < pts.length; i++) {
