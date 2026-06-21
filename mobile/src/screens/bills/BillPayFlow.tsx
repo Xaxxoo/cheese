@@ -8,6 +8,7 @@ import { getBillVariations, verifyBillCustomer, payBill } from '../../api/bills'
 import { getExchangeRate, getBalance } from '../../api/wallet'
 import { useAuthStore } from '../../store/auth.store'
 import { getOrCreateDeviceId, getOrCreateDeviceKeyPair, signDeviceId, hashPin } from '../../utils/crypto'
+import { isBiometricAvailable, authenticateWithBiometrics } from '../../utils/biometrics'
 import { fmtUsdc, fmtNgn } from '../../utils/format'
 import type { BillVariation, PayBillResponse } from '../../types'
 
@@ -94,6 +95,9 @@ export default function BillPayFlow({ config, onBack }: Props) {
   const [submitting,  setSubmitting]  = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [result,      setResult]      = useState<PayBillResponse | null>(null)
+  const [biometricOk, setBiometricOk] = useState(false)
+
+  useEffect(() => { void isBiometricAvailable().then(setBiometricOk) }, [])
 
   // Load rate + balance + variations when entering step 2
   useEffect(() => {
@@ -161,10 +165,16 @@ export default function BillPayFlow({ config, onBack }: Props) {
     setStep(3)
   }
 
-  // ── Step 3 handler ──
+  // ── Step 3 handlers ──
 
-  async function handleSubmit() {
-    if (pin.length !== 6) { setSubmitError('Enter your 6-digit PIN'); return }
+  async function handleBiometricSubmit() {
+    const hash = await authenticateWithBiometrics()
+    if (!hash) return
+    await handleSubmit(hash)
+  }
+
+  async function handleSubmit(overridePinHash?: string) {
+    if (!overridePinHash && pin.length !== 6) { setSubmitError('Enter your 6-digit PIN'); return }
     if (!user || !provider) return
     setSubmitting(true)
     setSubmitError(null)
@@ -172,7 +182,7 @@ export default function BillPayFlow({ config, onBack }: Props) {
       const deviceId        = await getOrCreateDeviceId()
       const { privateKey }  = await getOrCreateDeviceKeyPair()
       const deviceSignature = await signDeviceId(deviceId, privateKey)
-      const pinHash         = await hashPin(pin, user.id)
+      const pinHash         = overridePinHash ?? await hashPin(pin, user.id)
       const res = await payBill({
         serviceId:     provider.id,
         billersCode:   billersCode.trim(),
@@ -406,7 +416,13 @@ export default function BillPayFlow({ config, onBack }: Props) {
                 ))}
               </View>
 
-              <Text style={s.fieldLabel}>Enter PIN</Text>
+              {biometricOk && (
+                <TouchableOpacity style={s.biometricBtn} onPress={handleBiometricSubmit} disabled={submitting}>
+                  <Text style={s.biometricText}>Use Face ID / Fingerprint</Text>
+                </TouchableOpacity>
+              )}
+
+              <Text style={s.fieldLabel}>{biometricOk ? '— or enter PIN —' : 'Enter PIN'}</Text>
               <TextInput
                 style={[s.input, s.pinInput]}
                 placeholder="••••••"
@@ -424,7 +440,7 @@ export default function BillPayFlow({ config, onBack }: Props) {
 
               <TouchableOpacity
                 style={[s.nextBtn, submitting && s.btnDisabled]}
-                onPress={handleSubmit}
+                onPress={() => handleSubmit()}
                 disabled={submitting}
               >
                 {submitting
@@ -542,6 +558,11 @@ const s = StyleSheet.create({
   },
   btnDisabled:       { opacity: 0.6 },
   nextBtnText:       { color: '#000', fontWeight: '700', fontSize: 15 },
+  biometricBtn:      {
+    backgroundColor: 'rgba(212,168,67,0.1)', borderRadius: 14, padding: 14,
+    alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(212,168,67,0.25)',
+  },
+  biometricText:     { color: '#d4a843', fontWeight: '600', fontSize: 14 },
 
   successWrap:       { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   successIcon:       { fontSize: 56, marginBottom: 16 },

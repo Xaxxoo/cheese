@@ -9,6 +9,7 @@ import type { AppStackParamList } from '../../navigation/types'
 import { resolveUsername, getSendFeeRate, sendToUsername, sendToAddress, getBalance } from '../../api/wallet'
 import { useAuthStore } from '../../store/auth.store'
 import { getOrCreateDeviceId, getOrCreateDeviceKeyPair, signDeviceId, hashPin } from '../../utils/crypto'
+import { isBiometricAvailable, authenticateWithBiometrics } from '../../utils/biometrics'
 import { fmtUsdc } from '../../utils/format'
 import type { Transaction } from '../../types'
 
@@ -71,6 +72,9 @@ export default function SendScreen({ navigation }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError,setSubmitError]= useState<string | null>(null)
   const [result,     setResult]     = useState<Transaction | null>(null)
+  const [biometricOk, setBiometricOk] = useState(false)
+
+  useEffect(() => { void isBiometricAvailable().then(setBiometricOk) }, [])
 
   // Fetch fee rate + balance when entering step 2
   useEffect(() => {
@@ -134,8 +138,14 @@ export default function SendScreen({ navigation }: Props) {
 
   // ── Step 3 handler ──
 
-  async function handleSubmit() {
-    if (pin.length !== 6) { setSubmitError('Enter your 6-digit PIN'); return }
+  async function handleBiometricSubmit() {
+    const hash = await authenticateWithBiometrics()
+    if (!hash) return
+    await handleSubmit(hash)
+  }
+
+  async function handleSubmit(overridePinHash?: string) {
+    if (!overridePinHash && pin.length !== 6) { setSubmitError('Enter your 6-digit PIN'); return }
     if (!user) return
     setSubmitting(true)
     setSubmitError(null)
@@ -143,7 +153,7 @@ export default function SendScreen({ navigation }: Props) {
       const deviceId        = await getOrCreateDeviceId()
       const { privateKey }  = await getOrCreateDeviceKeyPair()
       const deviceSignature = await signDeviceId(deviceId, privateKey)
-      const pinHash         = await hashPin(pin, user.id)
+      const pinHash         = overridePinHash ?? await hashPin(pin, user.id)
       const amountUsdc      = amountNum.toFixed(6)
 
       let tx: Transaction
@@ -390,7 +400,12 @@ export default function SendScreen({ navigation }: Props) {
                 </View>
               </View>
 
-              <Text style={s.fieldLabel}>Enter PIN</Text>
+              {biometricOk && (
+                <TouchableOpacity style={s.biometricBtn} onPress={handleBiometricSubmit} disabled={submitting}>
+                  <Text style={s.biometricText}>Use Face ID / Fingerprint</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={s.fieldLabel}>{biometricOk ? '— or enter PIN —' : 'Enter PIN'}</Text>
               <TextInput
                 style={[s.input, s.pinInput]}
                 placeholder="••••••"
@@ -408,7 +423,7 @@ export default function SendScreen({ navigation }: Props) {
 
               <TouchableOpacity
                 style={[s.nextBtn, s.submitBtn, submitting && s.btnDisabled]}
-                onPress={handleSubmit}
+                onPress={() => handleSubmit()}
                 disabled={submitting}
               >
                 {submitting
@@ -457,6 +472,12 @@ const s = StyleSheet.create({
   },
   amountInput:      { fontSize: 28, fontWeight: '700', textAlign: 'center', letterSpacing: -0.5 },
   pinInput:         { fontSize: 24, letterSpacing: 12 },
+  biometricBtn:     {
+    backgroundColor: 'rgba(212,168,67,0.1)', borderRadius: 14, padding: 14,
+    alignItems: 'center', marginBottom: 12,
+    borderWidth: 1, borderColor: 'rgba(212,168,67,0.25)',
+  },
+  biometricText:    { color: '#d4a843', fontWeight: '600', fontSize: 14 },
 
   verifyBtn:        {
     backgroundColor: '#d4a843', borderRadius: 14, paddingHorizontal: 18,

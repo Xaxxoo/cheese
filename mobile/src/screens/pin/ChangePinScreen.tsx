@@ -8,6 +8,7 @@ import type { AppStackParamList } from '../../navigation/types'
 import { useAuthStore } from '../../store/auth.store'
 import { changePin } from '../../api/auth'
 import { hashPin, getOrCreateDeviceId, getOrCreateDeviceKeyPair, signDeviceId } from '../../utils/crypto'
+import { storePinHash } from '../../utils/biometrics'
 import PinPad from '../../components/PinPad'
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ChangePin'>
@@ -102,6 +103,7 @@ export default function ChangePinScreen({ navigation }: Props) {
       ])
       const deviceSignature = await signDeviceId(deviceId, keyPair.privateKey)
       await changePin({ currentPinHash: curHash, newPinHash: newHash, deviceId, deviceSignature })
+      await storePinHash(newHash)
       Alert.alert('Success', 'Your PIN has been changed successfully.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ])

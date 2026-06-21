@@ -34,6 +34,20 @@ function NotificationTapHandler() {
   return null
 }
 
+// ── Deep link config ──────────────────────────────────────
+const linking = {
+  prefixes: ['cheesepay://'],
+  config: {
+    screens: {
+      App: {
+        screens: {
+          PayLinkPay: 'pay/:token',
+        },
+      },
+    },
+  },
+}
+
 export default function RootNavigator() {
   const { isAuthenticated, user, setUser, clear } = useAuthStore()
   const [bootstrapped, setBootstrapped] = useState(false)
@@ -68,8 +82,9 @@ export default function RootNavigator() {
 
   if (!bootstrapped) return null
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking as any}>
       <Root.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           user?.hasPin === false ? (

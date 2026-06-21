@@ -6,6 +6,7 @@ import {
 import { useAuthStore } from '../../store/auth.store'
 import { setPin as apiSetPin } from '../../api/auth'
 import { hashPin } from '../../utils/crypto'
+import { storePinHash } from '../../utils/biometrics'
 import PinPad from '../../components/PinPad'
 
 type Step = 'enter' | 'confirm'
@@ -49,6 +50,7 @@ export default function SetPinScreen() {
     try {
       const pinHash = await hashPin(pinValue, user.id)
       await apiSetPin(pinHash)
+      await storePinHash(pinHash)
       setUser({ ...user, hasPin: true })
       // RootNavigator re-renders automatically to App
     } catch (err: unknown) {
