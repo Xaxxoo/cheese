@@ -215,15 +215,20 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* ── KPI cards ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         {[
-          { label: 'Total Transactions',  value: user.txCount.toLocaleString(),             color: c.blue                                         },
-          { label: 'Failed Transfers',    value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green },
-          { label: 'Reward Points',       value: user.points.toLocaleString(),              color: c.amber                                        },
-        ].map(({ label, value, color }) => (
+          { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: '⟳' },
+          { label: 'Failed Transfers',   value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green, icon: '🏦' },
+          { label: 'Reward Points',      value: user.points.toLocaleString(),              color: c.amber, icon: '★' },
+          { label: 'Total Received',     value: `$${user.totalInUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,  color: c.green, icon: '↓' },
+          { label: 'Total Sent',         value: `$${user.totalOutUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: c.red,   icon: '↑' },
+        ].map(({ label, value, color, icon }) => (
           <div key={label} style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 12, padding: '16px 20px' }}>
-            <div style={{ ...lbl, marginBottom: 10 }}>{label}</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color }}>{value}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color }}>{icon}</span>
+              <span style={lbl}>{label}</span>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{value}</div>
           </div>
         ))}
       </div>

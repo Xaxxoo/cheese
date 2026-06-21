@@ -302,6 +302,8 @@ export interface AdminUserDetail {
   usdcBalance:      string | null
   txCount:          number
   failedTransferCount: number
+  totalInUsdc:      number
+  totalOutUsdc:     number
   recentTransactions: Array<{
     id: string; type: string; status: string; amountUsdc: string | null; createdAt: string
   }>

@@ -666,7 +666,7 @@ export class AdminAuthService {
     const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
     if (!user) throw new NotFoundException('User not found');
 
-    const [txCount, failedTransferCount, recentTxs, recentTransfers, balances] =
+    const [txCount, failedTransferCount, recentTxs, recentTransfers, balances, inResult, outResult] =
       await Promise.all([
         this.txRepo.count({ where: { userId: id } }),
         this.bankTransferRepo.count({
@@ -702,6 +702,22 @@ export class AdminAuthService {
               return { usdc: horizonRaw };
             })()
           : Promise.resolve(null),
+        // Per-user inbound total (completed deposits, yield, referrals)
+        this.txRepo
+          .createQueryBuilder('t')
+          .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
+          .where('t.user_id = :id', { id })
+          .andWhere('t.status = :s', { s: TxStatus.COMPLETED })
+          .andWhere('t.type IN (:...types)', { types: [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS] })
+          .getRawOne<{ total: string }>(),
+        // Per-user outbound total (completed sends, transfers, bills, etc.)
+        this.txRepo
+          .createQueryBuilder('t')
+          .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
+          .where('t.user_id = :id', { id })
+          .andWhere('t.status = :s', { s: TxStatus.COMPLETED })
+          .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.FEE, TxType.WITHDRAWAL] })
+          .getRawOne<{ total: string }>(),
       ]);
 
     const kycDisplay: Record<string, string> = {
@@ -732,6 +748,8 @@ export class AdminAuthService {
       usdcBalance:      balances?.usdc ?? null,
       txCount,
       failedTransferCount,
+      totalInUsdc:  parseFloat(inResult?.total  ?? '0') || 0,
+      totalOutUsdc: parseFloat(outResult?.total ?? '0') || 0,
       recentTransactions: recentTxs.map((tx) => ({
         id:         tx.id,
         type:       tx.type,
