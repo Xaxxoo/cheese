@@ -21,6 +21,7 @@ import ElectricityScreen  from '../screens/bills/ElectricityScreen'
 import KycScreen          from '../screens/kyc/KycScreen'
 import NotificationsScreen from '../screens/notifications/NotificationsScreen'
 import EditProfileScreen  from '../screens/profile/EditProfileScreen'
+import ChangePinScreen    from '../screens/pin/ChangePinScreen'
 
 // ── Tab icons (text-based until vector icons are added) ───
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
@@ -87,6 +88,7 @@ export default function AppNavigator() {
       <Stack.Screen name="KYC"           component={KycScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="EditProfile"   component={EditProfileScreen} />
+      <Stack.Screen name="ChangePin"     component={ChangePinScreen} />
     </Stack.Navigator>
   )
 }

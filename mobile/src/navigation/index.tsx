@@ -6,13 +6,14 @@ import { useAuthStore } from '../store/auth.store'
 import { tokenStore, onAuthExpired } from '../api/client'
 import { getMe } from '../api/auth'
 
-import AuthNavigator from './AuthNavigator'
-import AppNavigator  from './AppNavigator'
+import AuthNavigator  from './AuthNavigator'
+import AppNavigator   from './AppNavigator'
+import SetPinScreen   from '../screens/pin/SetPinScreen'
 
 const Root = createNativeStackNavigator<RootStackParamList>()
 
 export default function RootNavigator() {
-  const { isAuthenticated, setUser, clear } = useAuthStore()
+  const { isAuthenticated, user, setUser, clear } = useAuthStore()
   const [bootstrapped, setBootstrapped] = useState(false)
 
   // On launch: check for a stored token and load the current user
@@ -45,7 +46,11 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Root.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
-          <Root.Screen name="App"  component={AppNavigator} />
+          user?.hasPin === false ? (
+            <Root.Screen name="SetPin" component={SetPinScreen} />
+          ) : (
+            <Root.Screen name="App" component={AppNavigator} />
+          )
         ) : (
           <Root.Screen name="Auth" component={AuthNavigator} />
         )}

@@ -32,12 +32,14 @@ export type AppStackParamList = {
   KYC:          undefined
   Notifications:undefined
   EditProfile:  undefined
+  ChangePin:    undefined
 }
 
 // ── Combined root ─────────────────────────────────────────
 export type RootStackParamList = {
-  Auth: undefined
-  App:  undefined
+  Auth:   undefined
+  App:    undefined
+  SetPin: undefined
 }
 
 // ── Navigation prop helpers ───────────────────────────────
