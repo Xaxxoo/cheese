@@ -171,12 +171,13 @@ export class AdminDashboardController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List all transactions (paginated, filterable)' })
   listTransactions(
-    @Query('page')   page?:   string,
-    @Query('limit')  limit?:  string,
-    @Query('status') status?: string,
-    @Query('type')   type?:   string,
-    @Query('search') search?: string,
-    @Query('userId') userId?: string,
+    @Query('page')      page?:      string,
+    @Query('limit')     limit?:     string,
+    @Query('status')    status?:    string,
+    @Query('type')      type?:      string,
+    @Query('search')    search?:    string,
+    @Query('userId')    userId?:    string,
+    @Query('direction') direction?: string,
   ) {
     return this.adminAuthService.listTransactions({
       page:  Math.max(1, parseInt(page  ?? '1',  10)),
@@ -185,6 +186,7 @@ export class AdminDashboardController {
       type,
       search,
       userId,
+      direction,
     });
   }
 

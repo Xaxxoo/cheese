@@ -1002,14 +1002,18 @@ export class AdminAuthService {
   // ── Transactions listing ──────────────────────────────────────────────────
 
   async listTransactions(query: {
-    page:    number;
-    limit:   number;
-    status?: string;
-    type?:   string;
-    search?: string;
-    userId?: string;
+    page:       number;
+    limit:      number;
+    status?:    string;
+    type?:      string;
+    search?:    string;
+    userId?:    string;
+    direction?: string;
   }) {
-    const { page, limit, status, type, search, userId } = query;
+    const { page, limit, status, type, search, userId, direction } = query;
+
+    const IN_TYPES  = ['deposit', 'yield_credit', 'referral_bonus'];
+    const OUT_TYPES = ['withdrawal', 'send_username', 'send_address', 'bank_transfer', 'card_payment', 'pay_request', 'bill_payment', 'fee'];
 
     const qb = this.txRepo
       .createQueryBuilder('t')
@@ -1022,6 +1026,11 @@ export class AdminAuthService {
     }
     if (type && type !== 'all') {
       qb.andWhere('t.type = :type', { type });
+    }
+    if (direction === 'in') {
+      qb.andWhere('t.type IN (:...dirTypes)', { dirTypes: IN_TYPES });
+    } else if (direction === 'out') {
+      qb.andWhere('t.type IN (:...dirTypes)', { dirTypes: OUT_TYPES });
     }
     if (userId) {
       qb.andWhere('t.user_id = :userId', { userId });

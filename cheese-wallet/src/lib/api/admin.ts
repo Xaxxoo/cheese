@@ -519,12 +519,13 @@ export async function getAdminTransaction(id: string): Promise<AdminTransactionD
 }
 
 export async function listAdminTransactions(params?: {
-  page?:   number
-  limit?:  number
-  status?: string
-  type?:   string
-  search?: string
-  userId?: string
+  page?:      number
+  limit?:     number
+  status?:    string
+  type?:      string
+  search?:    string
+  userId?:    string
+  direction?: 'in' | 'out'
 }): Promise<{ transactions: AdminTransactionItem[]; total: number; page: number; limit: number }> {
   const { data } = await adminApiClient.get<ApiResponse<{
     transactions: AdminTransactionItem[]

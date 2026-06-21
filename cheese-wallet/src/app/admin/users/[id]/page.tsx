@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, type AdminUserDetail,
+  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, listAdminTransactions,
+  type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
 const fmtDate = (s: string) =>
@@ -34,6 +35,45 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [recoverAmount, setRecoverAmount] = useState('');
   const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
   const [recoverError,  setRecoverError]  = useState('');
+
+  // ── Tx history slide-over ─────────────────────────────────────────────────
+  const [txFilter,   setTxFilter]   = useState<'in' | 'out' | null>(null);
+  const [txItems,    setTxItems]    = useState<AdminTransactionItem[]>([]);
+  const [txTotal,    setTxTotal]    = useState(0);
+  const [txPage,     setTxPage]     = useState(1);
+  const [txLoading,  setTxLoading]  = useState(false);
+  const txFilterRef = useRef<'in' | 'out' | null>(null);
+
+  const loadTxPage = useCallback(async (userId: string, dir: 'in' | 'out', page: number, reset: boolean) => {
+    setTxLoading(true);
+    try {
+      const res = await listAdminTransactions({ userId, direction: dir, page, limit: 20 });
+      setTxItems((prev) => reset ? res.transactions : [...prev, ...res.transactions]);
+      setTxTotal(res.total);
+      setTxPage(page);
+    } catch { /* ignore */ }
+    finally { setTxLoading(false); }
+  }, []);
+
+  const openTxPanel = (dir: 'in' | 'out') => {
+    if (!user) return;
+    txFilterRef.current = dir;
+    setTxFilter(dir);
+    setTxItems([]);
+    setTxTotal(0);
+    setTxPage(1);
+    void loadTxPage(user.id, dir, 1, true);
+  };
+
+  const closeTxPanel = () => {
+    setTxFilter(null);
+    setTxItems([]);
+  };
+
+  const loadMoreTx = () => {
+    if (!user || !txFilter || txLoading) return;
+    void loadTxPage(user.id, txFilter, txPage + 1, false);
+  };
 
   useEffect(() => {
     getAdminUserDetail(params.id)
@@ -217,21 +257,154 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       {/* ── KPI cards ────────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         {[
-          { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: '⟳' },
-          { label: 'Failed Transfers',   value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green, icon: '🏦' },
-          { label: 'Reward Points',      value: user.points.toLocaleString(),              color: c.amber, icon: '★' },
-          { label: 'Total Received',     value: `$${user.totalInUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,  color: c.green, icon: '↓' },
-          { label: 'Total Sent',         value: `$${user.totalOutUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: c.red,   icon: '↑' },
-        ].map(({ label, value, color, icon }) => (
-          <div key={label} style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 12, padding: '16px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <span style={{ fontSize: 13, color }}>{icon}</span>
-              <span style={lbl}>{label}</span>
+          { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: '⟳',  dir: null },
+          { label: 'Failed Transfers',   value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green, icon: '🏦', dir: null },
+          { label: 'Reward Points',      value: user.points.toLocaleString(),              color: c.amber, icon: '★',  dir: null },
+          { label: 'Total Received',     value: `$${user.totalInUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,  color: c.green, icon: '↓', dir: 'in'  as const },
+          { label: 'Total Sent',         value: `$${user.totalOutUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: c.red,   icon: '↑', dir: 'out' as const },
+        ].map(({ label, value, color, icon, dir }) => (
+          <div
+            key={label}
+            onClick={dir ? () => openTxPanel(dir) : undefined}
+            style={{
+              background: c.surface, border: `1px solid ${txFilter === dir && dir ? color + '55' : c.border}`,
+              borderRadius: 12, padding: '16px 20px',
+              cursor: dir ? 'pointer' : 'default',
+              transition: 'border-color .15s, box-shadow .15s',
+              boxShadow: txFilter === dir && dir ? `0 0 0 1px ${color}33` : 'none',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, color }}>{icon}</span>
+                <span style={lbl}>{label}</span>
+              </div>
+              {dir && <span style={{ fontSize: 9, color: c.textDim, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>View →</span>}
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{value}</div>
           </div>
         ))}
       </div>
+
+      {/* ── Tx history slide-over ─────────────────────────────────────────── */}
+      {txFilter && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)',
+          display: 'flex', justifyContent: 'flex-end',
+        }} onClick={closeTxPanel}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 540, height: '100%', background: c.surface,
+              borderLeft: `1px solid ${c.border}`,
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '-8px 0 40px rgba(0,0,0,0.4)',
+            }}
+          >
+            {/* Panel header */}
+            <div style={{
+              padding: '20px 24px', borderBottom: `1px solid ${c.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+            }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: txFilter === 'in' ? c.green : c.red, letterSpacing: '-0.01em' }}>
+                  {txFilter === 'in' ? '↓ Received Transactions' : '↑ Sent Transactions'}
+                </div>
+                <div style={{ fontSize: 11, color: c.textDim, marginTop: 3 }}>
+                  {txTotal.toLocaleString()} transaction{txTotal !== 1 ? 's' : ''} · @{user.username}
+                </div>
+              </div>
+              <button
+                onClick={closeTxPanel}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`,
+                  borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
+                  color: c.textMid, fontSize: 12, fontFamily: 'inherit',
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Transaction list */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px' }}>
+              {txLoading && txItems.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 12, color: c.textDim }}>
+                  Loading…
+                </div>
+              ) : txItems.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 12, color: c.textDim }}>
+                  No transactions found
+                </div>
+              ) : (
+                <>
+                  {txItems.map((tx, i) => (
+                    <div
+                      key={tx.id}
+                      style={{
+                        padding: '12px 0',
+                        borderBottom: i < txItems.length - 1 ? `1px solid ${c.border}` : 'none',
+                        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, color: c.text, fontWeight: 600, textTransform: 'capitalize' }}>
+                          {tx.type.replace(/_/g, ' ')}
+                        </div>
+                        <div style={{ fontSize: 10.5, color: c.textDim, marginTop: 2 }}>
+                          {fmtDate(tx.createdAt)}
+                        </div>
+                        {(tx.recipientUsername || tx.bankName) && (
+                          <div style={{ fontSize: 10.5, color: c.textMid, marginTop: 2 }}>
+                            {tx.recipientUsername ? `→ @${tx.recipientUsername}` : tx.bankName}
+                          </div>
+                        )}
+                        {tx.txHash && (
+                          <div style={{ fontSize: 10, color: c.textDim, marginTop: 2, fontFamily: 'monospace' }}>
+                            {tx.txHash.slice(0, 24)}…
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: txFilter === 'in' ? c.green : c.red, fontVariantNumeric: 'tabular-nums' }}>
+                          ${parseFloat(tx.amountUsdc ?? '0').toFixed(2)}
+                        </div>
+                        <div style={{ fontSize: 10.5, color: txStatusColor(tx.status), marginTop: 2 }}>
+                          {tx.status}
+                        </div>
+                        {tx.feeUsdc && parseFloat(tx.feeUsdc) > 0 && (
+                          <div style={{ fontSize: 10, color: c.textDim, marginTop: 1 }}>
+                            fee ${parseFloat(tx.feeUsdc).toFixed(4)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Load more */}
+                  {txItems.length < txTotal && (
+                    <div style={{ padding: '16px 0', textAlign: 'center' }}>
+                      <button
+                        onClick={loadMoreTx}
+                        disabled={txLoading}
+                        style={{
+                          padding: '8px 24px', borderRadius: 8, cursor: txLoading ? 'default' : 'pointer',
+                          background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
+                          color: c.textMid, fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+                          opacity: txLoading ? 0.5 : 1,
+                        }}
+                      >
+                        {txLoading ? 'Loading…' : `Load more (${txTotal - txItems.length} remaining)`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Main grid ────────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
