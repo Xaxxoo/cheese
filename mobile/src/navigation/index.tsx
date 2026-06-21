@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import * as SplashScreen from 'expo-splash-screen'
 import type { RootStackParamList } from './types'
 import { useAuthStore } from '../store/auth.store'
 import { tokenStore, onAuthExpired } from '../api/client'
@@ -29,6 +30,7 @@ export default function RootNavigator() {
         await tokenStore.clear()
       } finally {
         setBootstrapped(true)
+        await SplashScreen.hideAsync()
       }
     }
     void bootstrap()
