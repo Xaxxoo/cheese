@@ -62,10 +62,15 @@ export class ReferralService {
   async linkReferral(refereeId: string, referralCode: string): Promise<void> {
     if (!referralCode || referralCode.length < 3) return;
 
-    // Look up the referrer directly by their stored referralCode column.
-    const referrer = await this.userRepo.findOne({
-      where: { referralCode },
-    });
+    // Try exact referralCode column first (new users with 8-char random code).
+    // Fall back to username match for legacy users whose referralCode is null
+    // and whose share link therefore contains their username in uppercase.
+    let referrer = await this.userRepo.findOne({ where: { referralCode } });
+    if (!referrer) {
+      referrer = await this.userRepo.findOne({
+        where: { username: referralCode.toLowerCase() },
+      });
+    }
     if (!referrer || referrer.id === refereeId) return;
 
     // Prevent duplicate referral

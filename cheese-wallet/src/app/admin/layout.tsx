@@ -93,7 +93,6 @@ const NAV_GROUPS = [
   { label: 'Growth', items: [
     { label: 'Waitlist',      Icon: IcoList,   href: '/admin/waitlist'     },
     { label: 'Referrals',     Icon: IcoStar,   href: '/admin/referrals'    },
-    { label: 'Broadcast',     Icon: IcoBell,   href: '/admin/broadcast'    },
     { label: 'Notifications', Icon: IcoBell,   href: '/admin/notifs'       },
   ]},
 ];
