@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  ScrollView, ActivityIndicator, Share, Alert,
+  ScrollView, ActivityIndicator, Share,
 } from 'react-native'
+import * as Clipboard from 'expo-clipboard'
+import QRCode from 'react-native-qrcode-svg'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { getWalletAddress, getDepositNetworks } from '../../api/wallet'
@@ -46,6 +48,8 @@ export default function ReceiveScreen({ navigation }: Props) {
       : !n.id.toLowerCase().includes('stellar') && !n.name.toLowerCase().includes('stellar'),
   )
 
+  const [copied, setCopied] = useState(false)
+
   async function handleShare() {
     if (!activeAddress) return
     try {
@@ -55,9 +59,11 @@ export default function ReceiveScreen({ navigation }: Props) {
     }
   }
 
-  function handleCopyAlert() {
+  async function handleCopy() {
     if (!activeAddress) return
-    Alert.alert('Address', activeAddress, [{ text: 'OK' }])
+    await Clipboard.setStringAsync(activeAddress)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const hasEvm = address && Object.keys(address.evmAddresses).length > 0
@@ -103,15 +109,21 @@ export default function ReceiveScreen({ navigation }: Props) {
             <View style={s.addressCard}>
               <Text style={s.assetLabel}>USDC · {tab === 'stellar' ? 'Stellar Network' : 'EVM Network'}</Text>
 
-              {/* QR placeholder */}
-              <View style={s.qrBox}>
-                <Text style={s.qrIcon}>⬛</Text>
-                <Text style={s.qrHint}>QR code coming soon</Text>
-              </View>
+              {/* QR code */}
+              {activeAddress ? (
+                <View style={s.qrBox}>
+                  <QRCode
+                    value={activeAddress}
+                    size={180}
+                    backgroundColor="#ffffff"
+                    color="#000000"
+                  />
+                </View>
+              ) : null}
 
-              <TouchableOpacity onPress={handleCopyAlert} style={s.addrWrap}>
+              <TouchableOpacity onPress={handleCopy} style={s.addrWrap}>
                 <Text style={s.addrText}>{activeAddress ? truncate(activeAddress, 12) : '—'}</Text>
-                <Text style={s.addrHint}>Tap to view full address</Text>
+                <Text style={copied ? s.addrHintCopied : s.addrHint}>{copied ? 'Copied!' : 'Tap to copy'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={s.shareBtn} onPress={handleShare}>
@@ -190,12 +202,9 @@ const s = StyleSheet.create({
                    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 20 },
 
   qrBox:         {
-    width: 160, height: 160, backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#ffffff', borderRadius: 16, padding: 12,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 20,
   },
-  qrIcon:        { fontSize: 48, marginBottom: 8 },
-  qrHint:        { fontSize: 11, color: 'rgba(255,255,255,0.2)' },
 
   addrWrap:      {
     backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12,
@@ -203,6 +212,7 @@ const s = StyleSheet.create({
   },
   addrText:      { fontSize: 13, color: '#fff', fontWeight: '500', fontFamily: 'monospace', marginBottom: 4 },
   addrHint:      { fontSize: 11, color: 'rgba(255,255,255,0.25)' },
+  addrHintCopied:{ fontSize: 11, color: '#4ade80' },
 
   shareBtn:      {
     backgroundColor: '#d4a843', borderRadius: 14, paddingVertical: 14,
