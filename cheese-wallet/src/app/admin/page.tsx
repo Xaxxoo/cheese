@@ -234,6 +234,48 @@ export default function AdminDashboard() {
         ))}
       </div>
 
+      {/* ── Inward / Outward totals ─────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ ...card, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+            background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, color: c.green,
+          }}>↓</div>
+          <div>
+            <div style={{ fontSize: 11, color: c.textDim, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              Total Received (Platform)
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: c.green, letterSpacing: '-0.04em', lineHeight: 1 }}>
+              {stats ? `$${Math.floor(stats.totalInUsdc).toLocaleString()}` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: c.textDim, marginTop: 3 }}>
+              {stats ? `$${stats.totalInUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC · completed inbound` : ''}
+            </div>
+          </div>
+        </div>
+        <div style={{ ...card, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, color: c.red,
+          }}>↑</div>
+          <div>
+            <div style={{ fontSize: 11, color: c.textDim, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              Total Sent (Platform)
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: c.red, letterSpacing: '-0.04em', lineHeight: 1 }}>
+              {stats ? `$${Math.floor(stats.totalOutUsdc).toLocaleString()}` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: c.textDim, marginTop: 3 }}>
+              {stats ? `$${stats.totalOutUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC · completed outbound` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Chart + Feed ────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12 }}>
 

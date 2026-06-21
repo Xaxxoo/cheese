@@ -3,7 +3,7 @@
 import React, { useState, useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { c, IcoSearch, Pill } from '../_shared';
-import { listAdminTransactions, getAdminTransaction, completeAdminTransaction, refundAdminTransaction, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
+import { listAdminTransactions, getAdminTransaction, completeAdminTransaction, refundAdminTransaction, getAdminStats, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'failed' | 'reversed';
 type TypeFilter   = 'all' | 'deposit' | 'withdrawal' | 'send_username' | 'send_address'
@@ -68,7 +68,7 @@ const TX_TYPES: { key: TypeFilter; label: string }[] = [
 const COLS     = ['User / Reference', 'Type', 'Amount USDC', 'Fee', 'Status', 'Recipient / Details', 'Date'];
 const COL_GRID = '1.6fr 100px 110px 90px 100px 1.6fr 110px';
 
-interface StatCounts { total: number; completed: number; failed: number }
+interface StatCounts { total: number; completed: number; failed: number; totalInUsdc: number; totalOutUsdc: number }
 
 export default function TransactionsPage() {
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>('all');
@@ -79,22 +79,29 @@ export default function TransactionsPage() {
   const [total,          setTotal]          = useState(0);
   const [loading,        setLoading]        = useState(true);
   const [error,          setError]          = useState<string | null>(null);
-  const [stats,          setStats]          = useState<StatCounts>({ total: 0, completed: 0, failed: 0 });
+  const [stats,          setStats]          = useState<StatCounts>({ total: 0, completed: 0, failed: 0, totalInUsdc: 0, totalOutUsdc: 0 });
   const [detail,         setDetail]         = useState<AdminTransactionDetail | null>(null);
   const [detailLoading,  setDetailLoading]  = useState(false);
   const [actionBusy,     setActionBusy]     = useState(false);
   const [actionMsg,      setActionMsg]      = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmRefund,  setConfirmRefund]  = useState(false);
 
-  // ── Summary counts ────────────────────────────────────────────────────────
+  // ── Summary counts + USDC totals ─────────────────────────────────────────
   useEffect(() => {
     Promise.all([
       listAdminTransactions({ page: 1, limit: 1 }),
       listAdminTransactions({ page: 1, limit: 1, status: 'completed' }),
       listAdminTransactions({ page: 1, limit: 1, status: 'failed' }),
+      getAdminStats(),
     ])
-      .then(([all, comp, fail]) => {
-        setStats({ total: all.total, completed: comp.total, failed: fail.total });
+      .then(([all, comp, fail, adminStats]) => {
+        setStats({
+          total:       all.total,
+          completed:   comp.total,
+          failed:      fail.total,
+          totalInUsdc:  adminStats.totalInUsdc,
+          totalOutUsdc: adminStats.totalOutUsdc,
+        });
       })
       .catch(console.error);
   }, []);
@@ -196,10 +203,13 @@ export default function TransactionsPage() {
     return '—';
   }
 
+  const fmtUsdc2 = (v: number) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const STAT_ITEMS = [
-    { label: 'Total Transactions', value: n(stats.total),     color: c.text,  icon: '⟳' },
-    { label: 'Completed',          value: n(stats.completed), color: c.green, icon: '✓' },
-    { label: 'Failed',             value: n(stats.failed),    color: c.red,   icon: '✕' },
+    { label: 'Total Transactions', value: n(stats.total),              color: c.text,  icon: '⟳' },
+    { label: 'Completed',          value: n(stats.completed),          color: c.green, icon: '✓' },
+    { label: 'Failed',             value: n(stats.failed),             color: c.red,   icon: '✕' },
+    { label: 'Total Received',     value: fmtUsdc2(stats.totalInUsdc),  color: c.green, icon: '↓' },
+    { label: 'Total Sent',         value: fmtUsdc2(stats.totalOutUsdc), color: c.red,   icon: '↑' },
   ] as const;
 
   return (
@@ -216,7 +226,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* ── Stats row ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         {STAT_ITEMS.map(({ label, value, color, icon }) => (
           <div key={label} style={{ ...card, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{

@@ -327,6 +327,8 @@ export class AdminAuthService {
       failedBankTransfersToday,
       flaggedUsers,
       volumeResult,
+      inResult,
+      outResult,
     ] = await Promise.all([
       this.userRepo.count({ where: { isAdmin: false } }),
       this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.VERIFIED } }),
@@ -347,6 +349,20 @@ export class AdminAuthService {
         .select('SUM(CAST(t.amount_usdc AS DECIMAL(20,6)))', 'total')
         .where('t.status = :s', { s: TxStatus.COMPLETED })
         .getRawOne<{ total: string }>(),
+      // Inbound: deposits, yield credits, referral bonuses
+      this.txRepo
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
+        .where('t.status = :s', { s: TxStatus.COMPLETED })
+        .andWhere('t.type IN (:...types)', { types: [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS] })
+        .getRawOne<{ total: string }>(),
+      // Outbound: sends, bank transfers, bills, cards, pay requests, fees, withdrawals
+      this.txRepo
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
+        .where('t.status = :s', { s: TxStatus.COMPLETED })
+        .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.FEE, TxType.WITHDRAWAL] })
+        .getRawOne<{ total: string }>(),
     ]);
 
     return {
@@ -365,6 +381,8 @@ export class AdminAuthService {
       failedBankTransfersToday,
       flaggedUsers,
       totalVolumeUsdc: parseFloat(volumeResult?.total ?? '0') || 0,
+      totalInUsdc:     parseFloat(inResult?.total  ?? '0') || 0,
+      totalOutUsdc:    parseFloat(outResult?.total ?? '0') || 0,
     };
   }
 

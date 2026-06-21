@@ -1105,6 +1105,31 @@ export class BlockchainService implements OnModuleInit {
     try {
       const senderAccount =
         await this.stellarServer.loadAccount(senderPublicKey);
+
+      // Verify live USDC balance from the freshly loaded account.
+      // This catches race conditions where a concurrent send already depleted
+      // the balance after our earlier balance check in the send service.
+      type HorizonBalance = { asset_type: string; asset_code?: string; asset_issuer?: string; balance: string };
+      const usdcEntry = (senderAccount.balances as HorizonBalance[]).find(
+        (b) => b.asset_type !== 'native' && b.asset_code === 'USDC' && b.asset_issuer === this.stellarUsdcIssuer,
+      );
+      const liveBalance = parseFloat(usdcEntry?.balance ?? '0');
+
+      // Floor to Stellar's max precision (7 decimal places = 1 stroop).
+      // Prevents op_underfunded caused by floating-point artefacts where the
+      // amount has sub-stroop precision that the SDK rounds up on-chain.
+      const stellarAmount = (Math.floor(parseFloat(amountUsdc) * 1e7) / 1e7)
+        .toFixed(7)
+        .replace(/0+$/, '')
+        .replace(/\.$/, '') || '0.0000001';
+
+      if (liveBalance < parseFloat(stellarAmount)) {
+        throw new ContractCallException(
+          'sendStellarUsdc',
+          `Insufficient USDC balance: account holds ${liveBalance.toFixed(7)} but ${stellarAmount} was requested`,
+        );
+      }
+
       const usdcAsset = new StellarSdk.Asset('USDC', this.stellarUsdcIssuer);
       const txBuilder = new StellarSdk.TransactionBuilder(senderAccount, {
         fee: StellarSdk.BASE_FEE,
@@ -1113,7 +1138,7 @@ export class BlockchainService implements OnModuleInit {
         StellarSdk.Operation.payment({
           destination: toPublicKey,
           asset: usdcAsset,
-          amount: amountUsdc,
+          amount: stellarAmount,
         }),
       );
 

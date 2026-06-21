@@ -155,6 +155,8 @@ export interface AdminStats {
   failedBankTransfersToday: number
   flaggedUsers:             number
   totalVolumeUsdc:          number
+  totalInUsdc:              number
+  totalOutUsdc:             number
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
