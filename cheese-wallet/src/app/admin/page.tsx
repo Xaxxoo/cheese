@@ -14,12 +14,36 @@ function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
   const W = 600, H = 100;
   const p = { t: 6, r: 2, b: 2, l: 2 };
   const iW = W - p.l - p.r, iH = H - p.t - p.b;
+
+  const hasData = data.some((v) => v > 0);
   const min = 0;
   const max = Math.max(...data, 1);
+
+  // Placeholder x-positions for labels when there's no data to plot
+  const xForIndex = (i: number) => p.l + (i / (data.length - 1)) * iW;
+
   const pts = data.map((v, i) => ({
-    x: p.l + (i / (data.length - 1)) * iW,
+    x: xForIndex(i),
     y: p.t + iH - ((v - min) / (max - min)) * iH,
   }));
+
+  const labels = range === '7D'
+    ? data.map((_, i) => ({ x: xForIndex(i), label: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] }))
+    : [0, 7, 14, 21, 29].map((i) => ({ x: xForIndex(i), label: `W${Math.floor(i / 7) + 1}` }));
+
+  if (!hasData) {
+    return (
+      <svg width="100%" viewBox={`0 0 ${W} ${H + 16}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <text x={W / 2} y={H / 2 + 4} fill="rgba(244,244,245,0.18)" fontSize="10"
+          textAnchor="middle" fontFamily="system-ui">No transaction volume in this period</text>
+        {labels.map((l) => (
+          <text key={l.label} x={l.x} y={H + 14} fill="rgba(244,244,245,0.22)"
+            fontSize="7" textAnchor="middle" fontFamily="system-ui">{l.label}</text>
+        ))}
+      </svg>
+    );
+  }
+
   let line = `M${pts[0].x},${pts[0].y}`;
   for (let i = 1; i < pts.length; i++) {
     const prev = pts[i - 1], cur = pts[i];
@@ -27,9 +51,6 @@ function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
     line += ` C${cx},${prev.y} ${cx},${cur.y} ${cur.x},${cur.y}`;
   }
   const area = `${line} L${p.l + iW},${p.t + iH} L${p.l},${p.t + iH} Z`;
-  const labels = range === '7D'
-    ? pts.map((pt, i) => ({ x: pt.x, label: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] }))
-    : [0, 7, 14, 21, 29].map((i) => ({ x: pts[i].x, label: `W${Math.floor(i / 7) + 1}` }));
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H + 16}`} preserveAspectRatio="none" style={{ display: 'block' }}>
       <defs>

@@ -283,25 +283,29 @@ export class AdminAuthService {
   // ── Dashboard stats ───────────────────────────────────────────────────────
 
   async getVolumeChart(days: number): Promise<{ date: string; volume: number }[]> {
-    const since = new Date();
-    since.setDate(since.getDate() - days + 1);
-    since.setHours(0, 0, 0, 0);
+    // Build UTC midnight for `days` days ago — avoids local-TZ drift in setDate/getDate
+    const now = new Date();
+    const since = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - days + 1,
+    ));
 
     const rows = await this.txRepo
       .createQueryBuilder('t')
-      .select("DATE(t.created_at AT TIME ZONE 'UTC')", 'date')
+      // TO_CHAR always returns a string 'YYYY-MM-DD'; avoids pg-driver Date-object
+      // ambiguity and PostgreSQL session-timezone interference from DATE(timestamptz)
+      .select("TO_CHAR(t.created_at, 'YYYY-MM-DD')", 'day')
       .addSelect('SUM(CAST(t.amount_usdc AS DECIMAL(20,6)))', 'volume')
       .where('t.status = :s', { s: TxStatus.COMPLETED })
       .andWhere('t.created_at >= :since', { since })
-      .groupBy("DATE(t.created_at AT TIME ZONE 'UTC')")
-      .orderBy("DATE(t.created_at AT TIME ZONE 'UTC')", 'ASC')
-      .getRawMany<{ date: string; volume: string }>();
+      .groupBy("TO_CHAR(t.created_at, 'YYYY-MM-DD')")
+      .orderBy("TO_CHAR(t.created_at, 'YYYY-MM-DD')", 'ASC')
+      .getRawMany<{ day: string; volume: string }>();
 
-    const map = new Map(rows.map((r) => [r.date, parseFloat(r.volume) || 0]));
+    const map = new Map(rows.map((r) => [r.day, parseFloat(r.volume) || 0]));
 
     return Array.from({ length: days }, (_, i) => {
       const d = new Date(since);
-      d.setDate(d.getDate() + i);
+      d.setUTCDate(d.getUTCDate() + i); // UTC arithmetic — no local-TZ shift
       const key = d.toISOString().slice(0, 10);
       return { date: key, volume: map.get(key) ?? 0 };
     });
