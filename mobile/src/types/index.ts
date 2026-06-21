@@ -150,6 +150,12 @@ export interface TransactionListResponse {
   totalPages: number
 }
 
+export interface TransactionStats {
+  totalInUsdc:  string
+  totalOutUsdc: string
+  txCount:      number
+}
+
 // ── Bank ──────────────────────────────────────────────────
 export interface NigerianBank {
   id: string

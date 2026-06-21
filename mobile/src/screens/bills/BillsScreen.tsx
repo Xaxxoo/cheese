@@ -6,12 +6,13 @@ import type { AppStackParamList } from '../../navigation/types'
 type Props = NativeStackScreenProps<AppStackParamList, 'Bills'>
 
 export default function BillsScreen({ navigation }: Props) {
-  const items = [
+  type BillScreen = 'Airtime' | 'Data' | 'Tv' | 'Electricity'
+  const items: { label: string; screen: BillScreen }[] = [
     { label: 'Airtime',     screen: 'Airtime'     },
     { label: 'Data',        screen: 'Data'        },
     { label: 'TV',          screen: 'Tv'          },
     { label: 'Electricity', screen: 'Electricity' },
-  ] as const
+  ]
 
   return (
     <SafeAreaView style={s.safe}>
@@ -24,7 +25,7 @@ export default function BillsScreen({ navigation }: Props) {
           <TouchableOpacity
             key={label}
             style={s.row}
-            onPress={() => navigation.navigate(screen as keyof AppStackParamList)}
+            onPress={() => navigation.navigate(screen)}
           >
             <Text style={s.rowLabel}>{label}</Text>
             <Text style={s.arrow}>›</Text>

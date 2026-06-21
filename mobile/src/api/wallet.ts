@@ -2,7 +2,7 @@ import client from './client'
 import type {
   ApiResponse,
   WalletBalance, WalletAddress, DepositNetwork,
-  Transaction, TransactionListResponse,
+  Transaction, TransactionListResponse, TransactionStats,
   NigerianBank, AccountResolvePayload, AccountResolveResponse,
   BankTransferPayload, BankTransferResponse,
   SendToUsernamePayload, SendToAddressPayload,
@@ -39,6 +39,11 @@ export async function getTransactions(page = 1, pageSize = 20): Promise<Transact
 
 export async function getTransaction(id: string): Promise<Transaction> {
   const { data } = await client.get<ApiResponse<Transaction>>(`/transactions/${id}`)
+  return data.data
+}
+
+export async function getTransactionStats(): Promise<TransactionStats> {
+  const { data } = await client.get<ApiResponse<TransactionStats>>('/transactions/stats')
   return data.data
 }
 

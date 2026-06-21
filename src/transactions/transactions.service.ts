@@ -155,6 +155,47 @@ export class TransactionsService {
     return Math.max(0, parseFloat(result?.net ?? '0'));
   }
 
+  /** Inbound / outbound totals + count — exposed to the mobile dashboard. */
+  async getStats(
+    userId: string,
+  ): Promise<{ totalInUsdc: string; totalOutUsdc: string; txCount: number }> {
+    const INBOUND = [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS];
+    const OUTBOUND = [
+      TxType.SEND_USERNAME,
+      TxType.SEND_ADDRESS,
+      TxType.WITHDRAWAL,
+      TxType.BANK_TRANSFER,
+      TxType.CARD_PAYMENT,
+      TxType.PAY_REQUEST,
+      TxType.BILL_PAYMENT,
+      TxType.FEE,
+    ];
+
+    const [inResult, outResult, txCount] = await Promise.all([
+      this.txRepo
+        .createQueryBuilder('tx')
+        .select('COALESCE(SUM(CAST(tx.amount_usdc AS DECIMAL)), 0)', 'total')
+        .where('tx.user_id = :userId', { userId })
+        .andWhere('tx.type IN (:...types)', { types: INBOUND })
+        .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
+        .getRawOne<{ total: string }>(),
+      this.txRepo
+        .createQueryBuilder('tx')
+        .select('COALESCE(SUM(CAST(tx.amount_usdc AS DECIMAL)), 0)', 'total')
+        .where('tx.user_id = :userId', { userId })
+        .andWhere('tx.type IN (:...types)', { types: OUTBOUND })
+        .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
+        .getRawOne<{ total: string }>(),
+      this.txRepo.count({ where: { userId } }),
+    ]);
+
+    return {
+      totalInUsdc:  parseFloat(inResult?.total  ?? '0').toFixed(6),
+      totalOutUsdc: parseFloat(outResult?.total ?? '0').toFixed(6),
+      txCount,
+    };
+  }
+
   /** Lifetime outbound volume (USDC) and transaction count — used for tier milestone checks. */
   async getLifetimeOutboundStats(
     userId: string,

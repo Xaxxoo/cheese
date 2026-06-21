@@ -58,6 +58,16 @@ export class TransactionsController {
     return this.txService.getList(user.id, page, pageSize);
   }
 
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Get transaction summary stats',
+    description: 'Returns lifetime totals for inbound and outbound completed transactions (USDC) and overall transaction count.',
+  })
+  @ApiResponse({ status: 200, description: '{ totalInUsdc, totalOutUsdc, txCount }' })
+  getStats(@CurrentUser() user: User) {
+    return this.txService.getStats(user.id);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get transaction by ID',
