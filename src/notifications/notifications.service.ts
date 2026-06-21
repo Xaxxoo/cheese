@@ -3,16 +3,22 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as webpush from 'web-push';
+import Expo, { ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { PushSubscription } from './entities/push-subscription.entity';
+import { ExpoPushToken } from './entities/expo-push-token.entity';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
+  private readonly expo = new Expo();
+
   constructor(
     @InjectRepository(Notification)
     private readonly notifRepo: Repository<Notification>,
     @InjectRepository(PushSubscription)
     private readonly pushSubRepo: Repository<PushSubscription>,
+    @InjectRepository(ExpoPushToken)
+    private readonly expoTokenRepo: Repository<ExpoPushToken>,
   ) {}
 
   private readonly logger = new Logger(NotificationsService.name);
@@ -68,6 +74,19 @@ export class NotificationsService implements OnModuleInit {
     await this.pushSubRepo.delete({ userId, endpoint });
   }
 
+  // ── POST /notifications/expo-token ────────────────────────
+  async upsertExpoToken(userId: string, token: string): Promise<void> {
+    await this.expoTokenRepo.upsert(
+      { userId, token },
+      { conflictPaths: ['token'] },
+    );
+  }
+
+  // ── DELETE /notifications/expo-token ─────────────────────
+  async removeExpoToken(userId: string, token: string): Promise<void> {
+    await this.expoTokenRepo.delete({ userId, token });
+  }
+
   // ── Internal: fire-and-forget push to all user devices ───
   private async sendPush(
     userId: string,
@@ -75,18 +94,53 @@ export class NotificationsService implements OnModuleInit {
     body: string,
     url: string,
   ): Promise<void> {
-    if (!process.env.VAPID_PUBLIC_KEY) return; // VAPID not configured
-    const subs = await this.pushSubRepo.find({ where: { userId } });
-    for (const sub of subs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.authKey } },
-          JSON.stringify({ title, body, url, tag: 'cheese-notification' }),
-        );
-      } catch (err: any) {
-        if (err?.statusCode === 410 || err?.statusCode === 404) {
-          await this.pushSubRepo.delete({ id: sub.id });
+    // ── Web Push (PWA) ──
+    if (process.env.VAPID_PUBLIC_KEY) {
+      const subs = await this.pushSubRepo.find({ where: { userId } });
+      for (const sub of subs) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.authKey } },
+            JSON.stringify({ title, body, url, tag: 'cheese-notification' }),
+          );
+        } catch (err: any) {
+          if (err?.statusCode === 410 || err?.statusCode === 404) {
+            await this.pushSubRepo.delete({ id: sub.id });
+          }
         }
+      }
+    }
+
+    // ── Expo Push (native mobile) ──
+    const expoTokens = await this.expoTokenRepo.find({ where: { userId } });
+    const validTokens = expoTokens.filter((t) => Expo.isExpoPushToken(t.token));
+    if (!validTokens.length) return;
+
+    const messages: ExpoPushMessage[] = validTokens.map((t) => ({
+      to: t.token,
+      title,
+      body,
+      data: { url },
+      sound: 'default' as const,
+    }));
+
+    const chunks = this.expo.chunkPushNotifications(messages);
+    for (const chunk of chunks) {
+      try {
+        const tickets: ExpoPushTicket[] =
+          await this.expo.sendPushNotificationsAsync(chunk);
+        // Remove tokens that the Expo service reports as invalid
+        for (let i = 0; i < tickets.length; i++) {
+          const ticket = tickets[i];
+          if (
+            ticket.status === 'error' &&
+            ticket.details?.error === 'DeviceNotRegistered'
+          ) {
+            await this.expoTokenRepo.delete({ token: messages[i].to as string });
+          }
+        }
+      } catch (err) {
+        this.logger.error('Expo push send error', err);
       }
     }
   }

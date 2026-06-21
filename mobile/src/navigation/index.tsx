@@ -1,17 +1,38 @@
-import React, { useEffect, useState } from 'react'
-import { NavigationContainer } from '@react-navigation/native'
+import React, { useEffect, useRef, useState } from 'react'
+import { NavigationContainer, useNavigation, NavigationContainerRef } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import * as SplashScreen from 'expo-splash-screen'
-import type { RootStackParamList } from './types'
+import * as Notifications from 'expo-notifications'
+import type { RootStackParamList, AppStackParamList } from './types'
 import { useAuthStore } from '../store/auth.store'
 import { tokenStore, onAuthExpired } from '../api/client'
 import { getMe } from '../api/auth'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 import AuthNavigator  from './AuthNavigator'
 import AppNavigator   from './AppNavigator'
 import SetPinScreen   from '../screens/pin/SetPinScreen'
 
 const Root = createNativeStackNavigator<RootStackParamList>()
+
+// ── Notification tap handler ──────────────────────────────
+// Must be inside NavigationContainer to use useNavigation
+function NotificationTapHandler() {
+  const navigation = useNavigation<import('@react-navigation/native-stack').NativeStackNavigationProp<AppStackParamList>>()
+  const lastResponse = Notifications.useLastNotificationResponse()
+  const handledId    = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!lastResponse) return
+    const id = lastResponse.notification.request.identifier
+    if (handledId.current === id) return
+    handledId.current = id
+    // Always navigate to the Notifications screen on tap
+    navigation.navigate('Notifications')
+  }, [lastResponse])
+
+  return null
+}
 
 export default function RootNavigator() {
   const { isAuthenticated, user, setUser, clear } = useAuthStore()
@@ -42,6 +63,9 @@ export default function RootNavigator() {
     return unsub
   }, [])
 
+  // Register / refresh push token whenever user is authenticated
+  usePushNotifications()
+
   if (!bootstrapped) return null
 
   return (
@@ -57,6 +81,8 @@ export default function RootNavigator() {
           <Root.Screen name="Auth" component={AuthNavigator} />
         )}
       </Root.Navigator>
+      {/* Tap-to-navigate: only active when fully in the App stack */}
+      {isAuthenticated && user?.hasPin !== false && <NotificationTapHandler />}
     </NavigationContainer>
   )
 }

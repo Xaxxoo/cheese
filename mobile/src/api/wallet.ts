@@ -145,6 +145,14 @@ export async function markNotificationsRead(): Promise<void> {
   await client.post('/notifications/read')
 }
 
+export async function registerExpoToken(token: string): Promise<void> {
+  await client.post('/notifications/expo-token', { token })
+}
+
+export async function removeExpoToken(token: string): Promise<void> {
+  await client.delete('/notifications/expo-token', { data: { token } })
+}
+
 // ── PayLink ───────────────────────────────────────────────
 export async function createPayLink(payload: CreatePayLinkPayload): Promise<CreatePayLinkResponse> {
   const { data } = await client.post<ApiResponse<CreatePayLinkResponse>>('/paylink', payload)

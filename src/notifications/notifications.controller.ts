@@ -35,6 +35,11 @@ class UnsubscribeDto {
   endpoint: string;
 }
 
+class ExpoTokenDto {
+  @IsString()
+  token: string;
+}
+
 @ApiTags('Notifications')
 @ApiBearerAuth('access-token')
 @Controller('notifications')
@@ -84,5 +89,21 @@ export class NotificationsController {
   @ApiResponse({ status: 204, description: 'Subscription removed' })
   async unsubscribe(@CurrentUser() user: User, @Body() dto: UnsubscribeDto): Promise<void> {
     await this.notifService.unsubscribe(user.id, dto.endpoint);
+  }
+
+  @Post('expo-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Register Expo push token for native mobile' })
+  @ApiResponse({ status: 200, description: 'Token registered' })
+  registerExpoToken(@CurrentUser() user: User, @Body() dto: ExpoTokenDto) {
+    return this.notifService.upsertExpoToken(user.id, dto.token);
+  }
+
+  @Delete('expo-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove Expo push token' })
+  @ApiResponse({ status: 204, description: 'Token removed' })
+  async removeExpoToken(@CurrentUser() user: User, @Body() dto: ExpoTokenDto): Promise<void> {
+    await this.notifService.removeExpoToken(user.id, dto.token);
   }
 }

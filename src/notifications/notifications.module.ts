@@ -3,11 +3,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
 import { PushSubscription } from './entities/push-subscription.entity';
+import { ExpoPushToken } from './entities/expo-push-token.entity';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Notification, PushSubscription])],
+  imports: [TypeOrmModule.forFeature([Notification, PushSubscription, ExpoPushToken])],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],
