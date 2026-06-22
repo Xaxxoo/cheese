@@ -14,7 +14,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "distribution": "app-store"
+        "distribution": "store"
       }
     }
   }
