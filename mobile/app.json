@@ -1,16 +1,20 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "CheesePay",
+    "slug": "cheesepay",
     "scheme": "cheesepay",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "xyz.cheesepay.app",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "xyz.cheesepay.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,6 +28,12 @@
     },
     "plugins": [
       "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "CheesePay uses Face ID to securely authenticate payments."
+        }
+      ],
       [
         "expo-splash-screen",
         {
