@@ -87,11 +87,11 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
   { code: '100033', name: 'PalmPay', shortName: 'PalmPay', color: '#00A859', nipEnabled: true, type: 'fintech' },
 ];
 
-function getTransferFeeUsdc(amountNgn: number): number {
-  if (amountNgn < 50_000)  return 0.02
-  if (amountNgn < 150_000) return 0.05
-  if (amountNgn < 500_000) return 0.10
-  return 0.30
+function getTransferFeeUsdc(amountNgn: number, effectiveRate: number): number {
+  if (amountNgn < 50_000)  return 0.03
+  if (amountNgn < 100_000) return 500 / effectiveRate
+  if (amountNgn < 500_000) return 1_000 / effectiveRate
+  return 1_300 / effectiveRate
 }
 const MIN_TRANSFER_NGN = 500;
 const MAX_TRANSFER_NGN = 10_000_000; // Black tier ceiling — daily limit enforced per-tier above
@@ -371,7 +371,7 @@ export class BanksService {
     // 5. Calculate USDC to deduct (NGN amount + flat fee, converted at current rate)
     const rate = await this.ratesService.getCurrentRate();
     const effectiveRate = parseFloat(rate.effectiveRate);
-    const feeUsdc = getTransferFeeUsdc(amountNgn).toFixed(6);
+    const feeUsdc = getTransferFeeUsdc(amountNgn, effectiveRate).toFixed(6);
     const amountUsdc = (amountNgn / effectiveRate + parseFloat(feeUsdc)).toFixed(6);
 
     // 6. Check USDC balance
