@@ -150,8 +150,19 @@ export default function BankTransferScreen({ navigation }: Props) {
 
   // ── Derived ──
   const amountNum  = parseFloat(amountNgn.replace(/,/g, '')) || 0
-  const usdcNeeded = rate > 0 ? amountNum / rate : 0
   const balanceNum = parseFloat(balance) || 0
+
+  function computeFeeUsdc(ngn: number, r: number): number {
+    if (r <= 0) return 0
+    if (ngn < 50_000)  return 0.03
+    if (ngn < 100_000) return 500 / r
+    if (ngn < 500_000) return 1_000 / r
+    return 1_300 / r
+  }
+
+  const feeUsdc    = computeFeeUsdc(amountNum, rate)
+  const usdcNeeded = rate > 0 ? amountNum / rate : 0
+  const totalUsdc  = usdcNeeded + feeUsdc
 
   // ── Step 1 handlers ──
 
@@ -185,7 +196,7 @@ export default function BankTransferScreen({ navigation }: Props) {
 
   function handleStep2Next() {
     if (!amountNum || amountNum <= 0) { setAmountError('Enter an amount');            return }
-    if (usdcNeeded > balanceNum)      { setAmountError(`Insufficient balance. You have ${fmtUsdc(balance)}`); return }
+    if (totalUsdc > balanceNum)       { setAmountError(`Insufficient balance. You have ${fmtUsdc(balance)}`); return }
     setAmountError(null)
     setStep(3)
   }
@@ -371,10 +382,14 @@ export default function BankTransferScreen({ navigation }: Props) {
                         <Text style={s.feeLabel}>Rate</Text>
                         <Text style={s.feeValue}>₦{rate.toFixed(2)} / USDC</Text>
                       </View>
+                      <View style={s.feeRow}>
+                        <Text style={s.feeLabel}>Transfer Fee</Text>
+                        <Text style={s.feeValue}>{fmtUsdc(feeUsdc)}</Text>
+                      </View>
                       <View style={[s.feeRow, s.feeTotalRow]}>
                         <Text style={s.feeTotalLabel}>Est. USDC deducted</Text>
-                        <Text style={[s.feeTotalValue, usdcNeeded > balanceNum && { color: '#f87171' }]}>
-                          ~{fmtUsdc(usdcNeeded)}
+                        <Text style={[s.feeTotalValue, totalUsdc > balanceNum && { color: '#f87171' }]}>
+                          ~{fmtUsdc(totalUsdc)}
                         </Text>
                       </View>
                     </View>
@@ -410,7 +425,8 @@ export default function BankTransferScreen({ navigation }: Props) {
                   { label: 'Bank',        value: selectedBank?.name ?? '' },
                   { label: 'Account No.', value: resolved?.accountNumber ?? '' },
                   { label: 'Amount',      value: fmtNgn(amountNum) },
-                  { label: 'Est. USDC',   value: `~${fmtUsdc(usdcNeeded)}` },
+                  { label: 'Fee',         value: fmtUsdc(feeUsdc) },
+                  { label: 'Est. USDC',   value: `~${fmtUsdc(totalUsdc)}` },
                   ...(narration.trim() ? [{ label: 'Narration', value: narration.trim() }] : []),
                 ].map(({ label, value }) => (
                   <View key={label} style={s.summaryRow}>
