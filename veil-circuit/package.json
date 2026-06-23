@@ -8,11 +8,9 @@
     "prove": "node scripts/generate_proof.js"
   },
   "dependencies": {
+    "circomlib": "^2.0.5",
     "circomlibjs": "^0.1.7",
-    "snarkjs": "^0.7.3",
-    "ffjavascript": "^0.3.0"
-  },
-  "devDependencies": {
-    "circom2": "^2.1.9"
+    "ffjavascript": "^0.3.0",
+    "snarkjs": "^0.7.3"
   }
 }

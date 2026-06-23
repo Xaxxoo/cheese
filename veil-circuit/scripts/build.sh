@@ -30,14 +30,14 @@ mkdir -p "$BUILD"
 echo "==> [1/6] Compiling circuit..."
 circom "$CIRCUITS/note_spend.circom" \
   --r1cs --wasm --sym \
-  --lib node_modules \
+  -l node_modules \
   --output "$BUILD"
 
 echo "==> [2/6] Downloading Powers of Tau (Hermez ceremony, 2^12)..."
 # Using the Hermez Phase 1 ceremony for BN254 (trusted, widely used)
 if [ ! -f "$BUILD/pot12_final.ptau" ]; then
   curl -L \
-    "https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_12.ptau" \
+    "https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_12.ptau" \
     -o "$BUILD/pot12_final.ptau"
 fi
 
