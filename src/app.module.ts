@@ -89,6 +89,8 @@ import { MerchantStore } from './merchant/entities/merchant-store.entity';
 import { MerchantPayment } from './merchant/entities/merchant-payment.entity';
 import { MerchantSettlement } from './merchant/entities/merchant-settlement.entity';
 import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-account.entity';
+import { PrivateGatewayModule } from './private-gateway/private-gateway.module';
+import { PrivateInvoice } from './private-gateway/entities/private-invoice.entity';
 
 @Module({
   controllers: [AppController],
@@ -181,6 +183,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
                 MerchantPayment,
                 MerchantSettlement,
                 MerchantPayoutAccount,
+                PrivateInvoice,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -225,6 +228,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
                 MerchantPayment,
                 MerchantSettlement,
                 MerchantPayoutAccount,
+                PrivateInvoice,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -266,6 +270,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
             MerchantPayment,
             MerchantSettlement,
             MerchantPayoutAccount,
+            PrivateInvoice,
           ],
           synchronize: config.get<string>('app.nodeEnv') !== 'production',
           logging: config.get<string>('app.nodeEnv') === 'development',
@@ -304,6 +309,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
     PayLinkModule,
     AlertsModule,
     BillsModule,
+    PrivateGatewayModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },

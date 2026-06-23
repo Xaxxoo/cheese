@@ -1268,6 +1268,84 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Stellar — hot-wallet payment polling (for private gateway / Veil ZK)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async fetchHotWalletPayments(cursor?: string): Promise<{
+    payments: Array<{
+      txHash: string;
+      from: string;
+      amount: string;
+      memo: string | null;
+      pagingToken: string;
+    }>;
+    nextCursor: string | null;
+  }> {
+    this.requireStellar('fetchHotWalletPayments');
+
+    const hotWalletKey = this.stellarPlatformKeypair.publicKey();
+
+    let builder = this.stellarServer
+      .payments()
+      .forAccount(hotWalletKey)
+      .order('asc' as const)
+      .limit(50);
+
+    if (cursor) {
+      builder = builder.cursor(cursor);
+    }
+
+    const response = await builder.call();
+    const results: Array<{
+      txHash: string;
+      from: string;
+      amount: string;
+      memo: string | null;
+      pagingToken: string;
+    }> = [];
+    let nextCursor: string | null = null;
+
+    for (const record of response.records) {
+      nextCursor = (record as any).paging_token as string;
+
+      if (record.type !== 'payment') continue;
+
+      const payment = record as any;
+
+      if (payment.asset_type !== 'credit_alphanum4') continue;
+      if (payment.asset_code !== 'USDC') continue;
+      if (payment.asset_issuer !== this.stellarUsdcIssuer) continue;
+      if (payment.to !== hotWalletKey) continue;
+
+      // Fetch the transaction to extract its text memo.
+      // Extra round-trip per payment is acceptable at hackathon volume.
+      let memo: string | null = null;
+      try {
+        const txRecord = await this.stellarServer
+          .transactions()
+          .transaction(payment.transaction_hash)
+          .call();
+        const tx = txRecord as any;
+        if (tx.memo_type === 'text' && tx.memo) {
+          memo = String(tx.memo).trim();
+        }
+      } catch {
+        // Memo unavailable — still include the payment (service will skip it)
+      }
+
+      results.push({
+        txHash: payment.transaction_hash,
+        from: payment.from,
+        amount: payment.amount,
+        memo,
+        pagingToken: payment.paging_token,
+      });
+    }
+
+    return { payments: results, nextCursor };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Encryption — AES-256-GCM
   // ─────────────────────────────────────────────────────────────────────────
 
