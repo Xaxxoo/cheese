@@ -384,9 +384,10 @@ export class AdminAuthService {
       failedEvmWallets,
       failedBankTransfersToday,
       flaggedUsers,
-      totalVolumeUsdc: parseFloat(volumeResult?.total ?? '0') || 0,
-      totalInUsdc:     parseFloat(inResult?.total  ?? '0') || 0,
-      totalOutUsdc:    parseFloat(outResult?.total ?? '0') || 0,
+      totalVolumeUsdc:    parseFloat(volumeResult?.total ?? '0') || 0,
+      totalInUsdc:        parseFloat(inResult?.total  ?? '0') || 0,
+      totalOutUsdc:       parseFloat(outResult?.total ?? '0') || 0,
+      totalBalanceUsdc:   Math.max(0, (parseFloat(inResult?.total ?? '0') || 0) - (parseFloat(outResult?.total ?? '0') || 0)),
     };
   }
 

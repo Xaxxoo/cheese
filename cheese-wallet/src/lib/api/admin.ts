@@ -157,6 +157,7 @@ export interface AdminStats {
   totalVolumeUsdc:          number
   totalInUsdc:              number
   totalOutUsdc:             number
+  totalBalanceUsdc:         number
 }
 
 export async function getAdminStats(): Promise<AdminStats> {

@@ -106,6 +106,7 @@ export default function UsersPage() {
               { label: `${n(stats.verifiedUsers)} verified`, color: c.green, bg: c.greenDim, brd: 'rgba(34,197,94,0.2)' },
               { label: `${n(stats.premiumUsers)} premium`,   color: c.amber, bg: c.amberDim, brd: c.amberBrd },
               { label: `${n(stats.flaggedUsers)} flagged`,   color: c.red,   bg: c.redDim,   brd: 'rgba(239,68,68,0.2)' },
+              { label: `$${stats.totalBalanceUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total balance`, color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', brd: 'rgba(96,165,250,0.2)' },
             ].map((chip) => (
               <span key={chip.label} style={{
                 fontSize: 11, fontWeight: 600, color: chip.color,
