@@ -1,4 +1,4 @@
-export const API_URL = 'https://api.cheesepay.xyz/v1'
+export const API_URL = 'https://cheese-production-b7c1.up.railway.app/v1'
 
 export const ENDPOINTS = {
   AUTH: {
