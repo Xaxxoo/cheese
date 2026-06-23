@@ -91,6 +91,9 @@ import { MerchantSettlement } from './merchant/entities/merchant-settlement.enti
 import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-account.entity';
 import { PrivateGatewayModule } from './private-gateway/private-gateway.module';
 import { PrivateInvoice } from './private-gateway/entities/private-invoice.entity';
+import { VeilModule } from './veil/veil.module';
+import { ShieldedNote } from './veil/entities/shielded-note.entity';
+import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
 
 @Module({
   controllers: [AppController],
@@ -184,6 +187,8 @@ import { PrivateInvoice } from './private-gateway/entities/private-invoice.entit
                 MerchantSettlement,
                 MerchantPayoutAccount,
                 PrivateInvoice,
+                ShieldedNote,
+                SpentNullifier,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -229,6 +234,8 @@ import { PrivateInvoice } from './private-gateway/entities/private-invoice.entit
                 MerchantSettlement,
                 MerchantPayoutAccount,
                 PrivateInvoice,
+                ShieldedNote,
+                SpentNullifier,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -271,6 +278,8 @@ import { PrivateInvoice } from './private-gateway/entities/private-invoice.entit
             MerchantSettlement,
             MerchantPayoutAccount,
             PrivateInvoice,
+            ShieldedNote,
+            SpentNullifier,
           ],
           synchronize: config.get<string>('app.nodeEnv') !== 'production',
           logging: config.get<string>('app.nodeEnv') === 'development',
@@ -310,6 +319,7 @@ import { PrivateInvoice } from './private-gateway/entities/private-invoice.entit
     AlertsModule,
     BillsModule,
     PrivateGatewayModule,
+    VeilModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },
