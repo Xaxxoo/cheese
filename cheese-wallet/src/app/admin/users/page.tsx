@@ -218,7 +218,7 @@ export default function UsersPage() {
             color: c.amber, background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 4, padding: 0,
           }}>
-            Balance {sortDir === 'desc' ? '↓' : '↑'}
+            Balance (est.) {sortDir === 'desc' ? '↓' : '↑'}
           </button>
           <div />
         </div>

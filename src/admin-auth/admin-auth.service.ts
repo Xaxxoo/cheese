@@ -417,12 +417,12 @@ export class AdminAuthService {
     const qb = this.userRepo
       .createQueryBuilder('u')
       .addSelect(`(
-        SELECT COALESCE(SUM(
+        SELECT GREATEST(0, COALESCE(SUM(
           CASE WHEN t.type IN (${CREDIT_TYPES})
                THEN CAST(t.amount_usdc AS DECIMAL)
                ELSE -CAST(t.amount_usdc AS DECIMAL)
           END
-        ), 0)
+        ), 0))
         FROM transactions t
         WHERE t.user_id = u.id AND t.status = 'completed'
       )`, 'u_balance_usdc')
