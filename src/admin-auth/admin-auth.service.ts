@@ -400,20 +400,32 @@ export class AdminAuthService {
     kyc?: string;
     wallet?: string;
     flagged?: boolean;
+    sortBy?: string;
+    sortDir?: string;
   }) {
-    const { page, limit, search, tier, kyc, wallet, flagged } = query;
+    const { page, limit, search, tier, kyc, wallet, flagged, sortBy, sortDir } = query;
+    const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
     const kycMap: Record<string, string> = {
       reviewing: KycStatus.SUBMITTED,
       failed:    KycStatus.REJECTED,
     };
 
+    const CREDIT_TYPES = `'deposit','yield_credit','referral_bonus'`;
+
     const qb = this.userRepo
       .createQueryBuilder('u')
-      .where('u.is_admin = :isAdmin', { isAdmin: false })
-      .orderBy('u.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .addSelect(`(
+        SELECT COALESCE(SUM(
+          CASE WHEN t.type IN (${CREDIT_TYPES})
+               THEN CAST(t.amount_usdc AS DECIMAL)
+               ELSE -CAST(t.amount_usdc AS DECIMAL)
+          END
+        ), 0)
+        FROM transactions t
+        WHERE t.user_id = u.id AND t.status = 'completed'
+      )`, 'u_balance_usdc')
+      .where('u.is_admin = :isAdmin', { isAdmin: false });
 
     if (search) {
       qb.andWhere(
@@ -435,7 +447,18 @@ export class AdminAuthService {
       qb.andWhere('u.is_flagged = :flagged', { flagged });
     }
 
-    const [users, total] = await qb.getManyAndCount();
+    if (sortBy === 'balance') {
+      qb.orderBy('u_balance_usdc', dir);
+    } else {
+      qb.orderBy('u.createdAt', 'DESC');
+    }
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [{ entities, raw }, total] = await Promise.all([
+      qb.getRawAndEntities(),
+      qb.getCount(),
+    ]);
 
     const kycDisplay: Record<string, string> = {
       [KycStatus.PENDING]:   'Pending',
@@ -445,7 +468,7 @@ export class AdminAuthService {
     };
 
     return {
-      users: users.map((u) => ({
+      users: entities.map((u, i) => ({
         id:           u.id,
         name:         u.fullName || u.username,
         username:     `@${u.username}`,
@@ -455,6 +478,7 @@ export class AdminAuthService {
         walletStatus: u.stellarWalletStatus.charAt(0).toUpperCase() + u.stellarWalletStatus.slice(1),
         isFlagged:    u.isFlagged,
         createdAt:    u.createdAt,
+        balanceUsdc:  parseFloat(raw[i]?.u_balance_usdc ?? '0').toFixed(2),
       })),
       total,
       page,

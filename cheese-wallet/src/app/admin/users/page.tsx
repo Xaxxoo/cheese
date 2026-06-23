@@ -12,6 +12,7 @@ import { listAdminUsers, getAdminStats, type AdminUserItem, type AdminStats } fr
 
 type TierFilter = 'All' | 'Silver' | 'Gold' | 'Black';
 type KycFilter  = 'All' | 'Verified' | 'Pending' | 'Reviewing' | 'Failed';
+type SortDir    = 'asc' | 'desc';
 
 const LIMIT = 20;
 
@@ -28,6 +29,7 @@ export default function UsersPage() {
   const [total,      setTotal]      = useState(0);
   const [loading,    setLoading]    = useState(true);
   const [stats,      setStats]      = useState<AdminStats | null>(null);
+  const [sortDir,    setSortDir]    = useState<SortDir>('desc');
 
   // Header chips — fetch once
   useEffect(() => {
@@ -47,6 +49,8 @@ export default function UsersPage() {
           search:  search || undefined,
           tier:    tierFilter !== 'All' ? tierFilter : undefined,
           kyc:     kycFilter  !== 'All' ? kycFilter  : undefined,
+          sortBy:  'balance',
+          sortDir,
         });
         if (!cancelled) { setUsers(result.users); setTotal(result.total); }
       } catch (e) {
@@ -56,7 +60,7 @@ export default function UsersPage() {
       }
     }, delay);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [page, search, tierFilter, kycFilter]);
+  }, [page, search, tierFilter, kycFilter, sortDir]);
 
   // Handlers — reset page on filter change
   const handleSearch = (s: string)      => { setSearch(s);     setPage(1); };
@@ -80,8 +84,9 @@ export default function UsersPage() {
   const TIERS: TierFilter[] = ['All', 'Silver', 'Gold', 'Black'];
   const KYCS:  KycFilter[]  = ['All', 'Verified', 'Pending', 'Reviewing', 'Failed'];
 
-  const COLS     = ['User', 'Tier', 'KYC', 'Wallet', 'Email', 'Joined', ''];
-  const COL_GRID = '2fr 90px 100px 110px 1.6fr 110px 36px';
+  const COL_GRID = '2fr 90px 100px 110px 1.6fr 110px 110px 36px';
+
+  const toggleSort = () => { setSortDir((d) => d === 'desc' ? 'asc' : 'desc'); setPage(1); };
 
   const from = total === 0 ? 0 : (page - 1) * LIMIT + 1;
   const to   = Math.min(page * LIMIT, total);
@@ -201,11 +206,20 @@ export default function UsersPage() {
           padding: '9px 22px', borderBottom: `1px solid ${c.border}`,
           flexShrink: 0,
         }}>
-          {COLS.map((h) => (
+          {['User', 'Tier', 'KYC', 'Wallet', 'Email', 'Joined'].map((h) => (
             <div key={h} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
               {h}
             </div>
           ))}
+          {/* Balance — sortable */}
+          <button onClick={toggleSort} style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase',
+            color: c.amber, background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+          }}>
+            Balance {sortDir === 'desc' ? '↓' : '↑'}
+          </button>
+          <div />
         </div>
 
         {/* Rows */}
@@ -275,6 +289,11 @@ export default function UsersPage() {
 
                   {/* Joined */}
                   <div style={{ fontSize: 11.5, color: c.textDim }}>{fmtDate(u.createdAt)}</div>
+
+                  {/* Balance */}
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: parseFloat(u.balanceUsdc) > 0 ? c.text : c.textDim }}>
+                    ${parseFloat(u.balanceUsdc).toFixed(2)}
+                  </div>
 
                   {/* Actions */}
                   <button className="action-btn" onClick={(e) => e.preventDefault()} style={{

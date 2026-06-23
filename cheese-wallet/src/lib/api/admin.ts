@@ -180,6 +180,7 @@ export interface AdminUserItem {
   walletStatus: string
   isFlagged:    boolean
   createdAt:    string
+  balanceUsdc:  string
 }
 
 export async function listAdminUsers(params?: {
@@ -190,6 +191,8 @@ export async function listAdminUsers(params?: {
   kyc?:     string
   wallet?:  string
   flagged?: boolean
+  sortBy?:  string
+  sortDir?: 'asc' | 'desc'
 }): Promise<{ users: AdminUserItem[]; total: number; page: number; limit: number }> {
   const { data } = await adminApiClient.get<ApiResponse<{
     users: AdminUserItem[]

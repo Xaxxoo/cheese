@@ -34,13 +34,15 @@ export class AdminDashboardController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List all app users (paginated)' })
   listUsers(
-    @Query('page')   page?:   string,
-    @Query('limit')  limit?:  string,
-    @Query('search') search?: string,
-    @Query('tier')   tier?:   string,
-    @Query('kyc')    kyc?:    string,
+    @Query('page')    page?:    string,
+    @Query('limit')   limit?:   string,
+    @Query('search')  search?:  string,
+    @Query('tier')    tier?:    string,
+    @Query('kyc')     kyc?:     string,
     @Query('wallet')  wallet?:  string,
     @Query('flagged') flagged?: string,
+    @Query('sortBy')  sortBy?:  string,
+    @Query('sortDir') sortDir?: string,
   ) {
     return this.adminAuthService.listUsers({
       page:  Math.max(1, parseInt(page  ?? '1',  10)),
@@ -50,6 +52,8 @@ export class AdminDashboardController {
       kyc,
       wallet,
       flagged: flagged === 'true' ? true : flagged === 'false' ? false : undefined,
+      sortBy,
+      sortDir,
     });
   }
 
