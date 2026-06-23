@@ -94,54 +94,57 @@ export class NotificationsService implements OnModuleInit {
     body: string,
     url: string,
   ): Promise<void> {
-    // ── Web Push (PWA) ──
-    if (process.env.VAPID_PUBLIC_KEY) {
-      const subs = await this.pushSubRepo.find({ where: { userId } });
-      for (const sub of subs) {
+    try {
+      // ── Web Push (PWA) ──
+      if (process.env.VAPID_PUBLIC_KEY) {
+        const subs = await this.pushSubRepo.find({ where: { userId } });
+        for (const sub of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.authKey } },
+              JSON.stringify({ title, body, url, tag: 'cheese-notification' }),
+            );
+          } catch (err: any) {
+            if (err?.statusCode === 410 || err?.statusCode === 404) {
+              await this.pushSubRepo.delete({ id: sub.id }).catch(() => {});
+            }
+          }
+        }
+      }
+
+      // ── Expo Push (native mobile) ──
+      const expoTokens = await this.expoTokenRepo.find({ where: { userId } });
+      const validTokens = expoTokens.filter((t) => Expo.isExpoPushToken(t.token));
+      if (!validTokens.length) return;
+
+      const messages: ExpoPushMessage[] = validTokens.map((t) => ({
+        to: t.token,
+        title,
+        body,
+        data: { url },
+        sound: 'default' as const,
+      }));
+
+      const chunks = this.expo.chunkPushNotifications(messages);
+      for (const chunk of chunks) {
         try {
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.authKey } },
-            JSON.stringify({ title, body, url, tag: 'cheese-notification' }),
-          );
-        } catch (err: any) {
-          if (err?.statusCode === 410 || err?.statusCode === 404) {
-            await this.pushSubRepo.delete({ id: sub.id });
+          const tickets: ExpoPushTicket[] =
+            await this.expo.sendPushNotificationsAsync(chunk);
+          for (let i = 0; i < tickets.length; i++) {
+            const ticket = tickets[i];
+            if (
+              ticket.status === 'error' &&
+              ticket.details?.error === 'DeviceNotRegistered'
+            ) {
+              await this.expoTokenRepo.delete({ token: messages[i].to as string }).catch(() => {});
+            }
           }
+        } catch (err) {
+          this.logger.error('Expo push send error', err);
         }
       }
-    }
-
-    // ── Expo Push (native mobile) ──
-    const expoTokens = await this.expoTokenRepo.find({ where: { userId } });
-    const validTokens = expoTokens.filter((t) => Expo.isExpoPushToken(t.token));
-    if (!validTokens.length) return;
-
-    const messages: ExpoPushMessage[] = validTokens.map((t) => ({
-      to: t.token,
-      title,
-      body,
-      data: { url },
-      sound: 'default' as const,
-    }));
-
-    const chunks = this.expo.chunkPushNotifications(messages);
-    for (const chunk of chunks) {
-      try {
-        const tickets: ExpoPushTicket[] =
-          await this.expo.sendPushNotificationsAsync(chunk);
-        // Remove tokens that the Expo service reports as invalid
-        for (let i = 0; i < tickets.length; i++) {
-          const ticket = tickets[i];
-          if (
-            ticket.status === 'error' &&
-            ticket.details?.error === 'DeviceNotRegistered'
-          ) {
-            await this.expoTokenRepo.delete({ token: messages[i].to as string });
-          }
-        }
-      } catch (err) {
-        this.logger.error('Expo push send error', err);
-      }
+    } catch (err) {
+      this.logger.error(`sendPush failed [userId=${userId}]: ${(err as Error).message}`);
     }
   }
 
@@ -159,6 +162,8 @@ export class NotificationsService implements OnModuleInit {
       params.title,
       params.body,
       params.deepLink ?? '/notifications',
+    ).catch((err: Error) =>
+      this.logger.error(`sendPush unhandled [userId=${params.userId}]: ${err.message}`),
     );
     return notification;
   }
