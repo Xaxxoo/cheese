@@ -51,13 +51,20 @@ async function shareOrDownload(blob: Blob, type: string, filename: string): Prom
     typeof (navigator as unknown as { canShare?: (d: unknown) => boolean }).canShare === 'function' &&
     (navigator as unknown as { canShare: (d: unknown) => boolean }).canShare({ files: [file] })
   ) {
-    await navigator.share({ files: [file], title: 'Cheese Pay Receipt' })
-    return
+    try {
+      await navigator.share({ files: [file], title: 'Cheese Pay Receipt' })
+      return
+    } catch {
+      // Share cancelled or user gesture lost — fall through to download
+    }
   }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 100)
 }
