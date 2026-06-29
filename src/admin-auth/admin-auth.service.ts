@@ -333,6 +333,7 @@ export class AdminAuthService {
       volumeResult,
       inResult,
       outResult,
+      totalBalanceResult,
     ] = await Promise.all([
       this.userRepo.count({ where: { isAdmin: false } }),
       this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.VERIFIED } }),
@@ -367,6 +368,21 @@ export class AdminAuthService {
         .where('t.status = :s', { s: TxStatus.COMPLETED })
         .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.FEE, TxType.WITHDRAWAL] })
         .getRawOne<{ total: string }>(),
+      // Total balance: sum of each user's individual balance using the same formula as the users list
+      this.userRepo
+        .createQueryBuilder('u')
+        .select(`COALESCE(SUM(GREATEST(0, COALESCE((
+          SELECT SUM(
+            CASE WHEN t.type IN ('deposit','yield_credit','referral_bonus')
+                 THEN CAST(t.amount_usdc AS DECIMAL(20,6))
+                 ELSE -CAST(t.amount_usdc AS DECIMAL(20,6))
+            END
+          )
+          FROM transactions t
+          WHERE t.user_id = u.id AND t.status = 'completed'
+        ), 0))), 0)`, 'total')
+        .where('u.is_admin = :isAdmin', { isAdmin: false })
+        .getRawOne<{ total: string }>(),
     ]);
 
     return {
@@ -387,7 +403,7 @@ export class AdminAuthService {
       totalVolumeUsdc:    parseFloat(volumeResult?.total ?? '0') || 0,
       totalInUsdc:        parseFloat(inResult?.total  ?? '0') || 0,
       totalOutUsdc:       parseFloat(outResult?.total ?? '0') || 0,
-      totalBalanceUsdc:   Math.max(0, (parseFloat(inResult?.total ?? '0') || 0) - (parseFloat(outResult?.total ?? '0') || 0)),
+      totalBalanceUsdc:   parseFloat(totalBalanceResult?.total ?? '0') || 0,
     };
   }
 
