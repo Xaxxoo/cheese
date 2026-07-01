@@ -12,7 +12,6 @@ soroban-sdk = { version = "22.0.0", features = ["alloc"] }
 
 [dev-dependencies]
 soroban-sdk = { version = "22.0.0", features = ["testutils", "alloc"] }
-soroban-token-sdk = "22.0.0"
 
 [profile.release]
 opt-level = "z"

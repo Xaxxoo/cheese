@@ -142,10 +142,10 @@ export default function FeesPage() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[
-            { range: 'Below ₦50,000',         fee: '$0.02' },
-            { range: '₦50,000 – ₦149,999',    fee: '$0.05' },
-            { range: '₦150,000 – ₦499,999',   fee: '$0.10' },
-            { range: '₦500,000+',              fee: '$0.30' },
+            { range: 'Below ₦50,000',           fee: '$0.03 USDC' },
+            { range: '₦50,000 – ₦99,999',       fee: '₦500 / rate' },
+            { range: '₦100,000 – ₦499,999',     fee: '₦1,000 / rate' },
+            { range: '₦500,000+',               fee: '₦1,300 / rate' },
           ].map(({ range, fee }) => (
             <div key={range} style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -154,7 +154,7 @@ export default function FeesPage() {
             }}>
               <span style={{ fontSize: 11.5, color: c.textMid }}>{range}</span>
               <span style={{ fontSize: 11, color: c.border }}>→</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: c.amber, fontVariantNumeric: 'tabular-nums' }}>{fee} USDC</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: c.amber, fontVariantNumeric: 'tabular-nums' }}>{fee}</span>
             </div>
           ))}
         </div>
