@@ -879,11 +879,10 @@ export class AdminAuthService {
     const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
     if (!user) throw new NotFoundException('User not found');
 
-    // blockchain_wallets has no FK constraint back to users — delete manually
-    await this.userRepo.manager.query(
-      `DELETE FROM "blockchain_wallets" WHERE "userId" = $1`,
-      [id],
-    );
+    // Delete tables whose DB-level FK constraint is RESTRICT (not CASCADE),
+    // so they must be cleared manually before the user row is removed.
+    await this.userRepo.manager.query(`DELETE FROM "blockchain_wallets" WHERE "userId" = $1`, [id]);
+    await this.userRepo.manager.query(`DELETE FROM "transactions" WHERE "userId" = $1`, [id]);
 
     await this.userRepo.remove(user);
     this.logger.warn(`User permanently deleted [id=${id}] by admin [id=${requester.id}]`);
