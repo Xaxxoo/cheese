@@ -32,6 +32,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [notFound, setNotFound] = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError,   setDeleteError]   = useState('');
   const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
   const [recoverError,  setRecoverError]  = useState('');
 
@@ -115,11 +116,18 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const handleDelete = async () => {
     if (!user || saving) return;
     setSaving(true);
+    setDeleteError('');
     try {
       await deleteAdminUser(user.id);
       router.replace('/admin/users');
-    } catch { /* ignore */ }
-    finally { setSaving(false); setConfirmDelete(false); }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (err as Error)?.message
+        ?? 'Delete failed';
+      setDeleteError(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSweep = async () => {
@@ -629,7 +637,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                       {saving ? 'Deleting…' : 'Yes, delete permanently'}
                     </button>
                     <button
-                      onClick={() => setConfirmDelete(false)}
+                      onClick={() => { setConfirmDelete(false); setDeleteError(''); }}
                       disabled={saving}
                       style={{
                         padding: '8px 14px', borderRadius: 8, cursor: saving ? 'default' : 'pointer',
@@ -640,6 +648,9 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                       Cancel
                     </button>
                   </div>
+                  {deleteError && (
+                    <div style={{ fontSize: 11, color: c.red, marginTop: 4 }}>{deleteError}</div>
+                  )}
                 </div>
               )}
             </div>
