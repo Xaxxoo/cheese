@@ -32,7 +32,6 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [notFound, setNotFound] = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [recoverAmount, setRecoverAmount] = useState('');
   const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
   const [recoverError,  setRecoverError]  = useState('');
 
@@ -123,19 +122,18 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     finally { setSaving(false); setConfirmDelete(false); }
   };
 
-  const handleRecover = async () => {
-    if (!user || saving || !recoverAmount) return;
+  const handleSweep = async () => {
+    if (!user || saving || !user.usdcBalance || parseFloat(user.usdcBalance) <= 0) return;
     setSaving(true);
     setRecoverError('');
     setRecoverResult(null);
     try {
-      const result = await recoverContractBalance(user.id, recoverAmount);
+      const result = await recoverContractBalance(user.id, user.usdcBalance);
       setRecoverResult({ txHash: result.txHash, amountUsdc: result.amountUsdc });
-      setRecoverAmount('');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
         ?? (err as Error)?.message
-        ?? 'Recovery failed';
+        ?? 'Sweep failed';
       setRecoverError(msg);
     } finally {
       setSaving(false);
@@ -548,47 +546,35 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
               {/* Divider */}
               <div style={{ borderTop: `1px solid ${c.border}`, margin: '4px 0' }} />
 
-              {/* Recover Contract Balance */}
+              {/* Sweep User Account */}
               <div style={{
-                borderRadius: 10, border: `1px solid rgba(139,92,246,0.25)`,
-                background: 'rgba(139,92,246,0.06)', padding: '12px 16px',
+                borderRadius: 10, border: `1px solid rgba(212,168,67,0.25)`,
+                background: 'rgba(212,168,67,0.06)', padding: '12px 16px',
                 display: 'flex', flexDirection: 'column', gap: 8,
               }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(167,139,250)' }}>
-                  Recover Contract Balance
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(212,168,67)' }}>
+                  Sweep User Account
                 </div>
                 <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
-                  Returns USDC from the Soroban contract back to the user's Stellar address.
+                  Returns the user's full contract balance back to the platform treasury.
+                  Current balance: <span style={{ color: c.text, fontWeight: 600 }}>${parseFloat(user?.usdcBalance ?? '0').toFixed(2)} USDC</span>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Amount USDC (e.g. 1.0)"
-                    value={recoverAmount}
-                    onChange={e => setRecoverAmount(e.target.value)}
-                    style={{
-                      flex: 1, padding: '6px 10px', borderRadius: 7,
-                      background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
-                      color: c.text, fontSize: 12, fontFamily: 'inherit', outline: 'none',
-                    }}
-                  />
-                  <button
-                    onClick={handleRecover}
-                    disabled={saving || !recoverAmount}
-                    style={{
-                      padding: '6px 14px', borderRadius: 7, cursor: (saving || !recoverAmount) ? 'default' : 'pointer',
-                      background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
-                      color: 'rgb(167,139,250)', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-                      opacity: (saving || !recoverAmount) ? 0.5 : 1, whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {saving ? 'Processing…' : 'Recover'}
-                  </button>
-                </div>
+                <button
+                  onClick={handleSweep}
+                  disabled={saving || !user?.usdcBalance || parseFloat(user?.usdcBalance ?? '0') <= 0}
+                  style={{
+                    alignSelf: 'flex-start', padding: '6px 14px', borderRadius: 7,
+                    cursor: (saving || !user?.usdcBalance || parseFloat(user?.usdcBalance ?? '0') <= 0) ? 'default' : 'pointer',
+                    background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.3)',
+                    color: 'rgb(212,168,67)', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                    opacity: (saving || !user?.usdcBalance || parseFloat(user?.usdcBalance ?? '0') <= 0) ? 0.5 : 1,
+                  }}
+                >
+                  {saving ? 'Sweeping…' : `Sweep $${parseFloat(user?.usdcBalance ?? '0').toFixed(2)}`}
+                </button>
                 {recoverResult && (
                   <div style={{ fontSize: 11, color: 'rgb(34,197,94)', wordBreak: 'break-all' }}>
-                    Recovered ${recoverResult.amountUsdc} USDC — tx: {recoverResult.txHash.slice(0, 20)}…
+                    Swept ${recoverResult.amountUsdc} USDC — tx: {recoverResult.txHash.slice(0, 20)}…
                   </div>
                 )}
                 {recoverError && (
