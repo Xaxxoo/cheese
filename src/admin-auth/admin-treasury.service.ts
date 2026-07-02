@@ -196,25 +196,27 @@ export class AdminTreasuryService {
     if (!user.username) throw new BadRequestException('User has no username — cannot query contract');
     if (!user.stellarPublicKey) throw new BadRequestException('User has no Stellar wallet');
 
-    const amount = parseFloat(opts.amountUsdc);
-    if (isNaN(amount) || amount <= 0) throw new BadRequestException('Invalid amount');
-
     if (!this.blockchain.isSorobanReady) {
       throw new ServiceUnavailableException(
         'Soroban not configured — check STELLAR_CONTRACT_ID, STELLAR_SOROBAN_RPC_URL',
       );
     }
 
+    // Always use the actual Soroban contract balance — ignore the requested
+    // amount so the caller never has to know which portion is on-contract vs
+    // in the classic Stellar wallet.
     const contractBalanceBefore = await this.blockchain.getSorobanBalance(user.username);
-    if (parseFloat(contractBalanceBefore) < amount) {
+    const contractAmount = parseFloat(contractBalanceBefore);
+
+    if (contractAmount <= 0) {
       throw new BadRequestException(
-        `Insufficient contract balance for @${user.username}. ` +
-        `Available: ${contractBalanceBefore} USDC, requested: ${opts.amountUsdc} USDC`,
+        `@${user.username} has no balance in the Soroban contract. ` +
+        `Their funds may still be in their classic Stellar wallet and cannot be swept via this method.`,
       );
     }
 
     this.logger.log(
-      `recoverContractBalance initiated [user=@${user.username}] [amount=${opts.amountUsdc}] [to=${user.stellarPublicKey}]`,
+      `recoverContractBalance initiated [user=@${user.username}] [amount=${contractBalanceBefore}] [to=${user.stellarPublicKey}]`,
     );
 
     // contract withdraw(username, amount, to_address) — debits internal balance
@@ -222,7 +224,7 @@ export class AdminTreasuryService {
     const result = await this.blockchain.sendViaContract({
       fromUsername: user.username,
       fromPublicKey: user.stellarPublicKey,
-      amountUsdc: opts.amountUsdc,
+      amountUsdc: contractBalanceBefore,
       toPublicKey: user.stellarPublicKey,
     });
 
@@ -232,7 +234,7 @@ export class AdminTreasuryService {
 
     return {
       txHash: result.txHash,
-      amountUsdc: opts.amountUsdc,
+      amountUsdc: contractBalanceBefore,
       toAddress: user.stellarPublicKey,
       contractBalanceBefore,
     };
