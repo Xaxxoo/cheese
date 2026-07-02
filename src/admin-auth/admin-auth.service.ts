@@ -882,7 +882,7 @@ export class AdminAuthService {
     // Delete tables whose DB-level FK constraint is RESTRICT (not CASCADE),
     // so they must be cleared manually before the user row is removed.
     await this.userRepo.manager.query(`DELETE FROM "blockchain_wallets" WHERE "userId" = $1`, [id]);
-    await this.userRepo.manager.query(`DELETE FROM "transactions" WHERE "userId" = $1`, [id]);
+    await this.userRepo.manager.query(`DELETE FROM "transactions" WHERE "user_id" = $1`, [id]);
 
     await this.userRepo.remove(user);
     this.logger.warn(`User permanently deleted [id=${id}] by admin [id=${requester.id}]`);
