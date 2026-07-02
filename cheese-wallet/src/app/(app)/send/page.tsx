@@ -90,6 +90,8 @@ function getBankTransferFeeUsdc(amountNgn: number): number {
 // Mode Selector — first screen
 // ─────────────────────────────────────────────────────────
 function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
+  const [showBankDowntime, setShowBankDowntime] = useState(false)
+
   const modes = [
     {
       id: 'username' as SendMode,
@@ -115,21 +117,51 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
     <div className="flex flex-col gap-3 flex-1">
       <p className="text-sm text-white/40 mb-2">How would you like to send?</p>
       {modes.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          onClick={() => onSelect(m.id)}
-          className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-white/4 hover:bg-white/8 hover:border-white/20 transition-all duration-150 text-left"
-        >
-          <div className="w-11 h-11 rounded-2xl bg-[#d4a843]/12 flex items-center justify-center shrink-0">
-            {m.icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">{m.title}</p>
-            <p className="text-xs text-white/40 mt-0.5">{m.desc}</p>
-          </div>
-          <ChevronRight size={16} className="text-white/25 shrink-0" />
-        </button>
+        <div key={m.id} className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (m.id === 'bank') {
+                setShowBankDowntime(true)
+              } else {
+                setShowBankDowntime(false)
+                onSelect(m.id)
+              }
+            }}
+            className={cn(
+              'flex items-center gap-4 p-4 rounded-2xl border transition-all duration-150 text-left',
+              m.id === 'bank'
+                ? 'border-amber-500/30 bg-amber-500/5 opacity-70 cursor-not-allowed'
+                : 'border-white/10 bg-white/4 hover:bg-white/8 hover:border-white/20',
+            )}
+          >
+            <div className={cn(
+              'w-11 h-11 rounded-2xl flex items-center justify-center shrink-0',
+              m.id === 'bank' ? 'bg-amber-500/10' : 'bg-[#d4a843]/12',
+            )}>
+              {m.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">{m.title}</p>
+              <p className="text-xs text-white/40 mt-0.5">{m.desc}</p>
+            </div>
+            {m.id === 'bank' ? (
+              <span className="text-[10px] font-semibold text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 shrink-0">
+                Unavailable
+              </span>
+            ) : (
+              <ChevronRight size={16} className="text-white/25 shrink-0" />
+            )}
+          </button>
+          {m.id === 'bank' && showBankDowntime && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/20">
+              <AlertTriangle size={15} className="text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-200/80 leading-relaxed">
+                Bank transfers are temporarily unavailable due to a service disruption with our banking provider. We&apos;re working to restore access as soon as possible. Please try again later.
+              </p>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   )
