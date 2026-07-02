@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCheck, AlertTriangle, Clock, XCircle, RefreshCw, ArrowLeft } from 'lucide-react'
+import { CheckCheck, AlertTriangle, Clock, XCircle, RefreshCw, ArrowLeft, Delete } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { resolvePayLink, payPayLink } from '@/lib/api/wallet'
@@ -86,13 +86,15 @@ function SetPinFlow({ onBack }: { onBack?: () => void }) {
         <p className="text-xs text-white/40 text-center uppercase tracking-widest">
           {phase === 'new' ? 'Choose a 6-digit PIN' : 'Confirm your PIN'}
         </p>
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-4 justify-center">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
               className={cn(
-                'w-3 h-3 rounded-full transition-all',
-                i < dots.length ? 'bg-[#d4a843]' : 'bg-white/15',
+                'w-3.5 h-3.5 rounded-full border-2 transition-all duration-200',
+                i < dots.length
+                  ? 'bg-[#d4a843] border-[#d4a843] shadow-[0_0_10px_rgba(212,168,67,0.5)]'
+                  : 'bg-transparent border-white/25',
               )}
             />
           ))}
@@ -124,13 +126,15 @@ function SetPinFlow({ onBack }: { onBack?: () => void }) {
 // ── PIN input ──────────────────────────────────────────────
 function PinDots({ value }: { value: string }) {
   return (
-    <div className="flex gap-3 justify-center">
+    <div className="flex gap-4 justify-center">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
           className={cn(
-            'w-3 h-3 rounded-full transition-all',
-            i < value.length ? 'bg-[#d4a843]' : 'bg-white/15',
+            'w-3.5 h-3.5 rounded-full border-2 transition-all duration-200',
+            i < value.length
+              ? 'bg-[#d4a843] border-[#d4a843] shadow-[0_0_10px_rgba(212,168,67,0.5)]'
+              : 'bg-transparent border-white/25',
           )}
         />
       ))}
@@ -141,16 +145,22 @@ function PinDots({ value }: { value: string }) {
 function PinPad({ onPress }: { onPress: (k: string) => void }) {
   const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫']
   return (
-    <div className="grid grid-cols-3 gap-2 w-full max-w-[260px] mx-auto">
+    <div className="grid grid-cols-3 gap-3.5 w-full">
       {keys.map((k, i) => (
         k === '' ? <div key={i} /> :
         <button
           key={i}
           type="button"
           onClick={() => onPress(k)}
-          className="h-14 rounded-2xl bg-white/8 text-white text-xl font-medium hover:bg-white/14 active:scale-95 transition-all"
+          className={cn(
+            'aspect-square rounded-full text-3xl font-medium transition-all duration-100',
+            'flex items-center justify-center active:scale-[0.88] select-none',
+            k === '⌫'
+              ? 'bg-transparent text-white/40'
+              : 'bg-white/8 border border-white/10 text-white hover:bg-white/12 active:bg-[#d4a843]/12 active:ring-2 active:ring-[#d4a843]/20',
+          )}
         >
-          {k}
+          {k === '⌫' ? <Delete size={24} /> : k}
         </button>
       ))}
     </div>
