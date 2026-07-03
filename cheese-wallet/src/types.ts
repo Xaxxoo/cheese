@@ -207,19 +207,17 @@ export interface BankTransferResponse {
 // ── Card Types ────────────────────────────────────────────
 export interface VirtualCard {
   id: string;
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
+  last4: string;
+  expiryMonth: string;
+  expiryYear: string;
   holderName: string;
-  status: 'active' | 'inactive' | 'frozen';
-  balance: string;
-  currency: string;
-  createdAt: string;
-  limits: {
-    daily: string;
-    monthly: string;
-    perTransaction: string;
-  };
+  maskedNumber: string;
+  expiry: string;
+  network: 'visa' | 'mastercard';
+  status: 'active' | 'frozen' | 'terminated';
+  availableBalance: string;
+  monthlySpend: string;
+  spendLimit: string;
 }
 
 // ── Rates Types ───────────────────────────────────────────

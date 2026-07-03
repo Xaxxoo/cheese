@@ -207,8 +207,8 @@ export interface VirtualCard {
   expiryMonth: string;
   expiryYear: string;
   holderName: string;
-  maskedNumber: string;
-  expiry: string;
+  maskedNumber: string;   // e.g. "•••• •••• •••• 1234"
+  expiry: string;         // e.g. "09/27"
   network: 'visa' | 'mastercard';
   status: 'active' | 'frozen' | 'terminated';
   availableBalance: string;

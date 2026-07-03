@@ -168,6 +168,11 @@ export async function revealCvv(pin: string): Promise<{ cvv: string; expiresAt: 
   return data.data
 }
 
+export async function getCardTransactions(): Promise<Transaction[]> {
+  const { data } = await apiClient.get<ApiResponse<Transaction[]>>(ENDPOINTS.CARD.TRANSACTIONS)
+  return data.data
+}
+
 // ── Profile update ────────────────────────────────────────
 export async function updateProfile(payload: {
   fullName?: string
