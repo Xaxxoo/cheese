@@ -32,6 +32,11 @@ class RecoverContractBalanceDto {
   amountUsdc: string;
 }
 
+class SweepClassicWalletDto {
+  @IsUUID()
+  userId: string;
+}
+
 @ApiTags('Admin – Treasury')
 @Controller('admin/treasury')
 @UseGuards(AdminJwtGuard)
@@ -115,6 +120,24 @@ export class AdminTreasuryController {
       throw new ForbiddenException('Only super_admin can restore contract balances');
     }
     return this.treasury.restoreContractBalances(body.usernames ?? []);
+  }
+
+  // ── POST /admin/treasury/sweep-classic-wallet ────────────────────────────
+  @Post('sweep-classic-wallet')
+  @ApiOperation({
+    summary: "Sweep USDC from a user's classic Stellar wallet to the platform treasury",
+  })
+  sweepClassicWallet(
+    @CurrentUser() admin: User,
+    @Body() dto: SweepClassicWalletDto,
+  ) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException(
+        'Only super_admin or treasurer roles can sweep wallets',
+      );
+    }
+    return this.treasury.sweepClassicWallet({ userId: dto.userId });
   }
 
   // ── POST /admin/treasury/contract-drain-all ────────────────────────────────

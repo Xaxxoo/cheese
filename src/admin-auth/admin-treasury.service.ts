@@ -240,6 +240,51 @@ export class AdminTreasuryService {
     };
   }
 
+  // ── POST /admin/treasury/sweep-classic-wallet ─────────────────────────────
+  // Sweeps USDC directly from a user's classic Stellar wallet (Horizon path)
+  // to the platform treasury. Used when the user's balance was never migrated
+  // into the Soroban contract and recover-contract-balance returns 0.
+  async sweepClassicWallet(opts: {
+    userId: string;
+  }): Promise<{ txHash: string; amountUsdc: string; fromAddress: string }> {
+    const user = await this.userRepo.findOne({ where: { id: opts.userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.stellarPublicKey) throw new BadRequestException('User has no Stellar wallet');
+    if (!user.stellarSecretEnc) throw new BadRequestException('User has no encrypted Stellar secret on record');
+
+    const platformAddress = this.blockchain.platformPublicKey;
+    if (!platformAddress) {
+      throw new ServiceUnavailableException('Stellar not configured — check STELLAR_PLATFORM_SECRET_KEY');
+    }
+
+    const horizonBalance = await this.blockchain.getStellarUsdcBalance(user.stellarPublicKey);
+    if (parseFloat(horizonBalance) <= 0) {
+      throw new BadRequestException(
+        `@${user.username ?? opts.userId} has no USDC in their classic Stellar wallet.`,
+      );
+    }
+
+    this.logger.log(
+      `sweepClassicWallet initiated [user=@${user.username}] [amount=${horizonBalance}] [to=${platformAddress}]`,
+    );
+
+    const result = await this.blockchain.sendStellarUsdc({
+      fromSecretEnc: user.stellarSecretEnc,
+      toPublicKey:   platformAddress,
+      amountUsdc:    horizonBalance,
+    });
+
+    this.logger.log(
+      `sweepClassicWallet settled [user=@${user.username}] [hash=${result.txHash}]`,
+    );
+
+    return {
+      txHash:      result.txHash,
+      amountUsdc:  horizonBalance,
+      fromAddress: user.stellarPublicKey,
+    };
+  }
+
   // ── POST /admin/treasury/restore-contract-balances ───────────────────────
   // Restores expired persistent Balance(username) ledger entries so that the
   // drain can withdraw them.  Pass the usernames whose entries have expired

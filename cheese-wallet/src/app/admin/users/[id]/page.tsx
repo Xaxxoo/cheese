@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, listAdminTransactions,
-  type AdminUserDetail, type AdminTransactionItem,
+  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet,
+  listAdminTransactions, type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
 const fmtDate = (s: string) =>
@@ -136,13 +136,25 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     setRecoverError('');
     setRecoverResult(null);
     try {
+      // Try contract (Soroban) path first
       const result = await recoverContractBalance(user.id, user.usdcBalance);
       setRecoverResult({ txHash: result.txHash, amountUsdc: result.amountUsdc });
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? (err as Error)?.message
-        ?? 'Sweep failed';
-      setRecoverError(msg);
+    } catch (contractErr: unknown) {
+      const contractMsg = (contractErr as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (contractErr as Error)?.message ?? '';
+      // If the user's funds aren't in the contract, fall through to classic wallet sweep
+      if (contractMsg.toLowerCase().includes('no balance in the soroban contract')) {
+        try {
+          const result = await sweepClassicWallet(user.id);
+          setRecoverResult({ txHash: result.txHash, amountUsdc: result.amountUsdc });
+        } catch (classicErr: unknown) {
+          const msg = (classicErr as { response?: { data?: { message?: string } } })?.response?.data?.message
+            ?? (classicErr as Error)?.message ?? 'Sweep failed';
+          setRecoverError(msg);
+        }
+      } else {
+        setRecoverError(contractMsg || 'Sweep failed');
+      }
     } finally {
       setSaving(false);
     }
@@ -564,7 +576,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   Sweep User Account
                 </div>
                 <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
-                  Returns the user's full contract balance back to the platform treasury.
+                  Moves the user's USDC to the platform treasury. Tries the Soroban contract first, then falls back to their classic Stellar wallet automatically.
                   Current balance: <span style={{ color: c.text, fontWeight: 600 }}>${parseFloat(user?.usdcBalance ?? '0').toFixed(2)} USDC</span>
                 </div>
                 <button

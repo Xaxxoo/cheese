@@ -461,6 +461,15 @@ export async function restoreContractBalances(usernames: string[]): Promise<Rest
   return data.data
 }
 
+export async function sweepClassicWallet(
+  userId: string,
+): Promise<{ txHash: string; amountUsdc: string; fromAddress: string }> {
+  const { data } = await adminApiClient.post<
+    ApiResponse<{ txHash: string; amountUsdc: string; fromAddress: string }>
+  >('/admin/treasury/sweep-classic-wallet', { userId })
+  return data.data
+}
+
 // ── Transactions ──────────────────────────────────────────────────────────
 export interface AdminTransactionItem {
   id:                string
