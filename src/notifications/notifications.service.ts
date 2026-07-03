@@ -194,6 +194,20 @@ export class NotificationsService implements OnModuleInit {
     });
   }
 
+  async notifyDepositReceived(
+    userId: string,
+    amountNgn: string,
+    amountUsdc: string,
+  ) {
+    return this.create({
+      userId,
+      type:     NotificationType.MONEY,
+      title:    'Deposit Received!',
+      body:     `₦${parseFloat(amountNgn).toLocaleString()} converted to $${parseFloat(amountUsdc).toFixed(2)} USDC and added to your wallet.`,
+      deepLink: '/history',
+    });
+  }
+
   async notifyBankTransferFailed(
     userId: string,
     amountNgn: string,
