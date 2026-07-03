@@ -1172,6 +1172,20 @@ export class BlockchainService implements OnModuleInit {
   // Stellar — Platform deposit / withdraw
   // ─────────────────────────────────────────────────────────────────────────
 
+  async getPlatformUsdcBalance(): Promise<string> {
+    this.requireStellar('getPlatformUsdcBalance');
+    const account = await this.stellarServer.loadAccount(
+      this.stellarPlatformKeypair.publicKey(),
+    );
+    const usdcBalance = account.balances.find(
+      (b) =>
+        b.asset_type === 'credit_alphanum4' &&
+        b.asset_code === 'USDC' &&
+        b.asset_issuer === this.stellarUsdcIssuer,
+    );
+    return usdcBalance?.balance ?? '0';
+  }
+
   async platformDepositUsdc(
     toPublicKey: string,
     amountUsdc: string,
