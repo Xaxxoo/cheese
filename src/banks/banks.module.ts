@@ -13,6 +13,7 @@ import { BanksScheduler } from './banks.scheduler';
 import { BankTransferProcessor } from './bank-transfer.processor';
 import { PulseMfbClient } from './pulsemfb.client';
 import { BankTransfer } from './entities/bank-transfer.entity';
+import { BankDeposit } from './entities/bank-deposit.entity';
 import { KycModule } from '../kyc/kyc.module';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -23,7 +24,7 @@ const redisAvailable = !!(process.env.REDIS_URL || process.env.REDIS_HOST);
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Device, BankTransfer]),
+    TypeOrmModule.forFeature([User, Device, BankTransfer, BankDeposit]),
     // Only register the queue when Redis is available — matches the pattern
     // used by AuthModule for the wallet-creation queue.
     ...(redisAvailable

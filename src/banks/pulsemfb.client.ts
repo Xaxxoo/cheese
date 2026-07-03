@@ -43,6 +43,12 @@ export interface PulseMfbTransferStatus extends PulseMfbTransferResult {
   completed_at?: string;
 }
 
+export interface PulseMfbVirtualAccountResult {
+  accountNumber: string;
+  accountName:   string;
+  reference:     string;
+}
+
 @Injectable()
 export class PulseMfbClient implements OnModuleInit {
   private readonly logger = new Logger(PulseMfbClient.name);
@@ -145,6 +151,30 @@ export class PulseMfbClient implements OnModuleInit {
       45_000,
     );
     return data.data;
+  }
+
+  async createVirtualAccount(params: {
+    customerName:   string;
+    customerEmail:  string;
+    customerPhone?: string;
+    reference:      string;
+  }): Promise<PulseMfbVirtualAccountResult> {
+    const body: Record<string, string> = {
+      customer_name:  params.customerName,
+      customer_email: params.customerEmail,
+      reference:      params.reference,
+    };
+    if (params.customerPhone) body.customer_phone = params.customerPhone;
+
+    const data = await this.post<{
+      data: { account_number: string; account_name: string; reference: string };
+    }>('/accounts/prefix', body);
+
+    return {
+      accountNumber: data.data.account_number,
+      accountName:   data.data.account_name,
+      reference:     data.data.reference,
+    };
   }
 
   async getTransferStatus(reference: string): Promise<PulseMfbTransferStatus> {

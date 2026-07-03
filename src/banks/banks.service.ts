@@ -24,6 +24,7 @@ import {
   BankTransfer,
   BankTransferStatus,
 } from './entities/bank-transfer.entity';
+import { BankDeposit, BankDepositStatus } from './entities/bank-deposit.entity';
 import { BankTransferDto, BankWebhookDto, ResolveAccountDto } from './dto';
 import { PulseMfbClient } from './pulsemfb.client';
 import { KycStatus } from '../auth/entities/user.entity';
@@ -203,6 +204,8 @@ export class BanksService {
     private readonly deviceRepo: Repository<Device>,
     @InjectRepository(BankTransfer)
     private readonly transferRepo: Repository<BankTransfer>,
+    @InjectRepository(BankDeposit)
+    private readonly depositRepo: Repository<BankDeposit>,
     private readonly config: ConfigService,
     private readonly blockchainService: BlockchainService,
     private readonly ratesService: RatesService,
@@ -907,11 +910,232 @@ export class BanksService {
     }
   }
 
+  // ── GET /banks/onramp-availability ───────────────────────────────────────
+  // Returns how much USDC is available for users to buy (40% of treasury).
+  async getAvailableOnRampUsdc(): Promise<{
+    availableUsdc: string;
+    availableUsdcDisplay: string;
+  }> {
+    const treasuryBalance = await this.blockchainService.getPlatformUsdcBalance();
+    const available = parseFloat(treasuryBalance) * 0.4;
+    return {
+      availableUsdc:        available.toFixed(2),
+      availableUsdcDisplay: `$${available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    };
+  }
+
+  // ── GET /banks/virtual-account ───────────────────────────────────────────
+  // Returns the user's dedicated NGN virtual account, creating one if it does
+  // not exist yet.  The account is permanently tied to the user.
+  async getOrCreateVirtualAccount(
+    user: User,
+  ): Promise<{ accountNumber: string; accountName: string }> {
+    if (user.virtualAccountNumber && user.virtualAccountName) {
+      return {
+        accountNumber: user.virtualAccountNumber,
+        accountName:   user.virtualAccountName,
+      };
+    }
+
+    if (!this.pulseMfb.isReady) {
+      throw new BadRequestException(
+        'Banking provider not configured — virtual accounts unavailable',
+      );
+    }
+
+    // Stable reference: VA- + first 16 hex chars of the UUID (no dashes)
+    const reference = `VA-${user.id.replace(/-/g, '').slice(0, 16).toUpperCase()}`;
+    const result    = await this.pulseMfb.createVirtualAccount({
+      customerName:  user.fullName ?? user.username,
+      customerEmail: user.email,
+      customerPhone: user.phone ?? undefined,
+      reference,
+    });
+
+    await this.userRepo.update(
+      { id: user.id },
+      {
+        virtualAccountNumber: result.accountNumber,
+        virtualAccountName:   result.accountName,
+        virtualAccountRef:    reference,
+      },
+    );
+
+    this.logger.log(
+      `Virtual account created [user=@${user.username}] [account=${result.accountNumber}]`,
+    );
+
+    return { accountNumber: result.accountNumber, accountName: result.accountName };
+  }
+
+  // ── VAS deposit processing (vas.completed webhook) ────────────────────────
+  // Called by processPulseMfbWebhook when event === 'vas.completed'.
+  // Converts the inbound NGN amount to USDC and credits the user's wallet.
+  private async processVasDeposit(
+    data: Record<string, unknown>,
+  ): Promise<{ processed: boolean; reason?: string }> {
+    // PulseMFB field names for vas.completed are not officially documented;
+    // handle both camelCase and snake_case variants defensively.
+    const accountNumber =
+      (typeof data.account_number === 'string' && data.account_number) ||
+      (typeof data.accountNumber  === 'string' && data.accountNumber)  || null;
+
+    const rawAmount = data.amount ?? data.amountNgn ?? data.amount_ngn;
+    const amountNgn =
+      typeof rawAmount === 'number' ? rawAmount :
+      typeof rawAmount === 'string' ? parseFloat(rawAmount) : null;
+
+    const reference =
+      (typeof data.reference    === 'string' && data.reference)    ||
+      (typeof data.session_id   === 'string' && data.session_id)   ||
+      (typeof data.sessionId    === 'string' && data.sessionId)    ||
+      (typeof data.payment_ref  === 'string' && data.payment_ref)  || null;
+
+    const senderName =
+      (typeof data.sender_name  === 'string' && data.sender_name)  ||
+      (typeof data.senderName   === 'string' && data.senderName)   || null;
+
+    const senderAccount =
+      (typeof data.sender_account_number === 'string' && data.sender_account_number) ||
+      (typeof data.senderAccountNumber   === 'string' && data.senderAccountNumber)   || null;
+
+    if (!accountNumber || !amountNgn || amountNgn <= 0 || !reference) {
+      this.logger.warn(
+        `VAS deposit missing required fields [data=${JSON.stringify(data)}]`,
+      );
+      return { processed: false, reason: 'missing required fields' };
+    }
+
+    // Find the user who owns this virtual account
+    const user = await this.userRepo.findOne({
+      where: { virtualAccountNumber: accountNumber },
+    });
+    if (!user) {
+      this.logger.warn(
+        `VAS deposit for unknown virtual account [account=${accountNumber}] [ref=${reference}]`,
+      );
+      return { processed: false, reason: 'virtual account not found' };
+    }
+
+    if (!user.stellarPublicKey) {
+      this.logger.warn(
+        `VAS deposit for user without Stellar wallet [user=@${user.username}] [ref=${reference}]`,
+      );
+      return { processed: false, reason: 'user has no wallet' };
+    }
+
+    // Idempotency — skip only if already successfully completed
+    const existing = await this.depositRepo.findOne({ where: { reference } });
+    if (existing?.status === BankDepositStatus.COMPLETED) {
+      this.logger.log(
+        `VAS deposit already completed [ref=${reference}] [user=@${user.username}]`,
+      );
+      return { processed: true, reason: 'already processed' };
+    }
+    // If a previous attempt failed, delete the stale record so we retry cleanly
+    if (existing?.status === BankDepositStatus.FAILED) {
+      this.logger.warn(
+        `VAS deposit retrying after previous failure [ref=${reference}] [user=@${user.username}]`,
+      );
+      await this.depositRepo.delete({ id: existing.id });
+    }
+
+    // Convert NGN → USDC at the current effective rate
+    const rate          = await this.ratesService.getCurrentRate();
+    const effectiveRate = parseFloat(rate.effectiveRate);
+    const amountUsdc    = (amountNgn / effectiveRate).toFixed(6);
+    const internalRef   = `DEP-${uuidv4().replace(/-/g, '').slice(0, 16).toUpperCase()}`;
+
+    // Persist a pending record first so a crash mid-flight is recoverable
+    const deposit = await this.depositRepo.save(
+      this.depositRepo.create({
+        userId:               user.id,
+        reference,
+        virtualAccountNumber: accountNumber,
+        amountNgn:            amountNgn.toFixed(2),
+        amountUsdc,
+        rateApplied:          effectiveRate.toFixed(4),
+        senderName:           senderName || null,
+        senderAccountNumber:  senderAccount || null,
+        status:               BankDepositStatus.PENDING,
+      }),
+    );
+
+    this.logger.log(
+      `VAS deposit processing [ref=${reference}] [user=@${user.username}] ` +
+      `[ngn=${amountNgn}] [usdc=${amountUsdc}]`,
+    );
+
+    // Credit the user's Stellar wallet from the platform treasury
+    let txHash: string;
+    try {
+      txHash = await this.blockchainService.platformDepositUsdc(
+        user.stellarPublicKey,
+        amountUsdc,
+      );
+    } catch (err) {
+      const reason = (err as Error).message;
+      this.logger.error(
+        `VAS deposit credit failed [ref=${reference}] [user=@${user.username}]: ${reason}`,
+      );
+      await this.depositRepo.update(
+        { id: deposit.id },
+        { status: BankDepositStatus.FAILED, failureReason: reason },
+      );
+      return { processed: false, reason: 'credit failed' };
+    }
+
+    // Record the completed transaction
+    await this.txService.create({
+      userId:      user.id,
+      type:        TxType.DEPOSIT,
+      status:      TxStatus.COMPLETED,
+      amountUsdc,
+      amountNgn:   amountNgn.toFixed(2),
+      rateApplied: effectiveRate.toFixed(4),
+      txHash,
+      reference:   internalRef,
+      description: 'NGN bank deposit',
+      network:     'stellar',
+    });
+
+    await this.depositRepo.update(
+      { id: deposit.id },
+      { status: BankDepositStatus.COMPLETED, txHash },
+    );
+
+    this.logger.log(
+      `VAS deposit settled [ref=${reference}] [user=@${user.username}] [txHash=${txHash}]`,
+    );
+
+    // Fire-and-forget push notification
+    void this.notificationsService
+      .notifyDepositReceived(user.id, amountNgn.toFixed(2), amountUsdc)
+      .catch((e: Error) =>
+        this.logger.warn(`Deposit notification failed [ref=${reference}]: ${e.message}`),
+      );
+
+    return { processed: true };
+  }
+
   // ── POST /banks/webhook/pulsemfb ─────────────────────────────────────────
   // Receives transfer.completed / transfer.failed events from PulseMFB.
   // The controller verifies the HMAC signature before calling this method.
   async processPulseMfbWebhook(event: string, data: Record<string, any>) {
-    // We only act on transfer events — ignore account.created, vas.*, etc.
+    // VAS (virtual account) deposit events
+    if (event === 'vas.completed') {
+      this.logger.log('PulseMFB webhook [event=vas.completed] — processing deposit');
+      return this.processVasDeposit(data as Record<string, unknown>);
+    }
+
+    if (event === 'vas.failed') {
+      this.logger.warn(
+        `PulseMFB webhook [event=vas.failed] — deposit failed [data=${JSON.stringify(data)}]`,
+      );
+      return { processed: false, event };
+    }
+
+    // We only act on transfer events — ignore account.created, etc.
     if (!event.startsWith('transfer.')) {
       this.logger.log(
         `PulseMFB webhook [event=${event}] — ignored (non-transfer)`,

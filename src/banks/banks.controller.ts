@@ -142,6 +142,32 @@ export class BanksController {
     return this.banksService.syncTransferStatus(user.id, reference);
   }
 
+  // ── GET /banks/onramp-availability ───────────────────────────────────────
+  @Get('onramp-availability')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get available USDC for purchase (40% of platform treasury)' })
+  getOnRampAvailability() {
+    return this.banksService.getAvailableOnRampUsdc();
+  }
+
+  // ── GET /banks/virtual-account ───────────────────────────────────────────
+  @Get('virtual-account')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: "Get the user's virtual NGN account for deposits",
+    description:
+      'Returns the dedicated PulseMFB virtual bank account assigned to this user. ' +
+      'If the account has not been created yet it is provisioned on first call. ' +
+      'Users transfer NGN to this account to receive the equivalent USDC in their wallet.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Virtual account details — accountNumber and accountName',
+  })
+  getVirtualAccount(@CurrentUser() user: User) {
+    return this.banksService.getOrCreateVirtualAccount(user);
+  }
+
   // ── POST /banks/webhook ───────────────────────────────────────────────────
   @Public()
   @Post('webhook')
