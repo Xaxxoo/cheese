@@ -78,6 +78,7 @@ import { PushSubscription } from './notifications/entities/push-subscription.ent
 import { Transaction } from './transactions/entities/transaction.entity';
 import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 import { BankTransfer } from './banks/entities/bank-transfer.entity';
+import { BankDeposit } from './banks/entities/bank-deposit.entity';
 import { VirtualCard } from './cards/entities/virtual-card.entity';
 import { Referral } from './referral/entities/referral.entity';
 import { KycAttempt } from './kyc/entities/kyc-attempt.entity';
@@ -175,6 +176,7 @@ import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
                 Transaction,
                 ExchangeRate,
                 BankTransfer,
+                BankDeposit,
                 Referral,
                 KycAttempt,
                 VirtualCard,
@@ -222,6 +224,7 @@ import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
                 Transaction,
                 ExchangeRate,
                 BankTransfer,
+                BankDeposit,
                 Referral,
                 KycAttempt,
                 VirtualCard,
