@@ -160,6 +160,15 @@ function ReferralCard() {
               </div>
             ))}
           </div>
+
+          {/* Link to full referral page */}
+          <Link
+            href="/referral"
+            className="flex items-center justify-between px-1 pt-1 text-xs text-[#d4a843]/70 hover:text-[#d4a843] transition-colors"
+          >
+            <span>View full referral page</span>
+            <ChevronRight size={13} />
+          </Link>
         </div>
       )}
     </div>
