@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
-  ArrowUpRight, ArrowDownLeft, Link2, Eye, EyeOff,
-  TrendingUp, RefreshCw, Copy, CheckCheck, Receipt,
+  ArrowUpRight, ArrowDownLeft, Eye, EyeOff,
+  TrendingUp, RefreshCw, Copy, CheckCheck, Receipt, Plus,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -126,10 +126,10 @@ function BalanceCard() {
       {/* Action row */}
       <div className="grid grid-cols-4 border-t border-white/6">
         {[
-          { label: 'Send',      icon: ArrowUpRight,  href: '/send',     color: 'text-[#d4a843]' },
-          { label: 'Receive',   icon: ArrowDownLeft, href: '/receive',  color: 'text-emerald-400' },
-          { label: 'Pay Link',  icon: Link2,         href: '/paylink',  color: 'text-violet-400' },
-          { label: 'Pay Bills', icon: Receipt,       href: '/bills',    color: 'text-amber-400' },
+          { label: 'Add',       icon: Plus,          href: '/add-money', color: 'text-emerald-400' },
+          { label: 'Send',      icon: ArrowUpRight,  href: '/send',      color: 'text-[#d4a843]' },
+          { label: 'Receive',   icon: ArrowDownLeft, href: '/receive',   color: 'text-sky-400' },
+          { label: 'Pay Bills', icon: Receipt,       href: '/bills',     color: 'text-amber-400' },
         ].map(({ label, icon: Icon, href, color }) => (
           <Link
             key={label}
