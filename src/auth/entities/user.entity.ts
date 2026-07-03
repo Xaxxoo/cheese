@@ -115,6 +115,17 @@ export class User {
   @Column({ name: 'ip_address', type: 'varchar', nullable: true })
   ipAddress: string | null;
 
+  // ── Virtual NGN account (PulseMFB on-ramp) ──────────────────────────────
+  @Column({ name: 'virtual_account_number', type: 'varchar', nullable: true, unique: true })
+  virtualAccountNumber: string | null;
+
+  @Column({ name: 'virtual_account_name', type: 'varchar', nullable: true })
+  virtualAccountName: string | null;
+
+  // Reference used when creating the account with PulseMFB (for idempotency)
+  @Column({ name: 'virtual_account_ref', type: 'varchar', nullable: true, unique: true })
+  virtualAccountRef: string | null;
+
   // ── Stellar custodial wallet ─────────────────────────────────────────────
   @Column({
     name: 'stellar_public_key',
