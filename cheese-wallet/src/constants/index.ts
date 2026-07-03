@@ -76,6 +76,8 @@ export const ENDPOINTS = {
     RESOLVE_ACCOUNT:  '/banks/resolve',
     TRANSFER:         '/banks/transfer',
     TRANSFER_STATUS:  (ref: string) => `/banks/transfer/${ref}`,
+    VIRTUAL_ACCOUNT:      '/banks/virtual-account',
+    ONRAMP_AVAILABILITY:  '/banks/onramp-availability',
   },
 
   // ── Exchange Rate ─────────────────────────────────────
@@ -177,6 +179,8 @@ export const QUERY_KEYS = {
   // Banks
   BANKS:                ['banks'] as const,
   RESOLVE_ACCOUNT:      (acct: string, code: string) => ['resolve', 'account', acct, code] as const,
+  VIRTUAL_ACCOUNT:          ['banks', 'virtual-account'] as const,
+  ONRAMP_AVAILABILITY:      ['banks', 'onramp-availability'] as const,
 
   // Rates
   EXCHANGE_RATE:        ['rates', 'current'] as const,

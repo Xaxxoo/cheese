@@ -54,6 +54,21 @@ export async function getTransaction(id: string): Promise<Transaction> {
   return data.data
 }
 
+// ── On-ramp (NGN → USDC) ─────────────────────────────────
+export async function getVirtualAccount(): Promise<{ accountNumber: string; accountName: string }> {
+  const { data } = await apiClient.get<ApiResponse<{ accountNumber: string; accountName: string }>>(
+    '/banks/virtual-account',
+  )
+  return data.data
+}
+
+export async function getOnRampAvailability(): Promise<{ availableUsdc: string; availableUsdcDisplay: string }> {
+  const { data } = await apiClient.get<ApiResponse<{ availableUsdc: string; availableUsdcDisplay: string }>>(
+    '/banks/onramp-availability',
+  )
+  return data.data
+}
+
 // ── Send USDC ─────────────────────────────────────────────
 export async function resolveUsername(username: string): Promise<{ address: string; username: string }> {
   const { data } = await apiClient.get<ApiResponse<{ address: string; username: string }>>(
