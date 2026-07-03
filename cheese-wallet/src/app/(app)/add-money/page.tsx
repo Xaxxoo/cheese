@@ -344,8 +344,8 @@ export default function AddMoneyPage() {
       </div>
 
       {/* Tabs */}
-      <div className="px-4 mb-5">
-        <div className="flex gap-1 p-1 rounded-2xl bg-white/6 border border-white/8">
+      <div className="mb-5 flex justify-center">
+        <div className="flex gap-1 p-1 rounded-2xl bg-white/6 border border-white/8 w-[80%]">
           {([
             { key: 'bank',   label: 'Bank Transfer', icon: Building2 },
             { key: 'crypto', label: 'Crypto',         icon: Wallet    },
