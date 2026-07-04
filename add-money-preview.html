@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Money Flow — Cheese Pay</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+      gap: 56px;
+      min-height: 100vh;
+    }
+
+    /* ── page header ── */
+    .page-header { text-align: center; }
+    .page-header h1 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      margin-bottom: 8px;
+    }
+    .page-header .logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #d4a843;
+    }
+    .page-header .logo span { color: white; }
+
+    /* ── flow row ── */
+    .flow {
+      display: flex;
+      gap: 28px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── arrow ── */
+    .arrow {
+      display: flex;
+      align-items: center;
+      padding-top: 120px;
+      color: rgba(255,255,255,0.12);
+      font-size: 28px;
+      font-weight: 300;
+    }
+
+    /* ── screen panel ── */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .panel-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+    }
+
+    /* ── phone shell ── */
+    .phone {
+      width: 320px;
+      min-height: 600px;
+      background: #111;
+      border-radius: 44px;
+      border: 1.5px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      position: relative;
+      box-shadow:
+        0 0 0 6px #0a0a0a,
+        0 0 0 7px rgba(255,255,255,0.04),
+        0 32px 80px rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* notch */
+    .phone::before {
+      content: '';
+      display: block;
+      width: 90px;
+      height: 28px;
+      background: #0a0a0a;
+      border-radius: 0 0 18px 18px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+    .phone-content {
+      flex: 1;
+      overflow: hidden;
+      padding-top: 36px;
+    }
+
+    /* ── shared components ── */
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px 6px;
+    }
+    .header-logo {
+      font-size: 15px;
+      font-weight: 800;
+      color: #d4a843;
+      letter-spacing: -0.02em;
+    }
+    .header-logo span { color: white; }
+    .header-bell {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .header-back {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+    }
+    .header-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: white;
+    }
+
+    /* ── bottom nav ── */
+    .bottom-nav {
+      display: flex;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      background: rgba(10,10,10,0.95);
+      padding: 10px 0 20px;
+      flex-shrink: 0;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .nav-label {
+      font-size: 9px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 500;
+    }
+    .nav-item.active .nav-icon { color: #d4a843; }
+    .nav-item.active .nav-label { color: #d4a843; }
+
+    /* ──────────────────────────────────────────────
+       SCREEN 1 — Dashboard
+    ────────────────────────────────────────────── */
+    .greeting {
+      padding: 6px 20px 2px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .balance-card {
+      margin: 8px 14px;
+      border-radius: 24px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1a1a1a 0%, #141414 50%, #1c1a12 100%);
+      border: 1px solid rgba(212,168,67,0.12);
+    }
+
+    .balance-top {
+      padding: 18px 20px 12px;
+    }
+    .balance-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .balance-label {
+      font-size: 9px;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .balance-amount {
+      font-size: 26px;
+      font-weight: 600;
+      color: white;
+      line-height: 1;
+    }
+    .balance-amount .unit {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      margin-left: 4px;
+      font-weight: 400;
+    }
+    .balance-ngn {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+    .eye-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    .address-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 8px 10px;
+    }
+    .address-text {
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+      font-family: monospace;
+    }
+    .address-label {
+      font-size: 9px;
+      color: rgba(255,255,255,0.25);
+      margin-right: 6px;
+    }
+    .copy-icon { font-size: 11px; color: rgba(255,255,255,0.25); }
+
+    /* 4-button action row */
+    .action-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 12px 0;
+    }
+    .action-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    .action-label {
+      font-size: 9px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* rate ticker */
+    .rate-ticker {
+      margin: 10px 14px 0;
+      padding: 8px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .rate-from { font-size: 11px; color: rgba(255,255,255,0.35); }
+    .rate-to   { font-size: 11px; color: white; font-weight: 500; }
+    .rate-tag  { font-size: 9px;  color: rgba(255,255,255,0.2); }
+
+    /* tx list */
+    .tx-section { margin: 14px 0 0; padding: 0 6px; }
+    .tx-heading {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      padding: 0 8px;
+      margin-bottom: 6px;
+      letter-spacing: 0.04em;
+    }
+    .tx-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 16px;
+    }
+    .tx-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-type { font-size: 12px; color: white; font-weight: 500; }
+    .tx-date { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+    .tx-amount { font-size: 12px; font-weight: 600; }
+
+    /* ──────────────────────────────────────────────
+       SCREEN 2 — Add Money (Bank Transfer tab)
+    ────────────────────────────────────────────── */
+    .add-money-content {
+      padding: 0 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      max-height: 520px;
+    }
+
+    /* tabs */
+    .tab-bar {
+      display: flex;
+      gap: 3px;
+      padding: 4px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      margin-bottom: 2px;
+    }
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px 0;
+      border-radius: 13px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tab-btn.active {
+      background: #d4a843;
+      color: black;
+    }
+    .tab-btn.inactive {
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* account card */
+    .account-card {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      border-radius: 22px;
+      overflow: hidden;
+    }
+    .account-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .account-card-title { font-size: 9px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .account-card-bank  { font-size: 13px; color: white; font-weight: 600; margin-top: 2px; }
+    .copy-all-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 11px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.07);
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      font-weight: 500;
+    }
+
+    .account-fields { padding: 4px 16px; }
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .field-row:last-child { border-bottom: none; }
+    .field-left { display: flex; flex-direction: column; gap: 2px; }
+    .field-label { font-size: 9px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .field-value { font-size: 12px; color: white; font-weight: 500; }
+    .field-value.mono { font-family: monospace; letter-spacing: 0.06em; }
+    .field-copy {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: 9px;
+      background: rgba(255,255,255,0.06);
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* rate + estimator */
+    .rate-card {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      border-radius: 22px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .rate-card-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .rate-card-label { font-size: 9px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .rate-card-value { font-size: 13px; font-weight: 600; color: #d4a843; }
+
+    .estimator-label { font-size: 9px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .estimator-input {
+      display: flex;
+      align-items: center;
+      background: #191919;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 0 12px;
+      height: 40px;
+      gap: 6px;
+    }
+    .estimator-prefix { font-size: 13px; color: rgba(255,255,255,0.35); font-weight: 500; }
+    .estimator-value  { font-size: 13px; color: white; font-weight: 500; }
+    .estimator-result {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      text-align: right;
+      margin-top: 6px;
+    }
+    .estimator-result strong { color: #4ade80; }
+
+    /* how it works */
+    .how-card {
+      border: 1px solid rgba(212,168,67,0.15);
+      background: rgba(212,168,67,0.04);
+      border-radius: 22px;
+      padding: 14px 16px;
+    }
+    .how-heading {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .how-dot { width: 14px; height: 14px; font-size: 10px; }
+    .how-title { font-size: 10px; font-weight: 700; color: #d4a843; text-transform: uppercase; letter-spacing: 0.1em; }
+    .how-steps { display: flex; flex-direction: column; gap: 8px; }
+    .how-step { display: flex; align-items: flex-start; gap: 8px; }
+    .step-num {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(212,168,67,0.12);
+      border: 1px solid rgba(212,168,67,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: #d4a843;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-text { font-size: 10.5px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+
+    /* ── SCREEN 3 — Add Money (Crypto tab) ── */
+    .crypto-card {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      border-radius: 22px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .crypto-header { display: flex; align-items: center; gap: 10px; }
+    .crypto-icon {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+    .crypto-name { font-size: 12px; font-weight: 600; color: white; }
+    .crypto-sub  { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 1px; }
+    .crypto-desc { font-size: 10.5px; color: rgba(255,255,255,0.45); line-height: 1.5; }
+    .crypto-link {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 12px; border-radius: 13px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07);
+    }
+    .crypto-link-text { font-size: 11px; color: white; font-weight: 500; }
+    .crypto-link-chevron { font-size: 12px; color: rgba(255,255,255,0.3); }
+
+    /* ── new badge ── */
+    .new-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(212,168,67,0.15);
+      border: 1px solid rgba(212,168,67,0.25);
+      font-size: 8px;
+      font-weight: 700;
+      color: #d4a843;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── scrollbar hide ── */
+    .add-money-content::-webkit-scrollbar { display: none; }
+    .add-money-content { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <h1>Cheese Pay — UI Preview</h1>
+    <div class="logo">cheese<span>pay</span></div>
+  </div>
+
+  <div class="flow">
+
+    <!-- ════════════════════════════════════════════
+         SCREEN 1 — DASHBOARD
+    ═══════════════════════════════════════════════ -->
+    <div class="panel">
+      <div class="panel-label">Dashboard</div>
+      <div class="phone">
+        <div class="phone-content">
+
+          <!-- header -->
+          <div class="header-bar">
+            <div class="header-logo">cheese<span>pay</span></div>
+            <div class="header-bell">🔔</div>
+          </div>
+
+          <!-- greeting -->
+          <div class="greeting">Good afternoon, Dijha</div>
+
+          <!-- balance card -->
+          <div class="balance-card">
+            <div class="balance-top">
+              <div class="balance-row">
+                <div>
+                  <div class="balance-label">Total Balance</div>
+                  <div class="balance-amount">$1,240.00<span class="unit">USDC</span></div>
+                  <div class="balance-ngn">₦1,829,400</div>
+                </div>
+                <div class="eye-btn">👁</div>
+              </div>
+              <div class="address-row">
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span class="address-label">Stellar</span>
+                  <span class="address-text">GDQP2…K7XMN</span>
+                </div>
+                <span class="copy-icon">⎘</span>
+              </div>
+            </div>
+
+            <!-- 4-button action row -->
+            <div class="action-row">
+              <div class="action-btn">
+                <div class="action-icon" style="color:#4ade80">＋</div>
+                <div class="action-label" style="color:#4ade80;font-weight:600">Add</div>
+              </div>
+              <div class="action-btn">
+                <div class="action-icon" style="color:#d4a843">↗</div>
+                <div class="action-label">Send</div>
+              </div>
+              <div class="action-btn">
+                <div class="action-icon" style="color:#38bdf8">↙</div>
+                <div class="action-label">Receive</div>
+              </div>
+              <div class="action-btn">
+                <div class="action-icon" style="color:#fbbf24">🧾</div>
+                <div class="action-label">Pay Bills</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- rate ticker -->
+          <div class="rate-ticker">
+            <span class="rate-from">1 USDC</span>
+            <span class="rate-to">₦1,476</span>
+            <span class="rate-tag">Live rate</span>
+          </div>
+
+          <!-- recent txns -->
+          <div class="tx-section">
+            <div class="tx-heading">Recent activity</div>
+            <div class="tx-row">
+              <div class="tx-icon">↓</div>
+              <div class="tx-info">
+                <div class="tx-type">Deposit</div>
+                <div class="tx-date">3 Jul · 11:42 AM</div>
+              </div>
+              <div class="tx-amount" style="color:#4ade80">+$50.00</div>
+            </div>
+            <div class="tx-row">
+              <div class="tx-icon">↑</div>
+              <div class="tx-info">
+                <div class="tx-type">Bank Transfer <span style="color:rgba(255,255,255,0.3);font-weight:400">· GTBank</span></div>
+                <div class="tx-date">2 Jul · 3:15 PM</div>
+              </div>
+              <div class="tx-amount" style="color:white">-$33.85</div>
+            </div>
+            <div class="tx-row">
+              <div class="tx-icon">↑</div>
+              <div class="tx-info">
+                <div class="tx-type">Sent <span style="color:rgba(255,255,255,0.3);font-weight:400">· @adaeze</span></div>
+                <div class="tx-date">1 Jul · 9:05 AM</div>
+              </div>
+              <div class="tx-amount" style="color:white">-$10.00</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- bottom nav -->
+        <div class="bottom-nav">
+          <div class="nav-item active">
+            <div class="nav-icon">⌂</div>
+            <div class="nav-label">Home</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">↗</div>
+            <div class="nav-label">Send</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">⏱</div>
+            <div class="nav-label">History</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">👤</div>
+            <div class="nav-label">Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <!-- ════════════════════════════════════════════
+         SCREEN 2 — ADD MONEY (Bank Transfer tab)
+    ═══════════════════════════════════════════════ -->
+    <div class="panel">
+      <div class="panel-label">Add Money — Bank Transfer</div>
+      <div class="phone">
+        <div class="phone-content">
+
+          <!-- header -->
+          <div class="header-bar">
+            <div class="header-back">←</div>
+            <div class="header-title">Add Money</div>
+            <div style="width:32px"></div>
+          </div>
+
+          <!-- tabs -->
+          <div style="padding:10px 14px 4px">
+            <div class="tab-bar">
+              <div class="tab-btn active">🏦 Bank Transfer <span class="new-badge">NGN</span></div>
+              <div class="tab-btn inactive">₿ Crypto</div>
+            </div>
+          </div>
+
+          <div class="add-money-content">
+
+            <!-- availability banner -->
+            <div style="
+              border-radius: 16px;
+              border: 1px solid rgba(74,222,128,0.18);
+              background: rgba(74,222,128,0.06);
+              padding: 12px 14px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            ">
+              <div>
+                <div style="font-size:9px;color:rgba(74,222,128,0.65);text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-bottom:3px;">
+                  Available to buy
+                </div>
+                <div style="font-size:18px;font-weight:700;color:#4ade80;line-height:1.1;">
+                  $12,400.00
+                  <span style="font-size:12px;font-weight:400;color:rgba(74,222,128,0.6);margin-left:3px;">USDC</span>
+                </div>
+              </div>
+              <div style="
+                width:36px;height:36px;border-radius:50%;
+                background:rgba(74,222,128,0.1);
+                display:flex;align-items:center;justify-content:center;
+                font-size:15px;
+              ">📈</div>
+            </div>
+
+            <!-- account card -->
+            <div class="account-card">
+              <div class="account-card-header">
+                <div>
+                  <div class="account-card-title">Your Deposit Account</div>
+                  <div class="account-card-bank">Pulse MFB</div>
+                </div>
+                <div class="copy-all-btn">⎘ Copy all</div>
+              </div>
+              <div class="account-fields">
+                <div class="field-row">
+                  <div class="field-left">
+                    <div class="field-label">Bank</div>
+                    <div class="field-value">Pulse MFB</div>
+                  </div>
+                  <div class="field-copy">⎘ Copy</div>
+                </div>
+                <div class="field-row">
+                  <div class="field-left">
+                    <div class="field-label">Account Number</div>
+                    <div class="field-value mono">9 9 9 5 7 3 4 4 4 0</div>
+                  </div>
+                  <div class="field-copy">⎘ Copy</div>
+                </div>
+                <div class="field-row">
+                  <div class="field-left">
+                    <div class="field-label">Account Name</div>
+                    <div class="field-value">CAL / Dijha Osas</div>
+                  </div>
+                  <div class="field-copy">⎘ Copy</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- rate + estimator -->
+            <div class="rate-card">
+              <div class="rate-card-row">
+                <div class="rate-card-label">Exchange Rate</div>
+                <div class="rate-card-value">₦1,476 = $1 USDC</div>
+              </div>
+              <div>
+                <div class="estimator-label">How much will you send?</div>
+                <div class="estimator-input">
+                  <span class="estimator-prefix">₦</span>
+                  <span class="estimator-value">50,000</span>
+                </div>
+                <div class="estimator-result">
+                  You receive <strong>$33.88 USDC</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- how it works -->
+            <div class="how-card">
+              <div class="how-heading">
+                <div class="how-dot">ℹ</div>
+                <div class="how-title">How it works</div>
+              </div>
+              <div class="how-steps">
+                <div class="how-step">
+                  <div class="step-num">1</div>
+                  <div class="step-text">Copy the account details above.</div>
+                </div>
+                <div class="how-step">
+                  <div class="step-num">2</div>
+                  <div class="step-text">Open your bank app and send any NGN amount to this account.</div>
+                </div>
+                <div class="how-step">
+                  <div class="step-num">3</div>
+                  <div class="step-text">USDC is credited to your Cheese Pay wallet within minutes.</div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /add-money-content -->
+
+        </div><!-- /phone-content -->
+
+        <!-- bottom nav -->
+        <div class="bottom-nav">
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">⌂</div>
+            <div class="nav-label">Home</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">↗</div>
+            <div class="nav-label">Send</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">⏱</div>
+            <div class="nav-label">History</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">👤</div>
+            <div class="nav-label">Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <!-- ════════════════════════════════════════════
+         SCREEN 3 — ADD MONEY (Crypto tab)
+    ═══════════════════════════════════════════════ -->
+    <div class="panel">
+      <div class="panel-label">Add Money — Crypto</div>
+      <div class="phone">
+        <div class="phone-content">
+
+          <!-- header -->
+          <div class="header-bar">
+            <div class="header-back">←</div>
+            <div class="header-title">Add Money</div>
+            <div style="width:32px"></div>
+          </div>
+
+          <!-- tabs -->
+          <div style="padding:10px 14px 4px">
+            <div class="tab-bar">
+              <div class="tab-btn inactive">🏦 Bank Transfer</div>
+              <div class="tab-btn active">₿ Crypto</div>
+            </div>
+          </div>
+
+          <div class="add-money-content">
+
+            <!-- Stellar card -->
+            <div class="crypto-card">
+              <div class="crypto-header">
+                <div class="crypto-icon" style="background:rgba(52,211,153,0.1);color:#4ade80">💎</div>
+                <div>
+                  <div class="crypto-name">Stellar (USDC)</div>
+                  <div class="crypto-sub">Receive USDC directly on Stellar</div>
+                </div>
+              </div>
+              <div class="crypto-desc">
+                Send USDC from any Stellar wallet or exchange directly to your Cheese Pay address. No minimum deposit.
+              </div>
+              <div class="crypto-link">
+                <span class="crypto-link-text">View deposit address</span>
+                <span class="crypto-link-chevron">›</span>
+              </div>
+            </div>
+
+            <!-- EVM card -->
+            <div class="crypto-card">
+              <div class="crypto-header">
+                <div class="crypto-icon" style="background:rgba(167,139,250,0.1);color:#a78bfa">⬡</div>
+                <div>
+                  <div class="crypto-name">EVM chains (USDC)</div>
+                  <div class="crypto-sub">Arbitrum, Base, Polygon & more</div>
+                </div>
+              </div>
+              <div class="crypto-desc">
+                Send USDC from any EVM-compatible wallet or exchange to your Cheese Pay EVM address.
+              </div>
+              <div class="crypto-link">
+                <span class="crypto-link-text">View deposit addresses</span>
+                <span class="crypto-link-chevron">›</span>
+              </div>
+            </div>
+
+          </div><!-- /add-money-content -->
+
+        </div><!-- /phone-content -->
+
+        <!-- bottom nav -->
+        <div class="bottom-nav">
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">⌂</div>
+            <div class="nav-label">Home</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">↗</div>
+            <div class="nav-label">Send</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">⏱</div>
+            <div class="nav-label">History</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon" style="color:rgba(255,255,255,0.3)">👤</div>
+            <div class="nav-label">Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /flow -->
+
+</body>
+</html>

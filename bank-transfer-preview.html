@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cheese Pay — Bank Transfer Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f0f0f;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: #0a0a0a;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; gap: 10px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { width: 28px; height: 28px; background: #d4a843; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .topbar-title { color: #fff; font-size: 14px; font-weight: 600; }
+  .topbar-sub { color: rgba(255,255,255,0.25); font-size: 11px; margin-left: 4px; }
+
+  /* ── Step tabs ── */
+  .step-tabs {
+    display: flex; gap: 0;
+    background: #0a0a0a;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    overflow-x: auto; scrollbar-width: none;
+    padding: 0 24px;
+  }
+  .step-tab {
+    flex-shrink: 0; padding: 12px 20px; font-size: 12px; font-weight: 500;
+    color: rgba(255,255,255,0.35); cursor: pointer;
+    border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap;
+  }
+  .step-tab.active { color: #d4a843; border-bottom-color: #d4a843; }
+
+  /* ── Canvas ── */
+  .canvas {
+    padding: 40px 24px 60px;
+    display: flex; justify-content: center;
+  }
+
+  /* ── Phone ── */
+  .phone {
+    width: 390px;
+    background: #0a0a0a;
+    border-radius: 44px;
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  }
+  .phone-inner {
+    padding: 0;
+    overflow-y: auto;
+    max-height: 812px;
+  }
+  ::-webkit-scrollbar { width: 0; }
+
+  /* ── Screen content ── */
+  .screen { display: none; padding: 56px 20px 48px; min-height: 812px; }
+  .screen.active { display: block; }
+
+  /* ── Common ── */
+  .back-btn { color: rgba(255,255,255,0.4); font-size: 13px; margin-bottom: 20px; display: inline-block; }
+  .screen-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 20px; }
+  .field-label {
+    font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4);
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;
+  }
+  .input-mock {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; padding: 16px;
+    color: rgba(255,255,255,0.5); font-size: 15px;
+    margin-bottom: 16px;
+    font-family: inherit;
+  }
+  .input-mock.amount { font-size: 28px; font-weight: 700; text-align: center; letter-spacing: -0.5px; color: #fff; }
+  .input-mock.pin { font-size: 24px; text-align: center; letter-spacing: 12px; }
+  .next-btn {
+    width: 100%; background: #d4a843; border-radius: 14px;
+    padding: 16px; text-align: center; color: #000;
+    font-weight: 700; font-size: 15px; margin-top: 8px; cursor: pointer;
+  }
+  .error-text { color: #ff6b6b; font-size: 13px; margin-bottom: 12px; }
+
+  /* ── Step bar ── */
+  .step-bar { display: flex; align-items: center; margin-bottom: 28px; }
+  .step-item { display: flex; flex-direction: column; align-items: center; }
+  .step-circle {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #141414; border: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.3);
+    margin-bottom: 4px;
+  }
+  .step-circle.active { background: #d4a843; border-color: #d4a843; color: #000; }
+  .step-circle.done   { background: #4ade80; border-color: #4ade80; color: #000; }
+  .step-lbl { font-size: 10px; color: rgba(255,255,255,0.3); font-weight: 500; }
+  .step-lbl.active { color: #fff; }
+  .step-line { flex: 1; height: 1px; background: rgba(255,255,255,0.1); margin: 0 6px; margin-bottom: 18px; }
+  .step-line.done { background: #4ade80; }
+
+  /* ── Bank selector ── */
+  .bank-selector {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; padding: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; cursor: pointer;
+  }
+  .bank-selector-text { color: #fff; font-size: 15px; }
+  .chevron { color: rgba(255,255,255,0.3); font-size: 20px; }
+
+  .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .input-row .input-mock { flex: 1; margin-bottom: 0; }
+  .verify-btn {
+    background: #d4a843; border-radius: 14px; padding: 0 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #000; min-width: 80px;
+  }
+
+  /* ── Resolved card ── */
+  .resolved-card {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(74,222,128,0.1); border-radius: 12px;
+    padding: 14px; margin-bottom: 16px;
+    border: 1px solid rgba(74,222,128,0.2);
+  }
+  .resolved-icon { color: #4ade80; font-size: 18px; }
+  .resolved-name { color: #4ade80; font-weight: 700; font-size: 15px; }
+  .resolved-bank { color: rgba(74,222,128,0.6); font-size: 12px; margin-top: 2px; }
+
+  /* ── Balance banner ── */
+  .balance-banner {
+    background: #141414; border-radius: 14px; padding: 16px;
+    margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+  }
+  .balance-banner-label { font-size: 12px; color: rgba(255,255,255,0.35); margin-bottom: 4px; }
+  .balance-banner-value { font-size: 20px; font-weight: 700; color: #fff; }
+
+  /* ── Fee card ── */
+  .fee-card {
+    background: #141414; border-radius: 14px; padding: 16px;
+    margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06);
+  }
+  .fee-row { display: flex; justify-content: space-between; padding: 6px 0; }
+  .fee-label { font-size: 13px; color: rgba(255,255,255,0.4); }
+  .fee-value { font-size: 13px; color: #fff; }
+  .fee-highlight { color: #d4a843; font-weight: 600; }
+  .fee-total-row {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin-top: 6px; padding-top: 12px;
+    display: flex; justify-content: space-between;
+  }
+  .fee-total-label { font-size: 14px; font-weight: 600; color: #fff; }
+  .fee-total-value { font-size: 14px; font-weight: 700; color: #fff; }
+
+  /* ── Summary card ── */
+  .summary-card {
+    background: #141414; border-radius: 16px; padding: 20px;
+    margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.08);
+  }
+  .summary-title {
+    font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4);
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 16px;
+  }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-label { font-size: 13px; color: rgba(255,255,255,0.4); flex: 1; }
+  .summary-value { font-size: 13px; color: #fff; font-weight: 500; flex: 2; text-align: right; }
+  .summary-value.fee { color: #d4a843; }
+
+  /* ── Biometric btn ── */
+  .biometric-btn {
+    background: rgba(212,168,67,0.1); border-radius: 14px; padding: 14px;
+    text-align: center; margin-bottom: 12px;
+    border: 1px solid rgba(212,168,67,0.25);
+    color: #d4a843; font-weight: 600; font-size: 14px;
+  }
+  .or-divider { font-size: 12px; color: rgba(255,255,255,0.3); text-align: center; margin-bottom: 12px; }
+
+  /* ── Success screen ── */
+  .success-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 60px 32px 48px; min-height: 812px;
+  }
+  .success-icon { font-size: 56px; margin-bottom: 16px; }
+  .success-title { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .success-amount { font-size: 36px; font-weight: 700; color: #4ade80; margin-bottom: 4px; letter-spacing: -1px; }
+  .success-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 32px; text-align: center; }
+  .success-details {
+    background: #141414; border-radius: 16px; padding: 20px;
+    width: 100%; margin-bottom: 32px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .detail-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { font-size: 13px; color: rgba(255,255,255,0.4); flex: 1; }
+  .detail-value { font-size: 13px; color: #fff; font-weight: 500; flex: 2; text-align: right; }
+  .detail-value.green { color: #4ade80; }
+  .detail-value.gold { color: #d4a843; }
+  .done-btn {
+    background: #d4a843; border-radius: 14px;
+    padding: 16px 48px; text-align: center;
+    color: #000; font-weight: 700; font-size: 16px;
+  }
+
+  /* ── Fee note ── */
+  .fee-note {
+    background: rgba(212,168,67,0.06);
+    border: 1px solid rgba(212,168,67,0.15);
+    border-radius: 12px; padding: 12px 14px;
+    font-size: 11px; color: rgba(255,220,120,0.7);
+    line-height: 1.6; margin-top: 12px;
+  }
+  .fee-note strong { color: #d4a843; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">🧀</div>
+  <span class="topbar-title">Cheese Pay</span>
+  <span class="topbar-sub">Bank Transfer — UI Preview</span>
+</div>
+
+<!-- Step tabs -->
+<div class="step-tabs">
+  <div class="step-tab active" onclick="showStep('step1')">Step 1 · Account</div>
+  <div class="step-tab" onclick="showStep('step2')">Step 2 · Amount</div>
+  <div class="step-tab" onclick="showStep('step3')">Step 3 · Confirm</div>
+  <div class="step-tab" onclick="showStep('success')">Success</div>
+</div>
+
+<!-- Canvas -->
+<div class="canvas">
+  <div class="phone">
+    <div class="phone-inner">
+
+      <!-- ── STEP 1: Bank + Account ── -->
+      <div class="screen active" id="step1">
+        <span class="back-btn">← Back</span>
+        <div class="screen-title">Bank Transfer</div>
+
+        <!-- Step bar -->
+        <div class="step-bar">
+          <div class="step-item">
+            <div class="step-circle active">1</div>
+            <div class="step-lbl active">Account</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-item">
+            <div class="step-circle">2</div>
+            <div class="step-lbl">Amount</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-item">
+            <div class="step-circle">3</div>
+            <div class="step-lbl">Confirm</div>
+          </div>
+        </div>
+
+        <div class="field-label">Bank</div>
+        <div class="bank-selector">
+          <span class="bank-selector-text">Access Bank</span>
+          <span class="chevron">›</span>
+        </div>
+
+        <div class="field-label">Account Number</div>
+        <div class="input-row">
+          <div class="input-mock" style="margin-bottom:0; color:#fff;">0123456789</div>
+          <div class="verify-btn">Verify</div>
+        </div>
+
+        <div class="resolved-card" style="margin-top:12px;">
+          <span class="resolved-icon">✓</span>
+          <div>
+            <div class="resolved-name">ADEYEMI OLUWASEUN</div>
+            <div class="resolved-bank">Access Bank</div>
+          </div>
+        </div>
+
+        <div class="next-btn" onclick="showStep('step2')">Next</div>
+      </div>
+
+      <!-- ── STEP 2: Amount ── -->
+      <div class="screen" id="step2">
+        <span class="back-btn">← Previous</span>
+        <div class="screen-title">Bank Transfer</div>
+
+        <!-- Step bar -->
+        <div class="step-bar">
+          <div class="step-item">
+            <div class="step-circle done">✓</div>
+            <div class="step-lbl">Account</div>
+          </div>
+          <div class="step-line done"></div>
+          <div class="step-item">
+            <div class="step-circle active">2</div>
+            <div class="step-lbl active">Amount</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-item">
+            <div class="step-circle">3</div>
+            <div class="step-lbl">Confirm</div>
+          </div>
+        </div>
+
+        <!-- Balance -->
+        <div class="balance-banner">
+          <div class="balance-banner-label">Available Balance</div>
+          <div class="balance-banner-value">$124.85</div>
+        </div>
+
+        <div class="field-label">Amount (NGN)</div>
+        <div class="input-mock amount">75,000</div>
+
+        <!-- Fee card -->
+        <div class="fee-card">
+          <div class="fee-row">
+            <span class="fee-label">NGN Amount</span>
+            <span class="fee-value">₦75,000.00</span>
+          </div>
+          <div class="fee-row">
+            <span class="fee-label">Rate</span>
+            <span class="fee-value">₦1,580.00 / USDC</span>
+          </div>
+          <div class="fee-row">
+            <span class="fee-label">Transfer Fee</span>
+            <span class="fee-value fee-highlight">$0.32</span>
+          </div>
+          <div class="fee-total-row">
+            <span class="fee-total-label">Est. USDC deducted</span>
+            <span class="fee-total-value">~$47.79</span>
+          </div>
+        </div>
+
+        <div class="fee-note">
+          <strong>Fee tiers:</strong> &lt;₦50k → $0.03 · ₦50k–₦100k → ₦500 equiv · ₦100k–₦500k → ₦1,000 equiv · ₦500k+ → ₦1,300 equiv
+        </div>
+
+        <div class="field-label" style="margin-top:16px;">Narration (optional)</div>
+        <div class="input-mock">Rent payment</div>
+
+        <div class="next-btn" onclick="showStep('step3')">Next</div>
+      </div>
+
+      <!-- ── STEP 3: Confirm + PIN ── -->
+      <div class="screen" id="step3">
+        <span class="back-btn">← Previous</span>
+        <div class="screen-title">Bank Transfer</div>
+
+        <!-- Step bar -->
+        <div class="step-bar">
+          <div class="step-item">
+            <div class="step-circle done">✓</div>
+            <div class="step-lbl">Account</div>
+          </div>
+          <div class="step-line done"></div>
+          <div class="step-item">
+            <div class="step-circle done">✓</div>
+            <div class="step-lbl">Amount</div>
+          </div>
+          <div class="step-line done"></div>
+          <div class="step-item">
+            <div class="step-circle active">3</div>
+            <div class="step-lbl active">Confirm</div>
+          </div>
+        </div>
+
+        <!-- Summary card -->
+        <div class="summary-card">
+          <div class="summary-title">Review Transfer</div>
+          <div class="summary-row">
+            <span class="summary-label">To</span>
+            <span class="summary-value">ADEYEMI OLUWASEUN</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Bank</span>
+            <span class="summary-value">Access Bank</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Account No.</span>
+            <span class="summary-value">0123456789</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Amount</span>
+            <span class="summary-value">₦75,000.00</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Fee</span>
+            <span class="summary-value fee">$0.32</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Est. USDC</span>
+            <span class="summary-value">~$47.79</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Narration</span>
+            <span class="summary-value">Rent payment</span>
+          </div>
+        </div>
+
+        <div class="biometric-btn">Use Face ID / Fingerprint</div>
+        <div class="or-divider">— or enter PIN —</div>
+
+        <div class="field-label">Enter PIN</div>
+        <div class="input-mock pin" style="color:#fff;">••••••</div>
+
+        <div class="next-btn" onclick="showStep('success')">Send ₦75,000.00</div>
+      </div>
+
+      <!-- ── SUCCESS ── -->
+      <div class="screen" id="success">
+        <div class="success-wrap">
+          <div class="success-icon">🏦</div>
+          <div class="success-title">Transfer Initiated</div>
+          <div class="success-amount">₦75,000.00</div>
+          <div class="success-sub">To ADEYEMI OLUWASEUN · Access Bank</div>
+
+          <div class="success-details">
+            <div class="detail-row">
+              <span class="detail-label">Status</span>
+              <span class="detail-value green">Processing</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">USDC Debited</span>
+              <span class="detail-value">$47.79</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Fee</span>
+              <span class="detail-value gold">$0.32</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Rate</span>
+              <span class="detail-value">₦1,580.00</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Reference</span>
+              <span class="detail-value" style="font-size:11px; color:rgba(255,255,255,0.5);">TRF-20240622-A8X2K</span>
+            </div>
+          </div>
+
+          <div class="done-btn" onclick="showStep('step1')">Done</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function showStep(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+    document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('active'))
+    document.getElementById(id).classList.add('active')
+    const idx = ['step1','step2','step3','success'].indexOf(id)
+    document.querySelectorAll('.step-tab')[idx].classList.add('active')
+    document.querySelector('.phone-inner').scrollTop = 0
+  }
+</script>
+</body>
+</html>
