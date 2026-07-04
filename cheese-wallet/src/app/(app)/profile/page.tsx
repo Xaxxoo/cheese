@@ -206,9 +206,14 @@ function DevicesCard({ currentDeviceId }: { currentDeviceId: string }) {
 
   return (
     <div className="mx-4 mt-2 rounded-2xl border border-white/8" style={{ background: 'rgba(255,255,255,0.02)' }}>
-      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-        <Smartphone size={15} className="text-white/50" />
-        <span className="text-sm font-semibold text-white">Trusted Devices</span>
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Smartphone size={15} className="text-white/50" />
+          <span className="text-sm font-semibold text-white">Trusted Devices</span>
+        </div>
+        <Link href="/devices" className="text-[10px] text-[#d4a843]/60 hover:text-[#d4a843] transition-colors flex items-center gap-0.5">
+          Manage <ChevronRight size={11} />
+        </Link>
       </div>
 
       {devQ.isLoading && (
