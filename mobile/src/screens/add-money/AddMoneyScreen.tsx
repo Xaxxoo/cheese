@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, TextInput, ActivityIndicator,
 } from 'react-native'
+import { ArrowLeft, Building2, TrendingUp, Info, Zap, Hexagon, ArrowRight } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
@@ -62,7 +63,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
         {/* Header */}
         <View style={s.header}>
           <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={s.backArrow}>←</Text>
+            <ArrowLeft size={20} color="rgba(255,255,255,0.6)" strokeWidth={1.5} />
           </TouchableOpacity>
           <Text style={s.title}>Add Money</Text>
         </View>
@@ -92,7 +93,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
               </View>
             ) : !account ? (
               <View style={s.errorWrap}>
-                <Text style={s.errorIcon}>🏦</Text>
+                <Building2 size={36} color="rgba(255,255,255,0.3)" strokeWidth={1.5} style={{ marginBottom: 4 }} />
                 <Text style={s.errorTitle}>Could not load account</Text>
                 <Text style={s.errorSub}>{error ?? 'Check your connection and try again'}</Text>
               </View>
@@ -108,7 +109,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
                         <Text style={s.availUnit}> USDC</Text>
                       </Text>
                     </View>
-                    <Text style={s.availIcon}>📈</Text>
+                    <TrendingUp size={22} color="#4ade80" strokeWidth={1.5} />
                   </View>
                 )}
 
@@ -219,7 +220,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
                 {/* How it works */}
                 <View style={s.howCard}>
                   <View style={s.howHeader}>
-                    <Text style={s.howIcon}>ℹ</Text>
+                    <Info size={14} color="#d4a843" strokeWidth={1.5} />
                     <Text style={s.howTitle}>How it works</Text>
                   </View>
                   {[
@@ -252,7 +253,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
             <View style={s.card}>
               <View style={s.cryptoHeader}>
                 <View style={[s.cryptoIconWrap, { backgroundColor: 'rgba(74,222,128,0.1)' }]}>
-                  <Text style={s.cryptoIconEmoji}>⚡</Text>
+                  <Zap size={18} color="#4ade80" strokeWidth={1.5} />
                 </View>
                 <View style={s.cryptoMeta}>
                   <Text style={s.cryptoTitle}>Stellar (USDC)</Text>
@@ -265,7 +266,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
               </Text>
               <TouchableOpacity style={s.cryptoBtn} onPress={() => navigation.navigate('Receive')}>
                 <Text style={s.cryptoBtnText}>View deposit address</Text>
-                <Text style={s.cryptoBtnArrow}>→</Text>
+                <ArrowRight size={16} color="rgba(255,255,255,0.3)" strokeWidth={1.5} />
               </TouchableOpacity>
             </View>
 
@@ -273,7 +274,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
             <View style={s.card}>
               <View style={s.cryptoHeader}>
                 <View style={[s.cryptoIconWrap, { backgroundColor: 'rgba(167,139,250,0.1)' }]}>
-                  <Text style={s.cryptoIconEmoji}>🔷</Text>
+                  <Hexagon size={18} color="#a78bfa" strokeWidth={1.5} />
                 </View>
                 <View style={s.cryptoMeta}>
                   <Text style={s.cryptoTitle}>EVM chains (USDC)</Text>
@@ -285,7 +286,7 @@ export default function AddMoneyScreen({ navigation }: Props) {
               </Text>
               <TouchableOpacity style={s.cryptoBtn} onPress={() => navigation.navigate('Receive')}>
                 <Text style={s.cryptoBtnText}>View deposit addresses</Text>
-                <Text style={s.cryptoBtnArrow}>→</Text>
+                <ArrowRight size={16} color="rgba(255,255,255,0.3)" strokeWidth={1.5} />
               </TouchableOpacity>
             </View>
           </>
@@ -307,7 +308,6 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
-  backArrow: { color: 'rgba(255,255,255,0.6)', fontSize: 18, lineHeight: 22 },
   title:     { fontSize: 18, fontWeight: '600', color: '#fff', letterSpacing: -0.3 },
 
   // Tabs
@@ -329,7 +329,6 @@ const s = StyleSheet.create({
   loadingWrap: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   loadingText: { color: 'rgba(255,255,255,0.3)', fontSize: 13 },
   errorWrap:   { alignItems: 'center', paddingVertical: 60, gap: 8 },
-  errorIcon:   { fontSize: 36, marginBottom: 4 },
   errorTitle:  { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
   errorSub:    { fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center' },
 
@@ -344,7 +343,6 @@ const s = StyleSheet.create({
                  textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 },
   availAmount: { fontSize: 18, fontWeight: '600', color: '#4ade80' },
   availUnit:   { fontSize: 13, fontWeight: '400', color: 'rgba(74,222,128,0.6)' },
-  availIcon:   { fontSize: 22 },
 
   // Card
   card: {
@@ -417,7 +415,6 @@ const s = StyleSheet.create({
     padding: 16, marginBottom: 14, gap: 12,
   },
   howHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  howIcon:   { fontSize: 14, color: '#d4a843' },
   howTitle:  {
     fontSize: 11, fontWeight: '600', color: '#d4a843',
     textTransform: 'uppercase', letterSpacing: 0.8,
@@ -443,7 +440,6 @@ const s = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
   },
-  cryptoIconEmoji: { fontSize: 18 },
   cryptoMeta:  { flex: 1 },
   cryptoTitle: { fontSize: 14, fontWeight: '600', color: '#fff' },
   cryptoSub:   { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
@@ -456,5 +452,4 @@ const s = StyleSheet.create({
     borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
   cryptoBtnText:  { fontSize: 13, fontWeight: '500', color: '#fff' },
-  cryptoBtnArrow: { fontSize: 16, color: 'rgba(255,255,255,0.3)' },
 })
