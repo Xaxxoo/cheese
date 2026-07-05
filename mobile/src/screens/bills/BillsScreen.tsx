@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native'
+import { ArrowLeft, ChevronRight } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 
@@ -18,7 +19,10 @@ export default function BillsScreen({ navigation }: Props) {
     <SafeAreaView style={s.safe}>
       <View style={s.container}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+            <Text style={s.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={s.title}>Pay Bills</Text>
         {items.map(({ label, screen }) => (
@@ -28,7 +32,7 @@ export default function BillsScreen({ navigation }: Props) {
             onPress={() => navigation.navigate(screen)}
           >
             <Text style={s.rowLabel}>{label}</Text>
-            <Text style={s.arrow}>›</Text>
+            <ChevronRight size={20} color="rgba(255,255,255,0.3)" strokeWidth={1.5} />
           </TouchableOpacity>
         ))}
       </View>
@@ -44,5 +48,4 @@ const s = StyleSheet.create({
   title:     { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 20 },
   row:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#141414', borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   rowLabel:  { color: '#fff', fontSize: 15 },
-  arrow:     { color: 'rgba(255,255,255,0.3)', fontSize: 20 },
 })
