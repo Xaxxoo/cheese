@@ -4,25 +4,30 @@ import {
   RefreshControl, TouchableOpacity, ActivityIndicator,
   Modal, ScrollView,
 } from 'react-native'
+import {
+  ArrowDownLeft, ArrowUpRight, Building2, Zap, CreditCard, Gift,
+  Link as LinkIcon, Circle,
+} from 'lucide-react-native'
 import { getTransactions } from '../../api/wallet'
 import { fmtUsdc, fmtNgn, fmtDateTime } from '../../utils/format'
 import type { Transaction } from '../../types'
 
 // ── Helpers ───────────────────────────────────────────────
 
-function txIcon(type: Transaction['type']): string {
+function TxIcon({ type, color }: { type: Transaction['type']; color: string }) {
+  const props = { size: 20, color, strokeWidth: 1.5 } as const
   switch (type) {
-    case 'deposit':                      return '↓'
+    case 'deposit':                      return <ArrowDownLeft {...props} />
     case 'withdrawal':
     case 'send_username':
-    case 'send_address':                 return '↑'
-    case 'bank_transfer':                return '🏦'
-    case 'bill_payment':                 return '⚡'
-    case 'card_payment':                 return '💳'
+    case 'send_address':                 return <ArrowUpRight {...props} />
+    case 'bank_transfer':                return <Building2 {...props} />
+    case 'bill_payment':                 return <Zap {...props} />
+    case 'card_payment':                 return <CreditCard {...props} />
     case 'referral_bonus':
-    case 'yield_credit':                 return '🎁'
-    case 'pay_request':                  return '🔗'
-    default:                             return '•'
+    case 'yield_credit':                 return <Gift {...props} />
+    case 'pay_request':                  return <LinkIcon {...props} />
+    default:                             return <Circle {...props} />
   }
 }
 
@@ -200,7 +205,7 @@ export default function HistoryScreen() {
   const renderItem = useCallback(({ item }: { item: Transaction }) => (
     <TouchableOpacity style={s.txRow} onPress={() => setSelected(item)} activeOpacity={0.7}>
       <View style={[s.txIconWrap, { backgroundColor: txIconColor(item.type) + '1a' }]}>
-        <Text style={[s.txIcon, { color: txIconColor(item.type) }]}>{txIcon(item.type)}</Text>
+        <TxIcon type={item.type} color={txIconColor(item.type)} />
       </View>
       <View style={s.txMeta}>
         <Text style={s.txLabel} numberOfLines={1}>{txLabel(item)}</Text>
@@ -318,7 +323,6 @@ const s = StyleSheet.create({
     width: 42, height: 42, borderRadius: 13,
     alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  txIcon:       { fontSize: 17, fontWeight: '700' },
   txMeta:       { flex: 1, marginRight: 8 },
   txLabel:      { fontSize: 14, color: '#fff', fontWeight: '500', marginBottom: 3 },
   txSubRow:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
