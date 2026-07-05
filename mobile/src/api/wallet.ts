@@ -9,6 +9,7 @@ import type {
   ExchangeRate, EarnBalance, ReferralInfo,
   VirtualCard,
   VirtualAccount, OnRampAvailability,
+  DeviceSummary,
   CreatePayLinkPayload, CreatePayLinkResponse,
   PayLinkData, PayLinkPayPayload,
   AppNotification,
@@ -94,6 +95,16 @@ export async function syncBankTransferStatus(reference: string): Promise<{ refer
     `/banks/transfer/${reference}/status`,
   )
   return data.data
+}
+
+// ── Devices ───────────────────────────────────────────────
+export async function listDevices(): Promise<DeviceSummary[]> {
+  const { data } = await client.get<ApiResponse<DeviceSummary[]>>('/devices')
+  return data.data
+}
+
+export async function revokeDevice(id: string): Promise<void> {
+  await client.delete(`/devices/${id}`)
 }
 
 // ── On-Ramp ───────────────────────────────────────────────

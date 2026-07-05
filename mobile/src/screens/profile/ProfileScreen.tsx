@@ -92,6 +92,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const menuItems = [
     { label: 'Edit Profile',      icon: '✏️',  onPress: () => navigation.navigate('EditProfile')   },
     { label: 'Change PIN',        icon: '🔐',  onPress: () => navigation.navigate('ChangePin')     },
+    { label: 'Trusted Devices',   icon: '📱',  onPress: () => navigation.navigate('Devices')       },
     { label: 'Referrals',         icon: '🎁',  onPress: () => navigation.navigate('Referral')      },
     { label: 'KYC Verification',  icon: '🪪',  onPress: () => navigation.navigate('KYC')           },
     { label: 'Notifications',     icon: '🔔',  onPress: () => navigation.navigate('Notifications') },

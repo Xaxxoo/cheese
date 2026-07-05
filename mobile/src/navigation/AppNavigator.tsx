@@ -24,6 +24,7 @@ import EditProfileScreen  from '../screens/profile/EditProfileScreen'
 import ChangePinScreen    from '../screens/pin/ChangePinScreen'
 import ReferralScreen     from '../screens/referral/ReferralScreen'
 import AddMoneyScreen    from '../screens/add-money/AddMoneyScreen'
+import DevicesScreen     from '../screens/devices/DevicesScreen'
 import PayLinkPayScreen  from '../screens/paylink/PayLinkPayScreen'
 
 // ── Tab icons (text-based until vector icons are added) ───
@@ -94,6 +95,7 @@ export default function AppNavigator() {
       <Stack.Screen name="ChangePin"     component={ChangePinScreen} />
       <Stack.Screen name="Referral"      component={ReferralScreen} />
       <Stack.Screen name="AddMoney"      component={AddMoneyScreen} />
+      <Stack.Screen name="Devices"       component={DevicesScreen} />
       <Stack.Screen name="PayLinkPay"   component={PayLinkPayScreen} />
     </Stack.Navigator>
   )

@@ -339,6 +339,15 @@ export interface PayBillResponse {
   createdAt: string
 }
 
+// ── Devices ───────────────────────────────────────────────
+export interface DeviceSummary {
+  id:         string
+  deviceName: string
+  lastSeen:   string
+  location?:  string
+  isCurrent:  boolean
+}
+
 // ── On-Ramp ───────────────────────────────────────────────
 export interface VirtualAccount {
   accountNumber: string
