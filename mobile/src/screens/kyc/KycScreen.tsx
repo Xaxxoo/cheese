@@ -4,6 +4,7 @@ import {
   SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
   ActivityIndicator,
 } from 'react-native'
+import { ArrowLeft, CheckCircle, Clock, XCircle, Lock } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { useAuthStore } from '../../store/auth.store'
@@ -17,7 +18,8 @@ function StatusCard({ status, tier }: { status?: string; tier?: string }) {
   const isSubmitted = status === 'submitted'
   const isRejected  = status === 'rejected'
 
-  const icon  = isVerified ? '✅' : isSubmitted ? '⏳' : '❌'
+  const StatusIcon = isVerified ? CheckCircle : isSubmitted ? Clock : XCircle
+  const iconColor  = isVerified ? '#4ade80' : isSubmitted ? '#facc15' : '#f87171'
   const label = isVerified ? 'Identity Verified'
     : isSubmitted ? 'Under Review'
     : 'Verification Rejected'
@@ -30,7 +32,7 @@ function StatusCard({ status, tier }: { status?: string; tier?: string }) {
 
   return (
     <View style={[ss.card, { borderColor: color + '40' }]}>
-      <Text style={ss.icon}>{icon}</Text>
+      <StatusIcon size={44} color={iconColor} strokeWidth={1.5} style={{ marginBottom: 16 }} />
       <Text style={[ss.label, { color }]}>{label}</Text>
       <Text style={ss.desc}>{desc}</Text>
     </View>
@@ -90,7 +92,10 @@ export default function KycScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.kav}>
         <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
           <TouchableOpacity onPress={() => navigation.goBack()} style={s.back} disabled={loading}>
-            <Text style={s.backText}>← Back</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+              <Text style={s.backText}>Back</Text>
+            </View>
           </TouchableOpacity>
 
           <Text style={s.title}>KYC Verification</Text>
@@ -152,10 +157,13 @@ export default function KycScreen({ navigation }: Props) {
               />
 
               <View style={s.privacyCard}>
-                <Text style={s.privacyText}>
-                  🔒 Your information is encrypted and used only for identity verification.
-                  We do not store your {method.toUpperCase()} after verification.
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                  <Lock size={13} color="rgba(255,255,255,0.35)" strokeWidth={1.5} style={{ marginTop: 2 }} />
+                  <Text style={s.privacyText}>
+                    Your information is encrypted and used only for identity verification.
+                    We do not store your {method.toUpperCase()} after verification.
+                  </Text>
+                </View>
               </View>
 
               <TouchableOpacity
@@ -236,7 +244,6 @@ const ss = StyleSheet.create({
     backgroundColor: '#141414', borderRadius: 20, padding: 28,
     alignItems: 'center', borderWidth: 1, marginTop: 8,
   },
-  icon:  { fontSize: 44, marginBottom: 16 },
   label: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
   desc:  { fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 20 },
 })
