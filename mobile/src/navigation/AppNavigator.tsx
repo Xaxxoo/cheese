@@ -1,7 +1,7 @@
 import React from 'react'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs'
-import { Text, View } from 'react-native'
+import { LayoutGrid, Clock, User } from 'lucide-react-native'
 import type { AppStackParamList, TabParamList } from './types'
 import { COLORS } from '../constants'
 
@@ -28,27 +28,25 @@ import DevicesScreen     from '../screens/devices/DevicesScreen'
 import CardScreen        from '../screens/card/CardScreen'
 import PayLinkPayScreen  from '../screens/paylink/PayLinkPayScreen'
 
-// ── Tab icons (text-based until vector icons are added) ───
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
-  const icons: Record<string, string> = { Dashboard: '⊞', History: '↻', Profile: '◉' }
-  return (
-    <View style={{ alignItems: 'center', gap: 2 }}>
-      <Text style={{ fontSize: 18, color: focused ? COLORS.gold : COLORS.textDim }}>
-        {icons[label] ?? '•'}
-      </Text>
-    </View>
-  )
-}
-
 // ── Bottom tab navigator ──────────────────────────────────
 const Tab = createBottomTabNavigator<TabParamList>()
+
+type TabIconComponent = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
+const TAB_ICONS: Record<string, TabIconComponent> = {
+  Dashboard: LayoutGrid,
+  History:   Clock,
+  Profile:   User,
+}
 
 function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
+        tabBarIcon: ({ color }) => {
+          const Icon = TAB_ICONS[route.name] ?? LayoutGrid
+          return <Icon size={22} color={color} strokeWidth={1.5} />
+        },
         tabBarActiveTintColor:   COLORS.gold,
         tabBarInactiveTintColor: COLORS.textDim,
         tabBarStyle: {
