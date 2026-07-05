@@ -4,6 +4,7 @@ import {
   SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
   ActivityIndicator,
 } from 'react-native'
+import { ArrowLeft, CheckCircle } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { resolveUsername, getSendFeeRate, sendToUsername, sendToAddress, getBalance } from '../../api/wallet'
@@ -31,7 +32,10 @@ function StepBar({ step }: { step: Step }) {
           <React.Fragment key={label}>
             <View style={sb.item}>
               <View style={[sb.circle, done && sb.circleDone, active && sb.circleActive]}>
-                <Text style={[sb.num, (done || active) && sb.numActive]}>{done ? '✓' : n}</Text>
+                {done
+                  ? <CheckCircle size={14} color="#000" strokeWidth={1.5} />
+                  : <Text style={[sb.num, active && sb.numActive]}>{n}</Text>
+                }
               </View>
               <Text style={[sb.label, active && sb.labelActive]}>{label}</Text>
             </View>
@@ -193,7 +197,7 @@ export default function SendScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.successWrap}>
-          <Text style={s.successIcon}>✅</Text>
+          <CheckCircle size={56} color="#4ade80" strokeWidth={1.5} style={{ marginBottom: 16 }} />
           <Text style={s.successTitle}>Sent!</Text>
           <Text style={s.successAmount}>{fmtUsdc(result.amountUsdc)}</Text>
           <Text style={s.successSub}>
@@ -236,7 +240,10 @@ export default function SendScreen({ navigation }: Props) {
             style={s.back}
             disabled={submitting}
           >
-            <Text style={s.backText}>← {step === 1 ? 'Back' : 'Previous'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+              <Text style={s.backText}>{step === 1 ? 'Back' : 'Previous'}</Text>
+            </View>
           </TouchableOpacity>
           <Text style={s.title}>Send Money</Text>
           <StepBar step={step} />
@@ -282,7 +289,7 @@ export default function SendScreen({ navigation }: Props) {
                   {resolveError  ? <Text style={s.errorText}>{resolveError}</Text>  : null}
                   {resolvedName  ? (
                     <View style={s.resolvedCard}>
-                      <Text style={s.resolvedIcon}>✓</Text>
+                      <CheckCircle size={14} color="#4ade80" strokeWidth={1.5} />
                       <Text style={s.resolvedText}>@{resolvedName}</Text>
                     </View>
                   ) : null}
@@ -490,7 +497,6 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 12, padding: 12, marginBottom: 16,
     borderWidth: 1, borderColor: 'rgba(74,222,128,0.2)',
   },
-  resolvedIcon:     { color: '#4ade80', fontSize: 14 },
   resolvedText:     { color: '#4ade80', fontWeight: '600', fontSize: 14 },
 
   errorText:        { color: '#ff6b6b', fontSize: 13, marginBottom: 12 },
@@ -541,7 +547,6 @@ const s = StyleSheet.create({
   nextBtnText:      { color: '#000', fontWeight: '700', fontSize: 15 },
 
   successWrap:      { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  successIcon:      { fontSize: 56, marginBottom: 16 },
   successTitle:     { fontSize: 24, fontWeight: '700', color: '#fff', marginBottom: 6 },
   successAmount:    { fontSize: 36, fontWeight: '700', color: '#4ade80', marginBottom: 4, letterSpacing: -1 },
   successSub:       { fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 32 },
