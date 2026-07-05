@@ -4,6 +4,7 @@ import {
   StyleSheet, SafeAreaView, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator,
 } from 'react-native'
+import { ArrowLeft } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AuthStackParamList } from '../../navigation/types'
 import { signup } from '../../api/auth'
@@ -73,7 +74,10 @@ export default function SignupScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.kav}>
         <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
           <TouchableOpacity onPress={() => navigation.goBack()} style={s.back} disabled={loading}>
-            <Text style={s.backText}>← Back</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+              <Text style={s.backText}>Back</Text>
+            </View>
           </TouchableOpacity>
           <Text style={s.title}>Create account</Text>
           <Text style={s.sub}>Join CheesePay</Text>
