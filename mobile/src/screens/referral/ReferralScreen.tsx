@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   ScrollView, ActivityIndicator, Share, Clipboard, RefreshControl,
 } from 'react-native'
+import { ArrowLeft } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { getReferralInfo } from '../../api/wallet'
@@ -65,7 +66,10 @@ export default function ReferralScreen({ navigation }: Props) {
       >
         {/* Header */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+            <Text style={s.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={s.title}>Referrals</Text>
         <Text style={s.sub}>Invite friends and earn rewards when they join</Text>
