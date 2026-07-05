@@ -3,6 +3,10 @@ import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   FlatList, RefreshControl, ActivityIndicator,
 } from 'react-native'
+import {
+  ArrowDownLeft, ArrowUpRight, Building2, Zap, CreditCard, Gift,
+  Link as LinkIcon, Circle, Bell, Plus,
+} from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { getBalance, getTransactions, getTransactionStats } from '../../api/wallet'
@@ -21,19 +25,20 @@ function greeting(): string {
   return 'Good evening'
 }
 
-function txIcon(type: Transaction['type']): string {
+function TxIcon({ type, color }: { type: Transaction['type']; color: string }) {
+  const props = { size: 20, color, strokeWidth: 1.5 } as const
   switch (type) {
-    case 'deposit':                       return '↓'
+    case 'deposit':                       return <ArrowDownLeft {...props} />
     case 'withdrawal':
     case 'send_username':
-    case 'send_address':                  return '↑'
-    case 'bank_transfer':                 return '🏦'
-    case 'bill_payment':                  return '⚡'
-    case 'card_payment':                  return '💳'
+    case 'send_address':                  return <ArrowUpRight {...props} />
+    case 'bank_transfer':                 return <Building2 {...props} />
+    case 'bill_payment':                  return <Zap {...props} />
+    case 'card_payment':                  return <CreditCard {...props} />
     case 'referral_bonus':
-    case 'yield_credit':                  return '🎁'
-    case 'pay_request':                   return '🔗'
-    default:                              return '•'
+    case 'yield_credit':                  return <Gift {...props} />
+    case 'pay_request':                   return <LinkIcon {...props} />
+    default:                              return <Circle {...props} />
   }
 }
 
@@ -153,14 +158,15 @@ export default function DashboardScreen({ navigation }: Props) {
   }
 
   type NoParamScreen = 'Send' | 'Receive' | 'AddMoney' | 'BankTransfer' | 'Card' | 'Paylink' | 'Bills'
-  const actions: { label: string; emoji: string; screen: NoParamScreen }[] = [
-    { label: 'Send',          emoji: '↑',  screen: 'Send'         },
-    { label: 'Receive',       emoji: '↓',  screen: 'Receive'      },
-    { label: 'Add Money',     emoji: '＋', screen: 'AddMoney'     },
-    { label: 'Bank Transfer', emoji: '🏦', screen: 'BankTransfer' },
-    { label: 'My Card',       emoji: '💳', screen: 'Card'         },
-    { label: 'Pay Link',      emoji: '🔗', screen: 'Paylink'      },
-    { label: 'Pay Bills',     emoji: '⚡', screen: 'Bills'        },
+  type IconComp = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
+  const actions: { label: string; Icon: IconComp; screen: NoParamScreen }[] = [
+    { label: 'Send',          Icon: ArrowUpRight,  screen: 'Send'         },
+    { label: 'Receive',       Icon: ArrowDownLeft, screen: 'Receive'      },
+    { label: 'Add Money',     Icon: Plus,          screen: 'AddMoney'     },
+    { label: 'Bank Transfer', Icon: Building2,     screen: 'BankTransfer' },
+    { label: 'My Card',       Icon: CreditCard,    screen: 'Card'         },
+    { label: 'Pay Link',      Icon: LinkIcon,      screen: 'Paylink'      },
+    { label: 'Pay Bills',     Icon: Zap,           screen: 'Bills'        },
   ]
 
   const firstName = user?.fullName?.split(' ')[0] ?? user?.username ?? ''
@@ -172,7 +178,7 @@ export default function DashboardScreen({ navigation }: Props) {
       <View style={s.header}>
         <Text style={s.greeting}>{greeting()}{firstName ? `, ${firstName}` : ''} 👋</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-          <Text style={s.bell}>🔔</Text>
+          <Bell size={22} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
         </TouchableOpacity>
       </View>
 
@@ -192,7 +198,7 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* Inward / Outward stat cards */}
       <View style={s.statsRow}>
         <View style={[s.statCard, s.statCardIn]}>
-          <Text style={s.statCardIcon}>↓</Text>
+          <ArrowDownLeft size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} style={{ marginBottom: 6 }} />
           <Text style={s.statCardLabel}>Total Received</Text>
           {loading || !stats ? (
             <ActivityIndicator color="#4ade80" size="small" style={{ marginTop: 6 }} />
@@ -201,7 +207,7 @@ export default function DashboardScreen({ navigation }: Props) {
           )}
         </View>
         <View style={[s.statCard, s.statCardOut]}>
-          <Text style={s.statCardIcon}>↑</Text>
+          <ArrowUpRight size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} style={{ marginBottom: 6 }} />
           <Text style={s.statCardLabel}>Total Sent</Text>
           {loading || !stats ? (
             <ActivityIndicator color="#f87171" size="small" style={{ marginTop: 6 }} />
@@ -220,13 +226,13 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* Quick actions */}
       <Text style={s.sectionLabel}>Quick Actions</Text>
       <View style={s.actions}>
-        {actions.map(({ label, emoji, screen }) => (
+        {actions.map(({ label, Icon, screen }) => (
           <TouchableOpacity
             key={label}
             style={s.actionBtn}
             onPress={() => navigation.navigate(screen)}
           >
-            <Text style={s.actionEmoji}>{emoji}</Text>
+            <Icon size={24} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
             <Text style={s.actionLabel}>{label}</Text>
           </TouchableOpacity>
         ))}
@@ -271,7 +277,7 @@ export default function DashboardScreen({ navigation }: Props) {
         renderItem={({ item: tx }) => (
           <View style={s.txRow}>
             <View style={[s.txIconWrap, { backgroundColor: txIconColor(tx.type) + '1a' }]}>
-              <Text style={[s.txIcon, { color: txIconColor(tx.type) }]}>{txIcon(tx.type)}</Text>
+              <TxIcon type={tx.type} color={txIconColor(tx.type)} />
             </View>
             <View style={s.txMeta}>
               <Text style={s.txLabel} numberOfLines={1}>{txLabel(tx)}</Text>
@@ -296,7 +302,6 @@ const s = StyleSheet.create({
 
   header:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   greeting:      { fontSize: 15, color: 'rgba(255,255,255,0.7)', fontWeight: '500', flex: 1 },
-  bell:          { fontSize: 22 },
 
   balanceCard:   {
     backgroundColor: '#141414', borderRadius: 20,
@@ -315,7 +320,6 @@ const s = StyleSheet.create({
   },
   statCardIn:    { backgroundColor: 'rgba(74,222,128,0.06)', borderColor: 'rgba(74,222,128,0.15)' },
   statCardOut:   { backgroundColor: 'rgba(248,113,113,0.06)', borderColor: 'rgba(248,113,113,0.15)' },
-  statCardIcon:  { fontSize: 18, marginBottom: 6, color: 'rgba(255,255,255,0.5)' },
   statCardLabel: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: '600',
                    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
   statCardAmount:{ fontSize: 15, fontWeight: '700' },
@@ -334,10 +338,9 @@ const s = StyleSheet.create({
   actions:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
   actionBtn:     {
     backgroundColor: '#141414', borderRadius: 16,
-    padding: 16, alignItems: 'center', width: '30%',
+    padding: 16, alignItems: 'center', width: '30%', gap: 6,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
-  actionEmoji:   { fontSize: 22, marginBottom: 6 },
   actionLabel:   { fontSize: 11, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontWeight: '500' },
 
   txHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
@@ -362,7 +365,6 @@ const s = StyleSheet.create({
     width: 40, height: 40, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  txIcon:        { fontSize: 16, fontWeight: '700' },
   txMeta:        { flex: 1, marginRight: 8 },
   txLabel:       { fontSize: 14, color: '#fff', fontWeight: '500', marginBottom: 3 },
   txSubRow:      { flexDirection: 'row', alignItems: 'center', gap: 6 },
