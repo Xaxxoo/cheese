@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ActivityIndicator,
 } from 'react-native'
+import { ArrowLeft } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AuthStackParamList } from '../../navigation/types'
 import { verifyEmailOtp, resendOtp } from '../../api/auth'
@@ -63,7 +64,10 @@ export default function VerifyOtpScreen({ route, navigation }: Props) {
     <SafeAreaView style={s.safe}>
       <View style={s.container}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.back} disabled={loading}>
-          <Text style={s.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+            <Text style={s.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={s.title}>Check your email</Text>
         <Text style={s.sub}>We sent a 6-digit code to{'\n'}{email}</Text>
