@@ -34,6 +34,7 @@ export type AppStackParamList = {
   EditProfile:  undefined
   ChangePin:    undefined
   Referral:     undefined
+  AddMoney:     undefined
   PayLinkPay:   { token: string }
 }
 

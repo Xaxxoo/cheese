@@ -339,6 +339,17 @@ export interface PayBillResponse {
   createdAt: string
 }
 
+// ── On-Ramp ───────────────────────────────────────────────
+export interface VirtualAccount {
+  accountNumber: string
+  accountName: string
+}
+
+export interface OnRampAvailability {
+  availableUsdc: string
+  availableUsdcDisplay: string
+}
+
 // ── Notifications ─────────────────────────────────────────
 export interface AppNotification {
   id: string

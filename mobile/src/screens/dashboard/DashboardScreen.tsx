@@ -152,10 +152,11 @@ export default function DashboardScreen({ navigation }: Props) {
     }
   }
 
-  type NoParamScreen = 'Send' | 'Receive' | 'BankTransfer' | 'Paylink' | 'Bills'
+  type NoParamScreen = 'Send' | 'Receive' | 'AddMoney' | 'BankTransfer' | 'Paylink' | 'Bills'
   const actions: { label: string; emoji: string; screen: NoParamScreen }[] = [
     { label: 'Send',          emoji: '↑',  screen: 'Send'         },
     { label: 'Receive',       emoji: '↓',  screen: 'Receive'      },
+    { label: 'Add Money',     emoji: '＋', screen: 'AddMoney'     },
     { label: 'Bank Transfer', emoji: '🏦', screen: 'BankTransfer' },
     { label: 'Pay Link',      emoji: '🔗', screen: 'Paylink'      },
     { label: 'Pay Bills',     emoji: '⚡', screen: 'Bills'        },

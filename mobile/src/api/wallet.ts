@@ -8,6 +8,7 @@ import type {
   SendToUsernamePayload, SendToAddressPayload,
   ExchangeRate, EarnBalance, ReferralInfo,
   VirtualCard,
+  VirtualAccount, OnRampAvailability,
   CreatePayLinkPayload, CreatePayLinkResponse,
   PayLinkData, PayLinkPayPayload,
   AppNotification,
@@ -92,6 +93,17 @@ export async function syncBankTransferStatus(reference: string): Promise<{ refer
   const { data } = await client.post<ApiResponse<{ reference: string; status: string; synced: boolean }>>(
     `/banks/transfer/${reference}/status`,
   )
+  return data.data
+}
+
+// ── On-Ramp ───────────────────────────────────────────────
+export async function getVirtualAccount(): Promise<VirtualAccount> {
+  const { data } = await client.get<ApiResponse<VirtualAccount>>('/banks/virtual-account')
+  return data.data
+}
+
+export async function getOnRampAvailability(): Promise<OnRampAvailability> {
+  const { data } = await client.get<ApiResponse<OnRampAvailability>>('/banks/onramp-availability')
   return data.data
 }
 
