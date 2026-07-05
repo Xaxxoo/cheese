@@ -149,17 +149,27 @@ export async function verifyNin(nin: string): Promise<{ kycStatus: string; tier:
 
 // ── Card ──────────────────────────────────────────────────
 export async function getCard(): Promise<VirtualCard> {
-  const { data } = await client.get<ApiResponse<VirtualCard>>('/cards')
+  const { data } = await client.get<ApiResponse<VirtualCard>>('/card')
   return data.data
 }
 
 export async function freezeCard(): Promise<VirtualCard> {
-  const { data } = await client.post<ApiResponse<VirtualCard>>('/cards/freeze')
+  const { data } = await client.post<ApiResponse<VirtualCard>>('/card/freeze')
   return data.data
 }
 
 export async function unfreezeCard(): Promise<VirtualCard> {
-  const { data } = await client.post<ApiResponse<VirtualCard>>('/cards/unfreeze')
+  const { data } = await client.post<ApiResponse<VirtualCard>>('/card/unfreeze')
+  return data.data
+}
+
+export async function revealCvv(pin: string): Promise<{ cvv: string; expiresAt: string }> {
+  const { data } = await client.post<ApiResponse<{ cvv: string; expiresAt: string }>>('/card/cvv', { pin })
+  return data.data
+}
+
+export async function getCardTransactions(): Promise<Transaction[]> {
+  const { data } = await client.get<ApiResponse<Transaction[]>>('/card/transactions')
   return data.data
 }
 

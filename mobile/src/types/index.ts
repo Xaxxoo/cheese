@@ -226,20 +226,18 @@ export interface SendToAddressPayload {
 
 // ── Card ──────────────────────────────────────────────────
 export interface VirtualCard {
-  id: string
-  cardNumber: string
-  expiryDate: string
-  cvv: string
-  holderName: string
-  status: 'active' | 'inactive' | 'frozen'
-  balance: string
-  currency: string
-  createdAt: string
-  limits: {
-    daily: string
-    monthly: string
-    perTransaction: string
-  }
+  id:               string
+  last4:            string
+  maskedNumber:     string
+  expiry:           string
+  expiryMonth:      string
+  expiryYear:       string
+  holderName:       string
+  network:          string
+  status:           'active' | 'frozen' | 'terminated'
+  availableBalance: string
+  monthlySpend:     string
+  spendLimit:       string
 }
 
 // ── Exchange Rate ─────────────────────────────────────────
