@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, ActivityIndicator, Modal,
 } from 'react-native'
+import { ArrowLeft, Smartphone, Trash2, Shield, AlertTriangle, CheckCircle } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { listDevices, revokeDevice } from '../../api/wallet'
@@ -40,7 +41,7 @@ function ConfirmModal({
       <View style={m.overlay}>
         <View style={m.sheet}>
           <View style={m.iconWrap}>
-            <Text style={m.iconText}>⚠</Text>
+            <AlertTriangle size={22} color="#f87171" strokeWidth={1.5} />
           </View>
           <Text style={m.title}>Remove device?</Text>
           <Text style={m.body}>
@@ -82,7 +83,6 @@ const m = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(248,113,113,0.2)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
-  iconText:   { fontSize: 22, color: '#f87171' },
   title:      { fontSize: 16, fontWeight: '600', color: '#fff' },
   body:       { fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 20 },
   deviceName: { color: 'rgba(255,255,255,0.65)', fontWeight: '500' },
@@ -116,7 +116,7 @@ function DeviceRow({
   return (
     <View style={[r.row, device.isCurrent && r.rowCurrent]}>
       <View style={[r.iconWrap, device.isCurrent && r.iconWrapCurrent]}>
-        <Text style={[r.iconText, device.isCurrent && r.iconTextCurrent]}>📱</Text>
+        <Smartphone size={20} color={device.isCurrent ? '#4ade80' : 'rgba(255,255,255,0.5)'} strokeWidth={1.5} />
       </View>
 
       <View style={r.meta}>
@@ -143,7 +143,7 @@ function DeviceRow({
         >
           {revoking
             ? <ActivityIndicator color="#f87171" size="small" />
-            : <Text style={r.trashIcon}>🗑</Text>
+            : <Trash2 size={18} color="#f87171" strokeWidth={1.5} />
           }
         </TouchableOpacity>
       )}
@@ -169,8 +169,6 @@ const r = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   iconWrapCurrent: { backgroundColor: 'rgba(34,197,94,0.15)' },
-  iconText:        { fontSize: 18 },
-  iconTextCurrent: {},
   meta:            { flex: 1 },
   nameRow:         { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   name:            { fontSize: 14, fontWeight: '500', color: '#fff' },
@@ -184,7 +182,6 @@ const r = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
   },
-  trashIcon:       { fontSize: 16 },
 })
 
 // ── Screen ────────────────────────────────────────────────
@@ -244,14 +241,14 @@ export default function DevicesScreen({ navigation }: Props) {
         {/* Header */}
         <View style={s.header}>
           <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={s.backArrow}>←</Text>
+            <ArrowLeft size={20} color="rgba(255,255,255,0.6)" strokeWidth={1.5} />
           </TouchableOpacity>
           <Text style={s.title}>Trusted Devices</Text>
         </View>
 
         {/* Security banner */}
         <View style={s.securityBanner}>
-          <Text style={s.securityIcon}>🛡</Text>
+          <Shield size={16} color="#d4a843" strokeWidth={1.5} style={{ marginTop: 1 }} />
           <View style={s.securityText}>
             <Text style={s.securityTitle}>Manage your sessions</Text>
             <Text style={s.securitySub}>
@@ -270,7 +267,7 @@ export default function DevicesScreen({ navigation }: Props) {
         {/* Error */}
         {!loading && error && devices.length === 0 && (
           <View style={s.errorCard}>
-            <Text style={s.errorIcon}>⚠</Text>
+            <AlertTriangle size={22} color="rgba(248,113,113,0.7)" strokeWidth={1.5} />
             <Text style={s.errorText}>Could not load devices</Text>
             <TouchableOpacity
               onPress={() => { setLoading(true); load().finally(() => setLoading(false)) }}
@@ -318,7 +315,7 @@ export default function DevicesScreen({ navigation }: Props) {
             {/* No other devices */}
             {otherDevices.length === 0 && (
               <View style={s.emptyCard}>
-                <Text style={s.emptyIcon}>✅</Text>
+                <CheckCircle size={26} color="#4ade80" strokeWidth={1.5} style={{ marginBottom: 4 }} />
                 <Text style={s.emptyTitle}>Only this device has access</Text>
                 <Text style={s.emptySub}>No other sessions are active on your account.</Text>
               </View>
@@ -348,7 +345,6 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
-  backArrow: { color: 'rgba(255,255,255,0.6)', fontSize: 18, lineHeight: 22 },
   title:     { fontSize: 18, fontWeight: '600', color: '#fff', letterSpacing: -0.3 },
 
   securityBanner: {
@@ -357,7 +353,6 @@ const s = StyleSheet.create({
     borderRadius: 16, borderWidth: 1, borderColor: 'rgba(212,168,67,0.15)',
     padding: 14, marginBottom: 24,
   },
-  securityIcon:  { fontSize: 16, marginTop: 1 },
   securityText:  { flex: 1, gap: 3 },
   securityTitle: { fontSize: 12, fontWeight: '600', color: '#d4a843' },
   securitySub:   { fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 17 },
@@ -369,7 +364,6 @@ const s = StyleSheet.create({
     borderRadius: 16, borderWidth: 1, borderColor: 'rgba(248,113,113,0.1)',
     padding: 24, alignItems: 'center', gap: 8,
   },
-  errorIcon:  { fontSize: 22 },
   errorText:  { fontSize: 14, color: 'rgba(255,255,255,0.4)' },
   retryText:  { fontSize: 13, color: '#d4a843', fontWeight: '500', marginTop: 4 },
 
@@ -387,7 +381,6 @@ const s = StyleSheet.create({
     borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
     padding: 28, alignItems: 'center', gap: 6,
   },
-  emptyIcon:  { fontSize: 26, marginBottom: 4 },
   emptyTitle: { fontSize: 15, fontWeight: '500', color: 'rgba(255,255,255,0.5)' },
   emptySub:   { fontSize: 12, color: 'rgba(255,255,255,0.25)', textAlign: 'center' },
 })
