@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, ActivityIndicator, Modal, useWindowDimensions,
 } from 'react-native'
+import { ArrowLeft, Snowflake, CheckCircle, Copy, Eye, EyeOff, Lock, CreditCard } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
@@ -56,7 +57,7 @@ function CardVisual({ card, cardWidth }: { card: VirtualCard; cardWidth: number 
       {/* Frozen overlay */}
       {isFrozen && (
         <View style={cv.frozenOverlay}>
-          <Text style={cv.frozenIcon}>❄</Text>
+          <Snowflake size={28} color="rgba(96,165,250,0.65)" strokeWidth={1.5} />
           <Text style={cv.frozenLabel}>FROZEN</Text>
         </View>
       )}
@@ -102,7 +103,6 @@ const cv = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(15,24,36,0.35)', gap: 6,
   },
-  frozenIcon:  { fontSize: 28, color: 'rgba(96,165,250,0.65)' },
   frozenLabel: {
     fontSize: 11, color: 'rgba(147,197,253,0.7)',
     fontWeight: '600', letterSpacing: 4,
@@ -205,7 +205,10 @@ function CvvModal({ onClose }: { onClose: () => void }) {
                   style={cm.eyeBtn}
                   onPress={() => setCvvVisible((v) => !v)}
                 >
-                  <Text style={cm.eyeIcon}>{cvvVisible ? '🙈' : '👁'}</Text>
+                  {cvvVisible
+                    ? <EyeOff size={18} color="rgba(255,255,255,0.6)" strokeWidth={1.5} />
+                    : <Eye size={18} color="rgba(255,255,255,0.6)" strokeWidth={1.5} />
+                  }
                 </TouchableOpacity>
               </View>
 
@@ -260,7 +263,6 @@ const cm = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
-  eyeIcon: { fontSize: 16 },
 
   countdownRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   countdownDot: { width: 8, height: 8, borderRadius: 4 },
@@ -349,13 +351,17 @@ export default function CardScreen({ navigation }: Props) {
         {/* Header */}
         <View style={s.header}>
           <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={s.backArrow}>←</Text>
+            <ArrowLeft size={20} color="rgba(255,255,255,0.6)" strokeWidth={1.5} />
           </TouchableOpacity>
           <Text style={s.title}>My Card</Text>
           {card && (
             <View style={[s.statusBadge, isFrozen ? s.statusFrozen : s.statusActive]}>
+              {isFrozen
+                ? <Snowflake size={12} color="#93c5fd" strokeWidth={1.5} />
+                : <CheckCircle size={12} color="#4ade80" strokeWidth={1.5} />
+              }
               <Text style={[s.statusText, { color: isFrozen ? '#93c5fd' : '#4ade80' }]}>
-                {isFrozen ? '❄ Frozen' : '✓ Active'}
+                {isFrozen ? 'Frozen' : 'Active'}
               </Text>
             </View>
           )}
@@ -371,7 +377,7 @@ export default function CardScreen({ navigation }: Props) {
         {/* Locked / error */}
         {!loading && !card && lockMsg && (
           <View style={s.lockedWrap}>
-            <Text style={s.lockedIcon}>🔒</Text>
+            <Lock size={44} color="rgba(255,255,255,0.4)" strokeWidth={1.5} />
             <Text style={s.lockedTitle}>Card Locked</Text>
             <Text style={s.lockedSub}>{lockMsg}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('KYC')}>
@@ -396,7 +402,7 @@ export default function CardScreen({ navigation }: Props) {
               >
                 {freezeLoading
                   ? <ActivityIndicator color={isFrozen ? '#93c5fd' : 'rgba(255,255,255,0.6)'} size="small" />
-                  : <Text style={s.actionIcon}>❄</Text>
+                  : <Snowflake size={22} color={isFrozen ? '#93c5fd' : 'rgba(255,255,255,0.6)'} strokeWidth={1.5} />
                 }
                 <Text style={[s.actionLabel, isFrozen && { color: '#93c5fd' }]}>
                   {isFrozen ? 'Unfreeze' : 'Freeze'}
@@ -405,7 +411,10 @@ export default function CardScreen({ navigation }: Props) {
 
               {/* Copy number */}
               <TouchableOpacity style={s.actionBtn} onPress={copyNumber}>
-                <Text style={s.actionIcon}>{copiedNum ? '✓' : '⎘'}</Text>
+                {copiedNum
+                  ? <CheckCircle size={22} color="#4ade80" strokeWidth={1.5} />
+                  : <Copy size={22} color="rgba(255,255,255,0.6)" strokeWidth={1.5} />
+                }
                 <Text style={[s.actionLabel, copiedNum && { color: '#4ade80' }]}>
                   {copiedNum ? 'Copied' : 'Copy'}
                 </Text>
@@ -417,7 +426,7 @@ export default function CardScreen({ navigation }: Props) {
                 onPress={() => !isFrozen && setShowCvv(true)}
                 disabled={isFrozen}
               >
-                <Text style={[s.actionIcon, isFrozen && s.iconDim]}>👁</Text>
+                <Eye size={22} color={isFrozen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.6)'} strokeWidth={1.5} />
                 <Text style={[s.actionLabel, isFrozen && s.labelDim]}>CVV</Text>
               </TouchableOpacity>
             </View>
@@ -456,7 +465,7 @@ export default function CardScreen({ navigation }: Props) {
 
               {transactions.length === 0 ? (
                 <View style={s.emptyCard}>
-                  <Text style={s.emptyIcon}>💳</Text>
+                  <CreditCard size={26} color="rgba(255,255,255,0.2)" strokeWidth={1.5} />
                   <Text style={s.emptyText}>No card transactions yet</Text>
                 </View>
               ) : (
@@ -464,7 +473,7 @@ export default function CardScreen({ navigation }: Props) {
                   {transactions.map((tx) => (
                     <View key={tx.id} style={s.txRow}>
                       <View style={s.txIconWrap}>
-                        <Text style={s.txIcon}>💳</Text>
+                        <CreditCard size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
                       </View>
                       <View style={s.txMeta}>
                         <Text style={s.txLabel} numberOfLines={1}>
@@ -502,7 +511,6 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center', justifyContent: 'center',
   },
-  backArrow:   { color: 'rgba(255,255,255,0.6)', fontSize: 18, lineHeight: 22 },
   title:       { fontSize: 18, fontWeight: '600', color: '#fff', letterSpacing: -0.3, flex: 1 },
   statusBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -517,7 +525,6 @@ const s = StyleSheet.create({
   lockedWrap:  {
     alignItems: 'center', paddingVertical: 60, paddingHorizontal: 24, gap: 10,
   },
-  lockedIcon:  { fontSize: 44 },
   lockedTitle: { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   lockedSub:   {
     fontSize: 13, color: 'rgba(255,255,255,0.3)',
@@ -537,9 +544,7 @@ const s = StyleSheet.create({
     borderColor: 'rgba(96,165,250,0.2)',
   },
   actionBtnDisabled: { opacity: 0.4 },
-  actionIcon:  { fontSize: 18 },
   actionLabel: { fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.6)' },
-  iconDim:     { opacity: 0.4 },
   labelDim:    { opacity: 0.4 },
 
   // Stats card
@@ -583,7 +588,6 @@ const s = StyleSheet.create({
     alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
   },
-  emptyIcon: { fontSize: 26 },
   emptyText: { fontSize: 13, color: 'rgba(255,255,255,0.25)' },
 
   txList:    { gap: 6 },
@@ -596,7 +600,6 @@ const s = StyleSheet.create({
   txIconWrap:{ width: 38, height: 38, borderRadius: 12,
                backgroundColor: 'rgba(255,255,255,0.06)',
                alignItems: 'center', justifyContent: 'center' },
-  txIcon:    { fontSize: 16 },
   txMeta:    { flex: 1 },
   txLabel:   { fontSize: 14, color: '#fff', fontWeight: '500', marginBottom: 2 },
   txDate:    { fontSize: 11, color: 'rgba(255,255,255,0.3)' },
