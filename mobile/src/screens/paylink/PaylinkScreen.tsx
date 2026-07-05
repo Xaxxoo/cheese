@@ -4,6 +4,7 @@ import {
   SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
   FlatList, RefreshControl, ActivityIndicator, Share, Modal,
 } from 'react-native'
+import { ArrowLeft, Link as LinkIcon } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import {
@@ -211,7 +212,10 @@ export default function PaylinkScreen({ navigation }: Props) {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={s.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+            <Text style={s.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={s.title}>Pay Link</Text>
       </View>
@@ -240,7 +244,7 @@ export default function PaylinkScreen({ navigation }: Props) {
             {/* Success card */}
             {created ? (
               <View style={s.createdCard}>
-                <Text style={s.createdIcon}>🔗</Text>
+                <LinkIcon size={44} color="#4ade80" strokeWidth={1.5} style={{ marginBottom: 12 }} />
                 <Text style={s.createdTitle}>Link Created!</Text>
                 <Text style={s.createdAmount}>{fmtUsdc(created.amountUsdc)}</Text>
                 {created.note ? <Text style={s.createdNote}>{created.note}</Text> : null}
@@ -345,7 +349,7 @@ export default function PaylinkScreen({ navigation }: Props) {
             ItemSeparatorComponent={() => <View style={s.separator} />}
             ListEmptyComponent={
               <View style={s.empty}>
-                <Text style={s.emptyIcon}>🔗</Text>
+                <LinkIcon size={44} color="rgba(255,255,255,0.2)" strokeWidth={1.5} style={{ marginBottom: 16 }} />
                 <Text style={s.emptyTitle}>No pay links yet</Text>
                 <Text style={s.emptyText}>Create a pay link and share it to request payment.</Text>
               </View>
@@ -426,7 +430,6 @@ const s = StyleSheet.create({
     backgroundColor: '#141414', borderRadius: 20, padding: 24,
     alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
-  createdIcon:       { fontSize: 44, marginBottom: 12 },
   createdTitle:      { fontSize: 18, fontWeight: '700', color: '#fff', marginBottom: 4 },
   createdAmount:     { fontSize: 32, fontWeight: '700', color: '#4ade80', marginBottom: 4, letterSpacing: -0.5 },
   createdNote:       { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20 },
@@ -463,7 +466,6 @@ const s = StyleSheet.create({
   statusText:        { fontSize: 12, fontWeight: '600' },
 
   empty:             { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, paddingTop: 60 },
-  emptyIcon:         { fontSize: 44, marginBottom: 16 },
   emptyTitle:        { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 8 },
   emptyText:         { fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 20 },
 
