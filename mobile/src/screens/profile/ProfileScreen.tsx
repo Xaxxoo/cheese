@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert,
 } from 'react-native'
+import { Pencil, LockKeyhole, Smartphone, Gift, BadgeCheck, Bell, ChevronRight } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { useAuthStore } from '../../store/auth.store'
@@ -89,13 +90,14 @@ export default function ProfileScreen({ navigation }: Props) {
     ])
   }
 
-  const menuItems = [
-    { label: 'Edit Profile',      icon: '✏️',  onPress: () => navigation.navigate('EditProfile')   },
-    { label: 'Change PIN',        icon: '🔐',  onPress: () => navigation.navigate('ChangePin')     },
-    { label: 'Trusted Devices',   icon: '📱',  onPress: () => navigation.navigate('Devices')       },
-    { label: 'Referrals',         icon: '🎁',  onPress: () => navigation.navigate('Referral')      },
-    { label: 'KYC Verification',  icon: '🪪',  onPress: () => navigation.navigate('KYC')           },
-    { label: 'Notifications',     icon: '🔔',  onPress: () => navigation.navigate('Notifications') },
+  type IconComp = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
+  const menuItems: { label: string; Icon: IconComp; onPress: () => void }[] = [
+    { label: 'Edit Profile',      Icon: Pencil,      onPress: () => navigation.navigate('EditProfile')   },
+    { label: 'Change PIN',        Icon: LockKeyhole, onPress: () => navigation.navigate('ChangePin')     },
+    { label: 'Trusted Devices',   Icon: Smartphone,  onPress: () => navigation.navigate('Devices')       },
+    { label: 'Referrals',         Icon: Gift,        onPress: () => navigation.navigate('Referral')      },
+    { label: 'KYC Verification',  Icon: BadgeCheck,  onPress: () => navigation.navigate('KYC')           },
+    { label: 'Notifications',     Icon: Bell,        onPress: () => navigation.navigate('Notifications') },
   ]
 
   if (!user) return null
@@ -154,11 +156,11 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* Menu */}
         <View style={s.section}>
           <Text style={s.sectionLabel}>Account</Text>
-          {menuItems.map(({ label, icon, onPress }) => (
+          {menuItems.map(({ label, Icon, onPress }) => (
             <TouchableOpacity key={label} style={s.menuRow} onPress={onPress}>
-              <Text style={s.menuIcon}>{icon}</Text>
+              <Icon size={20} color="rgba(255,255,255,0.55)" strokeWidth={1.5} />
               <Text style={s.menuLabel}>{label}</Text>
-              <Text style={s.arrow}>›</Text>
+              <ChevronRight size={20} color="rgba(255,255,255,0.25)" strokeWidth={1.5} />
             </TouchableOpacity>
           ))}
         </View>
@@ -220,13 +222,11 @@ const s = StyleSheet.create({
   infoValue:   { fontSize: 13, color: '#fff', fontWeight: '500', flex: 2, textAlign: 'right' },
 
   menuRow:     {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 14,
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)',
   },
-  menuIcon:    { fontSize: 18, marginRight: 12 },
   menuLabel:   { flex: 1, fontSize: 15, color: '#fff' },
-  arrow:       { fontSize: 20, color: 'rgba(255,255,255,0.25)' },
 
   logoutBtn:   {
     marginTop: 8, padding: 16, borderRadius: 14,
