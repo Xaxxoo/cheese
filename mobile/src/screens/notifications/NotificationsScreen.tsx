@@ -3,6 +3,9 @@ import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   FlatList, RefreshControl, ActivityIndicator,
 } from 'react-native'
+import {
+  ArrowLeft, ArrowDownLeft, ArrowUpRight, BadgeCheck, Gift, CreditCard, Zap, Lock, Bell,
+} from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { getNotifications, markNotificationsRead } from '../../api/wallet'
@@ -11,15 +14,16 @@ import type { AppNotification } from '../../types'
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Notifications'>
 
-function notifIcon(type: string): string {
-  if (type.includes('deposit')   || type.includes('receive')) return '↓'
-  if (type.includes('send')      || type.includes('transfer')) return '↑'
-  if (type.includes('kyc')       || type.includes('verify'))   return '🪪'
-  if (type.includes('referral'))                                return '🎁'
-  if (type.includes('card'))                                    return '💳'
-  if (type.includes('bill'))                                    return '⚡'
-  if (type.includes('security')  || type.includes('login'))    return '🔒'
-  return '🔔'
+function NotifIcon({ type, color }: { type: string; color: string }) {
+  const props = { size: 18, color, strokeWidth: 1.5 } as const
+  if (type.includes('deposit')  || type.includes('receive'))  return <ArrowDownLeft {...props} />
+  if (type.includes('send')     || type.includes('transfer')) return <ArrowUpRight {...props} />
+  if (type.includes('kyc')      || type.includes('verify'))   return <BadgeCheck {...props} />
+  if (type.includes('referral'))                               return <Gift {...props} />
+  if (type.includes('card'))                                   return <CreditCard {...props} />
+  if (type.includes('bill'))                                   return <Zap {...props} />
+  if (type.includes('security') || type.includes('login'))    return <Lock {...props} />
+  return <Bell {...props} />
 }
 
 function notifIconColor(type: string): string {
@@ -67,9 +71,7 @@ export default function NotificationsScreen({ navigation }: Props) {
   const renderItem = ({ item }: { item: AppNotification }) => (
     <View style={[s.row, !item.read && s.rowUnread]}>
       <View style={[s.iconWrap, { backgroundColor: notifIconColor(item.type) + '1a' }]}>
-        <Text style={[s.icon, { color: notifIconColor(item.type) }]}>
-          {notifIcon(item.type)}
-        </Text>
+        <NotifIcon type={item.type} color={notifIconColor(item.type)} />
       </View>
       <View style={s.content}>
         <View style={s.titleRow}>
@@ -86,7 +88,10 @@ export default function NotificationsScreen({ navigation }: Props) {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+            <Text style={s.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={s.title}>Notifications</Text>
       </View>
@@ -115,7 +120,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           ItemSeparatorComponent={() => <View style={s.separator} />}
           ListEmptyComponent={
             <View style={s.empty}>
-              <Text style={s.emptyIcon}>🔔</Text>
+              <Bell size={44} color="rgba(255,255,255,0.2)" strokeWidth={1.5} style={{ marginBottom: 16 }} />
               <Text style={s.emptyTitle}>No notifications yet</Text>
               <Text style={s.emptyText}>We'll notify you about transactions and account activity here.</Text>
             </View>
@@ -151,7 +156,6 @@ const s = StyleSheet.create({
     width: 42, height: 42, borderRadius: 13,
     alignItems: 'center', justifyContent: 'center', marginRight: 12, marginTop: 1,
   },
-  icon:        { fontSize: 17 },
   content:     { flex: 1 },
   titleRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
   notifTitle:  { fontSize: 14, fontWeight: '600', color: '#fff', flex: 1 },
@@ -160,7 +164,6 @@ const s = StyleSheet.create({
   time:        { fontSize: 11, color: 'rgba(255,255,255,0.25)' },
 
   empty:       { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, paddingTop: 80 },
-  emptyIcon:   { fontSize: 44, marginBottom: 16 },
   emptyTitle:  { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 8 },
   emptyText:   { fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 20 },
 })
