@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   ScrollView, ActivityIndicator, Share,
 } from 'react-native'
+import { ArrowLeft } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import QRCode from 'react-native-qrcode-svg'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -72,7 +73,10 @@ export default function ReceiveScreen({ navigation }: Props) {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.container}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <ArrowLeft size={16} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+            <Text style={s.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={s.title}>Receive</Text>
         <Text style={s.sub}>Share your address to receive USDC</Text>
