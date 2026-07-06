@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, SendHorizonal, TrendingUp, Clock, User } from 'lucide-react'
+import { Home, SendHorizonal, Clock, User } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 const NAV = [
   { href: '/dashboard', icon: Home,          label: 'Home'    },
   { href: '/send',      icon: SendHorizonal,  label: 'Send'    },
-  { href: '/earn',      icon: TrendingUp,     label: 'Earn'    },
   { href: '/history',   icon: Clock,          label: 'History' },
   { href: '/profile',   icon: User,           label: 'Profile' },
 ]
@@ -19,7 +18,7 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
       <div className="w-full max-w-[430px] border-t border-white/8 bg-[#0a0a0a]/95 backdrop-blur-xl">
-        <div className="flex items-center justify-around px-1 pb-safe pt-2">
+        <div className="flex items-center justify-around px-2 pb-safe pt-2">
           {NAV.map(({ href, icon: Icon, label }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
@@ -27,7 +26,7 @@ export function BottomNav() {
                 key={href}
                 href={href}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-150',
+                  'flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-150',
                   active
                     ? 'text-[#d4a843]'
                     : 'text-white/35 hover:text-white/60',
