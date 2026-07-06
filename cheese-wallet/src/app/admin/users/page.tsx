@@ -13,6 +13,7 @@ import { listAdminUsers, getAdminStats, type AdminUserItem, type AdminStats } fr
 type TierFilter = 'All' | 'Silver' | 'Gold' | 'Black';
 type KycFilter  = 'All' | 'Verified' | 'Pending' | 'Reviewing' | 'Failed';
 type SortDir    = 'asc' | 'desc';
+type SortBy     = 'balance' | 'createdAt';
 
 const LIMIT = 20;
 
@@ -29,6 +30,7 @@ export default function UsersPage() {
   const [total,      setTotal]      = useState(0);
   const [loading,    setLoading]    = useState(true);
   const [stats,      setStats]      = useState<AdminStats | null>(null);
+  const [sortBy,     setSortBy]     = useState<SortBy>('balance');
   const [sortDir,    setSortDir]    = useState<SortDir>('desc');
 
   // Header chips — fetch once
@@ -49,7 +51,7 @@ export default function UsersPage() {
           search:  search || undefined,
           tier:    tierFilter !== 'All' ? tierFilter : undefined,
           kyc:     kycFilter  !== 'All' ? kycFilter  : undefined,
-          sortBy:  'balance',
+          sortBy,
           sortDir,
         });
         if (!cancelled) { setUsers(result.users); setTotal(result.total); }
@@ -60,7 +62,7 @@ export default function UsersPage() {
       }
     }, delay);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [page, search, tierFilter, kycFilter, sortDir]);
+  }, [page, search, tierFilter, kycFilter, sortBy, sortDir]);
 
   // Handlers — reset page on filter change
   const handleSearch = (s: string)      => { setSearch(s);     setPage(1); };
@@ -86,7 +88,15 @@ export default function UsersPage() {
 
   const COL_GRID = '2fr 90px 100px 110px 1.6fr 110px 110px 36px';
 
-  const toggleSort = () => { setSortDir((d) => d === 'desc' ? 'asc' : 'desc'); setPage(1); };
+  const toggleSort = (field: SortBy) => {
+    if (field === sortBy) {
+      setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy(field);
+      setSortDir('desc');
+    }
+    setPage(1);
+  };
 
   const from = total === 0 ? 0 : (page - 1) * LIMIT + 1;
   const to   = Math.min(page * LIMIT, total);
@@ -207,18 +217,28 @@ export default function UsersPage() {
           padding: '9px 22px', borderBottom: `1px solid ${c.border}`,
           flexShrink: 0,
         }}>
-          {['User', 'Tier', 'KYC', 'Wallet', 'Email', 'Joined'].map((h) => (
+          {(['User', 'Tier', 'KYC', 'Wallet', 'Email'] as const).map((h) => (
             <div key={h} style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
               {h}
             </div>
           ))}
-          {/* Balance — sortable */}
-          <button onClick={toggleSort} style={{
+          {/* Joined — sortable */}
+          <button onClick={() => toggleSort('createdAt')} style={{
             fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase',
-            color: c.amber, background: 'none', border: 'none', cursor: 'pointer',
+            color: sortBy === 'createdAt' ? c.amber : c.textDim,
+            background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 4, padding: 0,
           }}>
-            Balance (est.) {sortDir === 'desc' ? '↓' : '↑'}
+            Joined {sortBy === 'createdAt' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+          </button>
+          {/* Balance — sortable */}
+          <button onClick={() => toggleSort('balance')} style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase',
+            color: sortBy === 'balance' ? c.amber : c.textDim,
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+          }}>
+            Balance (est.) {sortBy === 'balance' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
           </button>
           <div />
         </div>
