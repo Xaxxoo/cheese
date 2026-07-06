@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Icon System Preview — Cheese Pay</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #060606;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  padding: 48px 32px 64px;
+  color: #fff;
+}
+h1.page-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+p.page-sub {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 48px;
+}
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  justify-content: center;
+}
+.phone-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.phone-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.toggle-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.toggle-btn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.toggle-btn.active {
+  background: rgba(212,168,67,0.15);
+  border-color: rgba(212,168,67,0.3);
+  color: #d4a843;
+}
+.phone {
+  width: 390px;
+  height: 844px;
+  background: #111;
+  border-radius: 48px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.notch {
+  width: 126px; height: 34px;
+  background: #0a0a0a;
+  border-radius: 0 0 20px 20px;
+  margin: 0 auto;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  background: #0a0a0a;
+}
+.screen::-webkit-scrollbar { display: none; }
+.tab-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 0 20px;
+  background: rgba(15,15,15,0.98);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+.tab-item svg { display: block; }
+.tab-label { font-size: 10px; color: rgba(255,255,255,0.28); }
+.tab-item.active .tab-label { color: #d4a843; }
+
+/* ── shared ── */
+.back-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 16px 20px 8px; color: rgba(255,255,255,0.5); font-size: 14px;
+}
+.scr-title { font-size: 24px; font-weight: 700; color: #fff; padding: 0 20px 4px; }
+.scr-sub { font-size: 13px; color: rgba(255,255,255,0.4); padding: 0 20px 20px; line-height: 1.5; }
+.field-label {
+  font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35);
+  text-transform: uppercase; letter-spacing: 0.07em;
+  padding: 0 20px 8px;
+}
+.primary-btn {
+  margin: 0 20px 16px;
+  background: #d4a843; border-radius: 14px; padding: 16px;
+  text-align: center; font-size: 15px; font-weight: 700; color: #000;
+}
+
+/* ── SVG defaults ── */
+svg.icon { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block; }
+
+/* ── DASHBOARD ── */
+.dash-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+}
+.dash-left .dash-greet { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 1px; }
+.dash-left .dash-name { font-size: 16px; font-weight: 600; color: #fff; }
+.bell-circle {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.5);
+}
+.balance-card {
+  margin: 0 16px 14px;
+  background: #141414;
+  border-radius: 20px; border: 1px solid rgba(255,255,255,0.07);
+  padding: 18px 20px;
+}
+.bal-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.bal-amount { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -0.5px; margin-bottom: 12px; }
+.bal-stats { display: flex; gap: 16px; }
+.bal-stat { display: flex; align-items: center; gap: 5px; }
+.bal-stat-text { font-size: 12px; color: rgba(255,255,255,0.45); }
+.actions-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+  margin: 0 16px 16px;
+}
+.action-cell {
+  background: #141414; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);
+  padding: 12px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.action-icon-wrap {
+  width: 38px; height: 38px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.action-cell-label { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.55); text-align: center; }
+.tx-section-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px 10px;
+}
+.tx-section-title { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; }
+.tx-see-all { font-size: 11px; color: #d4a843; }
+.tx-list { padding: 0 16px; display: flex; flex-direction: column; gap: 2px; }
+.tx-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; border-radius: 14px;
+  background: rgba(255,255,255,0.02);
+}
+.tx-icon-circle {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 13px; font-weight: 500; color: #fff; margin-bottom: 1px; }
+.tx-date { font-size: 11px; color: rgba(255,255,255,0.28); }
+.tx-amt { font-size: 13px; font-weight: 600; }
+
+/* ── PROFILE ── */
+.profile-hero {
+  padding: 16px 20px 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(135deg,#d4a843,#a07830);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #000; flex-shrink: 0;
+}
+.profile-name { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.profile-handle { font-size: 12px; color: rgba(255,255,255,0.35); margin-bottom: 5px; }
+.tier-pill {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(212,168,67,0.15); color: #d4a843;
+  border: 1px solid rgba(212,168,67,0.3);
+}
+.menu-card {
+  margin: 0 16px 12px;
+  background: #141414; border-radius: 20px; border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.menu-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+}
+.menu-row:last-child { border-bottom: none; }
+.menu-icon-box {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  color: rgba(255,255,255,0.55);
+}
+.menu-text { flex: 1; font-size: 14px; font-weight: 500; color: #fff; }
+.menu-chev { color: rgba(255,255,255,0.25); }
+.signout-btn {
+  margin: 0 16px 16px;
+  border-radius: 14px; border: 1px solid rgba(248,113,113,0.2);
+  background: rgba(248,113,113,0.06); padding: 14px;
+  text-align: center; font-size: 14px; font-weight: 600; color: #f87171;
+}
+
+/* ── CARD ── */
+.card-visual {
+  margin: 4px 20px 14px; height: 196px;
+  border-radius: 20px;
+  background: linear-gradient(135deg,#1c1c1c 0%,#242424 60%,#1a1a1a 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 18px 20px; position: relative; overflow: hidden;
+}
+.card-visual::before {
+  content:''; position:absolute; top:-50px; right:-40px;
+  width:160px; height:160px; border-radius:50%;
+  background: rgba(212,168,67,0.05);
+}
+.card-chip { width:30px; height:22px; border-radius:4px; background: rgba(212,168,67,0.3); margin-bottom: 20px; }
+.card-number { font-size:15px; letter-spacing:3px; color:rgba(255,255,255,0.8); font-weight:600; margin-bottom:8px; }
+.card-holder { font-size:12px; color:rgba(255,255,255,0.45); }
+.card-logo { position:absolute; top:18px; right:20px; font-size:22px; font-weight:900; color:rgba(255,255,255,0.25); font-style:italic; }
+.card-freeze-overlay {
+  position:absolute; inset:0; border-radius:20px;
+  background:rgba(10,10,10,0.85);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  color:rgba(255,255,255,0.45);
+}
+.card-freeze-lbl { font-size:14px; font-weight:600; }
+.card-actions {
+  display:flex; gap:10px; padding: 0 20px 14px;
+}
+.card-act-btn {
+  flex:1; background:#141414; border-radius:16px;
+  border:1px solid rgba(255,255,255,0.06); padding:13px 8px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  color:rgba(255,255,255,0.5);
+}
+.card-act-btn.on { background:rgba(212,168,67,0.1); border-color:rgba(212,168,67,0.25); color:#d4a843; }
+.card-act-lbl { font-size:11px; font-weight:500; }
+.card-info-row {
+  display:flex; margin:0 20px 10px; gap:10px;
+}
+.card-info-cell {
+  flex:1; background:#141414; border-radius:14px;
+  border:1px solid rgba(255,255,255,0.06); padding:14px;
+}
+.card-info-lbl { font-size:10px; font-weight:600; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px; }
+.card-info-val { font-size:16px; font-weight:700; color:#fff; letter-spacing:2px; }
+.locked-note {
+  margin:0 20px 12px; background:rgba(255,255,255,0.03);
+  border-radius:12px; border:1px solid rgba(255,255,255,0.06);
+  padding:13px 16px; display:flex; align-items:center; gap:10px;
+  color:rgba(255,255,255,0.3);
+}
+.locked-note-text { font-size:12px; color:rgba(255,255,255,0.35); line-height:1.4; }
+
+/* ── NOTIFICATIONS ── */
+.notif-list { padding:0 16px; display:flex; flex-direction:column; gap:6px; }
+.notif-item {
+  display:flex; align-items:flex-start; gap:12px;
+  padding:12px; border-radius:16px;
+  background:rgba(255,255,255,0.025);
+  border:1px solid rgba(255,255,255,0.04);
+}
+.notif-icon-circle {
+  width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.notif-body { flex:1; min-width:0; }
+.notif-title { font-size:13px; font-weight:600; color:#fff; margin-bottom:2px; }
+.notif-desc { font-size:12px; color:rgba(255,255,255,0.4); line-height:1.4; }
+.notif-time { font-size:10px; color:rgba(255,255,255,0.22); flex-shrink:0; margin-top:2px; }
+.notif-empty {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:60px 20px; gap:12px; color:rgba(255,255,255,0.3);
+}
+.notif-empty-title { font-size:16px; font-weight:600; }
+.notif-empty-sub { font-size:13px; text-align:center; line-height:1.5; }
+
+/* ── KYC ── */
+.kyc-tier-row { display:flex; gap:8px; padding:0 20px 20px; }
+.kyc-tier-cell {
+  flex:1; background:#141414; border-radius:12px; border:1px solid rgba(255,255,255,0.08);
+  padding:12px; text-align:center;
+}
+.kyc-tier-name { font-size:13px; font-weight:700; margin-bottom:2px; }
+.kyc-tier-desc { font-size:10px; color:rgba(255,255,255,0.28); }
+.method-row { display:flex; gap:10px; padding:0 20px 16px; }
+.method-btn {
+  flex:1; background:#141414; border-radius:14px;
+  border:1px solid rgba(255,255,255,0.08); padding:13px;
+}
+.method-btn.on { background:rgba(212,168,67,0.12); border-color:#d4a843; }
+.method-name { font-size:15px; font-weight:700; color:rgba(255,255,255,0.45); margin-bottom:2px; }
+.method-btn.on .method-name { color:#d4a843; }
+.method-sub { font-size:11px; color:rgba(255,255,255,0.25); }
+.method-btn.on .method-sub { color:rgba(212,168,67,0.55); }
+.kyc-input {
+  margin:0 20px 14px; background:rgba(255,255,255,0.06);
+  border-radius:14px; border:1px solid rgba(255,255,255,0.1);
+  padding:15px; text-align:center; font-size:18px; font-weight:700;
+  color:rgba(255,255,255,0.35); letter-spacing:4px;
+}
+.privacy-row {
+  margin:0 20px 20px; background:rgba(255,255,255,0.03);
+  border-radius:12px; border:1px solid rgba(255,255,255,0.05);
+  padding:13px; display:flex; gap:8px; align-items:flex-start;
+  color:rgba(255,255,255,0.32);
+}
+.privacy-text { font-size:12px; color:rgba(255,255,255,0.32); line-height:1.5; }
+.status-card {
+  margin:12px 20px; background:#141414;
+  border-radius:20px; border-width:1px; border-style:solid;
+  padding:28px 20px;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.status-label { font-size:18px; font-weight:700; }
+.status-desc { font-size:13px; color:rgba(255,255,255,0.4); text-align:center; line-height:1.5; }
+
+/* ── ADD MONEY ── */
+.tab-switcher {
+  display:flex; margin:8px 20px 18px;
+  background:rgba(255,255,255,0.05); border-radius:12px; padding:3px;
+}
+.tab-sw-btn {
+  flex:1; padding:9px; border-radius:10px;
+  text-align:center; font-size:13px; font-weight:600;
+  color:rgba(255,255,255,0.35); cursor:pointer; font-family:inherit;
+  background:transparent; border:none;
+}
+.tab-sw-btn.active { background:#1e1e1e; color:#fff; border:1px solid rgba(255,255,255,0.08); }
+.crypto-list { padding:0 16px; display:flex; flex-direction:column; gap:8px; }
+.crypto-row {
+  display:flex; align-items:center; gap:12px;
+  background:#141414; border-radius:16px;
+  border:1px solid rgba(255,255,255,0.06); padding:13px 14px;
+}
+.crypto-icon-circle {
+  width:40px; height:40px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.crypto-info { flex:1; }
+.crypto-name { font-size:14px; font-weight:600; color:#fff; margin-bottom:2px; }
+.crypto-sub { font-size:11px; color:rgba(255,255,255,0.35); }
+.crypto-arr { color:rgba(255,255,255,0.28); }
+.info-banner {
+  margin:10px 20px; background:rgba(212,168,67,0.05);
+  border-radius:12px; border:1px solid rgba(212,168,67,0.15);
+  padding:11px 13px; display:flex; gap:8px; align-items:flex-start;
+  color:#d4a843;
+}
+.info-banner-text { font-size:12px; color:rgba(255,255,255,0.4); line-height:1.5; }
+.avail-banner {
+  margin:10px 20px; background:rgba(74,222,128,0.05);
+  border-radius:12px; border:1px solid rgba(74,222,128,0.15);
+  padding:11px 13px; display:flex; gap:8px; align-items:flex-start;
+  color:#4ade80;
+}
+.avail-banner-text { font-size:12px; color:rgba(255,255,255,0.4); line-height:1.5; }
+.bank-card {
+  margin:0 20px 14px; background:#141414;
+  border-radius:20px; border:1px solid rgba(255,255,255,0.06); padding:18px 20px;
+}
+.bank-hdr { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.bank-icon-circle {
+  width:42px; height:42px; border-radius:50%;
+  background:rgba(212,168,67,0.12); border:1px solid rgba(212,168,67,0.2);
+  display:flex; align-items:center; justify-content:center; color:#d4a843;
+}
+.bank-card-title { font-size:15px; font-weight:600; color:#fff; }
+.bank-card-sub { font-size:12px; color:rgba(255,255,255,0.35); margin-top:2px; }
+.bank-detail {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.bank-detail:last-child { border-bottom:none; }
+.bank-detail-lbl { font-size:12px; color:rgba(255,255,255,0.35); }
+.bank-detail-val { font-size:13px; font-weight:600; color:#fff; }
+</style>
+</head>
+<body>
+
+<h1 class="page-title">Icon System Preview — Cheese Pay</h1>
+<p class="page-sub">lucide-react-native · 24px grid · 1.5px stroke · rounded caps &amp; joins</p>
+
+<div class="grid">
+
+<!-- ═══════════════════════════════════════════════════
+     PHONE 1 — DASHBOARD
+════════════════════════════════════════════════════ -->
+<div class="phone-wrap">
+  <span class="phone-label">Dashboard</span>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen" id="dash-screen">
+
+      <div class="dash-header">
+        <div class="dash-left">
+          <div class="dash-greet">Good morning,</div>
+          <div class="dash-name">Adebayo Okafor</div>
+        </div>
+        <div class="bell-circle">
+          <!-- Bell -->
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="balance-card">
+        <div class="bal-label">Total Balance</div>
+        <div class="bal-amount">₦ 12,450.00</div>
+        <div class="bal-stats">
+          <div class="bal-stat">
+            <!-- ArrowDownLeft -->
+            <svg class="icon" width="14" height="14" viewBox="0 0 24 24" style="color:#4ade80">
+              <path d="M17 7 7 17"/><polyline points="17 17 7 17 7 7"/>
+            </svg>
+            <span class="bal-stat-text" style="color:#4ade80">₦8,200</span>
+          </div>
+          <div class="bal-stat">
+            <!-- ArrowUpRight -->
+            <svg class="icon" width="14" height="14" viewBox="0 0 24 24" style="color:#f87171">
+              <path d="M7 17 17 7"/><polyline points="7 7 17 7 17 17"/>
+            </svg>
+            <span class="bal-stat-text" style="color:#f87171">₦3,150</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-grid">
+        <!-- Building2: Bank -->
+        <div class="action-cell">
+          <div class="action-icon-wrap" style="background:rgba(212,168,67,0.12)">
+            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#d4a843">
+              <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+              <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+              <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+              <path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+            </svg>
+          </div>
+          <span class="action-cell-label">Bank</span>
+        </div>
+        <!-- Zap: Bills -->
+        <div class="action-cell">
+          <div class="action-icon-wrap" style="background:rgba(250,204,21,0.1)">
+            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#facc15">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </div>
+          <span class="action-cell-label">Bills</span>
+        </div>
+        <!-- CreditCard: Card -->
+        <div class="action-cell">
+          <div class="action-icon-wrap" style="background:rgba(129,140,248,0.12)">
+            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#818cf8">
+              <rect width="22" height="16" x="1" y="4" rx="2" ry="2"/>
+              <line x1="1" x2="23" y1="10" y2="10"/>
+            </svg>
+          </div>
+          <span class="action-cell-label">Card</span>
+        </div>
+        <!-- Gift: Referral -->
+        <div class="action-cell">
+          <div class="action-icon-wrap" style="background:rgba(74,222,128,0.1)">
+            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#4ade80">
+              <polyline points="20 12 20 22 4 22 4 12"/>
+              <rect width="20" height="5" x="2" y="7"/>
+              <path d="M12 22V7"/>
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+            </svg>
+          </div>
+          <span class="action-cell-label">Referral</span>
+        </div>
+        <!-- Link: PayLink -->
+        <div class="action-cell">
+          <div class="action-icon-wrap" style="background:rgba(251,191,36,0.1)">
+            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#fbbf24">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </div>
+          <span class="action-cell-label">PayLink</span>
+        </div>
+        <!-- Plus: Add Money -->
+        <div class="action-cell">
+          <div class="action-icon-wrap" style="background:rgba(255,255,255,0.07)">
+            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.6)">
+              <path d="M5 12h14"/><path d="M12 5v14"/>
+            </svg>
+          </div>
+          <span class="action-cell-label">Add Money</span>
+        </div>
+      </div>
+
+      <div class="tx-section-hdr">
+        <span class="tx-section-title">Recent Transactions</span>
+        <span class="tx-see-all">See all</span>
+      </div>
+
+      <div class="tx-list">
+        <!-- Deposit: ArrowDownLeft -->
+        <div class="tx-row">
+          <div class="tx-icon-circle" style="background:rgba(74,222,128,0.12); color:#4ade80">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M17 7 7 17"/><polyline points="17 17 7 17 7 7"/>
+            </svg>
+          </div>
+          <div class="tx-info">
+            <div class="tx-name">Wallet Top-Up</div>
+            <div class="tx-date">Today, 9:41 AM</div>
+          </div>
+          <span class="tx-amt" style="color:#4ade80">+₦5,000</span>
+        </div>
+        <!-- Bill: Zap -->
+        <div class="tx-row">
+          <div class="tx-icon-circle" style="background:rgba(250,204,21,0.1); color:#facc15">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </div>
+          <div class="tx-info">
+            <div class="tx-name">DSTV Subscription</div>
+            <div class="tx-date">Yesterday, 3:15 PM</div>
+          </div>
+          <span class="tx-amt" style="color:#f87171">-₦4,200</span>
+        </div>
+        <!-- Send: ArrowUpRight -->
+        <div class="tx-row">
+          <div class="tx-icon-circle" style="background:rgba(248,113,113,0.1); color:#f87171">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M7 17 17 7"/><polyline points="7 7 17 7 17 17"/>
+            </svg>
+          </div>
+          <div class="tx-info">
+            <div class="tx-name">Sent to @emeka</div>
+            <div class="tx-date">2 days ago</div>
+          </div>
+          <span class="tx-amt" style="color:#f87171">-₦2,000</span>
+        </div>
+        <!-- Referral: Gift -->
+        <div class="tx-row">
+          <div class="tx-icon-circle" style="background:rgba(74,222,128,0.1); color:#4ade80">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <polyline points="20 12 20 22 4 22 4 12"/>
+              <rect width="20" height="5" x="2" y="7"/>
+              <path d="M12 22V7"/>
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+            </svg>
+          </div>
+          <div class="tx-info">
+            <div class="tx-name">Referral Bonus</div>
+            <div class="tx-date">3 days ago</div>
+          </div>
+          <span class="tx-amt" style="color:#4ade80">+50 pts</span>
+        </div>
+        <!-- Card: CreditCard -->
+        <div class="tx-row">
+          <div class="tx-icon-circle" style="background:rgba(129,140,248,0.1); color:#818cf8">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <rect width="22" height="16" x="1" y="4" rx="2" ry="2"/>
+              <line x1="1" x2="23" y1="10" y2="10"/>
+            </svg>
+          </div>
+          <div class="tx-info">
+            <div class="tx-name">Card Payment</div>
+            <div class="tx-date">4 days ago</div>
+          </div>
+          <span class="tx-amt" style="color:#f87171">-₦1,850</span>
+        </div>
+      </div>
+
+    </div><!-- /screen -->
+    <div class="tab-bar">
+      <div class="tab-item active">
+        <svg class="icon" width="22" height="22" viewBox="0 0 24 24" style="stroke:#d4a843">
+          <rect width="7" height="7" x="3" y="3" rx="1"/>
+          <rect width="7" height="7" x="14" y="3" rx="1"/>
+          <rect width="7" height="7" x="14" y="14" rx="1"/>
+          <rect width="7" height="7" x="3" y="14" rx="1"/>
+        </svg>
+        <span class="tab-label" style="color:#d4a843">Home</span>
+      </div>
+      <div class="tab-item">
+        <svg class="icon" width="22" height="22" viewBox="0 0 24 24" style="stroke:rgba(255,255,255,0.3)">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="tab-label">History</span>
+      </div>
+      <div class="tab-item">
+        <svg class="icon" width="22" height="22" viewBox="0 0 24 24" style="stroke:rgba(255,255,255,0.3)">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span class="tab-label">Profile</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHONE 2 — PROFILE
+════════════════════════════════════════════════════ -->
+<div class="phone-wrap">
+  <span class="phone-label">Profile</span>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+
+      <div class="profile-hero">
+        <div class="avatar">AO</div>
+        <div>
+          <div class="profile-name">Adebayo Okafor</div>
+          <div class="profile-handle">@adebayo</div>
+          <span class="tier-pill">Gold Tier</span>
+        </div>
+      </div>
+
+      <div class="menu-card">
+        <!-- Pencil -->
+        <div class="menu-row">
+          <div class="menu-icon-box">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            </svg>
+          </div>
+          <span class="menu-text">Edit Profile</span>
+          <span class="menu-chev">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+          </span>
+        </div>
+        <!-- LockKeyhole -->
+        <div class="menu-row">
+          <div class="menu-icon-box">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <circle cx="12" cy="16" r="1"/>
+              <rect width="18" height="12" x="3" y="10" rx="2"/>
+              <path d="M7 10V7a5 5 0 0 1 10 0v3"/>
+            </svg>
+          </div>
+          <span class="menu-text">Change PIN</span>
+          <span class="menu-chev">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </div>
+        <!-- Smartphone -->
+        <div class="menu-row">
+          <div class="menu-icon-box">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <rect width="14" height="20" x="5" y="2" rx="2" ry="2"/>
+              <path d="M12 18h.01"/>
+            </svg>
+          </div>
+          <span class="menu-text">Trusted Devices</span>
+          <span class="menu-chev">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </div>
+        <!-- Gift -->
+        <div class="menu-row">
+          <div class="menu-icon-box">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <polyline points="20 12 20 22 4 22 4 12"/>
+              <rect width="20" height="5" x="2" y="7"/>
+              <path d="M12 22V7"/>
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+            </svg>
+          </div>
+          <span class="menu-text">Referrals</span>
+          <span class="menu-chev">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </div>
+        <!-- BadgeCheck -->
+        <div class="menu-row">
+          <div class="menu-icon-box">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <span class="menu-text">KYC Verification</span>
+          <span class="menu-chev">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </div>
+        <!-- Bell -->
+        <div class="menu-row">
+          <div class="menu-icon-box">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+            </svg>
+          </div>
+          <span class="menu-text">Notifications</span>
+          <span class="menu-chev">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </div>
+      </div>
+
+      <div class="signout-btn">Sign Out</div>
+
+    </div>
+    <div class="tab-bar">
+      <div class="tab-item">
+        <svg class="icon" width="22" height="22" viewBox="0 0 24 24" style="stroke:rgba(255,255,255,0.3)">
+          <rect width="7" height="7" x="3" y="3" rx="1"/>
+          <rect width="7" height="7" x="14" y="3" rx="1"/>
+          <rect width="7" height="7" x="14" y="14" rx="1"/>
+          <rect width="7" height="7" x="3" y="14" rx="1"/>
+        </svg>
+        <span class="tab-label">Home</span>
+      </div>
+      <div class="tab-item">
+        <svg class="icon" width="22" height="22" viewBox="0 0 24 24" style="stroke:rgba(255,255,255,0.3)">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="tab-label">History</span>
+      </div>
+      <div class="tab-item active">
+        <svg class="icon" width="22" height="22" viewBox="0 0 24 24" style="stroke:#d4a843">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span class="tab-label" style="color:#d4a843">Profile</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHONE 3 — CARD
+════════════════════════════════════════════════════ -->
+<div class="phone-wrap">
+  <span class="phone-label">Virtual Card</span>
+  <div class="toggle-row">
+    <button class="toggle-btn active" onclick="cardView('normal',this)">Normal</button>
+    <button class="toggle-btn" onclick="cardView('frozen',this)">Frozen</button>
+    <button class="toggle-btn" onclick="cardView('cvv',this)">CVV shown</button>
+  </div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+
+      <div class="back-row">
+        <!-- ArrowLeft -->
+        <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+          <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+        </svg>
+        <span>Back</span>
+      </div>
+      <div class="scr-title">Virtual Card</div>
+
+      <!-- Card visual -->
+      <div class="card-visual" id="card-visual">
+        <div class="card-chip"></div>
+        <div class="card-number">4539  •••• ••••  7823</div>
+        <div class="card-holder">ADEBAYO OKAFOR</div>
+        <div class="card-logo">VISA</div>
+        <!-- Freeze overlay (hidden by default) -->
+        <div class="card-freeze-overlay" id="card-freeze-overlay" style="display:none">
+          <svg class="icon" width="36" height="36" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.4)">
+            <line x1="2" x2="22" y1="12" y2="12"/>
+            <line x1="12" x2="12" y1="2" y2="22"/>
+            <path d="m20 16-4-4 4-4"/>
+            <path d="m4 8 4 4-4 4"/>
+            <path d="m16 4-4 4-4-4"/>
+            <path d="m8 20 4-4 4 4"/>
+          </svg>
+          <span class="card-freeze-lbl">Card Frozen</span>
+        </div>
+      </div>
+
+      <!-- Card actions -->
+      <div class="card-actions">
+        <!-- Snowflake: Freeze -->
+        <div class="card-act-btn" id="freeze-btn">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24">
+            <line x1="2" x2="22" y1="12" y2="12"/>
+            <line x1="12" x2="12" y1="2" y2="22"/>
+            <path d="m20 16-4-4 4-4"/>
+            <path d="m4 8 4 4-4 4"/>
+            <path d="m16 4-4 4-4-4"/>
+            <path d="m8 20 4-4 4 4"/>
+          </svg>
+          <span class="card-act-lbl" id="freeze-lbl">Freeze</span>
+        </div>
+        <!-- Eye / EyeOff: CVV -->
+        <div class="card-act-btn" id="cvv-btn">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24" id="cvv-eye-icon">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span class="card-act-lbl">CVV</span>
+        </div>
+        <!-- Copy: Copy number -->
+        <div class="card-act-btn">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+          <span class="card-act-lbl">Copy</span>
+        </div>
+      </div>
+
+      <!-- CVV reveal panel (hidden by default) -->
+      <div id="cvv-panel" style="display:none">
+        <div class="card-info-row">
+          <div class="card-info-cell">
+            <div class="card-info-lbl">CVV</div>
+            <div class="card-info-val">432</div>
+          </div>
+          <div class="card-info-cell">
+            <div class="card-info-lbl">Expires</div>
+            <div class="card-info-val">09/28</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lock note -->
+      <div class="locked-note" id="locked-note" style="display:none">
+        <!-- Lock -->
+        <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span class="locked-note-text">Card is frozen. Unfreeze to make payments or reveal details.</span>
+      </div>
+
+      <div style="padding:0 20px">
+        <div style="background:#141414;border-radius:20px;border:1px solid rgba(255,255,255,0.06);padding:18px 20px">
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px">Card Details</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+            <span style="font-size:12px;color:rgba(255,255,255,0.4)">Card number</span>
+            <span style="font-size:12px;font-weight:600;color:#fff;letter-spacing:1px">•••• 7823</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+            <span style="font-size:12px;color:rgba(255,255,255,0.4)">Card type</span>
+            <span style="font-size:12px;font-weight:600;color:#fff">Virtual VISA</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0">
+            <span style="font-size:12px;color:rgba(255,255,255,0.4)">Status</span>
+            <span style="font-size:12px;font-weight:700;color:#4ade80" id="card-status-text">Active</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHONE 4 — NOTIFICATIONS
+════════════════════════════════════════════════════ -->
+<div class="phone-wrap">
+  <span class="phone-label">Notifications</span>
+  <div class="toggle-row">
+    <button class="toggle-btn active" onclick="notifView('list',this)">With items</button>
+    <button class="toggle-btn" onclick="notifView('empty',this)">Empty</button>
+  </div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+
+      <div class="back-row">
+        <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+          <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+        </svg>
+        <span>Back</span>
+      </div>
+      <div class="scr-title">Notifications</div>
+      <div class="scr-sub" style="padding-bottom:12px">Your recent activity</div>
+
+      <div class="notif-list" id="notif-list">
+        <!-- ArrowDownLeft: deposit -->
+        <div class="notif-item">
+          <div class="notif-icon-circle" style="background:rgba(74,222,128,0.12);color:#4ade80">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M17 7 7 17"/><polyline points="17 17 7 17 7 7"/>
+            </svg>
+          </div>
+          <div class="notif-body">
+            <div class="notif-title">Deposit received</div>
+            <div class="notif-desc">₦5,000 added to your wallet via bank transfer</div>
+          </div>
+          <span class="notif-time">2m</span>
+        </div>
+        <!-- BadgeCheck: KYC -->
+        <div class="notif-item">
+          <div class="notif-icon-circle" style="background:rgba(212,168,67,0.12);color:#d4a843">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="notif-body">
+            <div class="notif-title">Identity verified</div>
+            <div class="notif-desc">Your KYC has been approved. You're now on Gold tier.</div>
+          </div>
+          <span class="notif-time">1h</span>
+        </div>
+        <!-- Gift: referral -->
+        <div class="notif-item">
+          <div class="notif-icon-circle" style="background:rgba(74,222,128,0.1);color:#4ade80">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <polyline points="20 12 20 22 4 22 4 12"/>
+              <rect width="20" height="5" x="2" y="7"/>
+              <path d="M12 22V7"/>
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+            </svg>
+          </div>
+          <div class="notif-body">
+            <div class="notif-title">Referral bonus earned</div>
+            <div class="notif-desc">You earned 50 points for referring @chukwuemeka</div>
+          </div>
+          <span class="notif-time">3h</span>
+        </div>
+        <!-- ArrowUpRight: send -->
+        <div class="notif-item">
+          <div class="notif-icon-circle" style="background:rgba(248,113,113,0.1);color:#f87171">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <path d="M7 17 17 7"/><polyline points="7 7 17 7 17 17"/>
+            </svg>
+          </div>
+          <div class="notif-body">
+            <div class="notif-title">Transfer sent</div>
+            <div class="notif-desc">₦2,000 sent to @emeka successfully</div>
+          </div>
+          <span class="notif-time">1d</span>
+        </div>
+        <!-- CreditCard: card payment -->
+        <div class="notif-item">
+          <div class="notif-icon-circle" style="background:rgba(129,140,248,0.1);color:#818cf8">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <rect width="22" height="16" x="1" y="4" rx="2" ry="2"/>
+              <line x1="1" x2="23" y1="10" y2="10"/>
+            </svg>
+          </div>
+          <div class="notif-body">
+            <div class="notif-title">Card payment</div>
+            <div class="notif-desc">₦1,850 charged to your virtual card</div>
+          </div>
+          <span class="notif-time">2d</span>
+        </div>
+        <!-- Lock: security -->
+        <div class="notif-item">
+          <div class="notif-icon-circle" style="background:rgba(248,113,113,0.08);color:#f87171">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <div class="notif-body">
+            <div class="notif-title">New login detected</div>
+            <div class="notif-desc">Sign-in from Samsung Galaxy S24 · Lagos</div>
+          </div>
+          <span class="notif-time">3d</span>
+        </div>
+      </div>
+
+      <!-- Bell: empty state -->
+      <div class="notif-empty" id="notif-empty" style="display:none">
+        <svg class="icon" width="44" height="44" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.18)">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+        </svg>
+        <div class="notif-empty-title">No notifications</div>
+        <div class="notif-empty-sub">You're all caught up. Activity updates will appear here.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHONE 5 — KYC
+════════════════════════════════════════════════════ -->
+<div class="phone-wrap">
+  <span class="phone-label">KYC</span>
+  <div class="toggle-row">
+    <button class="toggle-btn active" onclick="kycView('form',this)">Form</button>
+    <button class="toggle-btn" onclick="kycView('submitted',this)">Submitted</button>
+    <button class="toggle-btn" onclick="kycView('verified',this)">Verified</button>
+    <button class="toggle-btn" onclick="kycView('rejected',this)">Rejected</button>
+  </div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+
+      <div class="back-row">
+        <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+          <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+        </svg>
+        <span>Back</span>
+      </div>
+      <div class="scr-title">KYC Verification</div>
+      <div class="scr-sub">Verify your identity to unlock higher limits</div>
+
+      <div class="kyc-tier-row">
+        <div class="kyc-tier-cell" style="border-color:rgba(148,163,184,0.3)">
+          <div class="kyc-tier-name" style="color:#94a3b8">Silver</div>
+          <div class="kyc-tier-desc">Basic</div>
+        </div>
+        <div class="kyc-tier-cell" style="border-color:rgba(212,168,67,0.3)">
+          <div class="kyc-tier-name" style="color:#d4a843">Gold</div>
+          <div class="kyc-tier-desc">BVN/NIN</div>
+        </div>
+        <div class="kyc-tier-cell" style="border-color:rgba(255,255,255,0.2)">
+          <div class="kyc-tier-name" style="color:#fff">Black</div>
+          <div class="kyc-tier-desc">Advanced</div>
+        </div>
+      </div>
+
+      <!-- FORM state -->
+      <div id="kyc-form">
+        <div class="field-label">Verification Method</div>
+        <div class="method-row">
+          <div class="method-btn on">
+            <div class="method-name">BVN</div>
+            <div class="method-sub">Bank Verification Number</div>
+          </div>
+          <div class="method-btn">
+            <div class="method-name">NIN</div>
+            <div class="method-sub">National ID Number</div>
+          </div>
+        </div>
+        <div class="field-label">BVN Number</div>
+        <div class="kyc-input">• • • • • • • • • • •</div>
+        <!-- Lock: privacy card -->
+        <div class="privacy-row">
+          <svg class="icon" width="13" height="13" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span class="privacy-text">Your information is encrypted and used only for identity verification. We do not store your BVN after verification.</span>
+        </div>
+        <div class="primary-btn">Verify Identity</div>
+      </div>
+
+      <!-- STATUS states -->
+      <!-- Clock: submitted -->
+      <div class="status-card" id="kyc-submitted" style="display:none;border-color:rgba(250,204,21,0.25)">
+        <svg class="icon" width="44" height="44" viewBox="0 0 24 24" style="color:#facc15">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <div class="status-label" style="color:#facc15">Under Review</div>
+        <div class="status-desc">Your KYC submission is being reviewed. This usually takes a few hours.</div>
+      </div>
+      <!-- CheckCircle: verified -->
+      <div class="status-card" id="kyc-verified" style="display:none;border-color:rgba(74,222,128,0.25)">
+        <svg class="icon" width="44" height="44" viewBox="0 0 24 24" style="color:#4ade80">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <div class="status-label" style="color:#4ade80">Identity Verified</div>
+        <div class="status-desc">Your identity has been verified. You are now on the Gold tier.</div>
+      </div>
+      <!-- XCircle: rejected -->
+      <div class="status-card" id="kyc-rejected" style="display:none;border-color:rgba(248,113,113,0.25)">
+        <svg class="icon" width="44" height="44" viewBox="0 0 24 24" style="color:#f87171">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="m15 9-6 6"/>
+          <path d="m9 9 6 6"/>
+        </svg>
+        <div class="status-label" style="color:#f87171">Verification Rejected</div>
+        <div class="status-desc">Your verification was rejected. Please try again or contact support.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHONE 6 — ADD MONEY
+════════════════════════════════════════════════════ -->
+<div class="phone-wrap">
+  <span class="phone-label">Add Money</span>
+  <div class="toggle-row">
+    <button class="toggle-btn active" onclick="addMoneyView('bank',this)">Bank tab</button>
+    <button class="toggle-btn" onclick="addMoneyView('crypto',this)">Crypto tab</button>
+  </div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+
+      <div class="back-row">
+        <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+          <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+        </svg>
+        <span>Back</span>
+      </div>
+      <div class="scr-title">Add Money</div>
+      <div class="scr-sub">Fund your wallet</div>
+
+      <div class="tab-switcher">
+        <button class="tab-sw-btn active" id="sw-bank" onclick="addMoneyView('bank', null)">Bank Transfer</button>
+        <button class="tab-sw-btn" id="sw-crypto" onclick="addMoneyView('crypto', null)">Crypto</button>
+      </div>
+
+      <!-- Bank tab -->
+      <div id="am-bank">
+        <!-- Building2 -->
+        <div class="bank-card">
+          <div class="bank-hdr">
+            <div class="bank-icon-circle">
+              <svg class="icon" width="20" height="20" viewBox="0 0 24 24">
+                <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+                <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+                <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>
+                <path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+              </svg>
+            </div>
+            <div>
+              <div class="bank-card-title">Bank Transfer</div>
+              <div class="bank-card-sub">Use your unique account number</div>
+            </div>
+          </div>
+          <div class="bank-detail">
+            <span class="bank-detail-lbl">Bank name</span>
+            <span class="bank-detail-val">Wema Bank</span>
+          </div>
+          <div class="bank-detail">
+            <span class="bank-detail-lbl">Account number</span>
+            <span class="bank-detail-val">9812345678</span>
+          </div>
+          <div class="bank-detail">
+            <span class="bank-detail-lbl">Account name</span>
+            <span class="bank-detail-val">ADEBAYO OKAFOR</span>
+          </div>
+        </div>
+        <!-- TrendingUp: availability -->
+        <div class="avail-banner">
+          <svg class="icon" width="14" height="14" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+            <polyline points="16 7 22 7 22 13"/>
+          </svg>
+          <span class="avail-banner-text">Available 24/7. Transfers reflect instantly for most Nigerian banks.</span>
+        </div>
+      </div>
+
+      <!-- Crypto tab -->
+      <div id="am-crypto" style="display:none">
+        <!-- Info: banner -->
+        <div class="info-banner">
+          <svg class="icon" width="14" height="14" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+          <span class="info-banner-text">Send crypto to your wallet address below. Funds arrive after network confirmation.</span>
+        </div>
+        <div class="crypto-list">
+          <!-- Zap: Stellar -->
+          <div class="crypto-row">
+            <div class="crypto-icon-circle" style="background:rgba(79,209,197,0.12)">
+              <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#4fd1c5">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <div class="crypto-info">
+              <div class="crypto-name">Stellar Lumens (XLM)</div>
+              <div class="crypto-sub">Stellar Network</div>
+            </div>
+            <span class="crypto-arr">
+              <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+          <!-- Hexagon: EVM -->
+          <div class="crypto-row">
+            <div class="crypto-icon-circle" style="background:rgba(129,140,248,0.12)">
+              <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#818cf8">
+                <polygon points="7.86 2 16.14 2 21 7 21 17 16.14 22 7.86 22 3 17 3 7"/>
+              </svg>
+            </div>
+            <div class="crypto-info">
+              <div class="crypto-name">EVM Chains</div>
+              <div class="crypto-sub">ETH · MATIC · BNB</div>
+            </div>
+            <span class="crypto-arr">
+              <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+          <!-- Zap again: USDT (Tron) -->
+          <div class="crypto-row">
+            <div class="crypto-icon-circle" style="background:rgba(74,222,128,0.1)">
+              <svg class="icon" width="20" height="20" viewBox="0 0 24 24" style="color:#4ade80">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <div class="crypto-info">
+              <div class="crypto-name">USDT (TRC-20)</div>
+              <div class="crypto-sub">Tron Network</div>
+            </div>
+            <span class="crypto-arr">
+              <svg class="icon" width="16" height="16" viewBox="0 0 24 24">
+                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</div><!-- /grid -->
+
+<script>
+/* ── Card ── */
+function cardView(state, clickedBtn) {
+  if (clickedBtn) {
+    clickedBtn.closest('.toggle-row').querySelectorAll('.toggle-btn')
+      .forEach(b => b.classList.remove('active'))
+    clickedBtn.classList.add('active')
+  }
+  const overlay = document.getElementById('card-freeze-overlay')
+  const cvvPanel = document.getElementById('cvv-panel')
+  const lockedNote = document.getElementById('locked-note')
+  const freezeBtn = document.getElementById('freeze-btn')
+  const freezeLbl = document.getElementById('freeze-lbl')
+  const cvvBtn = document.getElementById('cvv-btn')
+  const cvvEye = document.getElementById('cvv-eye-icon')
+  const statusText = document.getElementById('card-status-text')
+
+  overlay.style.display = 'none'
+  cvvPanel.style.display = 'none'
+  lockedNote.style.display = 'none'
+  freezeBtn.classList.remove('on')
+  cvvBtn.classList.remove('on')
+  freezeLbl.textContent = 'Freeze'
+  statusText.textContent = 'Active'
+  statusText.style.color = '#4ade80'
+
+  if (state === 'frozen') {
+    overlay.style.display = 'flex'
+    lockedNote.style.display = 'flex'
+    freezeBtn.classList.add('on')
+    freezeLbl.textContent = 'Unfreeze'
+    statusText.textContent = 'Frozen'
+    statusText.style.color = '#818cf8'
+    cvvEye.innerHTML = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>'
+  } else if (state === 'cvv') {
+    cvvPanel.style.display = 'block'
+    cvvBtn.classList.add('on')
+    cvvEye.innerHTML = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>'
+  } else {
+    cvvEye.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
+  }
+}
+
+/* ── Notifications ── */
+function notifView(state, clickedBtn) {
+  clickedBtn.closest('.toggle-row').querySelectorAll('.toggle-btn')
+    .forEach(b => b.classList.remove('active'))
+  clickedBtn.classList.add('active')
+  document.getElementById('notif-list').style.display = state === 'list' ? 'flex' : 'none'
+  document.getElementById('notif-empty').style.display = state === 'empty' ? 'flex' : 'none'
+}
+
+/* ── KYC ── */
+function kycView(state, clickedBtn) {
+  clickedBtn.closest('.toggle-row').querySelectorAll('.toggle-btn')
+    .forEach(b => b.classList.remove('active'))
+  clickedBtn.classList.add('active')
+  document.getElementById('kyc-form').style.display = state === 'form' ? 'block' : 'none'
+  document.getElementById('kyc-submitted').style.display = state === 'submitted' ? 'flex' : 'none'
+  document.getElementById('kyc-verified').style.display = state === 'verified' ? 'flex' : 'none'
+  document.getElementById('kyc-rejected').style.display = state === 'rejected' ? 'flex' : 'none'
+}
+
+/* ── Add Money ── */
+function addMoneyView(tab, clickedBtn) {
+  if (clickedBtn) {
+    clickedBtn.closest('.toggle-row').querySelectorAll('.toggle-btn')
+      .forEach(b => b.classList.remove('active'))
+    clickedBtn.classList.add('active')
+  }
+  document.getElementById('sw-bank').classList.toggle('active', tab === 'bank')
+  document.getElementById('sw-crypto').classList.toggle('active', tab === 'crypto')
+  document.getElementById('am-bank').style.display = tab === 'bank' ? 'block' : 'none'
+  document.getElementById('am-crypto').style.display = tab === 'crypto' ? 'block' : 'none'
+}
+</script>
+</body>
+</html>
