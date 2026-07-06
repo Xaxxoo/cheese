@@ -59,9 +59,9 @@ function TabNavigator() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: '500' },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Dashboard" component={DashboardScreen as React.ComponentType<object>} />
       <Tab.Screen name="History"   component={HistoryScreen} />
-      <Tab.Screen name="Profile"   component={ProfileScreen} />
+      <Tab.Screen name="Profile"   component={ProfileScreen  as React.ComponentType<object>} />
     </Tab.Navigator>
   )
 }

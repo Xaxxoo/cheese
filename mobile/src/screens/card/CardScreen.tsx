@@ -99,7 +99,7 @@ const cv = StyleSheet.create({
     borderWidth: 1,
   },
   frozenOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(15,24,36,0.35)', gap: 6,
   },
