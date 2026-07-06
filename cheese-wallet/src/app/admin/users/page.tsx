@@ -4,7 +4,8 @@ import { useState, useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
 import {
   c,
-  IcoSearch, IcoMore, IcoPlus, IcoChevDown,
+  IcoSearch, IcoMore, IcoPlus, IcoChevDown, IcoChevron, IcoChevLeft,
+  IcoArrowDn, IcoArrowUp,
   Pill,
   tierStyle, kycStyle, walletStyle,
 } from '../_shared';
@@ -229,7 +230,7 @@ export default function UsersPage() {
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 4, padding: 0,
           }}>
-            Joined {sortBy === 'createdAt' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+            Joined {sortBy === 'createdAt' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
           </button>
           {/* Balance — sortable */}
           <button onClick={() => toggleSort('balance')} style={{
@@ -238,7 +239,7 @@ export default function UsersPage() {
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 4, padding: 0,
           }}>
-            Balance (est.) {sortBy === 'balance' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+            Balance (est.) {sortBy === 'balance' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
           </button>
           <div />
         </div>
@@ -353,10 +354,10 @@ export default function UsersPage() {
               fontSize: 12, color: page <= 1 ? c.textDim : c.textMid,
               borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
-              cursor: page <= 1 ? 'default' : 'pointer',
+              cursor: page <= 1 ? 'default' : 'pointer', gap: 4,
             }}
           >
-            ← Prev
+            <IcoChevLeft />{' '}Prev
           </button>
           {pageButtons().map((label, i) => {
             const isActive   = label === page;
@@ -390,10 +391,10 @@ export default function UsersPage() {
               fontSize: 12, color: page >= totalPages ? c.textDim : c.textMid,
               borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
-              cursor: page >= totalPages ? 'default' : 'pointer',
+              cursor: page >= totalPages ? 'default' : 'pointer', gap: 4,
             }}
           >
-            Next →
+            Next{' '}<IcoChevron />
           </button>
         </div>
       </div>

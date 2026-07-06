@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, type CSSProperties } from 'react';
 import Link from 'next/link';
 import {
   c, IcoSearch, IcoShield, IcoMore,
-  Pill, tierStyle, kycStyle,
+  Pill, tierStyle, kycStyle, IcoChevron, IcoChevLeft,
 } from '../_shared';
 import {
   listAdminKyc, getAdminStats, approveBlackTier, rejectBlackTier,
@@ -515,8 +515,8 @@ export default function KycPage() {
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="action-btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-            style={{ minWidth: 30, height: 30, padding: '0 8px', fontSize: 12, color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid transparent', opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? 'default' : 'pointer' }}>
-            ← Prev
+            style={{ minWidth: 30, height: 30, padding: '0 8px', fontSize: 12, color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, border: '1px solid transparent', opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? 'default' : 'pointer' }}>
+            <IcoChevLeft />{' '}Prev
           </button>
           {pageButtons().map((label, i) => {
             const isActive   = label === page;
@@ -530,8 +530,8 @@ export default function KycPage() {
             );
           })}
           <button className="action-btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-            style={{ minWidth: 30, height: 30, padding: '0 8px', fontSize: 12, color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid transparent', opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? 'default' : 'pointer' }}>
-            Next →
+            style={{ minWidth: 30, height: 30, padding: '0 8px', fontSize: 12, color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, border: '1px solid transparent', opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? 'default' : 'pointer' }}>
+            Next{' '}<IcoChevron />
           </button>
         </div>
       </div>

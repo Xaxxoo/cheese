@@ -1,8 +1,9 @@
 'use client';
 
+import { type ReactNode } from 'react';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { X, Check, ExternalLink, Trophy } from 'lucide-react';
+import { X, Check, ExternalLink, Trophy, MessageCircle, Send } from 'lucide-react';
 import { trackShare, type SharePlatform } from '@/lib/api';
 import { notify } from '@/lib/toast';
 
@@ -12,7 +13,7 @@ interface Platform {
   points: number;
   textColor: string;
   bgColor: string;
-  icon: string;
+  icon: ReactNode;
   shareUrl: (link: string, username: string) => string;
 }
 
@@ -33,7 +34,7 @@ const PLATFORMS: Platform[] = [
   },
   {
     id: 'whatsapp', label: 'WhatsApp', points: 5,
-    textColor: '#fff', bgColor: '#25d366', icon: '💬',
+    textColor: '#fff', bgColor: '#25d366', icon: <MessageCircle size={14} />,
     shareUrl: (link, u) =>
       `https://wa.me/?text=${encodeURIComponent(
         `I just reserved @${u} on Cheese Wallet 🧀\n\nSend money with a username. Get yours: ${link}`,
@@ -41,7 +42,7 @@ const PLATFORMS: Platform[] = [
   },
   {
     id: 'telegram', label: 'Telegram', points: 5,
-    textColor: '#fff', bgColor: '#2aabee', icon: '✈️',
+    textColor: '#fff', bgColor: '#2aabee', icon: <Send size={14} />,
     shareUrl: (link, u) =>
       `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(
         `I reserved @${u} on Cheese Wallet 🧀`,

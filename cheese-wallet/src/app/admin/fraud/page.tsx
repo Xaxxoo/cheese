@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { c, IcoAlert, IcoSearch, IcoUsers, Pill, kycStyle, walletStyle } from '../_shared';
+import { c, IcoAlert, IcoSearch, IcoUsers, Pill, kycStyle, walletStyle, IcoChevron, IcoChevLeft } from '../_shared';
 import {
   getAdminStats,
   listAdminUsers,
@@ -289,17 +289,17 @@ export default function FraudPage() {
                 className="action-btn"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? 'default' : 'pointer' }}
+                style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
               >
-                ← Prev
+                <IcoChevLeft />{' '}Prev
               </button>
               <button
                 className="action-btn"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? 'default' : 'pointer' }}
+                style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
               >
-                Next →
+                Next{' '}<IcoChevron />
               </button>
             </div>
           </div>

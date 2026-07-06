@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type CSSProperties } from 'react';
-import { c, IcoSearch, Pill } from '../_shared';
+import { c, IcoSearch, Pill, IcoChevron, IcoChevLeft } from '../_shared';
 import { listAdminTransfers, type AdminTransferItem } from '@/lib/api/admin';
 
 type StatusFilter = 'all' | 'pending' | 'processing' | 'completed' | 'failed' | 'reversed';
@@ -248,10 +248,10 @@ export default function TransfersPage() {
               color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
-              cursor: page <= 1 ? 'default' : 'pointer',
+              cursor: page <= 1 ? 'default' : 'pointer', gap: 4,
             }}
           >
-            ← Prev
+            <IcoChevLeft />{' '}Prev
           </button>
           <button
             className="action-btn"
@@ -262,10 +262,10 @@ export default function TransfersPage() {
               color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
-              cursor: page >= totalPages ? 'default' : 'pointer',
+              cursor: page >= totalPages ? 'default' : 'pointer', gap: 4,
             }}
           >
-            Next →
+            Next{' '}<IcoChevron />
           </button>
         </div>
       </div>

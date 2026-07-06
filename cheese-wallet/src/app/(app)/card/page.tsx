@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Snowflake, Eye, EyeOff, Copy,
   CheckCheck, Lock, ShieldCheck, RefreshCw,
-  CreditCard, TrendingUp,
+  CreditCard, TrendingUp, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getCard, freezeCard, unfreezeCard, revealCvv, getCardTransactions } from '@/lib/api/wallet'
@@ -227,9 +227,9 @@ function CardLocked({ message }: { message: string }) {
       </div>
       <Link
         href="/kyc"
-        className="text-xs text-[#d4a843]/70 hover:text-[#d4a843] transition-colors"
+        className="text-xs text-[#d4a843]/70 hover:text-[#d4a843] transition-colors inline-flex items-center gap-1"
       >
-        Complete verification →
+        Complete verification <ChevronRight size={12} />
       </Link>
     </div>
   )

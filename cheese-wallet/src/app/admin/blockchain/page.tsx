@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, type CSSProperties } from 'react';
-import { c, IcoChain, IcoWallet, Pill } from '../_shared';
+import { c, IcoChain, IcoWallet, Pill, IcoCheck, IcoChevron, IcoChevLeft } from '../_shared';
 import {
   getAdminHealth,
   getAdminStats,
@@ -251,9 +251,10 @@ function TreasuryCard({
             borderRadius: 9, padding: '8px 12px', cursor: 'pointer',
             fontFamily: 'monospace', letterSpacing: '0.02em',
             transition: 'all 0.15s', width: '100%',
+            display: 'flex', alignItems: 'center', gap: 6,
           }}
         >
-          {copied ? '✓ Copied!' : treasury.address}
+          {copied ? <><IcoCheck />{' '}Copied!</> : treasury.address}
         </button>
       )}
     </div>
@@ -418,10 +419,10 @@ export default function BlockchainPage() {
               minWidth: 30, height: 30, padding: '0 8px', fontSize: 12,
               color: txPage <= 1 ? c.textDim : c.textMid, borderRadius: 7,
               border: '1px solid transparent', opacity: txPage <= 1 ? 0.4 : 1,
-              cursor: txPage <= 1 ? 'default' : 'pointer',
+              cursor: txPage <= 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
-            ← Prev
+            <IcoChevLeft />{' '}Prev
           </button>
           <button
             className="action-btn"
@@ -431,10 +432,10 @@ export default function BlockchainPage() {
               minWidth: 30, height: 30, padding: '0 8px', fontSize: 12,
               color: txPage >= totalPages ? c.textDim : c.textMid, borderRadius: 7,
               border: '1px solid transparent', opacity: txPage >= totalPages ? 0.4 : 1,
-              cursor: txPage >= totalPages ? 'default' : 'pointer',
+              cursor: txPage >= totalPages ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
-            Next →
+            Next{' '}<IcoChevron />
           </button>
         </div>
       </div>

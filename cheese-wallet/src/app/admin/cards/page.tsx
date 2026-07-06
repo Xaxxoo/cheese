@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type CSSProperties } from 'react';
-import { c, IcoSearch, IcoCard, Pill } from '../_shared';
+import { c, IcoSearch, IcoCard, Pill, IcoCheck, IcoSnowflake, IcoX, IcoChevron, IcoChevLeft } from '../_shared';
 import { listAdminCards, type AdminCardItem } from '@/lib/api/admin';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -320,9 +320,9 @@ export default function CardsPage() {
 
   const STAT_ITEMS = [
     { label: 'Total Cards', value: n(stats.total),      color: c.text,  icon: <IcoCard /> },
-    { label: 'Active',      value: n(stats.active),     color: c.green, icon: '✓'         },
-    { label: 'Frozen',      value: n(stats.frozen),     color: c.blue,  icon: '❄'         },
-    { label: 'Terminated',  value: n(stats.terminated), color: c.red,   icon: '✕'         },
+    { label: 'Active',      value: n(stats.active),     color: c.green, icon: <IcoCheck />     },
+    { label: 'Frozen',      value: n(stats.frozen),     color: c.blue,  icon: <IcoSnowflake /> },
+    { label: 'Terminated',  value: n(stats.terminated), color: c.red,   icon: <IcoX />         },
   ] as const;
 
   return (
@@ -534,10 +534,10 @@ export default function CardsPage() {
                 color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
-                cursor: page <= 1 ? 'default' : 'pointer',
+                cursor: page <= 1 ? 'default' : 'pointer', gap: 4,
               }}
             >
-              ← Prev
+              <IcoChevLeft />{' '}Prev
             </button>
             <button
               className="action-btn"
@@ -548,10 +548,10 @@ export default function CardsPage() {
                 color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
-                cursor: page >= totalPages ? 'default' : 'pointer',
+                cursor: page >= totalPages ? 'default' : 'pointer', gap: 4,
               }}
             >
-              Next →
+              Next{' '}<IcoChevron />
             </button>
           </div>
         </div>

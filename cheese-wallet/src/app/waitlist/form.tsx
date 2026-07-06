@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
+import { XCircle, CheckCircle } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
 
@@ -188,10 +189,10 @@ export default function WaitlistForm() {
               />
               <p className="text-xs text-gray-500 mt-1">3-20 characters, letters/numbers/underscore only</p>
               {usernameError && (
-                <p className="text-xs text-red-600 mt-1">❌ {usernameError}</p>
+                <p className="flex items-center gap-1 text-xs text-red-600 mt-1"><XCircle size={12} /> {usernameError}</p>
               )}
               {!usernameError && formData.username.length >= 3 && !checkingUsername && (
-                <p className="text-xs text-green-600 mt-1">✅ Username available</p>
+                <p className="flex items-center gap-1 text-xs text-green-600 mt-1"><CheckCircle size={12} /> Username available</p>
               )}
             </div>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, type CSSProperties } from 'react';
 import {
   c,
-  IcoChevDown, IcoArrowUp, IcoArrowDn,
+  IcoChevDown, IcoChevron, IcoArrowUp, IcoArrowDn,
   IcoUsers, IcoShield, IcoWallet, IcoFile, IcoBank, IcoAlert,
   Dot, FeedLabel, greeting,
 } from './_shared';
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
                 <span style={{ width: 2.5, height: 14, borderRadius: 99, background: a.color, flexShrink: 0, display: 'inline-block' }} />
                 <span style={{ fontSize: 12.5, color: c.text }}>{a.msg}</span>
               </div>
-              <span style={{ fontSize: 11, color: c.textDim, flexShrink: 0 }}>Review →</span>
+              <span style={{ fontSize: 11, color: c.textDim, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>Review <IcoChevron /></span>
             </div>
           ))}
         </div>
@@ -263,8 +263,8 @@ export default function AdminDashboard() {
             width: 40, height: 40, borderRadius: 12, flexShrink: 0,
             background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, color: c.green,
-          }}>↓</div>
+            color: c.green,
+          }}><IcoArrowDn /></div>
           <div>
             <div style={{ fontSize: 11, color: c.textDim, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
               Total Received (Platform)
@@ -282,8 +282,8 @@ export default function AdminDashboard() {
             width: 40, height: 40, borderRadius: 12, flexShrink: 0,
             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, color: c.red,
-          }}>↑</div>
+            color: c.red,
+          }}><IcoArrowUp /></div>
           <div>
             <div style={{ fontSize: 11, color: c.textDim, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
               Total Sent (Platform)
@@ -387,7 +387,7 @@ export default function AdminDashboard() {
               {m.alert && (
                 <span className="pulse-red" style={{ position: 'absolute', top: 14, right: 14, width: 6, height: 6, borderRadius: '50%', background: c.red, display: 'inline-block' }} />
               )}
-              <span className="mod-go" style={{ position: 'absolute', bottom: 13, right: 15, fontSize: 10.5, color: c.textDim }}>Open →</span>
+              <span className="mod-go" style={{ position: 'absolute', bottom: 13, right: 15, fontSize: 10.5, color: c.textDim, display: 'flex', alignItems: 'center', gap: 4 }}>Open <IcoChevron /></span>
               <div style={{ color: m.color, marginBottom: 8 }}><m.icon /></div>
               <div style={{ fontSize: 20, fontWeight: 800, color: m.alert ? c.red : c.text, letterSpacing: '-0.04em', lineHeight: 1 }}>
                 {m.value}

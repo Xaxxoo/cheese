@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { c, IcoSearch, Pill } from '../_shared';
+import { c, IcoSearch, Pill, IcoRefresh, IcoCheck, IcoClock, IcoChevron, IcoChevLeft } from '../_shared';
 import { listAdminReferrals, type AdminReferralItem } from '@/lib/api/admin';
 
 const LIMIT = 25;
@@ -79,9 +79,9 @@ export default function ReferralsPage() {
   const card = { background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14 };
 
   const STAT_ITEMS = [
-    { label: 'Total Referrals', value: n(counts.total),   color: c.text,  icon: '⟳' },
-    { label: 'Rewarded',        value: n(counts.rewarded), color: c.green, icon: '✓' },
-    { label: 'Pending',         value: n(counts.pending),  color: c.amber, icon: '…' },
+    { label: 'Total Referrals', value: n(counts.total),   color: c.text,  icon: <IcoRefresh /> },
+    { label: 'Rewarded',        value: n(counts.rewarded), color: c.green, icon: <IcoCheck />   },
+    { label: 'Pending',         value: n(counts.pending),  color: c.amber, icon: <IcoClock />   },
   ] as const;
 
   return (
@@ -222,12 +222,12 @@ export default function ReferralsPage() {
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className="action-btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-              style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? 'default' : 'pointer' }}>
-              ← Prev
+              style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <IcoChevLeft />{' '}Prev
             </button>
             <button className="action-btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-              style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? 'default' : 'pointer' }}>
-              Next →
+              style={{ minWidth: 30, height: 30, padding: '0 10px', fontSize: 12, color: c.textMid, borderRadius: 7, border: '1px solid transparent', opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              Next{' '}<IcoChevron />
             </button>
           </div>
         </div>

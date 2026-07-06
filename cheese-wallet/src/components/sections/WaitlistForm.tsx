@@ -151,7 +151,7 @@ export function WaitlistForm() {
 
                 <div className="h-5 mt-1.5">
                   {status === 'available' && (
-                    <p className="text-xs text-[#00FF00] opacity-0 animate-fade-in">✓ @{username} is available</p>
+                    <p className="text-xs text-[#00FF00] opacity-0 animate-fade-in">@{username} is available</p>
                   )}
                   {status === 'taken' && (
                     <p className="text-xs text-red-400 opacity-0 animate-fade-in">

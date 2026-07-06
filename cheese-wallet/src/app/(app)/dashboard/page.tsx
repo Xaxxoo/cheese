@@ -181,8 +181,8 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
       onClick={onClick}
       className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/4 active:bg-white/6 transition-colors rounded-2xl text-left"
     >
-      <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0 text-lg">
-        {isIn ? '↓' : '↑'}
+      <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
+        {isIn ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white font-medium truncate">

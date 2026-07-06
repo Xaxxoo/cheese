@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type CSSProperties } from 'react';
-import { c, IcoSearch } from '../_shared';
+import { c, IcoSearch, IcoChevron, IcoChevLeft } from '../_shared';
 import { getAdminFeeStats, type AdminFeeTransferItem, type AdminFeeSummary } from '@/lib/api/admin';
 
 const LIMIT = 20;
@@ -153,7 +153,7 @@ export default function FeesPage() {
               borderRadius: 8, padding: '6px 12px',
             }}>
               <span style={{ fontSize: 11.5, color: c.textMid }}>{range}</span>
-              <span style={{ fontSize: 11, color: c.border }}>→</span>
+              <span style={{ color: c.border, display: 'flex' }}><IcoChevron /></span>
               <span style={{ fontSize: 12, fontWeight: 700, color: c.amber, fontVariantNumeric: 'tabular-nums' }}>{fee}</span>
             </div>
           ))}
@@ -310,9 +310,10 @@ export default function FeesPage() {
                   fontSize: 12, padding: '4px 12px', borderRadius: 7, cursor: page === 1 ? 'default' : 'pointer',
                   background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
                   color: page === 1 ? c.textDim : c.text, fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 4,
                 }}
               >
-                ← Prev
+                <IcoChevLeft />{' '}Prev
               </button>
               <span style={{ fontSize: 12, color: c.textMid, padding: '4px 8px', alignSelf: 'center' }}>
                 {page} / {totalPages}
@@ -324,9 +325,10 @@ export default function FeesPage() {
                   fontSize: 12, padding: '4px 12px', borderRadius: 7, cursor: page === totalPages ? 'default' : 'pointer',
                   background: 'rgba(255,255,255,0.05)', border: `1px solid ${c.border}`,
                   color: page === totalPages ? c.textDim : c.text, fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 4,
                 }}
               >
-                Next →
+                Next{' '}<IcoChevron />
               </button>
             </div>
           </div>

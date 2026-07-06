@@ -1672,7 +1672,7 @@ function SuccessScreen({
   const rows = [
     { label: 'To',     value: recipient.display },
     { label: 'Amount', value: `$${parseFloat(amount).toFixed(2)} USDC` },
-    { label: 'Status', value: tx.status === 'pending' ? '⏳ Pending' : '✓ Confirmed' },
+    { label: 'Status', value: tx.status === 'pending' ? 'Pending' : 'Confirmed' },
     ...(tx.txHash ? [{ label: 'Tx hash', value: `${tx.txHash.slice(0, 10)}…` }] : []),
   ] as { label: string; value: string }[]
 
@@ -1845,7 +1845,7 @@ function BankSuccessScreen({
 
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
   const isCompleted = transfer?.status === 'completed'
-  const statusLabel = isCompleted ? '✓ Completed' : '⏳ Processing'
+  const statusLabel = isCompleted ? 'Completed' : 'Processing'
   const subtitle = transfer?.message ?? 'Bank transfer initiated'
 
   const statusColor = isCompleted ? '#34d399' : '#fbbf24'

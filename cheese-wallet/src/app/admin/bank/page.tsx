@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type CSSProperties } from 'react';
-import { c, IcoSearch, Pill } from '../_shared';
+import { c, IcoSearch, Pill, IcoBank, IcoRefresh, IcoX, IcoChevron, IcoChevLeft } from '../_shared';
 import {
   listAdminTransfers,
   completeAdminTransfer,
@@ -132,9 +132,9 @@ export default function BankPayoutsPage() {
   };
 
   const STAT_ITEMS = [
-    { label: 'Total Payouts',  value: n(stats.total),      color: c.text,  icon: '₦' },
-    { label: 'Processing',     value: n(stats.processing), color: c.blue,  icon: '⟳' },
-    { label: 'Failed',         value: n(stats.failed),     color: c.red,   icon: '✕' },
+    { label: 'Total Payouts',  value: n(stats.total),      color: c.text,  icon: <IcoBank />    },
+    { label: 'Processing',     value: n(stats.processing), color: c.blue,  icon: <IcoRefresh /> },
+    { label: 'Failed',         value: n(stats.failed),     color: c.red,   icon: <IcoX />       },
   ] as const;
 
   return (
@@ -379,10 +379,10 @@ export default function BankPayoutsPage() {
               color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
-              cursor: page <= 1 ? 'default' : 'pointer',
+              cursor: page <= 1 ? 'default' : 'pointer', gap: 4,
             }}
           >
-            ← Prev
+            <IcoChevLeft />{' '}Prev
           </button>
           <button
             className="action-btn"
@@ -393,10 +393,10 @@ export default function BankPayoutsPage() {
               color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
-              cursor: page >= totalPages ? 'default' : 'pointer',
+              cursor: page >= totalPages ? 'default' : 'pointer', gap: 4,
             }}
           >
-            Next →
+            Next{' '}<IcoChevron />
           </button>
         </div>
       </div>

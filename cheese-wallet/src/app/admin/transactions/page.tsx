@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { c, IcoSearch, Pill } from '../_shared';
+import { c, IcoSearch, Pill, IcoRefresh, IcoCheck, IcoX, IcoArrowDn, IcoArrowUp, IcoChevron, IcoChevLeft } from '../_shared';
 import { listAdminTransactions, getAdminTransaction, completeAdminTransaction, refundAdminTransaction, getAdminStats, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'failed' | 'reversed';
@@ -205,11 +205,11 @@ export default function TransactionsPage() {
 
   const fmtUsdc2 = (v: number) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const STAT_ITEMS = [
-    { label: 'Total Transactions', value: n(stats.total),              color: c.text,  icon: '⟳' },
-    { label: 'Completed',          value: n(stats.completed),          color: c.green, icon: '✓' },
-    { label: 'Failed',             value: n(stats.failed),             color: c.red,   icon: '✕' },
-    { label: 'Total Received',     value: fmtUsdc2(stats.totalInUsdc),  color: c.green, icon: '↓' },
-    { label: 'Total Sent',         value: fmtUsdc2(stats.totalOutUsdc), color: c.red,   icon: '↑' },
+    { label: 'Total Transactions', value: n(stats.total),              color: c.text,  icon: <IcoRefresh /> },
+    { label: 'Completed',          value: n(stats.completed),          color: c.green, icon: <IcoCheck />   },
+    { label: 'Failed',             value: n(stats.failed),             color: c.red,   icon: <IcoX />       },
+    { label: 'Total Received',     value: fmtUsdc2(stats.totalInUsdc),  color: c.green, icon: <IcoArrowDn /> },
+    { label: 'Total Sent',         value: fmtUsdc2(stats.totalOutUsdc), color: c.red,   icon: <IcoArrowUp /> },
   ] as const;
 
   return (
@@ -442,10 +442,10 @@ export default function TransactionsPage() {
               color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
-              cursor: page <= 1 ? 'default' : 'pointer',
+              cursor: page <= 1 ? 'default' : 'pointer', gap: 4,
             }}
           >
-            ← Prev
+            <IcoChevLeft />{' '}Prev
           </button>
           <button
             className="action-btn"
@@ -456,10 +456,10 @@ export default function TransactionsPage() {
               color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
-              cursor: page >= totalPages ? 'default' : 'pointer',
+              cursor: page >= totalPages ? 'default' : 'pointer', gap: 4,
             }}
           >
-            Next →
+            Next{' '}<IcoChevron />
           </button>
         </div>
       </div>

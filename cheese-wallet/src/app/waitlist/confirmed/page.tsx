@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { Check, Copy, ExternalLink, Trophy } from 'lucide-react';
+import { Check, Copy, ExternalLink, Trophy, MessageCircle, Send } from 'lucide-react';
 import { trackShare } from '@/lib/api';
 import { notify } from '@/lib/toast';
 
@@ -19,13 +19,15 @@ interface StoredUser {
 // All share functions take (link, username) — platforms that don't need username just ignore it
 type PlatformId = 'twitter' | 'linkedin' | 'whatsapp' | 'telegram' | 'facebook';
 
+import type { ReactNode } from 'react';
+
 interface Platform {
   id: PlatformId;
   label: string;
   points: number;
   textColor: string;
   bgColor: string;
-  icon: string;
+  icon: ReactNode;
   shareUrl: (link: string, username: string) => string;
 }
 
@@ -46,7 +48,7 @@ const PLATFORMS: Platform[] = [
   },
   {
     id: 'whatsapp', label: 'WhatsApp', points: 5,
-    textColor: '#fff', bgColor: '#25d366', icon: '💬',
+    textColor: '#fff', bgColor: '#25d366', icon: <MessageCircle size={14} />,
     shareUrl: (link, u) =>
       `https://wa.me/?text=${encodeURIComponent(
         `I just reserved @${u} on Cheese Wallet 🧀\n\nSend money with a username. Get yours: ${link}`,
@@ -54,7 +56,7 @@ const PLATFORMS: Platform[] = [
   },
   {
     id: 'telegram', label: 'Telegram', points: 5,
-    textColor: '#fff', bgColor: '#2aabee', icon: '✈️',
+    textColor: '#fff', bgColor: '#2aabee', icon: <Send size={14} />,
     shareUrl: (link, u) =>
       `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(
         `I reserved @${u} on Cheese Wallet 🧀`,

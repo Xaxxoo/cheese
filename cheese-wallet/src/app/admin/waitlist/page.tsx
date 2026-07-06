@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type CSSProperties } from 'react';
-import { c, IcoSearch, Pill } from '../_shared';
+import { c, IcoSearch, Pill, IcoRefresh, IcoClock, IcoMail, IcoCheck, IcoChevron, IcoChevLeft } from '../_shared';
 import { listAdminWaitlist, type AdminWaitlistItem } from '@/lib/api/admin';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,10 +98,10 @@ export default function WaitlistPage() {
   };
 
   const STAT_ITEMS = [
-    { label: 'Total Signups', value: n(stats.total),     color: c.text,  icon: '⟳' },
-    { label: 'Pending',       value: n(stats.pending),   color: c.amber, icon: '◷' },
-    { label: 'Notified',      value: n(stats.notified),  color: c.blue,  icon: '✉' },
-    { label: 'Converted',     value: n(stats.converted), color: c.green, icon: '✓' },
+    { label: 'Total Signups', value: n(stats.total),     color: c.text,  icon: <IcoRefresh /> },
+    { label: 'Pending',       value: n(stats.pending),   color: c.amber, icon: <IcoClock />   },
+    { label: 'Notified',      value: n(stats.notified),  color: c.blue,  icon: <IcoMail />    },
+    { label: 'Converted',     value: n(stats.converted), color: c.green, icon: <IcoCheck />   },
   ] as const;
 
   return (
@@ -311,10 +311,10 @@ export default function WaitlistPage() {
               color: page <= 1 ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page <= 1 ? 0.4 : 1,
-              cursor: page <= 1 ? 'default' : 'pointer',
+              cursor: page <= 1 ? 'default' : 'pointer', gap: 4,
             }}
           >
-            ← Prev
+            <IcoChevLeft />{' '}Prev
           </button>
           <button
             className="action-btn"
@@ -325,10 +325,10 @@ export default function WaitlistPage() {
               color: page >= totalPages ? c.textDim : c.textMid, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1px solid transparent`, opacity: page >= totalPages ? 0.4 : 1,
-              cursor: page >= totalPages ? 'default' : 'pointer',
+              cursor: page >= totalPages ? 'default' : 'pointer', gap: 4,
             }}
           >
-            Next →
+            Next{' '}<IcoChevron />
           </button>
         </div>
       </div>

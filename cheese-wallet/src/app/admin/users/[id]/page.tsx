@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { c, Pill, tierStyle, kycStyle, walletStyle } from '../../_shared';
+import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar, IcoArrowDn, IcoArrowUp, IcoChevron, IcoChevLeft } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
   setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet,
@@ -192,8 +192,8 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
         <div style={{ fontSize: 14, color: c.red }}>User not found.</div>
-        <button onClick={() => router.back()} style={{ fontSize: 12, color: c.textDim, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-          ← Go back
+        <button onClick={() => router.back()} style={{ fontSize: 12, color: c.textDim, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <IcoChevLeft />Go back
         </button>
       </div>
     );
@@ -239,7 +239,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
           onClick={() => router.back()}
           style={{ fontSize: 12, color: c.textDim, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 4 }}
         >
-          ← Back to Users
+          <IcoChevLeft />Back to Users
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -275,11 +275,11 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       {/* ── KPI cards ────────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         {[
-          { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: '⟳',  dir: null },
-          { label: 'Failed Transfers',   value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green, icon: '🏦', dir: null },
-          { label: 'Reward Points',      value: user.points.toLocaleString(),              color: c.amber, icon: '★',  dir: null },
-          { label: 'Total Received',     value: `$${user.totalInUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,  color: c.green, icon: '↓', dir: 'in'  as const },
-          { label: 'Total Sent',         value: `$${user.totalOutUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: c.red,   icon: '↑', dir: 'out' as const },
+          { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: <IcoRefresh />, dir: null },
+          { label: 'Failed Transfers',   value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green, icon: <IcoBank />, dir: null },
+          { label: 'Reward Points',      value: user.points.toLocaleString(),              color: c.amber, icon: <IcoStar />,    dir: null },
+          { label: 'Total Received',     value: `$${user.totalInUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,  color: c.green, icon: <IcoArrowDn />, dir: 'in'  as const },
+          { label: 'Total Sent',         value: `$${user.totalOutUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: c.red,   icon: <IcoArrowUp />, dir: 'out' as const },
         ].map(({ label, value, color, icon, dir }) => (
           <div
             key={label}
@@ -297,7 +297,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 <span style={{ fontSize: 13, color }}>{icon}</span>
                 <span style={lbl}>{label}</span>
               </div>
-              {dir && <span style={{ fontSize: 9, color: c.textDim, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>View →</span>}
+              {dir && <span style={{ fontSize: 9, color: c.textDim, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 2 }}>View <IcoChevron /></span>}
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{value}</div>
           </div>
@@ -326,8 +326,9 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
             }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: txFilter === 'in' ? c.green : c.red, letterSpacing: '-0.01em' }}>
-                  {txFilter === 'in' ? '↓ Received Transactions' : '↑ Sent Transactions'}
+                <div style={{ fontSize: 14, fontWeight: 700, color: txFilter === 'in' ? c.green : c.red, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  {txFilter === 'in' ? <IcoArrowDn /> : <IcoArrowUp />}
+                  {txFilter === 'in' ? 'Received Transactions' : 'Sent Transactions'}
                 </div>
                 <div style={{ fontSize: 11, color: c.textDim, marginTop: 3 }}>
                   {txTotal.toLocaleString()} transaction{txTotal !== 1 ? 's' : ''} · @{user.username}
@@ -375,7 +376,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                         </div>
                         {(tx.recipientUsername || tx.bankName) && (
                           <div style={{ fontSize: 10.5, color: c.textMid, marginTop: 2 }}>
-                            {tx.recipientUsername ? `→ @${tx.recipientUsername}` : tx.bankName}
+                            {tx.recipientUsername ? `@${tx.recipientUsername}` : tx.bankName}
                           </div>
                         )}
                         {tx.txHash && (
