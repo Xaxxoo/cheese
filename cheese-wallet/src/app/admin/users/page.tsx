@@ -30,7 +30,7 @@ export default function UsersPage() {
   const [total,      setTotal]      = useState(0);
   const [loading,    setLoading]    = useState(true);
   const [stats,      setStats]      = useState<AdminStats | null>(null);
-  const [sortBy,     setSortBy]     = useState<SortBy>('balance');
+  const [sortBy,     setSortBy]     = useState<SortBy>('createdAt');
   const [sortDir,    setSortDir]    = useState<SortDir>('desc');
 
   // Header chips — fetch once
