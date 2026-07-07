@@ -471,6 +471,8 @@ export class AdminAuthService {
 
     if (sortBy === 'balance') {
       qb.orderBy('u_balance_usdc', dir);
+    } else if (sortBy === 'volume') {
+      qb.orderBy('u_tx_volume', dir);
     } else {
       qb.orderBy('u.createdAt', 'DESC');
     }

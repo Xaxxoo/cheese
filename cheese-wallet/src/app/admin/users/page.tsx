@@ -14,7 +14,7 @@ import { listAdminUsers, getAdminStats, type AdminUserItem, type AdminStats } fr
 type TierFilter = 'All' | 'Silver' | 'Gold' | 'Black';
 type KycFilter  = 'All' | 'Verified' | 'Pending' | 'Reviewing' | 'Failed';
 type SortDir    = 'asc' | 'desc';
-type SortBy     = 'balance' | 'createdAt';
+type SortBy     = 'balance' | 'createdAt' | 'volume';
 
 const LIMIT = 20;
 
@@ -232,10 +232,15 @@ export default function UsersPage() {
           }}>
             Joined {sortBy === 'createdAt' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
           </button>
-          {/* Volume */}
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
-            Volume
-          </div>
+          {/* Volume — sortable */}
+          <button onClick={() => toggleSort('volume')} style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase',
+            color: sortBy === 'volume' ? c.amber : c.textDim,
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+          }}>
+            Volume {sortBy === 'volume' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
+          </button>
           {/* Balance — sortable */}
           <button onClick={() => toggleSort('balance')} style={{
             fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase',
