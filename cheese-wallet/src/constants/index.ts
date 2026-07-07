@@ -78,6 +78,7 @@ export const ENDPOINTS = {
     TRANSFER_STATUS:  (ref: string) => `/banks/transfer/${ref}`,
     VIRTUAL_ACCOUNT:      '/banks/virtual-account',
     ONRAMP_AVAILABILITY:  '/banks/onramp-availability',
+    DEPOSITS:             '/banks/deposits',
   },
 
   // ── Exchange Rate ─────────────────────────────────────

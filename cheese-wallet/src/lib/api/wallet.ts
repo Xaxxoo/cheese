@@ -57,14 +57,14 @@ export async function getTransaction(id: string): Promise<Transaction> {
 // ── On-ramp (NGN → USDC) ─────────────────────────────────
 export async function getVirtualAccount(): Promise<{ accountNumber: string; accountName: string }> {
   const { data } = await apiClient.get<ApiResponse<{ accountNumber: string; accountName: string }>>(
-    '/banks/virtual-account',
+    ENDPOINTS.BANK.VIRTUAL_ACCOUNT,
   )
   return data.data
 }
 
 export async function getOnRampAvailability(): Promise<{ availableUsdc: string; availableUsdcDisplay: string }> {
   const { data } = await apiClient.get<ApiResponse<{ availableUsdc: string; availableUsdcDisplay: string }>>(
-    '/banks/onramp-availability',
+    ENDPOINTS.BANK.ONRAMP_AVAILABILITY,
   )
   return data.data
 }
@@ -344,7 +344,7 @@ export async function cancelPayLink(token: string): Promise<void> {
 // ── Bank Deposits ──────────────────────────────────────────
 export async function getDeposits(page = 1, pageSize = 10): Promise<DepositsResponse> {
   const { data } = await apiClient.get<ApiResponse<DepositsResponse>>(
-    '/banks/deposits',
+    ENDPOINTS.BANK.DEPOSITS,
     { params: { page, pageSize } },
   )
   return data.data
