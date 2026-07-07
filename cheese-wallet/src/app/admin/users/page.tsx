@@ -232,9 +232,9 @@ export default function UsersPage() {
           }}>
             Joined {sortBy === 'createdAt' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
           </button>
-          {/* Txns */}
+          {/* Volume */}
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
-            Txns
+            Volume
           </div>
           {/* Balance — sortable */}
           <button onClick={() => toggleSort('balance')} style={{
@@ -316,9 +316,9 @@ export default function UsersPage() {
                   {/* Joined */}
                   <div style={{ fontSize: 11.5, color: c.textDim }}>{fmtDate(u.createdAt)}</div>
 
-                  {/* Txns */}
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: u.txCount > 0 ? c.text : c.textDim }}>
-                    {u.txCount.toLocaleString()}
+                  {/* Volume */}
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: parseFloat(u.txVolume) > 0 ? c.text : c.textDim }}>
+                    ${parseFloat(u.txVolume).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
 
                   {/* Balance */}

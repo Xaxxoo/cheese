@@ -443,8 +443,10 @@ export class AdminAuthService {
         WHERE t.user_id = u.id AND t.status = 'completed'
       )`, 'u_balance_usdc')
       .addSelect(`(
-        SELECT COUNT(*) FROM transactions t WHERE t.user_id = u.id
-      )`, 'u_tx_count')
+        SELECT COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL)), 0)
+        FROM transactions t
+        WHERE t.user_id = u.id AND t.status = 'completed'
+      )`, 'u_tx_volume')
       .where('u.is_admin = :isAdmin', { isAdmin: false });
 
     if (search) {
@@ -499,7 +501,7 @@ export class AdminAuthService {
         isFlagged:    u.isFlagged,
         createdAt:    u.createdAt,
         balanceUsdc:  parseFloat(raw[i]?.u_balance_usdc ?? '0').toFixed(2),
-        txCount:      parseInt(raw[i]?.u_tx_count ?? '0', 10),
+        txVolume:     parseFloat(raw[i]?.u_tx_volume ?? '0').toFixed(2),
       })),
       total,
       page,
