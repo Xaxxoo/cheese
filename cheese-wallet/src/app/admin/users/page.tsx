@@ -87,7 +87,7 @@ export default function UsersPage() {
   const TIERS: TierFilter[] = ['All', 'Silver', 'Gold', 'Black'];
   const KYCS:  KycFilter[]  = ['All', 'Verified', 'Pending', 'Reviewing', 'Failed'];
 
-  const COL_GRID = '2fr 90px 100px 110px 1.6fr 110px 110px 36px';
+  const COL_GRID = '2fr 90px 100px 110px 1.6fr 110px 70px 110px 36px';
 
   const toggleSort = (field: SortBy) => {
     if (field === sortBy) {
@@ -232,6 +232,10 @@ export default function UsersPage() {
           }}>
             Joined {sortBy === 'createdAt' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
           </button>
+          {/* Txns */}
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.textDim }}>
+            Txns
+          </div>
           {/* Balance — sortable */}
           <button onClick={() => toggleSort('balance')} style={{
             fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase',
@@ -311,6 +315,11 @@ export default function UsersPage() {
 
                   {/* Joined */}
                   <div style={{ fontSize: 11.5, color: c.textDim }}>{fmtDate(u.createdAt)}</div>
+
+                  {/* Txns */}
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: u.txCount > 0 ? c.text : c.textDim }}>
+                    {u.txCount.toLocaleString()}
+                  </div>
 
                   {/* Balance */}
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: parseFloat(u.balanceUsdc) > 0 ? c.text : c.textDim }}>

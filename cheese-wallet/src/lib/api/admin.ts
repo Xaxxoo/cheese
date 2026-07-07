@@ -182,6 +182,7 @@ export interface AdminUserItem {
   isFlagged:    boolean
   createdAt:    string
   balanceUsdc:  string
+  txCount:      number
 }
 
 export async function listAdminUsers(params?: {
