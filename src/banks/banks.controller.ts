@@ -2,12 +2,15 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Headers,
   HttpCode,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Post,
+  Query,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -166,6 +169,25 @@ export class BanksController {
   })
   getVirtualAccount(@CurrentUser() user: User) {
     return this.banksService.getOrCreateVirtualAccount(user);
+  }
+
+  // ── GET /banks/deposits ───────────────────────────────────────────────────
+  @Get('deposits')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: "List the user's inbound NGN deposits",
+    description:
+      'Returns a paginated list of deposits made to the user\'s virtual NGN account, ' +
+      'ordered most-recent first. Each item reflects the current processing status ' +
+      '(pending → completed / failed) and the USDC amount credited.',
+  })
+  @ApiResponse({ status: 200, description: 'Paginated deposit list' })
+  getDeposits(
+    @CurrentUser() user: User,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(20), ParseIntPipe) pageSize: number,
+  ) {
+    return this.banksService.getDeposits(user.id, page, pageSize);
   }
 
   // ── POST /banks/webhook ───────────────────────────────────────────────────

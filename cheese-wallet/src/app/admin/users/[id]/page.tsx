@@ -37,17 +37,22 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [recoverError,  setRecoverError]  = useState('');
 
   // ── Tx history slide-over ─────────────────────────────────────────────────
-  const [txFilter,   setTxFilter]   = useState<'in' | 'out' | null>(null);
+  const [txFilter,   setTxFilter]   = useState<'in' | 'out' | 'all' | null>(null);
   const [txItems,    setTxItems]    = useState<AdminTransactionItem[]>([]);
   const [txTotal,    setTxTotal]    = useState(0);
   const [txPage,     setTxPage]     = useState(1);
   const [txLoading,  setTxLoading]  = useState(false);
-  const txFilterRef = useRef<'in' | 'out' | null>(null);
+  const txFilterRef = useRef<'in' | 'out' | 'all' | null>(null);
 
-  const loadTxPage = useCallback(async (userId: string, dir: 'in' | 'out', page: number, reset: boolean) => {
+  const loadTxPage = useCallback(async (userId: string, dir: 'in' | 'out' | 'all', page: number, reset: boolean) => {
     setTxLoading(true);
     try {
-      const res = await listAdminTransactions({ userId, direction: dir, page, limit: 20 });
+      const res = await listAdminTransactions({
+        userId,
+        direction: dir === 'all' ? undefined : dir,
+        page,
+        limit: 20,
+      });
       setTxItems((prev) => reset ? res.transactions : [...prev, ...res.transactions]);
       setTxTotal(res.total);
       setTxPage(page);
@@ -55,7 +60,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     finally { setTxLoading(false); }
   }, []);
 
-  const openTxPanel = (dir: 'in' | 'out') => {
+  const openTxPanel = (dir: 'in' | 'out' | 'all') => {
     if (!user) return;
     txFilterRef.current = dir;
     setTxFilter(dir);
@@ -275,7 +280,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       {/* ── KPI cards ────────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         {[
-          { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: <IcoRefresh />, dir: null },
+          { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: <IcoRefresh />, dir: 'all' as const },
           { label: 'Failed Transfers',   value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green, icon: <IcoBank />, dir: null },
           { label: 'Reward Points',      value: user.points.toLocaleString(),              color: c.amber, icon: <IcoStar />,    dir: null },
           { label: 'Total Received',     value: `$${user.totalInUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,  color: c.green, icon: <IcoArrowDn />, dir: 'in'  as const },
@@ -326,9 +331,13 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
             }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: txFilter === 'in' ? c.green : c.red, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {txFilter === 'in' ? <IcoArrowDn /> : <IcoArrowUp />}
-                  {txFilter === 'in' ? 'Received Transactions' : 'Sent Transactions'}
+                <div style={{
+                  fontSize: 14, fontWeight: 700,
+                  color: txFilter === 'in' ? c.green : txFilter === 'all' ? c.blue : c.red,
+                  letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                  {txFilter === 'in' ? <IcoArrowDn /> : txFilter === 'all' ? <IcoRefresh /> : <IcoArrowUp />}
+                  {txFilter === 'in' ? 'Received' : txFilter === 'all' ? 'All Transactions' : 'Sent'}
                 </div>
                 <div style={{ fontSize: 11, color: c.textDim, marginTop: 3 }}>
                   {txTotal.toLocaleString()} transaction{txTotal !== 1 ? 's' : ''} · @{user.username}
@@ -386,8 +395,13 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                         )}
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: txFilter === 'in' ? c.green : c.red, fontVariantNumeric: 'tabular-nums' }}>
-                          ${parseFloat(tx.amountUsdc ?? '0').toFixed(2)}
+                        <div style={{
+                          fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                          color: txFilter === 'in' ? c.green
+                            : txFilter === 'out' ? c.red
+                            : ['receive', 'deposit', 'bank_in'].includes(tx.type) ? c.green : c.red,
+                        }}>
+                          {txFilter === 'all' && (['receive', 'deposit', 'bank_in'].includes(tx.type) ? '+' : '−')}${parseFloat(tx.amountUsdc ?? '0').toFixed(2)}
                         </div>
                         <div style={{ fontSize: 10.5, color: txStatusColor(tx.status), marginTop: 2 }}>
                           {tx.status}

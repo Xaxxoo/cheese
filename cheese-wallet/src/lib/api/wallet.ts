@@ -303,6 +303,7 @@ export async function verifyNin(nin: string): Promise<{ kycStatus: string; tier:
 import type {
   CreatePayLinkPayload, CreatePayLinkResponse,
   PayLinkData, PayLinkPayPayload, PayLinkPayResponse, MyLinksResponse,
+  DepositsResponse,
 } from '@/types'
 
 export async function createPayLink(payload: CreatePayLinkPayload): Promise<CreatePayLinkResponse> {
@@ -338,4 +339,13 @@ export async function getMyPayLinks(page = 1, pageSize = 20): Promise<MyLinksRes
 
 export async function cancelPayLink(token: string): Promise<void> {
   await apiClient.delete(ENDPOINTS.PAYLINK.CANCEL(token))
+}
+
+// ── Bank Deposits ──────────────────────────────────────────
+export async function getDeposits(page = 1, pageSize = 10): Promise<DepositsResponse> {
+  const { data } = await apiClient.get<ApiResponse<DepositsResponse>>(
+    '/banks/deposits',
+    { params: { page, pageSize } },
+  )
+  return data.data
 }

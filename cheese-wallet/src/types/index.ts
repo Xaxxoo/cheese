@@ -316,3 +316,27 @@ export interface MyLinksResponse {
   page: number;
   pageSize: number;
 }
+
+// ── Bank Deposits (NGN → USDC on-ramp) ────────────────────
+export type DepositStatus = 'pending' | 'completed' | 'failed'
+
+export interface BankDeposit {
+  id: string
+  reference: string
+  amountNgn: string
+  amountUsdc: string
+  rateApplied: string
+  senderName: string | null
+  status: DepositStatus
+  txHash: string | null
+  failureReason: string | null
+  createdAt: string
+}
+
+export interface DepositsResponse {
+  items: BankDeposit[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}

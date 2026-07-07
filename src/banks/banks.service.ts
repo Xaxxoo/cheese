@@ -968,6 +968,17 @@ export class BanksService {
     return { accountNumber: result.accountNumber, accountName: result.accountName };
   }
 
+  // ── GET /banks/deposits ───────────────────────────────────────────────────
+  async getDeposits(userId: string, page = 1, pageSize = 20) {
+    const [items, total] = await this.depositRepo.findAndCount({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+  }
+
   // ── VAS deposit processing (vas.completed webhook) ────────────────────────
   // Called by processPulseMfbWebhook when event === 'vas.completed'.
   // Converts the inbound NGN amount to USDC and credits the user's wallet.

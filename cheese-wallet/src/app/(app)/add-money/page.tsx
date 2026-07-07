@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft, Copy, CheckCheck, RefreshCw,
-  Building2, Wallet, Info, ChevronRight, TrendingUp,
+  Building2, Wallet, Info, ChevronRight, TrendingUp, Clock, CircleCheck, CircleX,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Spinner } from '@/components/ui/Spinner'
-import { getVirtualAccount, getExchangeRate, getOnRampAvailability } from '@/lib/api/wallet'
+import { getVirtualAccount, getExchangeRate, getOnRampAvailability, getDeposits } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import { notify } from '@/lib/toast'
+import type { BankDeposit } from '@/types'
 
 // ── Copy row ──────────────────────────────────────────────
 function CopyRow({
@@ -60,6 +61,164 @@ function CopyRow({
           : <><Copy size={12} /> Copy</>
         }
       </button>
+    </div>
+  )
+}
+
+// ── Deposit helpers ───────────────────────────────────────
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins  = Math.floor(diff / 60_000)
+  const hours = Math.floor(diff / 3_600_000)
+  if (mins < 1)   return 'just now'
+  if (mins < 60)  return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return new Date(iso).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })
+}
+
+function DepositStatusPill({ status }: { status: BankDeposit['status'] }) {
+  if (status === 'pending') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-400/12 text-amber-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+        Pending
+      </span>
+    )
+  }
+  if (status === 'completed') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-400/12 text-emerald-400">
+        <CircleCheck size={10} />
+        Completed
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-400/12 text-red-400">
+      <CircleX size={10} />
+      Failed
+    </span>
+  )
+}
+
+function DepositRow({ deposit }: { deposit: BankDeposit }) {
+  const amountNgn  = Number(deposit.amountNgn).toLocaleString('en-NG', { minimumFractionDigits: 0 })
+  const amountUsdc = Number(deposit.amountUsdc).toFixed(2)
+  const sender     = deposit.senderName ?? 'Unknown sender'
+  const time       = formatRelativeTime(deposit.createdAt)
+  const shortHash  = deposit.txHash ? deposit.txHash.slice(0, 8) + '…' + deposit.txHash.slice(-4) : null
+
+  return (
+    <div className="flex items-start justify-between py-3.5 border-b border-white/6 last:border-0">
+      <div className="flex flex-col gap-1 min-w-0 mr-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-white">
+            ₦{amountNgn}
+          </span>
+          <span className="text-white/30 text-xs">→</span>
+          <span className="text-sm font-semibold text-emerald-400">
+            ${amountUsdc} USDC
+          </span>
+          <DepositStatusPill status={deposit.status} />
+        </div>
+        <p className="text-xs text-white/40 truncate">
+          {sender} · {time}
+        </p>
+        {deposit.status === 'completed' && shortHash && (
+          <p className="text-[10px] text-white/25 font-mono">{shortHash}</p>
+        )}
+        {deposit.status === 'failed' && deposit.failureReason && (
+          <p className="text-[10px] text-red-400/70">{deposit.failureReason}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RecentDeposits() {
+  const depositsQ = useQuery({
+    queryKey: QUERY_KEYS.DEPOSITS(1),
+    queryFn: () => getDeposits(1, 10),
+    staleTime: 15_000,
+    refetchInterval: (query) => {
+      const hasPending = query.state.data?.items.some(d => d.status === 'pending') ?? false
+      return hasPending ? 15_000 : false
+    },
+  })
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock size={13} className="text-white/40" />
+          <span className="text-xs text-white/40 uppercase tracking-widest font-medium">Recent Deposits</span>
+        </div>
+        {depositsQ.isError && (
+          <button
+            type="button"
+            onClick={() => depositsQ.refetch()}
+            className="flex items-center gap-1 text-[11px] text-[#d4a843]/70 hover:text-[#d4a843] transition-colors"
+          >
+            <RefreshCw size={10} /> Retry
+          </button>
+        )}
+      </div>
+
+      {/* Card */}
+      <div className="rounded-3xl border border-white/8 bg-white/3 overflow-hidden">
+        {/* Loading skeletons */}
+        {depositsQ.isLoading && (
+          <div className="px-5 py-1">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="py-3.5 border-b border-white/6 last:border-0 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-20 bg-white/8 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-white/8 rounded animate-pulse" />
+                  <div className="h-4 w-16 bg-white/8 rounded animate-pulse" />
+                </div>
+                <div className="h-3 w-36 bg-white/5 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error state */}
+        {depositsQ.isError && !depositsQ.isLoading && (
+          <div className="px-5 py-8 text-center">
+            <p className="text-xs text-white/30">Could not load deposits</p>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {depositsQ.data && depositsQ.data.items.length === 0 && (
+          <div className="px-5 py-8 text-center">
+            <p className="text-xs text-white/30">
+              No deposits yet — transfers to the account above appear here
+            </p>
+          </div>
+        )}
+
+        {/* Deposit rows */}
+        {depositsQ.data && depositsQ.data.items.length > 0 && (
+          <div className="px-5 py-1">
+            {depositsQ.data.items.map(deposit => (
+              <DepositRow key={deposit.id} deposit={deposit} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer: see all in history */}
+      {depositsQ.data && depositsQ.data.total > 10 && (
+        <Link
+          href="/history"
+          className="flex items-center justify-center gap-1.5 text-xs text-[#d4a843]/70 hover:text-[#d4a843] transition-colors py-1"
+        >
+          See all in History
+          <ChevronRight size={12} />
+        </Link>
+      )}
     </div>
   )
 }
@@ -269,6 +428,9 @@ function BankTransferTab() {
         Deposits are converted at the rate shown above.{'\n'}
         The rate may change between when you send and when it settles.
       </p>
+
+      {/* Recent deposits */}
+      <RecentDeposits />
     </div>
   )
 }

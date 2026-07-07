@@ -208,6 +208,9 @@ export const QUERY_KEYS = {
   // PayLink
   PAYLINK_MY:           ['paylink', 'my'] as const,
   PAYLINK_TOKEN:        (token: string) => ['paylink', token] as const,
+
+  // Deposits
+  DEPOSITS:             (page: number) => ['banks', 'deposits', page] as const,
 } as const
 
 // ── Stale times ───────────────────────────────────────────
