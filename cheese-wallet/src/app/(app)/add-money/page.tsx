@@ -12,7 +12,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { getVirtualAccount, getExchangeRate, getOnRampAvailability, getDeposits } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import { notify } from '@/lib/toast'
-import type { BankDeposit } from '../../../types'
+type BankDeposit = Awaited<ReturnType<typeof getDeposits>>['items'][number]
 
 // ── Copy row ──────────────────────────────────────────────
 function CopyRow({

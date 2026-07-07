@@ -303,8 +303,26 @@ export async function verifyNin(nin: string): Promise<{ kycStatus: string; tier:
 import type {
   CreatePayLinkPayload, CreatePayLinkResponse,
   PayLinkData, PayLinkPayPayload, PayLinkPayResponse, MyLinksResponse,
-  DepositsResponse,
 } from '@/types'
+
+export interface DepositsResponse {
+  items: {
+    id: string
+    reference: string
+    amountNgn: string
+    amountUsdc: string
+    rateApplied: string
+    senderName: string | null
+    status: 'pending' | 'completed' | 'failed'
+    txHash: string | null
+    failureReason: string | null
+    createdAt: string
+  }[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
 
 export async function createPayLink(payload: CreatePayLinkPayload): Promise<CreatePayLinkResponse> {
   const { data } = await apiClient.post<import('@/types').ApiResponse<CreatePayLinkResponse>>(
