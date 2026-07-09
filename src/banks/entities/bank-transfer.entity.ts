@@ -65,7 +65,7 @@ export class BankTransfer {
   @Column({ unique: true })
   reference: string;
 
-  // Paystack transfer reference
+  // Provider transfer reference (PulseMFB)
   @Column({ name: 'provider_reference', type: 'varchar', nullable: true })
   providerReference: string | null;
 
