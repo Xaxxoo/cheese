@@ -68,7 +68,9 @@ async function bootstrap() {
   app.setGlobalPrefix('v1');
 
   // ── Swagger ──────────────────────────────────────────────
-  {
+  // Only expose API docs outside of production to avoid leaking the
+  // full API surface (auth, banks, cards, KYC) on live deployments.
+  if (config.get<string>('app.nodeEnv') !== 'production') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('🧀 Cheese Pay API')
       .setDescription(
