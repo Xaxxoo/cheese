@@ -7,12 +7,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Airtime'>
 
 const config: BillFlowConfig = {
   title: 'Buy Airtime',
-  providers: [
-    { id: 'mtn',      name: 'MTN',     icon: '🟡' },
-    { id: 'glo',      name: 'Glo',     icon: '🟢' },
-    { id: 'airtel',   name: 'Airtel',  icon: '🔴' },
-    { id: 'etisalat', name: '9mobile', icon: '🔵' },
-  ],
+  category: 'airtime',
   billersCodeLabel:       'Phone Number',
   billersCodePlaceholder: '08XXXXXXXXX',
   billersCodeKeyboard:    'phone-pad',

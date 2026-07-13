@@ -4,7 +4,8 @@ import {
   SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
   ActivityIndicator,
 } from 'react-native'
-import { getBillVariations, verifyBillCustomer, payBill } from '../../api/bills'
+import { getBillers, getBillVariations, verifyBillCustomer, payBill } from '../../api/bills'
+import type { Biller } from '../../api/bills'
 import { getExchangeRate, getBalance } from '../../api/wallet'
 import { useAuthStore } from '../../store/auth.store'
 import { getOrCreateDeviceId, getOrCreateDeviceKeyPair, signDeviceId, hashPin } from '../../utils/crypto'
@@ -22,7 +23,8 @@ export interface BillProvider {
 
 export interface BillFlowConfig {
   title: string
-  providers: BillProvider[]
+  providers?: BillProvider[]
+  category?: string
   billersCodeLabel: string
   billersCodePlaceholder: string
   billersCodeKeyboard: 'number-pad' | 'phone-pad' | 'default'
@@ -71,6 +73,27 @@ export default function BillPayFlow({ config, onBack }: Props) {
   const user = useAuthStore((s) => s.user)
 
   const [step, setStep] = useState<Step>(1)
+
+  // ── Dynamic billers ──
+  const [dynamicProviders, setDynamicProviders] = useState<BillProvider[]>(config.providers ?? [])
+  const [loadingBillers, setLoadingBillers]     = useState(!config.providers)
+
+  useEffect(() => {
+    if (config.providers || !config.category) return
+    setLoadingBillers(true)
+    getBillers(config.category)
+      .then((billers: Biller[]) => {
+        setDynamicProviders(
+          billers.map((b) => ({
+            id: b.biller_code,
+            name: b.name || b.biller_name || b.short_name,
+            icon: config.category === 'electricity' ? '⚡' : config.category === 'tv' ? '📺' : '📱',
+          })),
+        )
+      })
+      .catch(() => {})
+      .finally(() => setLoadingBillers(false))
+  }, [config.providers, config.category])
 
   // ── Step 1 ──
   const [provider,     setProvider]     = useState<BillProvider | null>(null)
@@ -261,8 +284,11 @@ export default function BillPayFlow({ config, onBack }: Props) {
           {step === 1 && (
             <>
               <Text style={s.fieldLabel}>Provider</Text>
+              {loadingBillers ? (
+                <View style={s.center}><ActivityIndicator color="#d4a843" /></View>
+              ) : (
               <View style={s.providerGrid}>
-                {config.providers.map((p) => (
+                {dynamicProviders.map((p) => (
                   <TouchableOpacity
                     key={p.id}
                     style={[s.providerBtn, provider?.id === p.id && s.providerBtnActive]}
@@ -273,6 +299,7 @@ export default function BillPayFlow({ config, onBack }: Props) {
                   </TouchableOpacity>
                 ))}
               </View>
+              )}
 
               <Text style={s.fieldLabel}>{config.billersCodeLabel}</Text>
               {config.needsVerify ? (

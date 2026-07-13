@@ -7,12 +7,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Data'>
 
 const config: BillFlowConfig = {
   title: 'Buy Data',
-  providers: [
-    { id: 'mtn-data',      name: 'MTN',     icon: '🟡' },
-    { id: 'glo-data',      name: 'Glo',     icon: '🟢' },
-    { id: 'airtel-data',   name: 'Airtel',  icon: '🔴' },
-    { id: 'etisalat-data', name: '9mobile', icon: '🔵' },
-  ],
+  category: 'data',
   billersCodeLabel:       'Phone Number',
   billersCodePlaceholder: '08XXXXXXXXX',
   billersCodeKeyboard:    'phone-pad',

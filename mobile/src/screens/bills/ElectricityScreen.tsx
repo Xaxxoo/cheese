@@ -7,16 +7,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Electricity'>
 
 const config: BillFlowConfig = {
   title: 'Electricity',
-  providers: [
-    { id: 'ikeja-electric',  name: 'Ikeja Electric',  icon: '⚡' },
-    { id: 'eko-electric',    name: 'Eko Electric',    icon: '⚡' },
-    { id: 'abuja-electric',  name: 'Abuja Electric',  icon: '⚡' },
-    { id: 'kano-electric',   name: 'Kano Electric',   icon: '⚡' },
-    { id: 'phed',            name: 'PHED',            icon: '⚡' },
-    { id: 'ibadan-electric', name: 'IBEDC',           icon: '⚡' },
-    { id: 'enugu-electric',  name: 'EEDC',            icon: '⚡' },
-    { id: 'benin-electric',  name: 'BEDC',            icon: '⚡' },
-  ],
+  category: 'electricity',
   billersCodeLabel:       'Meter Number',
   billersCodePlaceholder: 'Enter meter number',
   billersCodeKeyboard:    'number-pad',

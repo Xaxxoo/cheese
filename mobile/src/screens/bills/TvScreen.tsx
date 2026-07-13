@@ -7,11 +7,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Tv'>
 
 const config: BillFlowConfig = {
   title: 'TV Subscription',
-  providers: [
-    { id: 'dstv',       name: 'DStv',      icon: '📺' },
-    { id: 'gotv',       name: 'GOtv',      icon: '📡' },
-    { id: 'startimes',  name: 'StarTimes', icon: '⭐' },
-  ],
+  category: 'tv',
   billersCodeLabel:       'Smart Card / IUC Number',
   billersCodePlaceholder: 'Enter smart card number',
   billersCodeKeyboard:    'number-pad',
