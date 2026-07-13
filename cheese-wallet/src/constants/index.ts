@@ -152,6 +152,7 @@ export const ENDPOINTS = {
 
   // ── Bills ─────────────────────────────────────────────
   BILLS: {
+    BILLERS:    '/bills/billers',
     VARIATIONS: '/bills/variations',
     VERIFY:     '/bills/verify',
     PAY:        '/bills/pay',

@@ -10,25 +10,26 @@ import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { getExchangeRate } from '@/lib/api/wallet'
-import { getBillVariations, verifyBillCustomer, payBill } from '@/lib/api/bills'
+import { getBillers, getBillVariations, verifyBillCustomer, payBill } from '@/lib/api/bills'
 import { signPayload, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
-import type { PayBillResponse, BillVariation } from '@/lib/api/bills'
+import type { PayBillResponse, BillVariation, Biller } from '@/lib/api/bills'
 
 // ─────────────────────────────────────────────────────────
 type Step = 'provider' | 'details' | 'verify' | 'package' | 'summary' | 'pin' | 'success' | 'error'
 
-const PROVIDERS = [
-  { id: 'dstv',       label: 'DSTV',       color: 'text-blue-400' },
-  { id: 'gotv',       label: 'GOTV',       color: 'text-orange-400' },
-  { id: 'startimes',  label: 'StarTimes',  color: 'text-red-400' },
-]
+interface Provider {
+  id: string
+  label: string
+  color: string
+}
 
 export default function TvPage() {
   const router = useRouter()
   const { user, deviceId } = useAuthStore()
 
   const [step, setStep] = useState<Step>('provider')
+  const [providers, setProviders] = useState<Provider[]>([])
   const [provider, setProvider] = useState('')
   const [smartcard, setSmartcard] = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -39,6 +40,22 @@ export default function TvPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<PayBillResponse | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
+
+  const billersQ = useQuery({
+    queryKey: ['billers', 'tv'],
+    queryFn: () => getBillers('tv'),
+    staleTime: 5 * 60_000,
+  })
+
+  useEffect(() => {
+    if (billersQ.data) {
+      setProviders(billersQ.data.map((b: Biller) => ({
+        id: b.biller_code,
+        label: b.name || b.biller_name || b.short_name,
+        color: 'text-white',
+      })))
+    }
+  }, [billersQ.data])
 
   const rateQ = useQuery({
     queryKey: QUERY_KEYS.EXCHANGE_RATE,
@@ -154,7 +171,17 @@ export default function TvPage() {
         {step === 'provider' && (
           <div className="flex flex-col gap-3 mt-2">
             <p className="text-sm text-white/50 mb-2">Select TV provider</p>
-            {PROVIDERS.map(p => (
+            {billersQ.isLoading && (
+              <div className="flex justify-center py-8">
+                <Spinner size="md" />
+              </div>
+            )}
+            {billersQ.isError && (
+              <p className="text-sm text-red-400/70 text-center py-4">
+                Could not load providers. Please try again.
+              </p>
+            )}
+            {providers.map(p => (
               <button
                 key={p.id}
                 type="button"
@@ -272,7 +299,7 @@ export default function TvPage() {
             <p className="text-sm text-white/50 mb-1">Confirm your subscription</p>
             <div className="rounded-2xl border border-white/8 bg-white/4 overflow-hidden">
               {[
-                { label: 'Provider', value: PROVIDERS.find(p => p.id === provider)?.label ?? provider },
+                { label: 'Provider', value: providers.find(p => p.id === provider)?.label ?? provider },
                 { label: 'Smartcard', value: smartcard },
                 ...(customerName ? [{ label: 'Customer', value: customerName }] : []),
                 { label: 'Plan', value: selectedVariation.name },

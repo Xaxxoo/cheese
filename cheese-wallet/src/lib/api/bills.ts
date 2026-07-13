@@ -3,6 +3,20 @@ import apiClient from './client'
 import { ENDPOINTS } from '@/constants'
 import type { ApiResponse } from '@/types'
 
+export interface Biller {
+  id: number
+  biller_code: string
+  name: string
+  country: string
+  is_airtime: boolean
+  biller_name: string
+  item_code: string
+  short_name: string
+  fee: number
+  amount: number
+  label_name: string
+}
+
 export interface BillVariation {
   variation_code: string
   name: string
@@ -18,6 +32,7 @@ export interface BillVariationsResponse {
 export interface VerifyBillCustomerPayload {
   serviceId: string
   billersCode: string
+  variationCode?: string
 }
 
 export interface VerifyBillCustomerResponse {
@@ -48,9 +63,17 @@ export interface PayBillResponse {
   amountUsdc: string
   rateApplied: string
   fee: string
-  vtpassReference: string
+  providerReference: string
   purchasedCode: string | null
   stellarTxHash: string
+}
+
+export async function getBillers(category?: string): Promise<Biller[]> {
+  const { data } = await apiClient.get<ApiResponse<Biller[]>>(
+    ENDPOINTS.BILLS.BILLERS,
+    { params: category ? { category } : undefined },
+  )
+  return data.data
 }
 
 export async function getBillVariations(serviceId: string): Promise<BillVariationsResponse> {

@@ -10,36 +10,28 @@ import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { getExchangeRate } from '@/lib/api/wallet'
-import { verifyBillCustomer, payBill } from '@/lib/api/bills'
+import { getBillers, verifyBillCustomer, payBill } from '@/lib/api/bills'
 import { signPayload, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
-import type { PayBillResponse, BillVariation } from '@/lib/api/bills'
+import type { PayBillResponse, Biller } from '@/lib/api/bills'
 
 // ─────────────────────────────────────────────────────────
 type Step = 'provider' | 'details' | 'verify' | 'amount' | 'summary' | 'pin' | 'success' | 'error'
 
-const PROVIDERS = [
-  { id: 'ikeja-electric',    label: 'Ikeja Electric (IKEDC)',   color: 'text-yellow-400' },
-  { id: 'ekedc',             label: 'Eko Electric (EKEDC)',     color: 'text-blue-400' },
-  { id: 'phed',              label: 'Port Harcourt (PHED)',     color: 'text-emerald-400' },
-  { id: 'aedc',              label: 'Abuja Electric (AEDC)',    color: 'text-violet-400' },
-  { id: 'ibedc',             label: 'Ibadan Electric (IBEDC)',  color: 'text-orange-400' },
-  { id: 'kedco',             label: 'Kano Electric (KEDCO)',    color: 'text-red-400' },
-]
-
-const METER_TYPES: BillVariation[] = [
-  { variation_code: 'prepaid',  name: 'Prepaid',  variation_amount: '0', fixedPrice: 'No' },
-  { variation_code: 'postpaid', name: 'Postpaid', variation_amount: '0', fixedPrice: 'No' },
-]
+interface Provider {
+  id: string
+  label: string
+  color: string
+}
 
 export default function ElectricityPage() {
   const router = useRouter()
   const { user, deviceId } = useAuthStore()
 
   const [step, setStep] = useState<Step>('provider')
+  const [providers, setProviders] = useState<Provider[]>([])
   const [provider, setProvider] = useState('')
   const [meterNumber, setMeterNumber] = useState('')
-  const [meterType, setMeterType] = useState('prepaid')
   const [customerName, setCustomerName] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
   const [verifying, setVerifying] = useState(false)
@@ -49,6 +41,22 @@ export default function ElectricityPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<PayBillResponse | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
+
+  const billersQ = useQuery({
+    queryKey: ['billers', 'electricity'],
+    queryFn: () => getBillers('electricity'),
+    staleTime: 5 * 60_000,
+  })
+
+  useEffect(() => {
+    if (billersQ.data) {
+      setProviders(billersQ.data.map((b: Biller) => ({
+        id: b.biller_code,
+        label: b.name || b.biller_name || b.short_name,
+        color: 'text-white',
+      })))
+    }
+  }, [billersQ.data])
 
   const rateQ = useQuery({
     queryKey: QUERY_KEYS.EXCHANGE_RATE,
@@ -69,8 +77,7 @@ export default function ElectricityPage() {
     setVerifying(true)
     setVerifyError('')
     try {
-      const serviceId = `${provider}-${meterType}`
-      const res = await verifyBillCustomer({ serviceId, billersCode: meterNumber })
+      const res = await verifyBillCustomer({ serviceId: provider, billersCode: meterNumber })
       const details = res.details as Record<string, unknown>
       setCustomerName(res.customerName ?? (details?.name as string) ?? '')
       setCustomerAddress((details?.address as string) ?? (details?.Address as string) ?? '')
@@ -87,7 +94,6 @@ export default function ElectricityPage() {
     setLoading(true)
     try {
       const pinHash = await hashPin(pin, user.id)
-      const serviceId = `${provider}-${meterType}`
 
       const timestamp = Date.now()
       const nonceBytes = new Uint8Array(16)
@@ -100,16 +106,15 @@ export default function ElectricityPage() {
         amount,
         nonce,
         recipient: meterNumber,
-        serviceId,
+        serviceId: provider,
         timestamp: String(timestamp),
         userId: user.id,
       }
       const deviceSignature = await signPayload(deviceId, sigPayload)
 
       const res = await payBill({
-        serviceId,
+        serviceId: provider,
         billersCode: meterNumber,
-        variationCode: meterType,
         amount,
         pinHash,
         deviceSignature,
@@ -160,7 +165,17 @@ export default function ElectricityPage() {
         {step === 'provider' && (
           <div className="flex flex-col gap-3 mt-2">
             <p className="text-sm text-white/50 mb-2">Select your electricity provider</p>
-            {PROVIDERS.map(p => (
+            {billersQ.isLoading && (
+              <div className="flex justify-center py-8">
+                <Spinner size="md" />
+              </div>
+            )}
+            {billersQ.isError && (
+              <p className="text-sm text-red-400/70 text-center py-4">
+                Could not load providers. Please try again.
+              </p>
+            )}
+            {providers.map(p => (
               <button
                 key={p.id}
                 type="button"
@@ -184,26 +199,6 @@ export default function ElectricityPage() {
         {/* Step: Details */}
         {step === 'details' && (
           <div className="flex flex-col gap-4 mt-2">
-            <div>
-              <label className="text-xs text-white/50 mb-1.5 block">Meter type</label>
-              <div className="flex gap-2">
-                {METER_TYPES.map(m => (
-                  <button
-                    key={m.variation_code}
-                    type="button"
-                    onClick={() => setMeterType(m.variation_code)}
-                    className={cn(
-                      'flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors',
-                      meterType === m.variation_code
-                        ? 'border-[#d4a843] bg-[#d4a843]/8 text-[#d4a843]'
-                        : 'border-white/10 bg-white/4 text-white/60',
-                    )}
-                  >
-                    {m.name}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div>
               <label className="text-xs text-white/50 mb-1.5 block">Meter number</label>
               <input
@@ -287,9 +282,8 @@ export default function ElectricityPage() {
             <p className="text-sm text-white/50 mb-1">Confirm your payment</p>
             <div className="rounded-2xl border border-white/8 bg-white/4 overflow-hidden">
               {[
-                { label: 'Provider', value: PROVIDERS.find(p => p.id === provider)?.label ?? provider },
+                { label: 'Provider', value: providers.find(p => p.id === provider)?.label ?? provider },
                 { label: 'Meter', value: meterNumber },
-                { label: 'Type', value: meterType === 'prepaid' ? 'Prepaid' : 'Postpaid' },
                 ...(customerName ? [{ label: 'Customer', value: customerName }] : []),
                 { label: 'Amount', value: `₦${parseInt(amount).toLocaleString()}` },
                 { label: 'USDC cost', value: rate ? `$${(parseInt(amount) / rate).toFixed(4)} USDC` : '—' },
