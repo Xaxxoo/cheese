@@ -8,8 +8,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PayBillDto {
   @ApiProperty({
-    example: 'mtn',
-    description: "VTPass service ID, e.g. 'mtn', 'mtn-data', 'dstv', 'ikeja-electric'",
+    example: 'BIL100',
+    description: "Biller code (provider ID), e.g. 'BIL100' for MTN airtime. Obtained from GET /bills/billers",
   })
   @IsString()
   @IsNotEmpty()
@@ -24,8 +24,8 @@ export class PayBillDto {
   billersCode: string;
 
   @ApiPropertyOptional({
-    example: 'mtn-500mb-30',
-    description: 'Required for data/tv/electricity. Obtained from GET /bills/variations',
+    example: 'MD136',
+    description: 'Item code (plan/variation). Required for data/tv/electricity. Obtained from GET /bills/variations',
   })
   @IsOptional()
   @IsString()
@@ -81,13 +81,27 @@ export class PayBillDto {
 }
 
 export class VerifyBillCustomerDto {
-  @ApiProperty({ example: 'dstv' })
+  @ApiProperty({
+    example: 'BIL108',
+    description: 'Biller code (provider ID). Obtained from GET /bills/billers',
+  })
   @IsString()
   @IsNotEmpty()
   serviceId: string;
 
-  @ApiProperty({ example: '1234567890' })
+  @ApiProperty({
+    example: '1234567890',
+    description: 'Smartcard number, meter number, or other customer identifier',
+  })
   @IsString()
   @IsNotEmpty()
   billersCode: string;
+
+  @ApiPropertyOptional({
+    example: 'CB141',
+    description: 'Item code for validation. If omitted, the first biller item is used automatically.',
+  })
+  @IsOptional()
+  @IsString()
+  variationCode?: string;
 }

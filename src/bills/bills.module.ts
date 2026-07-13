@@ -9,7 +9,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BillsController } from './bills.controller';
 import { BillsService } from './bills.service';
-import { VtpassClient } from './vtpass.client';
+import { FlutterwaveBillsClient } from './flutterwave-bills.client';
 
 @Module({
   imports: [
@@ -20,6 +20,6 @@ import { VtpassClient } from './vtpass.client';
     NotificationsModule,
   ],
   controllers: [BillsController],
-  providers: [BillsService, VtpassClient],
+  providers: [BillsService, FlutterwaveBillsClient],
 })
 export class BillsModule {}

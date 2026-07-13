@@ -17,7 +17,7 @@ import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { NotificationsService } from '../notifications/notifications.service';
-import { VtpassClient } from './vtpass.client';
+import { FlutterwaveBillsClient } from './flutterwave-bills.client';
 import { PayBillDto, VerifyBillCustomerDto } from './dto/pay-bill.dto';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 
@@ -47,35 +47,86 @@ export class BillsService {
     private readonly blockchainService: BlockchainService,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
-    private readonly vtpassClient: VtpassClient,
+    private readonly fwClient: FlutterwaveBillsClient,
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  // ── GET /bills/billers ──────────────────────────────────────────────────
+  async getBillers(category?: string) {
+    const billers = await this.fwClient.getBillers('NG');
+
+    if (!category) return billers;
+
+    const cat = category.toLowerCase();
+    return billers.filter((b) => {
+      const name = (b.name || b.biller_name || '').toLowerCase();
+      switch (cat) {
+        case 'airtime':
+          return b.is_airtime === true;
+        case 'data':
+          return !b.is_airtime && name.includes('data');
+        case 'tv':
+          return (
+            name.includes('dstv') ||
+            name.includes('gotv') ||
+            name.includes('startimes') ||
+            name.includes('cable')
+          );
+        case 'electricity':
+          return (
+            name.includes('electric') ||
+            name.includes('disco') ||
+            name.includes('power')
+          );
+        default:
+          return true;
+      }
+    });
+  }
+
   // ── GET /bills/variations ─────────────────────────────────────────────────
   async getVariations(serviceId: string) {
-    const variations = await this.vtpassClient.getVariations(serviceId);
+    const items = await this.fwClient.getBillerItems(serviceId);
+    const variations = items.map((item) => ({
+      variation_code: item.item_code,
+      name: item.name,
+      variation_amount: String(item.amount),
+      fixedPrice: item.amount > 0 ? 'Yes' : 'No',
+    }));
     return { serviceId, variations };
   }
 
   // ── POST /bills/verify ────────────────────────────────────────────────────
   async verifyCustomer(dto: VerifyBillCustomerDto) {
-    const result = await this.vtpassClient.verifyCustomer(
+    // Flutterwave requires an item_code to validate a customer.
+    // If the frontend didn't supply variationCode, auto-fetch the first biller item.
+    let itemCode = dto.variationCode;
+    if (!itemCode) {
+      const items = await this.fwClient.getBillerItems(dto.serviceId);
+      if (!items.length) {
+        throw new BadRequestException(
+          'No items found for this biller. Please check the service ID.',
+        );
+      }
+      itemCode = items[0].item_code;
+    }
+
+    const result = await this.fwClient.validateCustomer(
       dto.serviceId,
+      itemCode,
       dto.billersCode,
     );
-    if (result.code !== '000') {
+
+    if (result.status !== 'success') {
       throw new BadRequestException(
         'Could not verify customer. Please check the details and try again.',
       );
     }
-    const customerName =
-      result.content?.Customer_Name ??
-      result.content?.customerName ??
-      null;
+
     return {
       verified: true,
-      customerName,
-      details: result.content,
+      customerName: result.data?.name ?? null,
+      details: result.data,
     };
   }
 
@@ -166,27 +217,29 @@ export class BillsService {
       );
     }
 
-    // 9. Call VTPass
+    // 9. Call Flutterwave Bills
     try {
-      const vtpassResult = await this.vtpassClient.pay({
-        request_id: reference,
-        serviceID: dto.serviceId,
-        billersCode: dto.billersCode,
-        variation_code: dto.variationCode,
+      // Map frontend field names to Flutterwave field names:
+      //   serviceId    → biller_code
+      //   billersCode  → customer_id
+      //   variationCode → item_code
+      const itemCode = dto.variationCode || dto.serviceId;
+      const fwResult = await this.fwClient.pay({
+        biller_code: dto.serviceId,
+        item_code: itemCode,
+        customer_id: dto.billersCode,
         amount: dto.amount ?? amountNgn.toString(),
-        phone: user.phone ?? dto.billersCode,
+        country: 'NG',
+        reference,
       });
 
-      // VTPass returns code '000' for success
-      if (vtpassResult.code !== '000') {
-        throw new Error(
-          vtpassResult.response_description ?? 'VTPass payment failed',
-        );
+      if (fwResult.status !== 'success') {
+        throw new Error(fwResult.message ?? 'Bill payment failed');
       }
 
       await this.txService.update(tx.id, { status: TxStatus.COMPLETED });
       this.logger.log(
-        `Bill payment completed [ref=${reference}] [service=${dto.serviceId}] [vtpass_ref=${vtpassResult.requestId}]`,
+        `Bill payment completed [ref=${reference}] [service=${dto.serviceId}] [fw_ref=${fwResult.data?.flw_ref ?? ''}]`,
       );
 
       // Fire-and-forget notification
@@ -208,14 +261,14 @@ export class BillsService {
         amountUsdc,
         rateApplied: rate.effectiveRate,
         fee: BILL_PAYMENT_FEE_USDC,
-        vtpassReference: vtpassResult.requestId,
-        purchasedCode: vtpassResult.purchased_code ?? vtpassResult.token ?? null,
+        providerReference: fwResult.data?.flw_ref ?? '',
+        purchasedCode: fwResult.data?.token ?? null,
         stellarTxHash,
       };
     } catch (err) {
       const errMsg = (err as Error).message ?? '';
       this.logger.error(
-        `VTPass payment failed for ${reference} — refunding USDC: ${errMsg}`,
+        `Flutterwave payment failed for ${reference} — refunding USDC: ${errMsg}`,
       );
 
       // Refund USDC

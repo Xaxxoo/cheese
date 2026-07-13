@@ -21,7 +21,7 @@ import {
   stellarConfig,
   dojahConfig,
   alertsConfig,
-  vtpassConfig,
+  flutterwaveBillsConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -113,7 +113,7 @@ import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
         stellarConfig,
         dojahConfig,
         alertsConfig,
-        vtpassConfig,
+        flutterwaveBillsConfig,
       ],
       envFilePath: ['.env'],
     }),

@@ -26,15 +26,29 @@ import { PayBillDto, VerifyBillCustomerDto } from './dto/pay-bill.dto';
 export class BillsController {
   constructor(private readonly billsService: BillsService) {}
 
+  // ── GET /bills/billers ──────────────────────────────────────────────────
+  @Get('billers')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'List available billers',
+    description:
+      'Fetches available bill payment providers. Optionally filter by category: airtime, data, tv, electricity.',
+  })
+  @ApiQuery({ name: 'category', required: false, example: 'airtime' })
+  @ApiResponse({ status: 200, description: 'List of billers' })
+  getBillers(@Query('category') category?: string) {
+    return this.billsService.getBillers(category);
+  }
+
   // ── GET /bills/variations ─────────────────────────────────────────────────
   @Get('variations')
   @ApiBearerAuth('access-token')
   @ApiOperation({
-    summary: 'Get service variations (packages)',
+    summary: 'Get biller items (packages/plans)',
     description:
-      'Fetches available packages for a VTPass service — e.g. data bundles for mtn-data, TV plans for dstv.',
+      'Fetches available packages for a biller — e.g. data bundles, TV plans.',
   })
-  @ApiQuery({ name: 'serviceId', example: 'mtn-data' })
+  @ApiQuery({ name: 'serviceId', example: 'BIL100' })
   @ApiResponse({ status: 200, description: 'List of available variations' })
   getVariations(@Query('serviceId') serviceId: string) {
     return this.billsService.getVariations(serviceId);
@@ -65,11 +79,10 @@ export class BillsController {
   @ApiOperation({
     summary: 'Pay a bill',
     description:
-      "Converts the user's USDC to NGN and pays a bill via VTPass. " +
+      "Converts the user's USDC to NGN and pays a bill via Flutterwave. " +
       'Requires PIN hash and device signature.\n\n' +
-      '**Supported services:** airtime (mtn, airtel, glo, etisalat), ' +
-      'data (mtn-data, airtel-data, glo-data, etisalat-data), ' +
-      'TV (dstv, gotv, startimes), electricity (ikeja-electric, ekedc, etc.)',
+      '**Supported categories:** airtime, data, TV, electricity. ' +
+      'Use GET /bills/billers to discover available providers.',
   })
   @ApiResponse({ status: 200, description: 'Bill payment completed' })
   @ApiResponse({ status: 400, description: 'Insufficient balance or validation error' })
