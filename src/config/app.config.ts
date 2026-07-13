@@ -101,8 +101,9 @@ export const alertsConfig = registerAs('alerts', () => ({
   adminAlertEmail: process.env.ADMIN_ALERT_EMAIL,
 }));
 
-export const vtpassConfig = registerAs('vtpass', () => ({
-  baseUrl: process.env.VTPASS_BASE_URL || 'https://sandbox.vtpass.com/api',
-  apiKey: process.env.VTPASS_API_KEY,
-  secretKey: process.env.VTPASS_SECRET_KEY,
+export const flutterwaveBillsConfig = registerAs('flutterwaveBills', () => ({
+  baseUrl: process.env.FLUTTERWAVE_BILLS_BASE_URL || 'https://api.flutterwave.com',
+  clientId: process.env.FLUTTERWAVE_BILLS_CLIENT_ID,
+  clientSecret: process.env.FLUTTERWAVE_BILLS_CLIENT_SECRET,
+  callbackUrl: process.env.FLUTTERWAVE_BILLS_CALLBACK_URL || '',
 }));
