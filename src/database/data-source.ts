@@ -19,6 +19,7 @@ import { Notification } from '../notifications/entities/notification.entity';
 import { PushSubscription } from '../notifications/entities/push-subscription.entity';
 import { BankTransfer } from '../banks/entities/bank-transfer.entity';
 import { BankDeposit } from '../banks/entities/bank-deposit.entity';
+import { TriviaScore } from '../trivia/entities/trivia-score.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
 const usePostgres = !!databaseUrl || !!process.env.DB_HOST;
@@ -47,6 +48,7 @@ if (usePostgres) {
         Notification,
         PushSubscription,
         BankTransfer,
+        TriviaScore,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
       ssl:
@@ -78,6 +80,7 @@ if (usePostgres) {
         Notification,
         PushSubscription,
         BankTransfer,
+        TriviaScore,
       ],
       migrations: [join(__dirname, 'migrations/*.{ts,js}')],
       ssl:
@@ -108,6 +111,7 @@ if (usePostgres) {
       PushSubscription,
       BankTransfer,
       BankDeposit,
+      TriviaScore,
     ],
     migrations: [join(__dirname, 'migrations/*.{ts,js}')], // Enable migrations
     synchronize: false, // Disable synchronize when using migrations
