@@ -823,6 +823,77 @@ export function waitlistReminder(params: {
 // ─────────────────────────────────────────────────────────
 // 12. DEVICE REGISTRATION MAGIC LINK
 // ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// 13. TRIVIA WINNER
+// ─────────────────────────────────────────────────────────
+export function triviaWinner(params: {
+  fullName: string;
+  username: string;
+  totalScore: number;
+  weekOf: string;
+  amountUsdc: string;
+  appUrl: string;
+}): { subject: string; html: string } {
+  const subject = `You won the weekly trivia — $${params.amountUsdc} USDC credited!`;
+  const html = baseLayout({
+    preheader: `Congrats @${params.username}! You topped the trivia leaderboard and earned $${params.amountUsdc} USDC.`,
+    body: `
+      <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
+      <div style="padding:48px 40px 40px;">
+
+        <!-- Trophy -->
+        <div style="text-align:center;margin-bottom:28px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+            <tr>
+              <td style="background:${BRAND.gold}20;border:1px solid ${BRAND.gold}44;
+                          border-radius:50%;width:80px;height:80px;text-align:center;vertical-align:middle;">
+                ${ICONS.gift(BRAND.gold, 44)}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        ${sectionLabel('Weekly Trivia Champion', ICONS.star(BRAND.gold, 14))}
+
+        <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
+                   font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:12px;text-align:center;">
+          You're #1,
+          <span style="background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.goldLight});
+                       -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+            @${params.username}!
+          </span>
+        </h1>
+        <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                  line-height:1.7;margin-bottom:36px;text-align:center;">
+          You topped the Cheese Trivia leaderboard for the week of ${params.weekOf}.
+          Your reward has been credited to your wallet.
+        </p>
+
+        <div style="margin-bottom:32px;">${amountDisplay(params.amountUsdc)}</div>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
+          <tbody>
+            ${detailRow('Week', params.weekOf)}
+            ${detailRow('Your Score', `${params.totalScore} pts`, true)}
+            ${detailRow('Reward', `$${params.amountUsdc} USDC`, true)}
+            ${detailRow('Status', 'Credited to wallet', true)}
+          </tbody>
+        </table>
+
+        ${infoBox(`Keep playing daily to defend your crown! Up to 3 scoring rounds per day — points stack all week.`, 'success')}
+
+        <div style="margin-top:32px;">
+          ${primaryButton('Play Trivia', params.appUrl + '/trivia')}
+        </div>
+      </div>
+    `,
+  });
+  return { subject, html };
+}
+
+// ─────────────────────────────────────────────────────────
+// 14. DEVICE REGISTRATION MAGIC LINK
+// ─────────────────────────────────────────────────────────
 export function deviceRegistrationLink(params: {
   fullName: string;
   link: string;

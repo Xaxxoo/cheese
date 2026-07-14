@@ -13,6 +13,7 @@ import {
   moneySent,
   kycApproved,
   tierUpgrade,
+  triviaWinner,
   deviceRegistrationLink,
 } from './templates';
 import { tierEligible } from './templates/tier-eligible';
@@ -453,6 +454,28 @@ export class EmailService {
       position: params.position,
     });
     await this.send({ to: params.to, subject, html });
+  }
+
+  async sendTriviaWinner(params: {
+    to: string;
+    fullName: string;
+    username: string;
+    totalScore: number;
+    weekOf: string;
+    amountUsdc: string;
+  }): Promise<void> {
+    const { subject, html } = triviaWinner({
+      ...params,
+      appUrl: this.frontendUrl,
+    });
+    const text =
+      `Congrats @${params.username}!\n\n` +
+      `You topped the Cheese Trivia leaderboard for the week of ${params.weekOf} ` +
+      `with ${params.totalScore} points.\n\n` +
+      `$${params.amountUsdc} USDC has been credited to your wallet.\n\n` +
+      `Keep playing daily to defend your crown!\n\n` +
+      `– The Cheese Team`;
+    await this.send({ to: params.to, subject, html, text });
   }
 
   async sendAdminAlert(params: {

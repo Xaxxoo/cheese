@@ -16,6 +16,7 @@ import { TransactionsService } from '../transactions/transactions.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { EmailService } from '../email/email.service';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ export class TriviaService {
     private readonly blockchainService: BlockchainService,
     private readonly txService: TransactionsService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
   ) {}
 
   // ── Start a new round ───────────────────────────────────────
@@ -336,19 +338,19 @@ export class TriviaService {
       return;
     }
 
-    // Credit $5 USDC
+    // Credit $2 USDC
     const reference = `CW-TRIVIA-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
     try {
       const txHash = await this.blockchainService.platformDepositUsdc(
         winner.stellarPublicKey,
-        '5',
+        '2',
       );
 
       await this.txService.create({
         userId: winner.id,
         type: TxType.TRIVIA_REWARD,
         status: TxStatus.COMPLETED,
-        amountUsdc: '5',
+        amountUsdc: '2',
         feeUsdc: '0',
         reference,
         txHash,
@@ -359,11 +361,23 @@ export class TriviaService {
         userId: winner.id,
         type: NotificationType.POINTS_AWARDED,
         title: 'Trivia Winner!',
-        body: `Congrats! You won the weekly trivia and earned $5 USDC.`,
+        body: `Congrats! You won the weekly trivia and earned $2 USDC.`,
       });
 
+      // Send winner email
+      if (winner.email) {
+        await this.emailService.sendTriviaWinner({
+          to: winner.email,
+          fullName: winner.fullName ?? winner.username,
+          username: winner.username,
+          totalScore: parseInt(topRow.totalScore, 10),
+          weekOf: lastWeekStart,
+          amountUsdc: '2',
+        });
+      }
+
       this.logger.log(
-        `Trivia reward sent to ${winner.username} (${winner.id}) — $5 USDC [hash=${txHash}]`,
+        `Trivia reward sent to ${winner.username} (${winner.id}) — $2 USDC [hash=${txHash}]`,
       );
     } catch (err) {
       this.logger.error(
