@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator, Modal, FlatList,
+  ActivityIndicator, Modal, FlatList, Dimensions,
 } from 'react-native'
+import ConfettiCannon from 'react-native-confetti-cannon'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import {
@@ -279,6 +280,14 @@ export default function BankTransferScreen({ navigation }: Props) {
             <Text style={s.doneBtnText}>Done</Text>
           </TouchableOpacity>
         </View>
+        <ConfettiCannon
+          count={120}
+          origin={{ x: Dimensions.get('window').width / 2, y: -10 }}
+          fadeOut
+          autoStart
+          colors={['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399']}
+          fallSpeed={2800}
+        />
       </SafeAreaView>
     )
   }

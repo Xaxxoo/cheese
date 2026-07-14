@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator,
+  ActivityIndicator, Dimensions,
 } from 'react-native'
+import ConfettiCannon from 'react-native-confetti-cannon'
 import { getBillers, getBillVariations, verifyBillCustomer, payBill } from '../../api/bills'
 import type { Biller } from '../../api/bills'
 import { getExchangeRate, getBalance } from '../../api/wallet'
@@ -262,6 +263,14 @@ export default function BillPayFlow({ config, onBack }: Props) {
             <Text style={s.doneBtnText}>Done</Text>
           </TouchableOpacity>
         </ScrollView>
+        <ConfettiCannon
+          count={120}
+          origin={{ x: Dimensions.get('window').width / 2, y: -10 }}
+          fadeOut
+          autoStart
+          colors={['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399']}
+          fallSpeed={2800}
+        />
       </SafeAreaView>
     )
   }

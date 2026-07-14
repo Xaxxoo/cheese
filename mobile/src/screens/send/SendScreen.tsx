@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator,
+  ActivityIndicator, Dimensions,
 } from 'react-native'
 import { ArrowLeft, CheckCircle } from 'lucide-react-native'
+import ConfettiCannon from 'react-native-confetti-cannon'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { resolveUsername, getSendFeeRate, sendToUsername, sendToAddress, getBalance } from '../../api/wallet'
@@ -225,6 +226,14 @@ export default function SendScreen({ navigation }: Props) {
             <Text style={s.doneBtnText}>Done</Text>
           </TouchableOpacity>
         </View>
+        <ConfettiCannon
+          count={120}
+          origin={{ x: Dimensions.get('window').width / 2, y: -10 }}
+          fadeOut
+          autoStart
+          colors={['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399']}
+          fallSpeed={2800}
+        />
       </SafeAreaView>
     )
   }
