@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert,
+  ScrollView, ActivityIndicator, Alert, Dimensions,
 } from 'react-native'
 import {
   ArrowLeft, Trophy, Play, ChevronRight, Clock, Star,
   CheckCircle2, XCircle, Crown,
 } from 'lucide-react-native'
+import ConfettiCannon from 'react-native-confetti-cannon'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { COLORS } from '../../constants'
@@ -40,6 +41,8 @@ export default function TriviaScreen({ navigation }: Props) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loadingStats, setLoadingStats] = useState(false)
   const [loadingBoard, setLoadingBoard] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const confettiRef = useRef<ConfettiCannon | null>(null)
 
   // Load stats on mount
   useEffect(() => {
@@ -57,7 +60,9 @@ export default function TriviaScreen({ navigation }: Props) {
   async function loadLeaderboard() {
     setLoadingBoard(true)
     try {
-      setLeaderboard(await getLeaderboard())
+      const data = await getLeaderboard()
+      setLeaderboard(data)
+      if (data.length > 0) setShowConfetti(true)
     } catch { /* ignore */ }
     setLoadingBoard(false)
   }
@@ -340,6 +345,19 @@ export default function TriviaScreen({ navigation }: Props) {
           </>
         )}
       </ScrollView>
+
+      {showConfetti && (
+        <ConfettiCannon
+          ref={confettiRef}
+          count={120}
+          origin={{ x: Dimensions.get('window').width / 2, y: -10 }}
+          fadeOut
+          autoStart
+          colors={['#d4a843', '#FFD700', '#FFA500', '#fff', '#c49a3a']}
+          fallSpeed={2800}
+          onAnimationEnd={() => setShowConfetti(false)}
+        />
+      )}
     </SafeAreaView>
   )
 }
