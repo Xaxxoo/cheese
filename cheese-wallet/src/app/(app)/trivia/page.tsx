@@ -38,6 +38,7 @@ export default function TriviaPage() {
     queryKey: QUERY_KEYS.TRIVIA_STATS,
     queryFn: getMyStats,
     staleTime: STALE_TIMES.TRIVIA,
+    retry: 1,
   })
 
   // Leaderboard
@@ -46,6 +47,7 @@ export default function TriviaPage() {
     queryFn: getLeaderboard,
     staleTime: STALE_TIMES.TRIVIA,
     enabled: tab === 'leaderboard',
+    retry: 1,
   })
 
   // Timer logic
