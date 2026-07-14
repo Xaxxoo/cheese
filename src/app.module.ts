@@ -59,6 +59,7 @@ import { KycModule } from './kyc/kyc.module';
 import { PayLinkModule } from './paylink/paylink.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { BillsModule } from './bills/bills.module';
+import { TriviaModule } from './trivia/trivia.module';
 
 // Active entities
 import { User } from './auth/entities/user.entity';
@@ -95,6 +96,7 @@ import { PrivateInvoice } from './private-gateway/entities/private-invoice.entit
 import { VeilModule } from './veil/veil.module';
 import { ShieldedNote } from './veil/entities/shielded-note.entity';
 import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
+import { TriviaScore } from './trivia/entities/trivia-score.entity';
 
 @Module({
   controllers: [AppController],
@@ -191,6 +193,7 @@ import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
                 PrivateInvoice,
                 ShieldedNote,
                 SpentNullifier,
+                TriviaScore,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -239,6 +242,7 @@ import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
                 PrivateInvoice,
                 ShieldedNote,
                 SpentNullifier,
+                TriviaScore,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -283,6 +287,7 @@ import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
             PrivateInvoice,
             ShieldedNote,
             SpentNullifier,
+            TriviaScore,
           ],
           synchronize: config.get<string>('app.nodeEnv') !== 'production',
           logging: config.get<string>('app.nodeEnv') === 'development',
@@ -321,6 +326,7 @@ import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
     PayLinkModule,
     AlertsModule,
     BillsModule,
+    TriviaModule,
     PrivateGatewayModule,
     VeilModule,
   ],
