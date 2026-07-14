@@ -7,6 +7,7 @@ import {
   ArrowLeft, Trophy, Play, ChevronRight, Clock, Star,
   CheckCircle2, XCircle, Crown, Loader2,
 } from 'lucide-react'
+import confetti from 'canvas-confetti'
 import { cn } from '@/lib/cn'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import {
@@ -123,6 +124,32 @@ export default function TriviaPage() {
     setResults(null)
     setError(null)
   }
+
+  // Fire confetti when leaderboard loads with data
+  const confettiFired = useRef(false)
+  useEffect(() => {
+    if (tab === 'leaderboard' && boardQ.data?.length && !confettiFired.current) {
+      confettiFired.current = true
+      const gold = '#d4a843'
+      const burst = (angle: number, origin: { x: number; y: number }) =>
+        confetti({
+          particleCount: 60,
+          angle,
+          spread: 55,
+          origin,
+          colors: [gold, '#FFD700', '#FFA500', '#fff', '#c49a3a'],
+          scalar: 0.8,
+          drift: 0,
+        })
+      burst(60, { x: 0, y: 0.65 })
+      burst(120, { x: 1, y: 0.65 })
+      setTimeout(() => {
+        burst(80, { x: 0.2, y: 0.7 })
+        burst(100, { x: 0.8, y: 0.7 })
+      }, 250)
+    }
+    if (tab === 'play') confettiFired.current = false
+  }, [tab, boardQ.data])
 
   const stats = statsQ.data
   const q = questions[currentQ]
