@@ -27,6 +27,7 @@ import AddMoneyScreen    from '../screens/add-money/AddMoneyScreen'
 import DevicesScreen     from '../screens/devices/DevicesScreen'
 import CardScreen        from '../screens/card/CardScreen'
 import PayLinkPayScreen  from '../screens/paylink/PayLinkPayScreen'
+import TriviaScreen      from '../screens/trivia/TriviaScreen'
 
 // ── Bottom tab navigator ──────────────────────────────────
 const Tab = createBottomTabNavigator<TabParamList>()
@@ -96,6 +97,7 @@ export default function AppNavigator() {
       <Stack.Screen name="AddMoney"      component={AddMoneyScreen} />
       <Stack.Screen name="Devices"       component={DevicesScreen} />
       <Stack.Screen name="Card"          component={CardScreen} />
+      <Stack.Screen name="Trivia"       component={TriviaScreen} />
       <Stack.Screen name="PayLinkPay"   component={PayLinkPayScreen} />
     </Stack.Navigator>
   )

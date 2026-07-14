@@ -81,6 +81,12 @@ export const ENDPOINTS = {
     VERIFY:     '/bills/verify',
     PAY:        '/bills/pay',
   },
+  TRIVIA: {
+    START:       '/trivia/start',
+    SUBMIT:      '/trivia/submit',
+    LEADERBOARD: '/trivia/leaderboard',
+    STATS:       '/trivia/stats',
+  },
 }
 
 // Colors

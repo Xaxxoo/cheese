@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert,
 } from 'react-native'
-import { Pencil, LockKeyhole, Smartphone, Gift, BadgeCheck, Bell, ChevronRight } from 'lucide-react-native'
+import { Pencil, LockKeyhole, Smartphone, Gift, BadgeCheck, Bell, Brain, ChevronRight } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { useAuthStore } from '../../store/auth.store'
@@ -96,6 +96,7 @@ export default function ProfileScreen({ navigation }: Props) {
     { label: 'Change PIN',        Icon: LockKeyhole, onPress: () => navigation.navigate('ChangePin')     },
     { label: 'Trusted Devices',   Icon: Smartphone,  onPress: () => navigation.navigate('Devices')       },
     { label: 'Referrals',         Icon: Gift,        onPress: () => navigation.navigate('Referral')      },
+    { label: 'Trivia Game',      Icon: Brain,       onPress: () => navigation.navigate('Trivia')        },
     { label: 'KYC Verification',  Icon: BadgeCheck,  onPress: () => navigation.navigate('KYC')           },
     { label: 'Notifications',     Icon: Bell,        onPress: () => navigation.navigate('Notifications') },
   ]

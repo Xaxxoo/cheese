@@ -37,6 +37,7 @@ export type AppStackParamList = {
   AddMoney:     undefined
   Devices:      undefined
   Card:         undefined
+  Trivia:       undefined
   PayLinkPay:   { token: string }
 }
 
