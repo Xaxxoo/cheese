@@ -41,7 +41,7 @@ const DIFFICULTY_POINTS: Record<string, number> = {
   hard: 3,
 };
 
-const MAX_ROUNDS_PER_DAY = 3;
+const MAX_ROUNDS_PER_DAY = 20;
 const ROUND_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 // ── Helpers ─────────────────────────────────────────────────
