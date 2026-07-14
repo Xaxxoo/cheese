@@ -157,6 +157,14 @@ export const ENDPOINTS = {
     VERIFY:     '/bills/verify',
     PAY:        '/bills/pay',
   },
+
+  // ── Trivia ──────────────────────────────────────────
+  TRIVIA: {
+    START:       '/trivia/start',
+    SUBMIT:      '/trivia/submit',
+    LEADERBOARD: '/trivia/leaderboard',
+    STATS:       '/trivia/stats',
+  },
 } as const
 
 // ── React Query Keys ──────────────────────────────────────
@@ -213,6 +221,10 @@ export const QUERY_KEYS = {
 
   // Deposits
   DEPOSITS:             (page: number) => ['banks', 'deposits', page] as const,
+
+  // Trivia
+  TRIVIA_LEADERBOARD:   ['trivia', 'leaderboard'] as const,
+  TRIVIA_STATS:         ['trivia', 'stats'] as const,
 } as const
 
 // ── Stale times ───────────────────────────────────────────
@@ -225,4 +237,5 @@ export const STALE_TIMES = {
   CARD:             60_000,    // 1min
   NOTIFICATIONS:    30_000,    // 30s
   EARN:             60_000,    // 1min
+  TRIVIA:           30_000,    // 30s
 } as const

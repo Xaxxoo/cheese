@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, LogOut, Copy, CheckCheck,
-  Smartphone, RefreshCw, Trash2, User, Gift,
+  Smartphone, RefreshCw, Trash2, User, Gift, Gamepad2,
   BadgeCheck, AlertCircle, Clock, ChevronRight, KeyRound, MailWarning, Pencil, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -472,6 +472,18 @@ export default function ProfilePage() {
             <ChevronRight size={14} className="text-white/25 shrink-0" />
           </Link>
         )}
+      </div>
+
+      {/* Trivia Game */}
+      <div className="mx-4 mt-2 rounded-2xl border border-white/8 overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <Link
+          href="/trivia"
+          className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors"
+        >
+          <Gamepad2 size={14} className="text-[#d4a843] shrink-0" />
+          <span className="text-xs text-white flex-1">Trivia Game</span>
+          <ChevronRight size={14} className="text-white/25 shrink-0" />
+        </Link>
       </div>
 
       {/* Referral */}
