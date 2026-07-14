@@ -22,6 +22,7 @@ export enum TxType {
   FEE = 'fee',
   PAY_REQUEST = 'pay_request', // payment via PayLink
   BILL_PAYMENT = 'bill_payment',
+  TRIVIA_REWARD = 'trivia_reward',
 }
 
 export enum TxStatus {
