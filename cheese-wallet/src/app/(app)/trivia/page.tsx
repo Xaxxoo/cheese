@@ -191,7 +191,7 @@ export default function TriviaPage() {
                 <h2 className="text-xl font-bold text-white mt-4">Daily Trivia</h2>
                 <p className="text-xs text-white/45 text-center mt-2 leading-5">
                   Answer 10 questions and earn points!<br />
-                  Top scorer each week wins $5 USDC.
+                  Top scorer each week wins $2 USDC.
                 </p>
                 <button
                   type="button"

@@ -203,7 +203,7 @@ export default function TriviaScreen({ navigation }: Props) {
                 <Text style={s.idleTitle}>Daily Trivia</Text>
                 <Text style={s.idleDesc}>
                   Answer 10 questions and earn points!{'\n'}
-                  Top scorer each week wins $5 USDC.
+                  Top scorer each week wins $2 USDC.
                 </Text>
                 <TouchableOpacity style={s.startBtn} onPress={handleStart}>
                   <Play size={18} color="#000" strokeWidth={2} />
