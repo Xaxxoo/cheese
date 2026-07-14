@@ -19,6 +19,7 @@ import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/devi
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import { captureAndShare, type ShareFormat } from '@/lib/shareReceipt'
 import { playChaChing } from '@/lib/sound'
+import confetti from 'canvas-confetti'
 import type { BankTransferResponse, Transaction, NigerianBank } from '@/types'
 
 // ─────────────────────────────────────────────────────────
@@ -1658,7 +1659,14 @@ function SuccessScreen({
   const [sharing, setSharing] = useState<ShareFormat | false>(false)
   const [showPicker, setShowPicker] = useState(false)
 
-  useEffect(() => { playChaChing() }, [])
+  useEffect(() => {
+    playChaChing()
+    const burst = (angle: number, origin: { x: number; y: number }) =>
+      confetti({ particleCount: 60, angle, spread: 55, origin, colors: ['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399'], scalar: 0.8 })
+    burst(60, { x: 0, y: 0.65 })
+    burst(120, { x: 1, y: 0.65 })
+    setTimeout(() => { burst(80, { x: 0.2, y: 0.7 }); burst(100, { x: 0.8, y: 0.7 }) }, 250)
+  }, [])
 
   const statusLabel = tx.status === 'pending' ? 'Pending' : 'Completed'
   const statusColor = tx.status === 'pending' ? '#fbbf24' : '#34d399'
@@ -1841,7 +1849,14 @@ function BankSuccessScreen({
   const [sharing, setSharing] = useState<ShareFormat | false>(false)
   const [showPicker, setShowPicker] = useState(false)
 
-  useEffect(() => { playChaChing() }, [])
+  useEffect(() => {
+    playChaChing()
+    const burst = (angle: number, origin: { x: number; y: number }) =>
+      confetti({ particleCount: 60, angle, spread: 55, origin, colors: ['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399'], scalar: 0.8 })
+    burst(60, { x: 0, y: 0.65 })
+    burst(120, { x: 1, y: 0.65 })
+    setTimeout(() => { burst(80, { x: 0.2, y: 0.7 }); burst(100, { x: 0.8, y: 0.7 }) }, 250)
+  }, [])
 
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
   const isCompleted = transfer?.status === 'completed'
