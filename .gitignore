@@ -1,5 +1,9 @@
 node_modules/
 dist
+.DS_Store
+pulse.json
+veil-circuit/build/
+veil-contract/target/
 
 
 # Ignore environment variable files, but keep the example files
