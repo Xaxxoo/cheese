@@ -79,9 +79,11 @@ contract CheeseVault is ReentrancyGuard, Pausable, AccessControl {
      * @param _initialTokens  Array of accepted ERC-20 token addresses (e.g. [USDC, USDT])
      * @param _feeAmount      Initial flat fee amount per transaction (must be <= MAX_FEE)
      * @param _minDeposit     Minimum deposit amount
+     * @param _admin          Address that receives DEFAULT_ADMIN_ROLE
      */
-    constructor(address[] memory _initialTokens, uint256 _feeAmount, uint256 _minDeposit) {
+    constructor(address[] memory _initialTokens, uint256 _feeAmount, uint256 _minDeposit, address _admin) {
         require(_feeAmount <= MAX_FEE, "Fee exceeds maximum");
+        require(_admin != address(0), "Invalid admin");
 
         feeAmount  = _feeAmount;
         minDeposit = _minDeposit;
@@ -96,8 +98,8 @@ contract CheeseVault is ReentrancyGuard, Pausable, AccessControl {
             }
         }
 
-        // Grant deployer the default admin role (can assign other roles)
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // Grant explicit admin because deterministic CREATE2 deployment may use a deployer contract.
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     // ========== OPERATOR FUNCTIONS ==========

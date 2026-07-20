@@ -52,8 +52,8 @@ contract CheeseVaultFuzzTest is Test {
         tokens[0] = address(usdc);
         tokens[1] = address(usdt);
 
-        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT);
-        factory = new UserWalletFactory(operator, address(vault), tokens);
+        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT, owner);
+        factory = new UserWalletFactory(owner, operator, address(vault), tokens);
 
         vault.grantRole(vault.ADMIN_ROLE(), admin);
         vault.grantRole(vault.OPERATOR_ROLE(), operator);

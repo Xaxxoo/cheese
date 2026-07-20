@@ -98,12 +98,13 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
     // ========== CONSTRUCTOR ==========
 
     /**
+     * @param _owner          Factory owner address
      * @param _backend        Platform EOA address
      * @param _vault          CheeseVault address
      * @param _initialTokens  Supported ERC-20 tokens (e.g. [USDC, USDT])
      */
-    constructor(address _backend, address _vault, address[] memory _initialTokens)
-        Ownable(msg.sender)
+    constructor(address _owner, address _backend, address _vault, address[] memory _initialTokens)
+        Ownable(_owner)
     {
         require(_backend != address(0), "Invalid backend");
         require(_vault   != address(0), "Invalid vault");

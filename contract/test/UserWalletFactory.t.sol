@@ -19,6 +19,28 @@ contract MockUSDT is ERC20 {
     function mint(address to, uint256 amount) external { _mint(to, amount); }
 }
 
+contract Create2Harness {
+    function deployVault(
+        bytes32 salt,
+        address[] memory tokens,
+        uint256 initialFee,
+        uint256 minDeposit,
+        address admin
+    ) external returns (CheeseVault) {
+        return new CheeseVault{salt: salt}(tokens, initialFee, minDeposit, admin);
+    }
+
+    function deployFactory(
+        bytes32 salt,
+        address owner,
+        address backend,
+        address vault,
+        address[] memory tokens
+    ) external returns (UserWalletFactory) {
+        return new UserWalletFactory{salt: salt}(owner, backend, vault, tokens);
+    }
+}
+
 contract UserWalletFactoryTest is Test {
     UserWalletFactory public factory;
     MockUSDC public usdc;
@@ -47,16 +69,17 @@ contract UserWalletFactoryTest is Test {
         tokens[0] = address(usdc);
         tokens[1] = address(usdt);
 
-        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT);
+        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT, owner);
         vault.grantRole(vault.OPERATOR_ROLE(), backend);
 
-        factory = new UserWalletFactory(backend, address(vault), tokens);
+        factory = new UserWalletFactory(owner, backend, address(vault), tokens);
     }
 
     // ========== DEPLOYMENT TESTS ==========
 
     function test_Deployment() public view {
         assertEq(factory.backend(), backend);
+        assertEq(factory.owner(), owner);
         assertEq(factory.vault(), address(vault));
         assertEq(factory.totalWallets(), 0);
         assertTrue(factory.isTokenSupported(address(usdc)));
@@ -66,18 +89,46 @@ contract UserWalletFactoryTest is Test {
         assertEq(supported.length, 2);
     }
 
+    function test_Create2DeploymentUsesExplicitAdminAndOwner() public {
+        Create2Harness harness = new Create2Harness();
+        address explicitAdmin = makeAddr("explicitAdmin");
+        address explicitOwner = makeAddr("explicitOwner");
+        address[] memory emptyTokens = new address[](0);
+
+        CheeseVault deployedVault = harness.deployVault(
+            keccak256("vault"),
+            emptyTokens,
+            INITIAL_FEE,
+            MIN_DEPOSIT,
+            explicitAdmin
+        );
+
+        UserWalletFactory deployedFactory = harness.deployFactory(
+            keccak256("factory"),
+            explicitOwner,
+            backend,
+            address(deployedVault),
+            emptyTokens
+        );
+
+        assertTrue(deployedVault.hasRole(deployedVault.DEFAULT_ADMIN_ROLE(), explicitAdmin));
+        assertFalse(deployedVault.hasRole(deployedVault.DEFAULT_ADMIN_ROLE(), address(harness)));
+        assertEq(deployedFactory.owner(), explicitOwner);
+        assertTrue(deployedFactory.owner() != address(harness));
+    }
+
     function test_RevertWhen_DeployWithInvalidBackend() public {
         address[] memory tokens = new address[](1);
         tokens[0] = address(usdc);
         vm.expectRevert("Invalid backend");
-        new UserWalletFactory(address(0), address(vault), tokens);
+        new UserWalletFactory(owner, address(0), address(vault), tokens);
     }
 
     function test_RevertWhen_DeployWithInvalidVault() public {
         address[] memory tokens = new address[](1);
         tokens[0] = address(usdc);
         vm.expectRevert("Invalid vault");
-        new UserWalletFactory(backend, address(0), tokens);
+        new UserWalletFactory(owner, backend, address(0), tokens);
     }
 
     // ========== CREATE WALLET TESTS ==========

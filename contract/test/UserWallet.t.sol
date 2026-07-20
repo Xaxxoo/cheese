@@ -54,7 +54,7 @@ contract UserWalletTest is Test {
         tokens[0] = address(usdc);
         tokens[1] = address(usdt);
 
-        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT);
+        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT, address(this));
 
         userWallet = new UserWallet();
         userWallet.initialize(

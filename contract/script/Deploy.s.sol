@@ -117,12 +117,13 @@ contract DeployAll is Script {
 
         // 1. Deploy CheeseVault via CREATE2
         console.log("Deploying CheeseVault...");
-        CheeseVault vault = new CheeseVault{salt: SALT}(emptyTokens, INITIAL_FEE, MIN_DEPOSIT);
+        CheeseVault vault = new CheeseVault{salt: SALT}(emptyTokens, INITIAL_FEE, MIN_DEPOSIT, deployer);
         console.log("CheeseVault:", address(vault));
 
         // 2. Deploy UserWalletFactory via CREATE2
         console.log("Deploying UserWalletFactory...");
         UserWalletFactory factory = new UserWalletFactory{salt: SALT}(
+            deployer,       // owner — explicit because CREATE2 deployer is msg.sender in constructor
             deployer,       // backend — update via updateBackend() on mainnet
             address(vault),
             emptyTokens
@@ -130,7 +131,11 @@ contract DeployAll is Script {
         console.log("UserWalletFactory:", address(factory));
         console.log("");
 
-        // 3. Add chain-specific tokens to both contracts
+        // 3. Grant deployer ADMIN_ROLE so this script can add chain-specific tokens.
+        //    DEFAULT_ADMIN_ROLE was granted explicitly in the constructor.
+        vault.grantRole(vault.ADMIN_ROLE(), deployer);
+
+        // 4. Add chain-specific tokens to both contracts
         console.log("Adding supported tokens...");
         for (uint256 i = 0; i < tokens.length; i++) {
             vault.addSupportedToken(tokens[i]);
@@ -139,7 +144,7 @@ contract DeployAll is Script {
         }
         console.log("");
 
-        // 4. On testnets, grant all roles to deployer for easy testing
+        // 5. On testnets, grant all roles to deployer for easy testing
         if (isTestnet) {
             console.log("TESTNET: Granting all roles to deployer...");
             vault.grantRole(vault.ADMIN_ROLE(), deployer);

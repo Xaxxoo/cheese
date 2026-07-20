@@ -81,9 +81,10 @@ contract CheeseVaultTest is Test {
         tokens[0] = address(usdc);
         tokens[1] = address(usdt);
 
-        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT);
+        vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT, owner);
 
         factory = new UserWalletFactory(
+            owner,
             operator, // backend
             address(vault),
             tokens
@@ -125,7 +126,14 @@ contract CheeseVaultTest is Test {
         address[] memory tokens = new address[](1);
         tokens[0] = address(usdc);
         vm.expectRevert("Fee exceeds maximum");
-        new CheeseVault(tokens, MAX_FEE + 1, MIN_DEPOSIT);
+        new CheeseVault(tokens, MAX_FEE + 1, MIN_DEPOSIT, owner);
+    }
+
+    function test_RevertWhen_DeploymentWithInvalidAdmin() public {
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(usdc);
+        vm.expectRevert("Invalid admin");
+        new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT, address(0));
     }
 
     // ========== PROCESS PAYMENT TESTS ==========
