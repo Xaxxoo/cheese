@@ -3,11 +3,13 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { WalletService as BlockchainWalletService } from '../blockchain/services/wallet.service';
 import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { User, WalletStatus } from '../auth/entities/user.entity';
@@ -30,11 +32,45 @@ export interface WalletBalance {
   lastUpdated: string;
 }
 
+export type DepositTokenSymbol = 'USDC' | 'USDT';
+
+export interface DepositToken {
+  symbol: DepositTokenSymbol;
+  address: string | null;
+  decimals: number;
+}
+
+export interface EvmDepositAddress {
+  address: string | null;
+  chainId: number;
+  chainName: string;
+  displayName: string;
+  status: BlockchainWalletStatus | 'missing';
+  tokens: DepositToken[];
+}
+
 export interface DepositAddress {
   stellarAddress: string;
-  evmAddresses: Record<number, { address: string; chainName: string }>;
+  evmAddress: string | null;
+  evmSharedAddress: string | null;
+  evmAddresses: Record<number, EvmDepositAddress>;
+  evmChains: EvmDepositAddress[];
+  assets: DepositTokenSymbol[];
   asset: 'USDC';
   memo: null;
+}
+
+export interface ProvisionWalletResult {
+  stellarPublicKey: string;
+  alreadyExisted: boolean;
+  evmAddress: string | null;
+  evmWalletStatus: WalletStatus;
+  evmWallets: Array<{
+    address: string | null;
+    chainId: number;
+    chainName: string;
+    status: BlockchainWalletStatus;
+  }>;
 }
 
 @Injectable()
@@ -46,6 +82,8 @@ export class WalletService {
     @InjectRepository(BlockchainWallet)
     private readonly blockchainWalletRepo: Repository<BlockchainWallet>,
     private readonly blockchainService: BlockchainService,
+    @Optional()
+    private readonly blockchainWalletService: BlockchainWalletService | null,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
   ) {}
@@ -113,52 +151,95 @@ export class WalletService {
     if (!user?.stellarPublicKey)
       throw new NotFoundException('Wallet not initialised');
 
-    // Build per-chain EVM address map from active blockchain_wallets rows
+    // Build per-chain EVM address map from blockchain_wallets rows.
+    // Pending entries are returned with a null address so clients can show setup state.
     const evmWallets = await this.blockchainWalletRepo.find({
-      where: { userId, status: BlockchainWalletStatus.ACTIVE },
+      where: { userId },
     });
 
-    const configuredChains = this.blockchainService.getConfiguredEvmChains();
-    const chainNameMap = new Map(
-      configuredChains.map(({ chainId, name }) => [chainId, name]),
+    const depositChains = this.blockchainService.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchainService.getConfiguredEvmChainsWithTokens();
+    const walletByChain = new Map(
+      evmWallets.map((wallet) => [wallet.chainId, wallet]),
     );
 
-    const evmAddresses: Record<number, { address: string; chainName: string }> = {};
-    for (const w of evmWallets) {
-      if (w.walletAddress) {
-        evmAddresses[w.chainId] = {
-          address: w.walletAddress,
-          chainName: chainNameMap.get(w.chainId) ?? `chain-${w.chainId}`,
-        };
-      }
-    }
+    const evmChains: EvmDepositAddress[] = configuredChains.map((chain) => {
+      const wallet = walletByChain.get(chain.chainId);
+      return {
+        address:
+          wallet?.status === BlockchainWalletStatus.ACTIVE
+            ? wallet.walletAddress
+            : null,
+        chainId:     chain.chainId,
+        chainName:   chain.name,
+        displayName: chain.displayName,
+        status:      wallet?.status ?? 'missing',
+        tokens:      chain.tokens,
+      };
+    });
+
+    const evmAddresses = evmChains.reduce<Record<number, EvmDepositAddress>>(
+      (acc, entry) => {
+        acc[entry.chainId] = entry;
+        return acc;
+      },
+      {},
+    );
+    const evmSharedAddress =
+      evmChains.find((entry) => entry.address)?.address ?? user.evmAddress ?? null;
+    const assets = Array.from(
+      new Set(
+        evmChains.flatMap((chain) => chain.tokens.map((token) => token.symbol)),
+      ),
+    ) as DepositTokenSymbol[];
 
     return {
       stellarAddress: user.stellarPublicKey,
+      evmAddress: evmSharedAddress,
+      evmSharedAddress,
       evmAddresses,
+      evmChains,
+      assets: assets.length > 0 ? assets : ['USDC'],
       asset: 'USDC',
       memo: null,
     };
   }
 
   getDepositNetworks() {
-    const evmChains = this.blockchainService.getConfiguredEvmChains();
-    const evmEntries = evmChains.map(({ chainId, name }) => ({
+    const depositChains = this.blockchainService.getConfiguredEvmDepositChains();
+    const evmChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchainService.getConfiguredEvmChainsWithTokens();
+    const evmEntries = evmChains.map(({ chainId, name, displayName, tokens }) => ({
       id: `evm-${chainId}`,
-      name: `${name.charAt(0).toUpperCase() + name.slice(1)} (EVM)`,
-      asset: 'USDC',
+      name: `${displayName} (EVM)`,
+      networkType: 'evm',
+      chainId,
+      chainName: name,
+      displayName,
+      asset: tokens.map((token) => token.symbol).join(' / '),
+      assets: tokens.map((token) => token.symbol),
+      tokens,
       fee: 'Network gas',
       minDeposit: '1.00',
       confirmations: 12,
       estimatedTime: '~15 seconds',
-      note: `Send USDC to your wallet address on ${name}.`,
+      note: `Send only supported tokens to your same EVM wallet address on ${displayName}.`,
     }));
 
     return [
       {
         id: 'stellar',
         name: 'Stellar Network',
+        networkType: 'stellar',
+        chainId: null,
+        chainName: 'stellar',
+        displayName: 'Stellar',
         asset: 'USDC',
+        assets: ['USDC'],
+        tokens: [{ symbol: 'USDC', address: null, decimals: 7 }],
         fee: '0.00',
         minDeposit: '1.00',
         confirmations: 1,
@@ -171,57 +252,151 @@ export class WalletService {
 
   async provisionWallet(
     userId: string,
-  ): Promise<{ stellarPublicKey: string; alreadyExisted: boolean }> {
+  ): Promise<ProvisionWalletResult> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    if (user.stellarPublicKey) {
-      return { stellarPublicKey: user.stellarPublicKey, alreadyExisted: true };
-    }
+    const alreadyExisted = Boolean(user.stellarPublicKey);
+    let stellarPublicKey = user.stellarPublicKey;
 
-    if (!this.blockchainService.isStellarReady) {
-      throw new ServiceUnavailableException(
-        'Stellar not ready — check server configuration',
+    if (!stellarPublicKey) {
+      if (!this.blockchainService.isStellarReady) {
+        throw new ServiceUnavailableException(
+          'Stellar not ready — check server configuration',
+        );
+      }
+
+      // Phase 1: Generate keypair — free, no network calls, no XLM spent.
+      const generated = this.blockchainService.generateStellarKeypair();
+
+      // Phase 2: Atomic DB write BEFORE spending any XLM.
+      // WHERE stellar_public_key IS NULL ensures only one concurrent caller
+      // can claim the slot — any racing call will see affected=0.
+      const result = await this.userRepo.update(
+        { id: userId, stellarPublicKey: IsNull() },
+        {
+          stellarPublicKey: generated.publicKey,
+          stellarSecretEnc: generated.secretKeyEnc,
+        },
       );
+
+      if (result.affected === 0) {
+        // Another concurrent call already provisioned this wallet.
+        const updated = await this.userRepo.findOne({ where: { id: userId } });
+        stellarPublicKey = updated!.stellarPublicKey!;
+      } else {
+        stellarPublicKey = generated.publicKey;
+
+        // Phase 3: Fund the account and set up USDC trustline.
+        // activateStellarAccount is idempotent — if this throws, the scheduler's
+        // Phase B recovery will retry it on the next 2-minute run.
+        await this.blockchainService.activateStellarAccount(generated.secretKeyEnc);
+
+        await this.userRepo.update(
+          { id: userId },
+          { stellarWalletStatus: WalletStatus.ACTIVE },
+        );
+
+        this.logger.log(
+          `Stellar wallet provisioned on-demand [userId=${userId}] [pk=${generated.publicKey}]`,
+        );
+      }
     }
 
-    // Phase 1: Generate keypair — free, no network calls, no XLM spent.
-    const generated = this.blockchainService.generateStellarKeypair();
-
-    // Phase 2: Atomic DB write BEFORE spending any XLM.
-    // WHERE stellar_public_key IS NULL ensures only one concurrent caller
-    // can claim the slot — any racing call will see affected=0.
-    const result = await this.userRepo.update(
-      { id: userId, stellarPublicKey: IsNull() },
-      {
-        stellarPublicKey: generated.publicKey,
-        stellarSecretEnc: generated.secretKeyEnc,
-      },
+    const evmProvisioning = await this.provisionEvmWallets(
+      userId,
+      user.username,
     );
 
-    if (result.affected === 0) {
-      // Another concurrent call already provisioned this wallet — return it.
-      const updated = await this.userRepo.findOne({ where: { id: userId } });
+    return {
+      stellarPublicKey: stellarPublicKey!,
+      alreadyExisted,
+      evmAddress: evmProvisioning.evmAddress,
+      evmWalletStatus: evmProvisioning.evmWalletStatus,
+      evmWallets: evmProvisioning.wallets,
+    };
+  }
+
+  private async provisionEvmWallets(
+    userId: string,
+    username: string,
+  ): Promise<{
+    evmAddress: string | null;
+    evmWalletStatus: WalletStatus;
+    wallets: Array<{
+      address: string | null;
+      chainId: number;
+      chainName: string;
+      status: BlockchainWalletStatus;
+    }>;
+  }> {
+    if (
+      !this.blockchainService.isEvmReady ||
+      !this.blockchainWalletService ||
+      !username
+    ) {
+      const user = await this.userRepo.findOne({ where: { id: userId } });
       return {
-        stellarPublicKey: updated!.stellarPublicKey!,
-        alreadyExisted: true,
+        evmAddress: user?.evmAddress ?? null,
+        evmWalletStatus: user?.evmWalletStatus ?? WalletStatus.PENDING,
+        wallets: [],
       };
     }
 
-    // Phase 3: Fund the account and set up USDC trustline.
-    // activateStellarAccount is idempotent — if this throws, the scheduler's
-    // Phase B recovery will retry it on the next 2-minute run.
-    await this.blockchainService.activateStellarAccount(generated.secretKeyEnc);
+    try {
+      await this.blockchainWalletService.createWallet(userId, username);
+    } catch (err) {
+      this.logger.error(
+        `EVM wallet provisioning failed [userId=${userId}]: ${(err as Error).message}`,
+      );
+    }
 
-    await this.userRepo.update(
-      { id: userId },
-      { stellarWalletStatus: WalletStatus.ACTIVE },
+    const depositChains = this.blockchainService.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchainService.getConfiguredEvmChainsWithTokens();
+    const configuredChainIds = new Set(
+      configuredChains.map((chain) => chain.chainId),
     );
+    const chainNameMap = new Map(
+      configuredChains.map((chain) => [chain.chainId, chain.name]),
+    );
+    const wallets = (await this.blockchainWalletService.getWalletsForUser(userId))
+      .filter(
+        (wallet) =>
+          configuredChainIds.size === 0 || configuredChainIds.has(wallet.chainId),
+      );
+    const activeWallets = wallets.filter(
+      (wallet) =>
+        wallet.status === BlockchainWalletStatus.ACTIVE && wallet.walletAddress,
+    );
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const evmAddress = activeWallets[0]?.walletAddress ?? user?.evmAddress ?? null;
+    const evmWalletStatus =
+      wallets.length > 0 && activeWallets.length === wallets.length
+        ? WalletStatus.ACTIVE
+        : WalletStatus.PENDING;
 
-    this.logger.log(
-      `Wallet provisioned on-demand [userId=${userId}] [pk=${generated.publicKey}]`,
-    );
-    return { stellarPublicKey: generated.publicKey, alreadyExisted: false };
+    if (wallets.length > 0) {
+      await this.userRepo.update(
+        { id: userId },
+        {
+          evmAddress,
+          evmWalletStatus,
+        },
+      );
+    }
+
+    return {
+      evmAddress,
+      evmWalletStatus,
+      wallets: wallets.map((wallet) => ({
+        address: wallet.walletAddress,
+        chainId: wallet.chainId,
+        chainName: chainNameMap.get(wallet.chainId) ?? `chain-${wallet.chainId}`,
+        status: wallet.status,
+      })),
+    };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

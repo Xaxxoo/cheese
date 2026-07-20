@@ -78,6 +78,23 @@ interface EvmChainContext {
   tokenDecimals: number;
 }
 
+export type EvmDepositTokenSymbol = 'USDC' | 'USDT';
+
+export interface EvmDepositToken {
+  symbol: EvmDepositTokenSymbol;
+  address: string;
+  decimals: number;
+}
+
+export interface EvmDepositChain {
+  chainId: number;
+  name: string;
+  displayName: string;
+  tokens: EvmDepositToken[];
+}
+
+export const EVM_DEPOSIT_CHAIN_IDS = [1, 8453, 42161, 137, 42220] as const;
+
 const EVM_CHAIN_DEFINITIONS = [
   { chainId: 80002, name: 'amoy',     envPrefix: 'AMOY'     },
   { chainId: 42161, name: 'arbitrum', envPrefix: 'ARBITRUM' },
@@ -89,6 +106,18 @@ const EVM_CHAIN_DEFINITIONS = [
   { chainId: 1135,  name: 'lisk',     envPrefix: 'LISK'     },
   { chainId: 1,     name: 'ethereum', envPrefix: 'ETHEREUM' },
 ] as const;
+
+const EVM_CHAIN_DISPLAY_NAMES: Record<number, string> = {
+  1:     'Ethereum',
+  8453:  'Base',
+  42161: 'Arbitrum',
+  137:   'Polygon',
+  42220: 'Celo',
+  80002: 'Polygon Amoy',
+  56:    'BNB Chain',
+  10:    'Optimism',
+  1135:  'Lisk',
+};
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
@@ -1427,6 +1456,49 @@ export class BlockchainService implements OnModuleInit {
   /** Returns all configured EVM chains. */
   getConfiguredEvmChains(): Array<{ chainId: number; name: string }> {
     return [...this.evmChains.values()].map(({ chainId, name }) => ({ chainId, name }));
+  }
+
+  /** Returns supported deposit EVM chains with USDC/USDT token config. */
+  getConfiguredEvmDepositChains(): EvmDepositChain[] {
+    const targetChainIds = EVM_DEPOSIT_CHAIN_IDS as readonly number[];
+
+    return [...this.evmChains.values()]
+      .filter((ctx) => targetChainIds.includes(ctx.chainId))
+      .sort(
+        (a, b) =>
+          targetChainIds.indexOf(a.chainId) - targetChainIds.indexOf(b.chainId),
+      )
+      .map((ctx) => this.toEvmDepositChain(ctx));
+  }
+
+  /** Returns every configured EVM chain with token config. */
+  getConfiguredEvmChainsWithTokens(): EvmDepositChain[] {
+    return [...this.evmChains.values()].map((ctx) => this.toEvmDepositChain(ctx));
+  }
+
+  private toEvmDepositChain(ctx: EvmChainContext): EvmDepositChain {
+    const tokens: EvmDepositToken[] = [
+      {
+        symbol:   'USDC',
+        address:  ethers.getAddress(ctx.usdcAddress),
+        decimals: ctx.tokenDecimals,
+      },
+    ];
+
+    if (ctx.usdtAddress) {
+      tokens.push({
+        symbol:   'USDT',
+        address:  ethers.getAddress(ctx.usdtAddress),
+        decimals: ctx.tokenDecimals,
+      });
+    }
+
+    return {
+      chainId:     ctx.chainId,
+      name:        ctx.name,
+      displayName: EVM_CHAIN_DISPLAY_NAMES[ctx.chainId] ?? ctx.name,
+      tokens,
+    };
   }
 
   /** Return the current block number for the given chain. */

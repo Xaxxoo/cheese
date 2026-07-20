@@ -62,7 +62,10 @@ export class WalletService {
     userId: string,
     username: string,
   ): Promise<WalletResponseDto> {
-    const chains = this.blockchainService.getConfiguredEvmChains();
+    const depositChains = this.blockchainService.getConfiguredEvmDepositChains();
+    const chains = depositChains.length > 0
+      ? depositChains
+      : this.blockchainService.getConfiguredEvmChains();
 
     let primaryWalletId: string | null = null;
 

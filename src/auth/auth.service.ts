@@ -36,6 +36,8 @@ import { EmailService } from '../email/email.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User, WalletStatus } from './entities/user.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { WalletService as BlockchainWalletService } from '../blockchain/services/wallet.service';
+import { BlockchainWalletStatus } from '../blockchain/entities/blockchain-wallet.entity';
 import {
   WaitlistEntry,
   WaitlistStatus,
@@ -92,6 +94,8 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly otpService: OtpService,
     private readonly blockchainService: BlockchainService,
+    @Optional()
+    private readonly blockchainWalletService: BlockchainWalletService | null,
     private readonly emailService: EmailService,
 
     @Optional()
@@ -239,18 +243,24 @@ export class AuthService {
       // user.stellarPublicKey / stellarSecretEnc remain null — retried by job
     }
 
-    // EVM — only attempt if EVM chains are configured; skip silently otherwise
+    // Persist before EVM provisioning so the UUID used as the CREATE2 salt exists.
+    await this.userRepo.save(user);
+
+    // EVM — create one contract wallet per supported deposit chain.
     if (this.blockchainService.isEvmReady) {
       try {
-        const evmResult = await this.blockchainService.createEvmWallet(
+        const evmResult = await this.createEvmWalletsForUser(
           user.id,
           dto.username,
         );
 
-        user.evmAddress = evmResult.walletAddress; // contract-managed wallet address
+        user.evmAddress = evmResult.walletAddress;
+        user.evmWalletStatus = evmResult.allActive
+          ? WalletStatus.ACTIVE
+          : WalletStatus.PENDING;
         this.logger.log(
           `EVM wallet created [user=${dto.username}]` +
-            ` [contractWallet=${evmResult.walletAddress}] [txHash=${evmResult.txHash}]`,
+            ` [contractWallet=${evmResult.walletAddress ?? 'pending'}]`,
         );
       } catch (err) {
         this.logger.error(
@@ -332,6 +342,42 @@ export class AuthService {
     this.logger.log(`OTP sent [email=${dto.email}] [otp=${otpCode}]`);
 
     return { userId: user.id, email: user.email };
+  }
+
+  private async createEvmWalletsForUser(
+    userId: string,
+    username: string,
+  ): Promise<{ walletAddress: string | null; allActive: boolean }> {
+    if (this.blockchainWalletService) {
+      await this.blockchainWalletService.createWallet(userId, username);
+      const wallets = await this.blockchainWalletService.getWalletsForUser(userId);
+      const depositChainIds = new Set(
+        this.blockchainService
+          .getConfiguredEvmDepositChains()
+          .map((chain) => chain.chainId),
+      );
+      const targetWallets = wallets.filter(
+        (wallet) =>
+          depositChainIds.size === 0 || depositChainIds.has(wallet.chainId),
+      );
+      const activeWallets = targetWallets.filter(
+        (wallet) =>
+          wallet.status === BlockchainWalletStatus.ACTIVE && wallet.walletAddress,
+      );
+
+      return {
+        walletAddress: activeWallets[0]?.walletAddress ?? null,
+        allActive:
+          targetWallets.length > 0 && activeWallets.length === targetWallets.length,
+      };
+    }
+
+    const evmResult = await this.blockchainService.createEvmWallet(
+      userId,
+      username,
+    );
+
+    return { walletAddress: evmResult.walletAddress, allActive: true };
   }
 
   // ── Verify OTP ─────────────────────────────────────────────────────────────

@@ -33,7 +33,7 @@ export enum TokenSymbol {
 
 @Entity('blockchain_wallets')
 @Index('UQ_blockchain_wallets_user_chain', ['userId', 'chainId'], { unique: true })
-@Index('UQ_blockchain_wallets_address', ['walletAddress'], {
+@Index('UQ_blockchain_wallets_address_chain', ['walletAddress', 'chainId'], {
   unique: true,
   where: '"wallet_address" IS NOT NULL',
 })

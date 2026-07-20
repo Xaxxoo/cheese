@@ -35,11 +35,11 @@ export class WalletController {
   @ApiOperation({
     summary: 'Get deposit addresses',
     description:
-      'Returns the Stellar address (primary USDC deposit path) and the EVM address.',
+      'Returns the Stellar address and per-chain EVM addresses with supported USDC/USDT tokens.',
   })
   @ApiResponse({
     status: 200,
-    description: 'stellarAddress, evmAddress, network, asset',
+    description: 'stellarAddress, evmAddress, evmAddresses, evmChains, assets, memo',
   })
   getAddress(@CurrentUser() user: User) {
     return this.walletService.getAddress(user.id);
@@ -49,9 +49,12 @@ export class WalletController {
   @ApiOperation({
     summary: 'Provision missing wallets',
     description:
-      'Creates a Stellar wallet for the authenticated user if one does not exist yet. Safe to call multiple times — idempotent.',
+      'Creates missing Stellar and supported EVM chain wallets for the authenticated user. Safe to call multiple times — idempotent.',
   })
-  @ApiResponse({ status: 201, description: 'stellarPublicKey, alreadyExisted' })
+  @ApiResponse({
+    status: 201,
+    description: 'stellarPublicKey, alreadyExisted, evmAddress, evmWalletStatus, evmWallets',
+  })
   provisionWallet(@CurrentUser() user: User) {
     return this.walletService.provisionWallet(user.id);
   }
@@ -60,7 +63,7 @@ export class WalletController {
   @ApiOperation({
     summary: 'List supported deposit networks',
     description:
-      'Returns Stellar and EVM deposit options with fees, confirmation times, and instructions.',
+      'Returns Stellar and EVM deposit options with chain IDs, supported tokens, fees, confirmation times, and instructions.',
   })
   @ApiResponse({
     status: 200,

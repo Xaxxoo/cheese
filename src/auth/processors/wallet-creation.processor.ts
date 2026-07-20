@@ -1,11 +1,13 @@
 // src/auth/processors/wallet-creation.processor.ts
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { Job } from 'bullmq';
 import { User, WalletStatus } from '../entities/user.entity';
 import { BlockchainService } from '../../blockchain/services/blockchain.service';
+import { WalletService as BlockchainWalletService } from '../../blockchain/services/wallet.service';
+import { BlockchainWalletStatus } from '../../blockchain/entities/blockchain-wallet.entity';
 import { WalletCreationJobData } from '../auth.service';
 
 /**
@@ -32,6 +34,8 @@ export class WalletCreationProcessor extends WorkerHost {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly blockchainService: BlockchainService,
+    @Optional()
+    private readonly blockchainWalletService: BlockchainWalletService | null,
   ) {
     super();
   }
@@ -116,19 +120,24 @@ export class WalletCreationProcessor extends WorkerHost {
         this.logger.debug(
           `EVM not configured — skipping EVM wallet retry for user ${userId}`,
         );
-      } else if (user.evmAddress) {
+      } else if (user.evmAddress && !this.blockchainWalletService) {
         this.logger.debug(
           `EVM wallet already exists for user ${userId} — skipping`,
         );
       } else {
         try {
-          const evmResult = await this.blockchainService.createEvmWallet(
+          const evmResult = await this.createEvmWalletsForUser(
             userId,
             username,
           );
-          evmUpdates.evmAddress = evmResult.walletAddress;
+          if (evmResult.walletAddress) {
+            evmUpdates.evmAddress = evmResult.walletAddress;
+          }
+          evmUpdates.evmWalletStatus = evmResult.allActive
+            ? WalletStatus.ACTIVE
+            : WalletStatus.PENDING;
           this.logger.log(
-            `EVM wallet created on retry [userId=${userId}] [wallet=${evmResult.walletAddress}]`,
+            `EVM wallet created on retry [userId=${userId}] [wallet=${evmResult.walletAddress ?? 'pending'}]`,
           );
         } catch (err) {
           this.logger.error(
@@ -157,5 +166,41 @@ export class WalletCreationProcessor extends WorkerHost {
     this.logger.log(
       `Wallet creation complete for all chains [userId=${userId}]`,
     );
+  }
+
+  private async createEvmWalletsForUser(
+    userId: string,
+    username: string,
+  ): Promise<{ walletAddress: string | null; allActive: boolean }> {
+    if (this.blockchainWalletService) {
+      await this.blockchainWalletService.createWallet(userId, username);
+      const wallets = await this.blockchainWalletService.getWalletsForUser(userId);
+      const depositChainIds = new Set(
+        this.blockchainService
+          .getConfiguredEvmDepositChains()
+          .map((chain) => chain.chainId),
+      );
+      const targetWallets = wallets.filter(
+        (wallet) =>
+          depositChainIds.size === 0 || depositChainIds.has(wallet.chainId),
+      );
+      const activeWallets = targetWallets.filter(
+        (wallet) =>
+          wallet.status === BlockchainWalletStatus.ACTIVE && wallet.walletAddress,
+      );
+
+      return {
+        walletAddress: activeWallets[0]?.walletAddress ?? null,
+        allActive:
+          targetWallets.length > 0 && activeWallets.length === targetWallets.length,
+      };
+    }
+
+    const evmResult = await this.blockchainService.createEvmWallet(
+      userId,
+      username,
+    );
+
+    return { walletAddress: evmResult.walletAddress, allActive: true };
   }
 }
