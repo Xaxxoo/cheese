@@ -468,12 +468,12 @@ function CryptoTab() {
             <Wallet size={16} className="text-violet-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">EVM chains (USDC)</p>
-            <p className="text-xs text-white/40">Arbitrum, Base, Polygon & more</p>
+            <p className="text-sm font-semibold text-white">EVM chains (USDC + USDT)</p>
+            <p className="text-xs text-white/40">Ethereum, Base, Arbitrum, Polygon & Celo</p>
           </div>
         </div>
         <p className="text-xs text-white/50 leading-relaxed">
-          Send USDC from any EVM-compatible wallet or exchange to your Cheese Pay EVM address.
+          Send USDC or USDT from any EVM-compatible wallet or exchange to your same Cheese Pay EVM address.
         </p>
         <Link
           href="/receive"

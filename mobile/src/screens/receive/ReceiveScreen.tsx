@@ -9,11 +9,31 @@ import QRCode from 'react-native-qrcode-svg'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
 import { getWalletAddress, getDepositNetworks } from '../../api/wallet'
-import type { WalletAddress, DepositNetwork } from '../../types'
+import type { WalletAddress, DepositNetwork, DepositToken, DepositTokenSymbol } from '../../types'
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Receive'>
 
-type NetworkTab = 'stellar' | 'evm'
+type ChainKey = 'stellar' | 1 | 8453 | 42161 | 137 | 42220
+type TokenSymbol = DepositTokenSymbol
+
+const CHAIN_TABS: Array<{ key: ChainKey; label: string }> = [
+  { key: 'stellar', label: 'Stellar' },
+  { key: 1, label: 'Ethereum' },
+  { key: 8453, label: 'Base' },
+  { key: 42161, label: 'Arbitrum' },
+  { key: 137, label: 'Polygon' },
+  { key: 42220, label: 'Celo' },
+]
+
+const EVM_CHAIN_KEYS = CHAIN_TABS
+  .filter((tab): tab is { key: Exclude<ChainKey, 'stellar'>; label: string } => tab.key !== 'stellar')
+  .map((tab) => tab.key)
+
+const FALLBACK_USDC_TOKEN: DepositToken = {
+  symbol: 'USDC',
+  address: null,
+  decimals: 6,
+}
 
 function truncate(addr: string, chars = 10): string {
   if (addr.length <= chars * 2) return addr
@@ -23,7 +43,8 @@ function truncate(addr: string, chars = 10): string {
 export default function ReceiveScreen({ navigation }: Props) {
   const [address,  setAddress]  = useState<WalletAddress | null>(null)
   const [networks, setNetworks] = useState<DepositNetwork[]>([])
-  const [tab,      setTab]      = useState<NetworkTab>('stellar')
+  const [chain,    setChain]    = useState<ChainKey>('stellar')
+  const [token,    setToken]    = useState<TokenSymbol>('USDC')
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
 
@@ -40,13 +61,44 @@ export default function ReceiveScreen({ navigation }: Props) {
       .finally(() => setLoading(false))
   }, [])
 
-  const activeAddress = tab === 'stellar'
+  const evmAddresses = address?.evmAddresses ?? {}
+  const configuredEvmChainIds = networks
+    .filter((net) => net.networkType === 'evm' && typeof net.chainId === 'number')
+    .map((net) => net.chainId as number)
+  const availableEvmChainIds = Array.from(
+    new Set([...configuredEvmChainIds, ...Object.keys(evmAddresses).map(Number)]),
+  ).filter((chainId): chainId is Exclude<ChainKey, 'stellar'> =>
+    EVM_CHAIN_KEYS.includes(chainId as Exclude<ChainKey, 'stellar'>),
+  )
+  const visibleTabs = CHAIN_TABS.filter(
+    (item) => item.key === 'stellar' || availableEvmChainIds.includes(item.key),
+  )
+  const isEvmChain = chain !== 'stellar'
+  const evmEntry = isEvmChain ? evmAddresses[chain] : null
+  const chainLabel = CHAIN_TABS.find((item) => item.key === chain)?.label ?? 'EVM'
+  const selectedNetwork = networks.find((net) =>
+    chain === 'stellar'
+      ? net.networkType === 'stellar' || net.id === 'stellar'
+      : net.chainId === chain,
+  )
+  const supportedTokens = chain === 'stellar'
+    ? [{ ...FALLBACK_USDC_TOKEN, decimals: 7 }]
+    : evmEntry?.tokens?.length
+      ? evmEntry.tokens
+      : selectedNetwork?.tokens?.length
+        ? selectedNetwork.tokens
+        : [FALLBACK_USDC_TOKEN]
+  const selectedToken = supportedTokens.some((item) => item.symbol === token)
+    ? token
+    : supportedTokens[0].symbol
+  const activeAddress = chain === 'stellar'
     ? address?.stellarAddress
-    : Object.values(address?.evmAddresses ?? {})[0]?.address
+    : evmEntry?.address
 
   const activeNetworks = networks.filter((n) =>
-    tab === 'stellar' ? n.id.toLowerCase().includes('stellar') || n.name.toLowerCase().includes('stellar')
-      : !n.id.toLowerCase().includes('stellar') && !n.name.toLowerCase().includes('stellar'),
+    chain === 'stellar'
+      ? n.networkType === 'stellar' || n.id.toLowerCase().includes('stellar') || n.name.toLowerCase().includes('stellar')
+      : n.chainId === chain,
   )
 
   const [copied, setCopied] = useState(false)
@@ -67,8 +119,6 @@ export default function ReceiveScreen({ navigation }: Props) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const hasEvm = address && Object.keys(address.evmAddresses).length > 0
-
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.container}>
@@ -79,7 +129,7 @@ export default function ReceiveScreen({ navigation }: Props) {
           </View>
         </TouchableOpacity>
         <Text style={s.title}>Receive</Text>
-        <Text style={s.sub}>Share your address to receive USDC</Text>
+        <Text style={s.sub}>Share your address to receive USDC or USDT</Text>
 
         {loading ? (
           <View style={s.center}>
@@ -92,26 +142,53 @@ export default function ReceiveScreen({ navigation }: Props) {
         ) : (
           <>
             {/* Network tabs */}
-            <View style={s.tabs}>
-              <TouchableOpacity
-                style={[s.tab, tab === 'stellar' && s.tabActive]}
-                onPress={() => setTab('stellar')}
-              >
-                <Text style={[s.tabText, tab === 'stellar' && s.tabTextActive]}>Stellar</Text>
-              </TouchableOpacity>
-              {hasEvm ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.tabs}
+            >
+              {visibleTabs.map((item) => (
                 <TouchableOpacity
-                  style={[s.tab, tab === 'evm' && s.tabActive]}
-                  onPress={() => setTab('evm')}
+                  key={String(item.key)}
+                  style={[s.tab, chain === item.key && s.tabActive]}
+                  onPress={() => {
+                    setChain(item.key)
+                    setCopied(false)
+                  }}
                 >
-                  <Text style={[s.tabText, tab === 'evm' && s.tabTextActive]}>EVM</Text>
+                  <Text style={[s.tabText, chain === item.key && s.tabTextActive]}>
+                    {item.label}
+                  </Text>
                 </TouchableOpacity>
-              ) : null}
+              ))}
+            </ScrollView>
+
+            <View style={s.tokenRow}>
+              {supportedTokens.map((item) => (
+                <TouchableOpacity
+                  key={item.symbol}
+                  style={[s.tokenChip, selectedToken === item.symbol && s.tokenChipActive]}
+                  onPress={() => setToken(item.symbol)}
+                >
+                  <Text style={[s.tokenText, selectedToken === item.symbol && s.tokenTextActive]}>
+                    {item.symbol}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
+
+            {isEvmChain ? (
+              <View style={s.infoCard}>
+                <Text style={s.infoText}>
+                  Your EVM wallet address is the same across Ethereum, Base, Arbitrum,
+                  Polygon, and Celo. Select the exact network and token the sender will use.
+                </Text>
+              </View>
+            ) : null}
 
             {/* Address card */}
             <View style={s.addressCard}>
-              <Text style={s.assetLabel}>USDC · {tab === 'stellar' ? 'Stellar Network' : 'EVM Network'}</Text>
+              <Text style={s.assetLabel}>{selectedToken} · {chainLabel} Network</Text>
 
               {/* QR code */}
               {activeAddress ? (
@@ -123,7 +200,14 @@ export default function ReceiveScreen({ navigation }: Props) {
                     color="#000000"
                   />
                 </View>
-              ) : null}
+              ) : (
+                <View style={s.qrPending}>
+                  {isEvmChain ? <ActivityIndicator color="#d4a843" size="small" /> : null}
+                  <Text style={s.pendingText}>
+                    {isEvmChain ? `${chainLabel} wallet is being set up.` : 'Address unavailable.'}
+                  </Text>
+                </View>
+              )}
 
               <TouchableOpacity onPress={handleCopy} style={s.addrWrap}>
                 <Text style={s.addrText}>{activeAddress ? truncate(activeAddress, 12) : '—'}</Text>
@@ -168,7 +252,9 @@ export default function ReceiveScreen({ navigation }: Props) {
 
             <View style={s.warningCard}>
               <Text style={s.warningText}>
-                Only send USDC to this address. Sending any other asset may result in permanent loss.
+                Only send {selectedToken} on {chainLabel}. {isEvmChain
+                  ? 'EVM networks share one wallet address, but the selected network and token must still match.'
+                  : 'Sending any other asset may result in permanent loss.'}
               </Text>
             </View>
           </>
@@ -196,6 +282,20 @@ const s = StyleSheet.create({
   tabActive:     { backgroundColor: '#d4a843', borderColor: '#d4a843' },
   tabText:       { fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
   tabTextActive: { color: '#000' },
+  tokenRow:      { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  tokenChip:     {
+    flex: 1, paddingVertical: 9, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center',
+  },
+  tokenChipActive: { borderColor: '#d4a843', backgroundColor: 'rgba(212,168,67,0.14)' },
+  tokenText:     { fontSize: 13, color: 'rgba(255,255,255,0.45)', fontWeight: '700' },
+  tokenTextActive: { color: '#d4a843' },
+  infoCard:      {
+    backgroundColor: 'rgba(167,139,250,0.08)', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: 'rgba(167,139,250,0.16)', marginBottom: 16,
+  },
+  infoText:      { color: 'rgba(237,233,254,0.8)', fontSize: 12, lineHeight: 18 },
 
   addressCard:   {
     backgroundColor: '#141414', borderRadius: 20, padding: 24,
@@ -209,6 +309,12 @@ const s = StyleSheet.create({
     backgroundColor: '#ffffff', borderRadius: 16, padding: 12,
     alignItems: 'center', justifyContent: 'center', marginBottom: 20,
   },
+  qrPending:     {
+    width: 204, height: 204, borderRadius: 16, marginBottom: 20,
+    backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center',
+    justifyContent: 'center', paddingHorizontal: 20, gap: 8,
+  },
+  pendingText:   { color: 'rgba(255,255,255,0.35)', fontSize: 12, textAlign: 'center' },
 
   addrWrap:      {
     backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12,

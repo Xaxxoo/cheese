@@ -92,9 +92,30 @@ export interface WalletBalance {
   lastUpdated: string
 }
 
+export type DepositTokenSymbol = 'USDC' | 'USDT'
+
+export interface DepositToken {
+  symbol: DepositTokenSymbol
+  address: string | null
+  decimals: number
+}
+
+export interface EvmDepositAddress {
+  address: string | null
+  chainId: number
+  chainName: string
+  displayName: string
+  status: 'pending' | 'active' | 'suspended' | 'revoked' | 'missing'
+  tokens: DepositToken[]
+}
+
 export interface WalletAddress {
   stellarAddress: string
-  evmAddresses: Record<number, { address: string; chainName: string }>
+  evmAddress: string | null
+  evmSharedAddress: string | null
+  evmAddresses: Record<number, EvmDepositAddress>
+  evmChains: EvmDepositAddress[]
+  assets: DepositTokenSymbol[]
   asset: 'USDC'
   memo: null
 }
@@ -102,7 +123,13 @@ export interface WalletAddress {
 export interface DepositNetwork {
   id: string
   name: string
+  networkType?: 'stellar' | 'evm'
+  chainId?: number | null
+  chainName?: string
+  displayName?: string
   asset: string
+  assets?: DepositTokenSymbol[]
+  tokens?: DepositToken[]
   fee: string
   minDeposit: string
   confirmations: number

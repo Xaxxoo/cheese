@@ -277,12 +277,12 @@ export default function AddMoneyScreen({ navigation }: Props) {
                   <Hexagon size={18} color="#a78bfa" strokeWidth={1.5} />
                 </View>
                 <View style={s.cryptoMeta}>
-                  <Text style={s.cryptoTitle}>EVM chains (USDC)</Text>
-                  <Text style={s.cryptoSub}>Arbitrum, Base, Polygon & more</Text>
+                  <Text style={s.cryptoTitle}>EVM chains (USDC + USDT)</Text>
+                  <Text style={s.cryptoSub}>Ethereum, Base, Arbitrum, Polygon & Celo</Text>
                 </View>
               </View>
               <Text style={s.cryptoDesc}>
-                Send USDC from any EVM-compatible wallet or exchange to your Cheese Pay EVM address.
+                Send USDC or USDT from any EVM-compatible wallet or exchange to your same Cheese Pay EVM address.
               </Text>
               <TouchableOpacity style={s.cryptoBtn} onPress={() => navigation.navigate('Receive')}>
                 <Text style={s.cryptoBtnText}>View deposit addresses</Text>

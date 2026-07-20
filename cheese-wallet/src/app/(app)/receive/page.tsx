@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
 import { getWalletAddress, getDepositNetworks } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
-import type { DepositNetwork } from '@/types'
+import type { DepositNetwork, DepositToken, DepositTokenSymbol } from '@/types'
 import { notify } from '@/lib/toast'
 
 // ── Skeleton ───────────────────────────────────────────────
@@ -30,6 +30,9 @@ function QrCode({ value, size = 180 }: { value: string; size?: number }) {
 
 // ── Network info card ──────────────────────────────────────
 function NetworkCard({ net }: { net: DepositNetwork }) {
+  const assets = net.assets?.join(' / ') ?? net.asset
+  const fee = net.fee === '0' || net.fee === '0.00' ? 'Free' : net.fee
+
   return (
     <div
       className="rounded-2xl border border-white/8 p-4"
@@ -38,11 +41,11 @@ function NetworkCard({ net }: { net: DepositNetwork }) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-white">{net.name}</p>
-          <p className="text-xs text-white/40 mt-0.5">{net.asset}</p>
+          <p className="text-xs text-white/40 mt-0.5">{assets}</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-white/60 font-medium">
-            Fee: {net.fee === '0' ? 'Free' : `$${net.fee}`}
+            Fee: {fee}
           </p>
           <p className="text-[10px] text-white/30 mt-0.5">{net.estimatedTime}</p>
         </div>
@@ -52,15 +55,28 @@ function NetworkCard({ net }: { net: DepositNetwork }) {
 }
 
 // ── Chain tabs definition ──────────────────────────────────
-type ChainKey = 'stellar' | 137 | 42161 | 56 | 42220
+type EvmChainKey = 1 | 8453 | 42161 | 137 | 42220
+type ChainKey = 'stellar' | EvmChainKey
+type TokenSymbol = DepositTokenSymbol
 
 const CHAIN_TABS: Array<{ key: ChainKey; label: string }> = [
-  { key: 'stellar', label: 'Stellar'   },
-  { key: 137,       label: 'Polygon'   },
-  { key: 42161,     label: 'Arbitrum'  },
-  { key: 56,        label: 'BNB Chain' },
-  { key: 42220,     label: 'Celo'      },
+  { key: 'stellar', label: 'Stellar'  },
+  { key: 1,         label: 'Ethereum' },
+  { key: 8453,      label: 'Base'     },
+  { key: 42161,     label: 'Arbitrum' },
+  { key: 137,       label: 'Polygon'  },
+  { key: 42220,     label: 'Celo'     },
 ]
+
+const EVM_CHAIN_KEYS = CHAIN_TABS
+  .filter((tab): tab is { key: EvmChainKey; label: string } => tab.key !== 'stellar')
+  .map((tab) => tab.key)
+
+const FALLBACK_USDC_TOKEN: DepositToken = {
+  symbol:   'USDC',
+  address:  null,
+  decimals: 6,
+}
 
 // ── Chain selector ─────────────────────────────────────────
 function ChainSelector({
@@ -97,15 +113,58 @@ function ChainSelector({
   )
 }
 
+// ── Token selector ─────────────────────────────────────────
+function TokenSelector({
+  selected,
+  onSelect,
+  tokens,
+}: {
+  selected: TokenSymbol
+  onSelect: (token: TokenSymbol) => void
+  tokens: DepositToken[]
+}) {
+  const visibleTokens = tokens.length > 0 ? tokens : [FALLBACK_USDC_TOKEN]
+
+  return (
+    <div className="flex gap-2 w-full">
+      {visibleTokens.map((token) => (
+        <button
+          key={token.symbol}
+          type="button"
+          onClick={() => onSelect(token.symbol)}
+          className={cn(
+            'flex-1 py-2 rounded-2xl border text-xs font-semibold transition-all',
+            selected === token.symbol
+              ? 'border-[#d4a843] bg-[#d4a843]/15 text-[#d4a843]'
+              : 'border-white/8 bg-white/4 text-white/45 hover:text-white',
+          )}
+        >
+          {token.symbol}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── Warning banner ─────────────────────────────────────────
-function NetworkWarning({ chainLabel }: { chainLabel: string }) {
+function NetworkWarning({
+  chainLabel,
+  token,
+  isEvmChain,
+}: {
+  chainLabel: string
+  token: TokenSymbol
+  isEvmChain: boolean
+}) {
   return (
     <div className="w-full flex gap-2.5 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
       <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
       <p className="text-xs text-amber-200/80 leading-relaxed">
-        Only send USDC on the{' '}
+        Only send {token} on the{' '}
         <span className="font-semibold text-amber-300">{chainLabel} network</span>{' '}
-        to this address. Sending on the wrong network will result in permanent loss of funds.
+        to this address. {isEvmChain
+          ? 'EVM networks share one wallet address, but the selected network and token must still match.'
+          : 'Sending any other asset may result in permanent loss.'}
       </p>
     </div>
   )
@@ -117,6 +176,7 @@ export default function ReceivePage() {
   const [copiedUser, setCopiedUser] = useState(false)
   const [activeTab, setActiveTab]   = useState<'address' | 'username'>('address')
   const [chain, setChain]           = useState<ChainKey>('stellar')
+  const [token, setToken]           = useState<TokenSymbol>('USDC')
 
   const { user } = useAuthStore()
 
@@ -136,12 +196,36 @@ export default function ReceivePage() {
 
   const stellarAddr = addrQ.data?.stellarAddress ?? ''
   const evmAddresses = addrQ.data?.evmAddresses ?? {}
-  const availableEvmChainIds = Object.keys(evmAddresses).map(Number)
+  const configuredEvmChainIds = (netsQ.data ?? [])
+    .filter((net) => net.networkType === 'evm' && typeof net.chainId === 'number')
+    .map((net) => net.chainId as number)
+  const availableEvmChainIds = Array.from(
+    new Set([...configuredEvmChainIds, ...Object.keys(evmAddresses).map(Number)]),
+  ).filter((chainId): chainId is EvmChainKey =>
+    EVM_CHAIN_KEYS.includes(chainId as EvmChainKey),
+  )
+  const isEvmChain = chain !== 'stellar'
+  const evmEntry = isEvmChain ? evmAddresses[chain as number] : null
+  const selectedNetwork = (netsQ.data ?? []).find((net) =>
+    chain === 'stellar'
+      ? net.networkType === 'stellar' || net.id === 'stellar'
+      : net.chainId === chain,
+  )
+  const supportedTokens = chain === 'stellar'
+    ? [{ ...FALLBACK_USDC_TOKEN, decimals: 7 }]
+    : evmEntry?.tokens?.length
+      ? evmEntry.tokens
+      : selectedNetwork?.tokens?.length
+        ? selectedNetwork.tokens
+        : [FALLBACK_USDC_TOKEN]
+  const selectedToken = supportedTokens.some((item) => item.symbol === token)
+    ? token
+    : supportedTokens[0].symbol
 
   // Resolve active address for selected chain
   const activeAddr: string = (() => {
     if (chain === 'stellar') return stellarAddr
-    return evmAddresses[chain as number]?.address ?? ''
+    return evmEntry?.address ?? ''
   })()
 
   // Resolve chain label for warning banner
@@ -178,9 +262,6 @@ export default function ReceivePage() {
     setChain(c)
     setCopiedAddr(false)
   }
-
-  const isEvmChain = chain !== 'stellar'
-  const evmEntry = isEvmChain ? evmAddresses[chain as number] : null
 
   return (
     <div className="flex flex-col pb-8">
@@ -224,6 +305,22 @@ export default function ReceivePage() {
             availableEvmChainIds={availableEvmChainIds}
           />
 
+          <TokenSelector
+            selected={selectedToken}
+            onSelect={setToken}
+            tokens={supportedTokens}
+          />
+
+          {isEvmChain && (
+            <div className="w-full rounded-2xl border border-violet-400/15 bg-violet-400/8 px-4 py-3">
+              <p className="text-xs text-violet-100/75 leading-relaxed">
+                Your EVM wallet address is the same across Ethereum, Base,
+                Arbitrum, Polygon, and Celo. Select the exact network and token
+                the sender will use.
+              </p>
+            </div>
+          )}
+
           {/* QR */}
           <div className="rounded-3xl overflow-hidden border border-white/8 bg-[#1a1a1a] p-4 flex items-center justify-center">
             {addrQ.isLoading && (
@@ -261,7 +358,7 @@ export default function ReceivePage() {
           {/* Address display */}
           <div className="w-full rounded-2xl bg-white/5 border border-white/8 px-4 py-3.5">
             <p className="text-[10px] text-white/30 mb-1.5 tracking-widest uppercase">
-              {chainLabel} address
+              {selectedToken} · {chainLabel} address
             </p>
             {isEvmChain && !evmEntry?.address && !addrQ.isLoading ? (
               <p className="text-xs text-white/30 italic">Setting up…</p>
@@ -286,7 +383,11 @@ export default function ReceivePage() {
           </button>
 
           {/* Network warning */}
-          <NetworkWarning chainLabel={chainLabel} />
+          <NetworkWarning
+            chainLabel={chainLabel}
+            token={selectedToken}
+            isEvmChain={isEvmChain}
+          />
         </div>
       )}
 
