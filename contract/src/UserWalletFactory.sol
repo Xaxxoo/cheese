@@ -43,7 +43,7 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
     address public backend;
     address public vault;
 
-    // Supported tokens — all new wallets are initialised with this list
+    // Supported tokens — all new wallets are initialised with this list after CREATE2 deployment
     address[] public supportedTokens;
     mapping(address => bool) public isTokenSupported;
 
@@ -149,17 +149,15 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
         require(userWallets[userIdHash]       == address(0), "Wallet already exists");
         require(usernameWallets[usernameHash] == address(0), "Username already taken");
 
-        // Deploy — pass address(this) as factory so the wallet can validate
-        // factory-initiated calls (e.g. transferByUsername).
-        UserWallet newWallet = new UserWallet(
+        UserWallet newWallet = new UserWallet{salt: userIdHash}();
+        newWallet.initialize(
             backend,
-            address(this),  // factory
             vault,
-            supportedTokens,
             address(0)      // owner — set later via setOwner() after KYC
         );
 
         wallet = address(newWallet);
+        _addSupportedTokensToWallet(wallet);
 
         // Register by userId
         userWallets[userIdHash] = wallet;
@@ -246,6 +244,19 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
         return userWallets[keccak256(abi.encodePacked(userId))] != address(0);
     }
 
+    /// @notice Predict the deterministic wallet address for a user before deployment.
+    function predictWalletAddress(string memory userId) public view returns (address) {
+        require(bytes(userId).length > 0, "Invalid userId");
+
+        bytes32 salt = keccak256(abi.encodePacked(userId));
+        bytes32 bytecodeHash = keccak256(type(UserWallet).creationCode);
+        bytes32 hash = keccak256(
+            abi.encodePacked(bytes1(0xff), address(this), salt, bytecodeHash)
+        );
+
+        return address(uint160(uint256(hash)));
+    }
+
     /// @notice Check whether a @username is already registered (case-insensitive).
     function isUsernameTaken(string memory username) external view returns (bool) {
         return usernameWallets[keccak256(abi.encodePacked(_toLower(username)))] != address(0);
@@ -314,6 +325,12 @@ contract UserWalletFactory is Ownable, Pausable, ReentrancyGuard {
     function unpause() external onlyOwner { _unpause(); }
 
     // ========== INTERNAL HELPERS ==========
+
+    function _addSupportedTokensToWallet(address wallet) internal {
+        for (uint256 i = 0; i < supportedTokens.length; i++) {
+            UserWallet(wallet).addSupportedToken(supportedTokens[i]);
+        }
+    }
 
     /// @dev ASCII-only lowercase conversion for username normalisation.
     ///      Usernames are expected to contain only a-z, 0-9, _ and . characters.

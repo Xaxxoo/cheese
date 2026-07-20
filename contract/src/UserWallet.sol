@@ -36,6 +36,7 @@ contract UserWallet is ReentrancyGuard {
     address public factory;   // UserWalletFactory
     address public owner;     // User recovery address (initially address(0))
     ICheeseVault public vault;
+    bool public initialized;
 
     mapping(address => bool) public supportedTokens;
     address[] private _tokenList;
@@ -69,11 +70,17 @@ contract UserWallet is ReentrancyGuard {
     event EmergencyWithdrawal(address indexed token, uint256 amount, uint256 timestamp);
 
     event TokenAdded(address indexed token);
+    event Initialized(address indexed backend, address indexed vault, address indexed owner);
 
     // ========== MODIFIERS ==========
 
     modifier onlyBackend() {
         require(msg.sender == backend, "Only backend");
+        _;
+    }
+
+    modifier onlyFactory() {
+        require(msg.sender == factory, "Only factory");
         _;
     }
 
@@ -111,38 +118,32 @@ contract UserWallet is ReentrancyGuard {
 
     // ========== CONSTRUCTOR ==========
 
+    constructor() {
+        factory = msg.sender;
+    }
+
     /**
-     * @param _backend        Platform EOA address
-     * @param _factory        UserWalletFactory address
-     * @param _vault          CheeseVault address
-     * @param _initialTokens  Array of supported token addresses (e.g. [USDC, USDT])
-     * @param _owner          User recovery address (pass address(0) initially)
+     * @notice Initialise wallet state after deterministic deployment.
+     * @dev No constructor args are used so CREATE2 wallet addresses stay stable
+     *      across chains whose factory address and salt match.
+     * @param _backend Platform EOA address
+     * @param _vault   CheeseVault address
+     * @param _owner   User recovery address (pass address(0) initially)
      */
-    constructor(
-        address _backend,
-        address _factory,
-        address _vault,
-        address[] memory _initialTokens,
-        address _owner
-    ) {
+    function initialize(address _backend, address _vault, address _owner)
+        external
+        onlyFactory
+    {
+        require(!initialized, "Already initialized");
         require(_backend != address(0), "Invalid backend");
-        require(_factory != address(0), "Invalid factory");
         require(_vault   != address(0), "Invalid vault");
 
-        backend = _backend;
-        factory = _factory;
-        vault   = ICheeseVault(_vault);
-        owner   = _owner;
+        backend     = _backend;
+        vault       = ICheeseVault(_vault);
+        owner       = _owner;
+        initialized = true;
 
-        for (uint256 i = 0; i < _initialTokens.length; i++) {
-            address t = _initialTokens[i];
-            require(t != address(0), "Invalid token address");
-            if (!supportedTokens[t]) {
-                supportedTokens[t] = true;
-                _tokenList.push(t);
-                emit TokenAdded(t);
-            }
-        }
+        emit Initialized(_backend, _vault, _owner);
     }
 
     // ========== VIEW FUNCTIONS ==========
@@ -248,10 +249,10 @@ contract UserWallet is ReentrancyGuard {
 
     /**
      * @notice Add a new supported token to this wallet.
-     *         Only backend can call this.
+     *         Backend updates existing wallets; factory initialises new wallets.
      * @param  token  ERC-20 token address to add
      */
-    function addSupportedToken(address token) external onlyBackend {
+    function addSupportedToken(address token) external onlyBackendOrFactory {
         require(token != address(0), "Invalid token address");
         if (!supportedTokens[token]) {
             supportedTokens[token] = true;

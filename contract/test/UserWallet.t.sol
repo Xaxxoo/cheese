@@ -42,7 +42,7 @@ contract UserWalletTest is Test {
 
     function setUp() public {
         backend     = makeAddr("backend");
-        factoryAddr = makeAddr("factory");
+        factoryAddr = address(this);
         owner       = makeAddr("owner");
         user        = makeAddr("user");
         treasurer   = makeAddr("treasurer");
@@ -56,13 +56,14 @@ contract UserWalletTest is Test {
 
         vault = new CheeseVault(tokens, INITIAL_FEE, MIN_DEPOSIT);
 
-        userWallet = new UserWallet(
+        userWallet = new UserWallet();
+        userWallet.initialize(
             backend,
-            factoryAddr,
             address(vault),
-            tokens,
             address(0) // No owner initially
         );
+        userWallet.addSupportedToken(address(usdc));
+        userWallet.addSupportedToken(address(usdt));
 
         vault.grantRole(vault.OPERATOR_ROLE(), backend);
         vault.grantRole(vault.TREASURER_ROLE(), treasurer);
@@ -83,24 +84,27 @@ contract UserWalletTest is Test {
     }
 
     function test_RevertWhen_DeployWithInvalidBackend() public {
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(usdc);
+        UserWallet wallet = new UserWallet();
         vm.expectRevert("Invalid backend");
-        new UserWallet(address(0), factoryAddr, address(vault), tokens, owner);
+        wallet.initialize(address(0), address(vault), owner);
     }
 
-    function test_RevertWhen_DeployWithInvalidFactory() public {
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(usdc);
-        vm.expectRevert("Invalid factory");
-        new UserWallet(backend, address(0), address(vault), tokens, owner);
+    function test_RevertWhen_InitializeNotFactory() public {
+        UserWallet wallet = new UserWallet();
+        vm.prank(user);
+        vm.expectRevert("Only factory");
+        wallet.initialize(backend, address(vault), owner);
     }
 
     function test_RevertWhen_DeployWithInvalidVault() public {
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(usdc);
+        UserWallet wallet = new UserWallet();
         vm.expectRevert("Invalid vault");
-        new UserWallet(backend, factoryAddr, address(0), tokens, owner);
+        wallet.initialize(backend, address(0), owner);
+    }
+
+    function test_RevertWhen_InitializeTwice() public {
+        vm.expectRevert("Already initialized");
+        userWallet.initialize(backend, address(vault), owner);
     }
 
     // ========== GET BALANCE TESTS ==========
@@ -368,10 +372,10 @@ contract UserWalletTest is Test {
         assertEq(count, 1);
     }
 
-    function test_RevertWhen_AddSupportedTokenNotBackend() public {
+    function test_RevertWhen_AddSupportedTokenNotBackendOrFactory() public {
         MockUSDC newToken = new MockUSDC();
         vm.prank(user);
-        vm.expectRevert("Only backend");
+        vm.expectRevert("Not authorised");
         userWallet.addSupportedToken(address(newToken));
     }
 

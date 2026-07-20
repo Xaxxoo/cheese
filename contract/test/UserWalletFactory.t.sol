@@ -85,11 +85,13 @@ contract UserWalletFactoryTest is Test {
     function test_CreateWallet() public {
         string memory userId   = "user@example.com";
         string memory username = "alice";
+        address predicted = factory.predictWalletAddress(userId);
 
         vm.prank(backend);
         address wallet = factory.createWallet(userId, username);
 
         assertTrue(wallet != address(0));
+        assertEq(wallet, predicted);
         assertEq(factory.getWallet(userId), wallet);
         assertEq(factory.getWalletByUsername(username), wallet);
         assertTrue(factory.hasWallet(userId));
@@ -115,6 +117,61 @@ contract UserWalletFactoryTest is Test {
         assertEq(factory.getWallet("user1@example.com"), wallet1);
         assertEq(factory.getWallet("user2@example.com"), wallet2);
         assertEq(factory.getWallet("user3@example.com"), wallet3);
+    }
+
+    function test_PredictWalletAddressMatchesCreateWallet() public {
+        string memory userId = "user@example.com";
+        address predicted = factory.predictWalletAddress(userId);
+
+        vm.prank(backend);
+        address wallet = factory.createWallet(userId, "alice");
+
+        assertEq(wallet, predicted);
+        assertTrue(predicted.code.length > 0);
+    }
+
+    function test_PredictWalletAddressIsStable() public view {
+        string memory userId = "user@example.com";
+
+        assertEq(
+            factory.predictWalletAddress(userId),
+            factory.predictWalletAddress(userId)
+        );
+    }
+
+    function test_PredictWalletAddressUnaffectedByTokenListChanges() public {
+        string memory userId = "user@example.com";
+        address predictedBefore = factory.predictWalletAddress(userId);
+
+        MockUSDC newToken = new MockUSDC();
+        factory.addSupportedToken(address(newToken));
+
+        address predictedAfter = factory.predictWalletAddress(userId);
+        assertEq(predictedAfter, predictedBefore);
+
+        vm.prank(backend);
+        address walletAddr = factory.createWallet(userId, "alice");
+        UserWallet wallet = UserWallet(walletAddr);
+
+        assertEq(walletAddr, predictedBefore);
+        assertTrue(wallet.supportedTokens(address(usdc)));
+        assertTrue(wallet.supportedTokens(address(usdt)));
+        assertTrue(wallet.supportedTokens(address(newToken)));
+    }
+
+    function test_PredictWalletAddressUnaffectedByUsername() public {
+        string memory userId = "user@example.com";
+        address predicted = factory.predictWalletAddress(userId);
+
+        vm.prank(backend);
+        address wallet = factory.createWallet(userId, "Alice");
+
+        assertEq(wallet, predicted);
+    }
+
+    function test_RevertWhen_PredictWalletAddressEmptyUserId() public {
+        vm.expectRevert("Invalid userId");
+        factory.predictWalletAddress("");
     }
 
     function test_RevertWhen_CreateWalletNotBackend() public {
