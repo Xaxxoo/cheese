@@ -39,7 +39,11 @@ contract CheeseVaultForkTest is Test {
     uint256 constant MIN_DEPOSIT = 1e6;
 
     function setUp() public {
-        string memory rpcUrl = vm.envString("ARBITRUM_RPC_URL");
+        string memory rpcUrl = vm.envOr("ARBITRUM_RPC_URL", string(""));
+        if (bytes(rpcUrl).length == 0) {
+            vm.skip(true, "ARBITRUM_RPC_URL not set");
+        }
+
         vm.createSelectFork(rpcUrl);
 
         owner     = address(this);
