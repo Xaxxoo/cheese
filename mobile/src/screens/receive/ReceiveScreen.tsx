@@ -8,7 +8,7 @@ import * as Clipboard from 'expo-clipboard'
 import QRCode from 'react-native-qrcode-svg'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
-import { getWalletAddress, getDepositNetworks } from '../../api/wallet'
+import { getWalletAddress, getDepositNetworks, provisionWallet } from '../../api/wallet'
 import type { WalletAddress, DepositNetwork, DepositToken, DepositTokenSymbol } from '../../types'
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Receive'>
@@ -49,16 +49,24 @@ export default function ReceiveScreen({ navigation }: Props) {
   const [error,    setError]    = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([getWalletAddress(), getDepositNetworks()])
-      .then(([addr, nets]) => { setAddress(addr); setNetworks(nets) })
-      .catch((e: unknown) => {
+    const loadReceiveData = async () => {
+      try {
+        await provisionWallet().catch(() => undefined)
+        const [addr, nets] = await Promise.all([getWalletAddress(), getDepositNetworks()])
+        setAddress(addr)
+        setNetworks(nets)
+      } catch (e: unknown) {
         const msg =
           (e as { response?: { data?: { message?: string } } })?.response?.data?.message
           ?? (e as Error)?.message
           ?? 'Failed to load wallet address'
         setError(msg)
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void loadReceiveData()
   }, [])
 
   const evmAddresses = address?.evmAddresses ?? {}

@@ -12,7 +12,7 @@ import {
   BlockchainTxStatus,
 } from '../entities/blockchain-transaction.entity';
 import { BlockchainService } from './blockchain.service';
-import { User } from '../../auth/entities/user.entity';
+import { User, WalletStatus } from '../../auth/entities/user.entity';
 import {
   WalletNotFoundException,
   WalletNotReadyException,
@@ -85,6 +85,8 @@ export class WalletService {
       if (w) primaryWalletId = w.id;
     }
 
+    await this.syncUserEvmWalletStatus(userId);
+
     return WalletResponseDto.from(
       await this.walletRepo.findOneOrFail({ where: { id: primaryWalletId! } }),
     );
@@ -100,7 +102,35 @@ export class WalletService {
     chainId: number,
   ): Promise<void> {
     const existing = await this.walletRepo.findOne({ where: { userId, chainId } });
-    if (existing) return; // already exists for this chain — skip
+    if (existing) {
+      if (
+        existing.status === BlockchainWalletStatus.PENDING &&
+        !existing.walletAddress
+      ) {
+        let activated = false;
+        try {
+          activated = await this.activateExistingOnChainWallet(existing);
+        } catch (err) {
+          this.logger.warn(
+            `Existing pending wallet reconciliation failed [userId=${userId}] [chain=${chainId}]: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+
+        if (activated) return;
+
+        try {
+          await this.retryWalletCreation(existing.id);
+        } catch (err) {
+          this.logger.error(
+            `Existing pending wallet retry failed [userId=${userId}] [chain=${chainId}]`,
+            err,
+          );
+        }
+      }
+      return;
+    }
 
     const contractAddress = this.blockchainService.getEvmContractAddress(chainId);
 
@@ -176,6 +206,17 @@ export class WalletService {
     const wallet = await this.walletRepo.findOne({ where: { id: walletId } });
     if (!wallet || wallet.status !== BlockchainWalletStatus.PENDING) return;
 
+    try {
+      const activated = await this.activateExistingOnChainWallet(wallet);
+      if (activated) return;
+    } catch (err) {
+      this.logger.warn(
+        `Wallet reconciliation failed before retry [walletId=${walletId}]: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
     if (wallet.retryCount >= MAX_CREATION_RETRIES) {
       throw new WalletCreationMaxRetriesException(
         wallet.userId,
@@ -223,6 +264,8 @@ export class WalletService {
       });
 
       this.logger.log(`Wallet creation retry succeeded [walletId=${walletId}]`);
+
+      await this.syncUserEvmWalletStatus(wallet.userId);
     } catch (err) {
       await this.txRepo.update(blockchainTx.id, {
         status: BlockchainTxStatus.FAILED,
@@ -599,6 +642,61 @@ export class WalletService {
 
   async findPendingWallets(): Promise<BlockchainWallet[]> {
     return this.walletRepo.find({ where: { status: BlockchainWalletStatus.PENDING } });
+  }
+
+  private async activateExistingOnChainWallet(wallet: BlockchainWallet): Promise<boolean> {
+    const walletAddress = await this.blockchainService.resolveEvmWallet(
+      wallet.userId,
+      wallet.chainId,
+    );
+
+    if (!walletAddress) return false;
+
+    await this.walletRepo.update(wallet.id, {
+      walletAddress,
+      status: BlockchainWalletStatus.ACTIVE,
+      activatedAt: new Date(),
+    });
+    await this.syncUserEvmWalletStatus(wallet.userId);
+
+    this.logger.log(
+      `Wallet reconciled from chain [userId=${wallet.userId}]` +
+        ` [chain=${wallet.chainId}] [wallet=${walletAddress}]`,
+    );
+
+    return true;
+  }
+
+  private async syncUserEvmWalletStatus(userId: string): Promise<void> {
+    const depositChains = this.blockchainService.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchainService.getConfiguredEvmChains();
+    const configuredChainIds = new Set(
+      configuredChains.map((chain) => chain.chainId),
+    );
+    const wallets = (await this.getWalletsForUser(userId)).filter(
+      (wallet) =>
+        configuredChainIds.size === 0 || configuredChainIds.has(wallet.chainId),
+    );
+
+    if (wallets.length === 0) return;
+
+    const activeWallets = wallets.filter(
+      (wallet) =>
+        wallet.status === BlockchainWalletStatus.ACTIVE && wallet.walletAddress,
+    );
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const evmAddress = activeWallets[0]?.walletAddress ?? user?.evmAddress ?? null;
+    const evmWalletStatus =
+      activeWallets.length === wallets.length
+        ? WalletStatus.ACTIVE
+        : WalletStatus.PENDING;
+
+    await this.userRepo.update(
+      { id: userId },
+      { evmAddress, evmWalletStatus },
+    );
   }
 
   /**

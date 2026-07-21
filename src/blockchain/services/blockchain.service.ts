@@ -836,6 +836,18 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
+  async resolveEvmWallet(userId: string, chainId?: number): Promise<string | null> {
+    this.requireEvm('resolveEvmWallet', chainId);
+    const ctx = this.getChainContext(chainId);
+    try {
+      const address: string = await ctx.factory.getWallet(userId);
+      const zero = '0x0000000000000000000000000000000000000000';
+      return address === zero ? null : ethers.getAddress(address);
+    } catch (err) {
+      throw this.wrapError('resolveEvmWallet', err);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // EVM — Owner management (post-KYC user recovery address)
   // ─────────────────────────────────────────────────────────────────────────

@@ -31,6 +31,10 @@ export async function getWalletAddress(): Promise<WalletAddress> {
   return data.data
 }
 
+export async function provisionWallet(): Promise<void> {
+  await apiClient.post<ApiResponse<unknown>>(ENDPOINTS.WALLET.PROVISION)
+}
+
 export async function getDepositNetworks(): Promise<DepositNetwork[]> {
   const { data } = await apiClient.get<ApiResponse<DepositNetwork[]>>(
     ENDPOINTS.WALLET.DEPOSIT_NETWORKS,

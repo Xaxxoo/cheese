@@ -9,7 +9,7 @@ import {
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
-import { getWalletAddress, getDepositNetworks } from '@/lib/api/wallet'
+import { getWalletAddress, getDepositNetworks, provisionWallet } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { DepositNetwork, DepositToken, DepositTokenSymbol } from '@/types'
 import { notify } from '@/lib/toast'
@@ -76,6 +76,11 @@ const FALLBACK_USDC_TOKEN: DepositToken = {
   symbol:   'USDC',
   address:  null,
   decimals: 6,
+}
+
+async function loadWalletAddress(): Promise<Awaited<ReturnType<typeof getWalletAddress>>> {
+  await provisionWallet().catch(() => undefined)
+  return getWalletAddress()
 }
 
 // ── Chain selector ─────────────────────────────────────────
@@ -182,7 +187,7 @@ export default function ReceivePage() {
 
   const addrQ = useQuery({
     queryKey: QUERY_KEYS.ADDRESS,
-    queryFn:  getWalletAddress,
+    queryFn:  loadWalletAddress,
     staleTime: STALE_TIMES.PROFILE,
     retry: 1,
   })

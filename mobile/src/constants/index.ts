@@ -25,6 +25,7 @@ export const ENDPOINTS = {
   WALLET: {
     BALANCE:          '/wallet/balance',
     ADDRESS:          '/wallet/address',
+    PROVISION:        '/wallet/provision',
     DEPOSIT_NETWORKS: '/wallet/deposit-networks',
   },
   TRANSACTIONS: {
