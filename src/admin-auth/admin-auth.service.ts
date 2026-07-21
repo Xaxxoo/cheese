@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -26,7 +27,7 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
-import { WalletService } from '../wallet/wallet.service';
+import { WalletService as BlockchainWalletService } from '../blockchain/services/wallet.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -62,7 +63,7 @@ export class AdminAuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly blockchainService: BlockchainService,
-    private readonly walletService: WalletService,
+    private readonly blockchainWalletService: BlockchainWalletService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -827,17 +828,56 @@ export class AdminAuthService {
   async provisionUserWallet(id: string) {
     const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
     if (!user) throw new NotFoundException('User not found');
+    if (!user.username) throw new BadRequestException('User has no username');
+    if (!this.blockchainService.isEvmReady) {
+      throw new ServiceUnavailableException(
+        'EVM not ready — check backend Celo configuration',
+      );
+    }
 
-    const result = await this.walletService.provisionWallet(id);
-    const updated = await this.userRepo.findOneOrFail({ where: { id } });
+    await this.blockchainWalletService.createWallet(id, user.username);
+
+    const depositChains = this.blockchainService.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchainService.getConfiguredEvmChainsWithTokens();
+    const configuredChainIds = new Set(
+      configuredChains.map((chain) => chain.chainId),
+    );
+    const chainNameMap = new Map(
+      configuredChains.map((chain) => [chain.chainId, chain.name]),
+    );
+    const wallets = (await this.blockchainWalletService.getWalletsForUser(id))
+      .filter(
+        (wallet) =>
+          configuredChainIds.size === 0 || configuredChainIds.has(wallet.chainId),
+      );
+    const activeWallets = wallets.filter((wallet) => wallet.isReady);
+    const evmAddress = activeWallets[0]?.walletAddress ?? user.evmAddress ?? null;
+    const evmWalletStatus =
+      wallets.length > 0 && activeWallets.length === wallets.length
+        ? WalletStatus.ACTIVE
+        : WalletStatus.PENDING;
+
+    if (wallets.length > 0) {
+      await this.userRepo.update(
+        { id },
+        { evmAddress, evmWalletStatus },
+      );
+    }
 
     return {
       id,
-      evmAddress: updated.evmAddress,
+      evmAddress,
       evmWalletStatus:
-        updated.evmWalletStatus.charAt(0).toUpperCase() +
-        updated.evmWalletStatus.slice(1),
-      evmWallets: result.evmWallets,
+        evmWalletStatus.charAt(0).toUpperCase() +
+        evmWalletStatus.slice(1),
+      evmWallets: wallets.map((wallet) => ({
+        address: wallet.walletAddress,
+        chainId: wallet.chainId,
+        chainName: chainNameMap.get(wallet.chainId) ?? `chain-${wallet.chainId}`,
+        status: wallet.status,
+      })),
     };
   }
 
