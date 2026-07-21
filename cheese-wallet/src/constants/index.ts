@@ -2,7 +2,11 @@
 // CHEESE PAY — API Constants & Endpoint Registry
 // ─────────────────────────────────────────────────────────
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.cheesepay.xyz/v1'
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'https://api.cheesepay.xyz/v1').replace(/\/+$/, '')
+
+export const API_URL = API_BASE_URL.endsWith('/v1')
+  ? API_BASE_URL
+  : `${API_BASE_URL}/v1`
 
 export const ENDPOINTS = {
   // ── Auth ──────────────────────────────────────────────
