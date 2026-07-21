@@ -6,7 +6,7 @@ import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
   setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet,
-  listAdminTransactions, type AdminUserDetail, type AdminTransactionItem,
+  provisionAdminUserWallet, listAdminTransactions, type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
 const fmtDate = (s: string) =>
@@ -35,6 +35,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [deleteError,   setDeleteError]   = useState('');
   const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
   const [recoverError,  setRecoverError]  = useState('');
+  const [provisionError, setProvisionError] = useState('');
 
   // ── Tx history slide-over ─────────────────────────────────────────────────
   const [txFilter,   setTxFilter]   = useState<'in' | 'out' | 'all' | null>(null);
@@ -116,6 +117,27 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       void result;
     } catch { /* ignore */ }
     finally { setSaving(false); }
+  };
+
+  const handleProvisionWallet = async () => {
+    if (!user || saving) return;
+    setSaving(true);
+    setProvisionError('');
+    try {
+      const result = await provisionAdminUserWallet(user.id);
+      setUser((u) => u ? {
+        ...u,
+        evmAddress: result.evmAddress,
+        evmWalletStatus: result.evmWalletStatus,
+      } : u);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (err as Error)?.message
+        ?? 'Wallet provisioning failed';
+      setProvisionError(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -505,6 +527,26 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 <div style={{ fontSize: 10.5, color: c.textMid, fontFamily: 'monospace', wordBreak: 'break-all', background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.border}` }}>
                   {user.evmAddress ?? 'Not provisioned'}
                 </div>
+                {user.evmWalletStatus !== 'Active' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                    <button
+                      onClick={handleProvisionWallet}
+                      disabled={saving}
+                      style={{
+                        alignSelf: 'flex-start', padding: '7px 12px', borderRadius: 8,
+                        cursor: saving ? 'default' : 'pointer',
+                        background: c.greenDim, border: '1px solid rgba(34,197,94,0.25)',
+                        color: c.green, fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                        opacity: saving ? 0.55 : 1,
+                      }}
+                    >
+                      {saving ? 'Provisioning…' : 'Provision EVM Wallet'}
+                    </button>
+                    {provisionError && (
+                      <div style={{ fontSize: 11, color: c.red }}>{provisionError}</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -20,6 +20,7 @@ import { AdminTreasuryService } from './admin-treasury.service';
 import { AdminBroadcastController } from './admin-broadcast.controller';
 import { RatesModule } from '../rates/rates.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
+import { WalletModule } from '../wallet/wallet.module';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
@@ -30,6 +31,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     JwtModule.register({}),
     RatesModule,
     BlockchainModule,
+    WalletModule,
     EmailModule,
     NotificationsModule,
   ],

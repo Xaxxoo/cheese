@@ -96,6 +96,16 @@ export class AdminDashboardController {
     return this.adminAuthService.getUserDetail(id);
   }
 
+  // ── POST /admin/users/:id/provision-wallet ───────────────────────────────
+  @Post('users/:id/provision-wallet')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Provision or retry missing user wallets' })
+  provisionUserWallet(@Param('id') id: string) {
+    return this.adminAuthService.provisionUserWallet(id);
+  }
+
   // ── PATCH /admin/transfers/:id/complete ───────────────────────────────────
   @Patch('transfers/:id/complete')
   @UseGuards(AdminJwtGuard)

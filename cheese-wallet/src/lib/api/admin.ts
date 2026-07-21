@@ -323,6 +323,21 @@ export async function getAdminUserDetail(id: string): Promise<AdminUserDetail> {
   return data.data
 }
 
+export async function provisionAdminUserWallet(id: string): Promise<{
+  id: string
+  evmAddress: string | null
+  evmWalletStatus: string
+  evmWallets: Array<{ address: string | null; chainId: number; chainName: string; status: string }>
+}> {
+  const { data } = await adminApiClient.post<ApiResponse<{
+    id: string
+    evmAddress: string | null
+    evmWalletStatus: string
+    evmWallets: Array<{ address: string | null; chainId: number; chainName: string; status: string }>
+  }>>(`/admin/users/${id}/provision-wallet`)
+  return data.data
+}
+
 export async function flagAdminUser(id: string, flag: boolean): Promise<{ id: string; isFlagged: boolean }> {
   const { data } = await adminApiClient.patch<ApiResponse<{ id: string; isFlagged: boolean }>>(
     `/admin/users/${id}/flag`, { flag },

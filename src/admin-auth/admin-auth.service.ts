@@ -26,6 +26,7 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { WalletService } from '../wallet/wallet.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -61,6 +62,7 @@ export class AdminAuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly blockchainService: BlockchainService,
+    private readonly walletService: WalletService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -819,6 +821,23 @@ export class AdminAuthService {
         failureReason: bt.failureReason,
         createdAt:     bt.createdAt,
       })),
+    };
+  }
+
+  async provisionUserWallet(id: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const result = await this.walletService.provisionWallet(id);
+    const updated = await this.userRepo.findOneOrFail({ where: { id } });
+
+    return {
+      id,
+      evmAddress: updated.evmAddress,
+      evmWalletStatus:
+        updated.evmWalletStatus.charAt(0).toUpperCase() +
+        updated.evmWalletStatus.slice(1),
+      evmWallets: result.evmWallets,
     };
   }
 
