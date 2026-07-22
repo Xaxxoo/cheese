@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Copy, CheckCheck, RefreshCw, Download, AlertTriangle,
 } from 'lucide-react'
@@ -76,11 +76,6 @@ const FALLBACK_USDC_TOKEN: DepositToken = {
   symbol:   'USDC',
   address:  null,
   decimals: 6,
-}
-
-async function loadWalletAddress(): Promise<Awaited<ReturnType<typeof getWalletAddress>>> {
-  await provisionWallet().catch(() => undefined)
-  return getWalletAddress()
 }
 
 // ── Chain selector ─────────────────────────────────────────
@@ -182,12 +177,15 @@ export default function ReceivePage() {
   const [activeTab, setActiveTab]   = useState<'address' | 'username'>('address')
   const [chain, setChain]           = useState<ChainKey>('stellar')
   const [token, setToken]           = useState<TokenSymbol>('USDC')
+  const [isProvisioning, setIsProvisioning] = useState(false)
+  const provisionAttemptedRef = useRef(false)
 
+  const queryClient = useQueryClient()
   const { user } = useAuthStore()
 
   const addrQ = useQuery({
     queryKey: QUERY_KEYS.ADDRESS,
-    queryFn:  loadWalletAddress,
+    queryFn:  getWalletAddress,
     staleTime: STALE_TIMES.PROFILE,
     retry: 1,
   })
@@ -198,6 +196,25 @@ export default function ReceivePage() {
     staleTime: STALE_TIMES.PROFILE,
     retry: 1,
   })
+
+  useEffect(() => {
+    if (!user?.id || provisionAttemptedRef.current) return
+
+    provisionAttemptedRef.current = true
+    let cancelled = false
+    setIsProvisioning(true)
+
+    void provisionWallet()
+      .then(() => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADDRESS }))
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setIsProvisioning(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [queryClient, user?.id])
 
   const stellarAddr = addrQ.data?.stellarAddress ?? ''
   const evmAddresses = addrQ.data?.evmAddresses ?? {}
@@ -211,6 +228,7 @@ export default function ReceivePage() {
   )
   const isEvmChain = chain !== 'stellar'
   const evmEntry = isEvmChain ? evmAddresses[chain as number] : null
+  const isAddressLoading = addrQ.isLoading || isProvisioning
   const selectedNetwork = (netsQ.data ?? []).find((net) =>
     chain === 'stellar'
       ? net.networkType === 'stellar' || net.id === 'stellar'
@@ -328,10 +346,10 @@ export default function ReceivePage() {
 
           {/* QR */}
           <div className="rounded-3xl overflow-hidden border border-white/8 bg-[#1a1a1a] p-4 flex items-center justify-center">
-            {addrQ.isLoading && (
+            {isAddressLoading && (
               <div className="w-[180px] h-[180px] bg-white/5 rounded-2xl animate-pulse" />
             )}
-            {addrQ.isError && (
+            {addrQ.isError && !isProvisioning && (
               <div className="w-[180px] h-[180px] flex flex-col items-center justify-center gap-2">
                 <p className="text-xs text-white/30">Could not load QR</p>
                 <button
@@ -344,13 +362,13 @@ export default function ReceivePage() {
                 </button>
               </div>
             )}
-            {addrQ.data && chain === 'stellar' && stellarAddr && (
+            {!isAddressLoading && addrQ.data && chain === 'stellar' && stellarAddr && (
               <QrCode value={stellarAddr} />
             )}
-            {addrQ.data && isEvmChain && evmEntry?.address && (
+            {!isAddressLoading && addrQ.data && isEvmChain && evmEntry?.address && (
               <QrCode value={evmEntry.address} />
             )}
-            {addrQ.data && isEvmChain && !evmEntry?.address && (
+            {!isAddressLoading && addrQ.data && isEvmChain && !evmEntry?.address && (
               <div className="w-[180px] h-[180px] flex flex-col items-center justify-center gap-3 text-center px-4">
                 <Spinner size="sm" />
                 <p className="text-xs text-white/30 leading-relaxed">
@@ -365,7 +383,7 @@ export default function ReceivePage() {
             <p className="text-[10px] text-white/30 mb-1.5 tracking-widest uppercase">
               {selectedToken} · {chainLabel} address
             </p>
-            {isEvmChain && !evmEntry?.address && !addrQ.isLoading ? (
+            {isEvmChain && !evmEntry?.address && !isAddressLoading ? (
               <p className="text-xs text-white/30 italic">Setting up…</p>
             ) : (
               <p className="text-xs text-white/60 font-mono leading-relaxed break-all">
