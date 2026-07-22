@@ -147,9 +147,13 @@ export class WalletService {
   }
 
   async getAddress(userId: string): Promise<DepositAddress> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    let user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user?.stellarPublicKey)
       throw new NotFoundException('Wallet not initialised');
+
+    const stellarAddress = user.stellarPublicKey;
+    await this.provisionMissingEvmWalletsForReceive(userId, user.username);
+    user = (await this.userRepo.findOne({ where: { id: userId } })) ?? user;
 
     // Build per-chain EVM address map from blockchain_wallets rows.
     // Pending entries are returned with a null address so clients can show setup state.
@@ -196,7 +200,7 @@ export class WalletService {
     ) as DepositTokenSymbol[];
 
     return {
-      stellarAddress: user.stellarPublicKey,
+      stellarAddress,
       evmAddress: evmSharedAddress,
       evmSharedAddress,
       evmAddresses,
@@ -205,6 +209,52 @@ export class WalletService {
       asset: 'USDC',
       memo: null,
     };
+  }
+
+  private async provisionMissingEvmWalletsForReceive(
+    userId: string,
+    username: string,
+  ): Promise<void> {
+    if (
+      !this.blockchainService.isEvmReady ||
+      !this.blockchainWalletService ||
+      !username
+    ) {
+      return;
+    }
+
+    const depositChains = this.blockchainService.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchainService.getConfiguredEvmChainsWithTokens();
+    if (configuredChains.length === 0) return;
+
+    const evmWallets = await this.blockchainWalletRepo.find({
+      where: { userId },
+    });
+    const activeChainIds = new Set(
+      evmWallets
+        .filter(
+          (wallet) =>
+            wallet.status === BlockchainWalletStatus.ACTIVE &&
+            Boolean(wallet.walletAddress),
+        )
+        .map((wallet) => wallet.chainId),
+    );
+    const hasMissingActiveWallet = configuredChains.some(
+      (chain) => !activeChainIds.has(chain.chainId),
+    );
+    if (!hasMissingActiveWallet) return;
+
+    try {
+      await this.provisionEvmWallets(userId, username);
+    } catch (err) {
+      this.logger.error(
+        `EVM wallet provisioning on receive failed [userId=${userId}]: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   getDepositNetworks() {
