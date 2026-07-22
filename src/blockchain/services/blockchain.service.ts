@@ -598,6 +598,22 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
+  async getErc20Balance(
+    accountAddress: string,
+    tokenAddress: string,
+    chainId: number,
+  ): Promise<string> {
+    this.requireEvm('getErc20Balance', chainId);
+    const ctx = this.getChainContext(chainId);
+    try {
+      const token = this.getTokenContract(ctx, tokenAddress);
+      const raw: bigint = await token.balanceOf(accountAddress);
+      return this.toHuman(raw);
+    } catch (err) {
+      throw this.wrapError('getErc20Balance', err);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // EVM — Deposit event scanning
   // ─────────────────────────────────────────────────────────────────────────
@@ -1440,6 +1456,13 @@ export class BlockchainService implements OnModuleInit {
   getEvmSignerAddress(chainId?: number): string {
     this.requireEvm('getEvmSignerAddress', chainId);
     return this.getChainContext(chainId).signer.address;
+  }
+
+  async getEvmNativeBalance(chainId?: number): Promise<string> {
+    this.requireEvm('getEvmNativeBalance', chainId);
+    const ctx = this.getChainContext(chainId);
+    const balance = await ctx.provider.getBalance(ctx.signer.address);
+    return parseFloat(ethers.formatEther(balance)).toFixed(8);
   }
 
   getEvmContractAddress(chainId?: number): string {

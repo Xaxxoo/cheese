@@ -393,11 +393,37 @@ export interface EvmVaultBalance {
   chainId:      number
 }
 
+export interface EvmVaultTokenBalance {
+  symbol:       'USDC' | 'USDT'
+  tokenAddress: string
+  decimals:     number
+  payments:     string
+  fees:         string
+  total:        string
+  vaultBalance: string
+  accountingOk: boolean
+  error?:       string
+}
+
+export interface EvmVaultChainBalance {
+  chainId:           number
+  chainName:         string
+  displayName:       string
+  factoryAddress:    string | null
+  vaultAddress:      string | null
+  backendSigner:     string | null
+  nativeBalance:     string | null
+  withdrawalAddress: string | null
+  tokens:            EvmVaultTokenBalance[]
+  errors:            string[]
+}
+
 export interface TreasuryBalance {
   address:        string
   balanceUsdc:    string
   contractUsdc?:  string         // USDC held by the Soroban contract (absent if Soroban not configured)
   evmVault?:      EvmVaultBalance
+  evmVaults?:     EvmVaultChainBalance[]
 }
 
 export async function getTreasuryBalance(): Promise<TreasuryBalance> {
@@ -416,10 +442,25 @@ export async function treasuryTransfer(
   return data.data
 }
 
-export async function evmTreasuryWithdraw(): Promise<{ txHash: string; toAddress: string }> {
+export async function evmTreasuryWithdraw(payload: {
+  chainId:      number
+  tokenAddress: string
+}): Promise<{
+  txHash: string
+  toAddress: string
+  chainId: number
+  tokenAddress: string
+  tokenSymbol: string
+}> {
   const { data } = await adminApiClient.post<
-    ApiResponse<{ txHash: string; toAddress: string }>
-  >('/admin/treasury/evm-withdraw')
+    ApiResponse<{
+      txHash: string
+      toAddress: string
+      chainId: number
+      tokenAddress: string
+      tokenSymbol: string
+    }>
+  >('/admin/treasury/evm-withdraw', payload)
   return data.data
 }
 

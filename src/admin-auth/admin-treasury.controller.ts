@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsArray, IsNumberString, IsString, IsUUID, Matches } from 'class-validator';
+import { IsInt, IsArray, IsNumberString, IsString, IsUUID, Matches } from 'class-validator';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminTreasuryService } from './admin-treasury.service';
@@ -35,6 +35,15 @@ class RecoverContractBalanceDto {
 class SweepClassicWalletDto {
   @IsUUID()
   userId: string;
+}
+
+class EvmWithdrawDto {
+  @IsInt()
+  chainId: number;
+
+  @IsString()
+  @Matches(/^0x[a-fA-F0-9]{40}$/, { message: 'Invalid token address' })
+  tokenAddress: string;
 }
 
 @ApiTags('Admin – Treasury')
@@ -70,12 +79,18 @@ export class AdminTreasuryController {
   // ── POST /admin/treasury/evm-withdraw ────────────────────────────────────
   @Post('evm-withdraw')
   @ApiOperation({ summary: 'Sweep all available funds from the EVM CheeseVault' })
-  evmWithdraw(@CurrentUser() admin: User) {
+  evmWithdraw(
+    @CurrentUser() admin: User,
+    @Body() dto: EvmWithdrawDto,
+  ) {
     const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
     if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
       throw new ForbiddenException('Only super_admin or treasurer roles can withdraw from the vault');
     }
-    return this.treasury.evmWithdraw();
+    return this.treasury.evmWithdraw({
+      chainId: dto.chainId,
+      tokenAddress: dto.tokenAddress,
+    });
   }
 
   // ── POST /admin/treasury/recover-contract-balance ─────────────────────────

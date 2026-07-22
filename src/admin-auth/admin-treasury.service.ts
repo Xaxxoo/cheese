@@ -12,6 +12,40 @@ import { ConfigService } from '@nestjs/config';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { User } from '../auth/entities/user.entity';
 
+export interface EvmTreasuryTokenBalance {
+  symbol: string;
+  tokenAddress: string;
+  decimals: number;
+  payments: string;
+  fees: string;
+  total: string;
+  vaultBalance: string;
+  accountingOk: boolean;
+  error?: string;
+}
+
+export interface EvmTreasuryChainBalance {
+  chainId: number;
+  chainName: string;
+  displayName: string;
+  factoryAddress: string | null;
+  vaultAddress: string | null;
+  backendSigner: string | null;
+  nativeBalance: string | null;
+  withdrawalAddress: string | null;
+  tokens: EvmTreasuryTokenBalance[];
+  errors: string[];
+}
+
+const EVM_TREASURY_ENV_PREFIXES: Record<string, string> = {
+  amoy: 'AMOY',
+  arbitrum: 'ARBITRUM',
+  base: 'BASE',
+  celo: 'CELO',
+  polygon: 'POLYGON',
+  ethereum: 'ETHEREUM',
+};
+
 @Injectable()
 export class AdminTreasuryService {
   private readonly logger = new Logger(AdminTreasuryService.name);
@@ -23,25 +57,44 @@ export class AdminTreasuryService {
     private readonly config: ConfigService,
   ) {}
 
-  private get vaultAddress(): string {
-    return this.config.get<string>('AMOY_VAULT_ADDRESS') ?? '';
+  private getTreasuryEnvPrefix(chainName: string): string {
+    return EVM_TREASURY_ENV_PREFIXES[chainName] ??
+      chainName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
   }
 
-  private get vaultUsdcAddress(): string {
-    return this.config.get<string>('AMOY_USDC_ADDRESS') ?? '';
+  private getVaultAddress(chainName: string): string {
+    const prefix = this.getTreasuryEnvPrefix(chainName);
+    return this.config.get<string>(`${prefix}_VAULT_ADDRESS`) ?? '';
   }
 
-  private get withdrawalDestination(): string {
-    const addr = this.config.get<string>('AMOY_WITHDRAWAL_ADDRESS') ?? '';
-    if (!addr || !/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+  private getWithdrawalDestination(chainName: string, required: true): string;
+  private getWithdrawalDestination(chainName: string, required?: false): string | null;
+  private getWithdrawalDestination(
+    chainName: string,
+    required = false,
+  ): string | null {
+    const prefix = this.getTreasuryEnvPrefix(chainName);
+    const addr =
+      this.config.get<string>(`${prefix}_WITHDRAWAL_ADDRESS`) ??
+      this.config.get<string>('EVM_WITHDRAWAL_ADDRESS') ??
+      '';
+
+    if (!addr) {
+      if (!required) return null;
       throw new ServiceUnavailableException(
-        'AMOY_WITHDRAWAL_ADDRESS not configured or invalid — set it to a cold wallet or multisig address',
+        `${prefix}_WITHDRAWAL_ADDRESS or EVM_WITHDRAWAL_ADDRESS not configured — set it to a cold wallet or multisig address`,
       );
     }
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+      if (!required) return null;
+      throw new ServiceUnavailableException(
+        `${prefix}_WITHDRAWAL_ADDRESS/EVM_WITHDRAWAL_ADDRESS is invalid — expected a 0x address`,
+      );
+    }
+
     return addr;
   }
-
-  private readonly VAULT_CHAIN_ID = 80002;
 
   // ── GET /admin/treasury ──────────────────────────────────────────────────
   async getBalance(): Promise<{
@@ -49,13 +102,14 @@ export class AdminTreasuryService {
     balanceUsdc:    string;
     contractUsdc?:  string;
     contractAdmin?: string;
-    evmVault?: {
+    evmVault?:      {
       vaultAddress: string;
       payments:     string;
       fees:         string;
       total:        string;
       chainId:      number;
     };
+    evmVaults?:     EvmTreasuryChainBalance[];
   }> {
     const address = this.blockchain.platformPublicKey;
     if (!address) {
@@ -80,27 +134,133 @@ export class AdminTreasuryService {
       }
     }
 
-    let evmVault: { vaultAddress: string; payments: string; fees: string; total: string; chainId: number } | undefined;
-    if (this.blockchain.isEvmReady && this.vaultAddress && this.vaultUsdcAddress) {
-      try {
-        const vb = await this.blockchain.getVaultBalance(
-          this.vaultAddress,
-          this.vaultUsdcAddress,
-          this.VAULT_CHAIN_ID,
-        );
-        evmVault = { vaultAddress: this.vaultAddress, chainId: this.VAULT_CHAIN_ID, ...vb };
-      } catch (err) {
-        this.logger.warn(`EVM vault balance fetch failed: ${(err as Error).message}`);
-      }
-    }
+    const evmVaults = await this.getEvmVaultBalances();
+    const legacyVault = evmVaults
+      .flatMap((chain) =>
+        chain.tokens.map((token) => ({
+          vaultAddress: chain.vaultAddress ?? '',
+          payments: token.payments,
+          fees:     token.fees,
+          total:    token.total,
+          chainId:  chain.chainId,
+        })),
+      )
+      .find((entry) => entry.vaultAddress);
 
     return {
       address,
       balanceUsdc,
       ...(contractUsdc  !== undefined ? { contractUsdc  } : {}),
       ...(contractAdmin !== undefined ? { contractAdmin } : {}),
-      ...(evmVault ? { evmVault } : {}),
+      ...(legacyVault ? { evmVault: legacyVault } : {}),
+      ...(evmVaults.length > 0 ? { evmVaults } : {}),
     };
+  }
+
+  private async getEvmVaultBalances(): Promise<EvmTreasuryChainBalance[]> {
+    if (!this.blockchain.isEvmReady) return [];
+
+    const depositChains = this.blockchain.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchain.getConfiguredEvmChainsWithTokens();
+
+    const results: EvmTreasuryChainBalance[] = [];
+
+    for (const chain of configuredChains) {
+      const vaultAddress = this.getVaultAddress(chain.name);
+      const errors: string[] = [];
+      let factoryAddress: string | null = null;
+      let backendSigner: string | null = null;
+      let nativeBalance: string | null = null;
+
+      try {
+        factoryAddress = this.blockchain.getEvmContractAddress(chain.chainId);
+      } catch (err) {
+        errors.push((err as Error).message);
+      }
+
+      try {
+        backendSigner = this.blockchain.getEvmSignerAddress(chain.chainId);
+      } catch (err) {
+        errors.push((err as Error).message);
+      }
+
+      try {
+        nativeBalance = await this.blockchain.getEvmNativeBalance(chain.chainId);
+      } catch (err) {
+        errors.push((err as Error).message);
+      }
+
+      if (!vaultAddress) {
+        errors.push(`${this.getTreasuryEnvPrefix(chain.name)}_VAULT_ADDRESS not configured`);
+      }
+
+      const tokens: EvmTreasuryTokenBalance[] = [];
+      for (const token of chain.tokens) {
+        const summary: EvmTreasuryTokenBalance = {
+          symbol:       token.symbol,
+          tokenAddress: token.address,
+          decimals:     token.decimals,
+          payments:     '0.00000000',
+          fees:         '0.00000000',
+          total:        '0.00000000',
+          vaultBalance: '0.00000000',
+          accountingOk: false,
+        };
+
+        if (!vaultAddress) {
+          summary.error = 'Vault address not configured for this chain';
+          tokens.push(summary);
+          continue;
+        }
+
+        try {
+          const [accounting, vaultBalance] = await Promise.all([
+            this.blockchain.getVaultBalance(
+              vaultAddress,
+              token.address,
+              chain.chainId,
+            ),
+            this.blockchain.getErc20Balance(
+              vaultAddress,
+              token.address,
+              chain.chainId,
+            ),
+          ]);
+          summary.payments = accounting.payments;
+          summary.fees = accounting.fees;
+          summary.total = accounting.total;
+          summary.vaultBalance = vaultBalance;
+          summary.accountingOk =
+            parseFloat(vaultBalance) + 0.000001 >= parseFloat(accounting.total);
+        } catch (err) {
+          const message = (err as Error).message;
+          summary.error = message;
+          errors.push(`${token.symbol}: ${message}`);
+          this.logger.warn(
+            `EVM vault balance fetch failed [chain=${chain.name}] [token=${token.symbol}]: ${message}`,
+          );
+        }
+
+        tokens.push(summary);
+      }
+
+      results.push({
+        chainId: chain.chainId,
+        chainName: chain.name,
+        displayName: chain.displayName,
+        factoryAddress,
+        vaultAddress: vaultAddress || null,
+        backendSigner,
+        nativeBalance,
+        withdrawalAddress: this.getWithdrawalDestination(chain.name),
+        tokens,
+        errors,
+      });
+    }
+
+    return results;
   }
 
   // ── GET /admin/treasury/lookup-addresses ─────────────────────────────────
@@ -167,19 +327,65 @@ export class AdminTreasuryService {
   }
 
   // ── POST /admin/treasury/evm-withdraw ────────────────────────────────────
-  async evmWithdraw(): Promise<{ txHash: string; toAddress: string }> {
-    if (!this.blockchain.isEvmReady || !this.vaultAddress || !this.vaultUsdcAddress) {
+  async evmWithdraw(opts: {
+    chainId: number;
+    tokenAddress: string;
+  }): Promise<{
+    txHash: string;
+    toAddress: string;
+    chainId: number;
+    tokenAddress: string;
+    tokenSymbol: string;
+  }> {
+    if (!this.blockchain.isEvmReady) {
       throw new ServiceUnavailableException(
-        'EVM vault not configured — check AMOY_RPC_URL, AMOY_VAULT_ADDRESS, AMOY_USDC_ADDRESS',
+        'EVM not configured — check {CHAIN}_RPC_URL, {CHAIN}_FACTORY_ADDRESS, and token env vars',
       );
     }
-    const toAddress = this.withdrawalDestination;
-    this.logger.log(`evmWithdraw initiated [to=${toAddress}]`);
-    const txHash = await this.blockchain.withdrawFromVault(
-      this.vaultAddress, toAddress, this.vaultUsdcAddress, this.VAULT_CHAIN_ID,
+
+    const depositChains = this.blockchain.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchain.getConfiguredEvmChainsWithTokens();
+    const chain = configuredChains.find((item) => item.chainId === opts.chainId);
+    if (!chain) {
+      throw new BadRequestException(`Chain ${opts.chainId} is not configured for EVM treasury withdrawals`);
+    }
+
+    const token = chain.tokens.find(
+      (item) => item.address.toLowerCase() === opts.tokenAddress.toLowerCase(),
     );
-    this.logger.log(`evmWithdraw settled [txHash=${txHash}] [to=${toAddress}]`);
-    return { txHash, toAddress };
+    if (!token) {
+      throw new BadRequestException('Token is not configured for this chain');
+    }
+
+    const vaultAddress = this.getVaultAddress(chain.name);
+    if (!vaultAddress) {
+      throw new ServiceUnavailableException(
+        `${this.getTreasuryEnvPrefix(chain.name)}_VAULT_ADDRESS not configured`,
+      );
+    }
+
+    const toAddress = this.getWithdrawalDestination(chain.name, true);
+    this.logger.log(
+      `evmWithdraw initiated [chain=${chain.name}] [token=${token.symbol}] [to=${toAddress}]`,
+    );
+    const txHash = await this.blockchain.withdrawFromVault(
+      vaultAddress,
+      toAddress,
+      token.address,
+      chain.chainId,
+    );
+    this.logger.log(
+      `evmWithdraw settled [chain=${chain.name}] [token=${token.symbol}] [txHash=${txHash}] [to=${toAddress}]`,
+    );
+    return {
+      txHash,
+      toAddress,
+      chainId: chain.chainId,
+      tokenAddress: token.address,
+      tokenSymbol: token.symbol,
+    };
   }
 
   // ── POST /admin/treasury/recover-contract-balance ─────────────────────────
