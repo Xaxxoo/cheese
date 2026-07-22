@@ -5,6 +5,11 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type { User } from '@/types'
 import { tokenStore } from '@/lib/api/client'
 
+function clearUserQueries() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('cheese:query:clear'))
+}
+
 interface AuthStore {
   user: User | null
   deviceId: string
@@ -26,6 +31,7 @@ export const useAuthStore = create<AuthStore>()(
 
       setAuth: (user, accessToken) => {
         tokenStore.set(accessToken)
+        clearUserQueries()
         set({ user })
       },
 
@@ -41,6 +47,7 @@ export const useAuthStore = create<AuthStore>()(
 
       signOut: () => {
         tokenStore.clear()
+        clearUserQueries()
         set({ user: null })
       },
 

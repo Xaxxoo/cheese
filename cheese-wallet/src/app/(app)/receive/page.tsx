@@ -1,15 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft, Copy, CheckCheck, RefreshCw, Download, AlertTriangle,
 } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
-import { getWalletAddress, getDepositNetworks, provisionWallet } from '@/lib/api/wallet'
+import { getWalletAddress, getDepositNetworks } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import type { DepositNetwork, DepositToken, DepositTokenSymbol } from '@/types'
 import { notify } from '@/lib/toast'
@@ -177,16 +177,18 @@ export default function ReceivePage() {
   const [activeTab, setActiveTab]   = useState<'address' | 'username'>('address')
   const [chain, setChain]           = useState<ChainKey>('stellar')
   const [token, setToken]           = useState<TokenSymbol>('USDC')
-  const [isProvisioning, setIsProvisioning] = useState(false)
-  const provisionAttemptedRef = useRef(false)
 
-  const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const addressQueryKey = user?.id
+    ? [...QUERY_KEYS.ADDRESS, user.id] as const
+    : QUERY_KEYS.ADDRESS
 
   const addrQ = useQuery({
-    queryKey: QUERY_KEYS.ADDRESS,
+    queryKey: addressQueryKey,
     queryFn:  getWalletAddress,
-    staleTime: STALE_TIMES.PROFILE,
+    enabled:  Boolean(user?.id),
+    staleTime: 0,
+    refetchOnMount: 'always',
     retry: 1,
   })
 
@@ -196,25 +198,6 @@ export default function ReceivePage() {
     staleTime: STALE_TIMES.PROFILE,
     retry: 1,
   })
-
-  useEffect(() => {
-    if (!user?.id || provisionAttemptedRef.current) return
-
-    provisionAttemptedRef.current = true
-    let cancelled = false
-    setIsProvisioning(true)
-
-    void provisionWallet()
-      .then(() => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADDRESS }))
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setIsProvisioning(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [queryClient, user?.id])
 
   const stellarAddr = addrQ.data?.stellarAddress ?? ''
   const evmAddresses = addrQ.data?.evmAddresses ?? {}
@@ -228,7 +211,7 @@ export default function ReceivePage() {
   )
   const isEvmChain = chain !== 'stellar'
   const evmEntry = isEvmChain ? evmAddresses[chain as number] : null
-  const isAddressLoading = addrQ.isLoading || isProvisioning
+  const isAddressLoading = addrQ.isLoading || addrQ.isFetching
   const selectedNetwork = (netsQ.data ?? []).find((net) =>
     chain === 'stellar'
       ? net.networkType === 'stellar' || net.id === 'stellar'
@@ -349,7 +332,7 @@ export default function ReceivePage() {
             {isAddressLoading && (
               <div className="w-[180px] h-[180px] bg-white/5 rounded-2xl animate-pulse" />
             )}
-            {addrQ.isError && !isProvisioning && (
+            {addrQ.isError && (
               <div className="w-[180px] h-[180px] flex flex-col items-center justify-center gap-2">
                 <p className="text-xs text-white/30">Could not load QR</p>
                 <button

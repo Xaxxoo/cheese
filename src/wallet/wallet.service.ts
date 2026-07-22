@@ -148,6 +148,13 @@ export class WalletService {
 
   async getAddress(userId: string): Promise<DepositAddress> {
     let user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (!user.stellarPublicKey) {
+      await this.provisionWallet(userId);
+      user = await this.userRepo.findOne({ where: { id: userId } });
+    }
+
     if (!user?.stellarPublicKey)
       throw new NotFoundException('Wallet not initialised');
 

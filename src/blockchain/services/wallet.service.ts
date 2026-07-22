@@ -26,6 +26,7 @@ import {
 } from '../dto/blockchain.dto';
 
 export const MAX_CREATION_RETRIES = 5;
+const PENDING_CREATION_RETRY_DELAY_MS = 60_000;
 
 @Injectable()
 export class WalletService {
@@ -119,6 +120,17 @@ export class WalletService {
         }
 
         if (activated) return;
+
+        const lastAttemptAt = existing.lastRetryAt ?? existing.createdAt;
+        if (
+          lastAttemptAt &&
+          Date.now() - lastAttemptAt.getTime() < PENDING_CREATION_RETRY_DELAY_MS
+        ) {
+          this.logger.log(
+            `Pending wallet retry deferred [userId=${userId}] [chain=${chainId}]`,
+          );
+          return;
+        }
 
         try {
           await this.retryWalletCreation(existing.id);

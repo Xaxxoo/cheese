@@ -36,8 +36,11 @@ function BalanceCard() {
   })
 
   const addressQ = useQuery({
-    queryKey: QUERY_KEYS.ADDRESS,
+    queryKey: user?.id
+      ? [...QUERY_KEYS.ADDRESS, user.id] as const
+      : QUERY_KEYS.ADDRESS,
     queryFn:  getWalletAddress,
+    enabled:  Boolean(user?.id),
     staleTime: STALE_TIMES.PROFILE,
     retry: 1,
   })
