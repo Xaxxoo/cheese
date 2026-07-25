@@ -49,6 +49,13 @@ type BankDirectoryEntry = {
 // Commercial banks use 6-digit CBN sort codes (000xxx) as required by PulseMFB.
 // Fintechs and MFBs retain their standard NIBSS codes (090xxx / 100xxx).
 // Heritage Bank (000020) and Diamond Bank (000005) removed — both defunct.
+//
+// Some banks (notably Access Bank) are reachable via multiple bank codes on PulseMFB.
+// When the primary code fails name enquiry we try the alternates in order.
+const BANK_CODE_FALLBACKS: Record<string, string[]> = {
+  '000014': ['044', '100013', '100042'], // Access Bank
+};
+
 const NIGERIAN_BANKS: BankDirectoryEntry[] = [
   // ── Commercial banks (CBN sort codes) ──────────────────────────────────────
   { code: '000014', name: 'Access Bank',             shortName: 'Access',    color: '#E30813', nipEnabled: true, type: 'commercial' },
@@ -245,64 +252,73 @@ export class BanksService {
     verified: boolean;
   }> {
     const bankName = this.findBankByCode(dto.bankCode)?.name ?? dto.bankCode;
+    const codesToTry = [dto.bankCode, ...(BANK_CODE_FALLBACKS[dto.bankCode] ?? [])];
 
-    try {
-      const result = await this.pulseMfb.nameEnquiry(
-        dto.accountNumber,
-        dto.bankCode,
-      );
+    let lastError: Error | undefined;
 
-      if (result.responseCode === '00' && result.accountName.trim()) {
-        return {
-          accountName: result.accountName,
-          accountNumber: dto.accountNumber,
-          bankCode: dto.bankCode,
-          bankName,
-          verified: true,
-        };
-      }
-
-      const providerMessage =
-        result.responseMessage?.trim() ||
-        'Could not verify the recipient account';
-      this.logger.warn('PulseMFB name enquiry did not verify account', {
-        accountNumber: dto.accountNumber,
-        bankCode: dto.bankCode,
-        responseCode: result.responseCode,
-        responseMessage: providerMessage,
-      });
-
-      throw new BadRequestException(
-        'Could not verify the recipient account. Please check the account number and bank.',
-      );
-    } catch (err) {
-      const errorMessage = (err as Error).message;
-      this.logger.error('PulseMFB name enquiry failed', {
-        accountNumber: dto.accountNumber,
-        bankCode: dto.bankCode,
-        error: errorMessage,
-      });
-
-      if (err instanceof BadRequestException) {
-        throw err;
-      }
-
-      if (isPulseMfbAuthFailureMessage(errorMessage)) {
-        throw err;
-      }
-      if (isPulseMfbRecipientValidationFailureMessage(errorMessage)) {
-        throw err;
-      }
-      if (isPulseMfbInternalError(errorMessage)) {
-        throw new BadRequestException(
-          'The banking provider is temporarily unavailable. Please try again in a few minutes.',
+    for (const code of codesToTry) {
+      try {
+        const result = await this.pulseMfb.nameEnquiry(
+          dto.accountNumber,
+          code,
         );
-      }
 
-      throw new BadRequestException(
-        'Could not verify the recipient account. Please try again.',
-      );
+        if (result.responseCode === '00' && result.accountName.trim()) {
+          if (code !== dto.bankCode) {
+            this.logger.log(
+              `Access Bank name enquiry succeeded with fallback code ${code} (primary ${dto.bankCode} failed)`,
+            );
+          }
+          return {
+            accountName: result.accountName,
+            accountNumber: dto.accountNumber,
+            bankCode: code,
+            bankName,
+            verified: true,
+          };
+        }
+
+        const providerMessage =
+          result.responseMessage?.trim() ||
+          'Could not verify the recipient account';
+        this.logger.warn('PulseMFB name enquiry did not verify account', {
+          accountNumber: dto.accountNumber,
+          bankCode: code,
+          responseCode: result.responseCode,
+          responseMessage: providerMessage,
+        });
+        lastError = new BadRequestException(
+          'Could not verify the recipient account. Please check the account number and bank.',
+        );
+      } catch (err) {
+        const errorMessage = (err as Error).message;
+        this.logger.error('PulseMFB name enquiry failed', {
+          accountNumber: dto.accountNumber,
+          bankCode: code,
+          error: errorMessage,
+        });
+
+        // Auth failures affect all codes — bail immediately
+        if (isPulseMfbAuthFailureMessage(errorMessage)) {
+          throw err;
+        }
+        if (isPulseMfbInternalError(errorMessage)) {
+          throw new BadRequestException(
+            'The banking provider is temporarily unavailable. Please try again in a few minutes.',
+          );
+        }
+
+        lastError = err as Error;
+      }
     }
+
+    // All codes exhausted
+    if (lastError instanceof BadRequestException) {
+      throw lastError;
+    }
+    throw new BadRequestException(
+      'Could not verify the recipient account. Please try again.',
+    );
   }
 
   // ── POST /banks/transfer ──────────────────────────────────────────────────
@@ -405,6 +421,8 @@ export class BanksService {
       );
     }
     const accountName = resolvedAccount.accountName;
+    // Use the bank code that actually worked at PulseMFB (may be a fallback)
+    const effectiveBankCode = resolvedAccount.bankCode;
 
     // 8. Create PENDING records — both start as PENDING before any money moves
     const reference = `CW-NGN-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
@@ -413,7 +431,7 @@ export class BanksService {
       this.transferRepo.create({
         userId,
         accountNumber: dto.accountNumber,
-        bankCode: dto.bankCode,
+        bankCode: effectiveBankCode,
         bankName,
         accountName,
         amountNgn: dto.amountNgn,
@@ -452,7 +470,7 @@ export class BanksService {
       amountUsdc,
       amountNgn,
       feeUsdc,
-      bankCode: dto.bankCode,
+      bankCode: effectiveBankCode,
       bankName,
       accountNumber: dto.accountNumber,
       accountName,
