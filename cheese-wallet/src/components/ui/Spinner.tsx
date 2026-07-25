@@ -13,7 +13,7 @@ const px = { sm: 40, md: 60, lg: 80 } as const
 export function Spinner({ size = 'md', className }: SpinnerProps) {
   return (
     <Image
-      src="/trionda.png"
+      src="/logo.png"
       alt=""
       width={px[size]}
       height={px[size]}
