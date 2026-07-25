@@ -3,6 +3,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 
+export interface FailedDepositAlert {
+  username: string;
+  amountNgn: string;
+  amountUsdc: string;
+  reference: string;
+  failureReason: string;
+}
+
 export interface FailedTransferAlert {
   username: string;
   userEmail?: string;
@@ -42,6 +50,57 @@ export class AlertsService {
           `Alert delivery failed [ref=${alert.reference}]: ${String(r.reason)}`,
         );
       }
+    }
+  }
+
+  /**
+   * Fire-and-forget: send Telegram alert for a failed on-ramp deposit.
+   * Call as: void this.alertsService.notifyFailedDeposit(alert).catch(...)
+   */
+  async notifyFailedDeposit(alert: FailedDepositAlert): Promise<void> {
+    const token = this.config.get<string>('alerts.telegramBotToken');
+    const chatId = this.config.get<string>('alerts.telegramChatId');
+
+    if (!token || !chatId) {
+      this.logger.warn(
+        'TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set — skipping Telegram alert',
+      );
+      return;
+    }
+
+    const amountNgn = parseFloat(String(alert.amountNgn)).toLocaleString('en-NG');
+    const now = new Date().toLocaleString('en-NG', {
+      timeZone: 'Africa/Lagos',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const text = [
+      '🚨 <b>Failed Deposit (On-Ramp)</b>',
+      '',
+      `👤 User: <code>@${alert.username}</code>`,
+      `💰 NGN received: ₦${amountNgn}`,
+      `💵 USDC expected: $${alert.amountUsdc}`,
+      `🔖 Reference: <code>${alert.reference}</code>`,
+      `❌ Reason: ${alert.failureReason}`,
+      '',
+      `⚠️ User's NGN was received but USDC could not be credited.`,
+      `🕐 Time: ${now} WAT`,
+    ].join('\n');
+
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Telegram API error ${res.status}: ${body}`);
     }
   }
 

@@ -1069,11 +1069,66 @@ export class BanksService {
       await this.depositRepo.delete({ id: existing.id });
     }
 
-    // Convert NGN → USDC at the current effective rate
+    // Convert NGN → USDC at the deposit (selling) rate — ₦10 above the base effective rate
     const rate          = await this.ratesService.getCurrentRate();
-    const effectiveRate = parseFloat(rate.effectiveRate);
+    const effectiveRate = parseFloat(rate.effectiveRate) + 10;
     const amountUsdc    = (amountNgn / effectiveRate).toFixed(6);
     const internalRef   = `DEP-${uuidv4().replace(/-/g, '').slice(0, 16).toUpperCase()}`;
+
+    // Check treasury has enough USDC before attempting credit
+    const treasuryBalance = await this.blockchainService.getPlatformUsdcBalance();
+    if (parseFloat(treasuryBalance) < parseFloat(amountUsdc)) {
+      const reason = `Insufficient platform USDC treasury (need ${amountUsdc}, have ${treasuryBalance})`;
+      this.logger.error(
+        `VAS deposit blocked — ${reason} [ref=${reference}] [user=@${user.username}]`,
+      );
+
+      // Still create the deposit record so the NGN is tracked
+      await this.depositRepo.save(
+        this.depositRepo.create({
+          userId: user.id,
+          reference,
+          virtualAccountNumber: accountNumber,
+          amountNgn: amountNgn.toFixed(2),
+          amountUsdc,
+          rateApplied: effectiveRate.toFixed(4),
+          senderName: senderName || null,
+          senderAccountNumber: senderAccount || null,
+          status: BankDepositStatus.FAILED,
+          failureReason: reason,
+        }),
+      );
+
+      // Alert admin via Telegram
+      void this.alertsService
+        .notifyFailedDeposit({
+          username: user.username,
+          amountNgn: amountNgn.toFixed(2),
+          amountUsdc,
+          reference,
+          failureReason: reason,
+        })
+        .catch((e: Error) =>
+          this.logger.error(
+            `Failed deposit alert error [ref=${reference}]: ${e.message}`,
+          ),
+        );
+
+      // Notify the user
+      void this.notificationsService
+        .notifyDepositFailed(
+          user.id,
+          amountNgn.toFixed(2),
+          'We are temporarily unable to process your deposit. Our team has been notified and will resolve this shortly.',
+        )
+        .catch((e: Error) =>
+          this.logger.warn(
+            `Deposit failed notification error [ref=${reference}]: ${e.message}`,
+          ),
+        );
+
+      return { processed: false, reason };
+    }
 
     // Persist a pending record first so a crash mid-flight is recoverable
     const deposit = await this.depositRepo.save(
@@ -1143,6 +1198,22 @@ export class BanksService {
       .catch((e: Error) =>
         this.logger.warn(`Deposit notification failed [ref=${reference}]: ${e.message}`),
       );
+
+    // Fire-and-forget deposit confirmation email
+    if (user.email) {
+      void this.emailService
+        .sendMoneyReceived({
+          to: user.email,
+          fullName: user.fullName ?? user.username,
+          amountUsdc,
+          amountNgn: amountNgn.toFixed(2),
+          senderName: senderName || undefined,
+          appUrl: this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz'),
+        })
+        .catch((e: Error) =>
+          this.logger.warn(`Deposit email failed [ref=${reference}]: ${e.message}`),
+        );
+    }
 
     return { processed: true };
   }

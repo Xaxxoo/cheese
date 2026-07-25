@@ -208,6 +208,20 @@ export class NotificationsService implements OnModuleInit {
     });
   }
 
+  async notifyDepositFailed(
+    userId: string,
+    amountNgn: string,
+    reason: string,
+  ) {
+    return this.create({
+      userId,
+      type: NotificationType.MONEY,
+      title: 'Deposit Failed',
+      body: `Your ₦${parseFloat(amountNgn).toLocaleString()} deposit could not be processed. ${reason}`,
+      deepLink: '/history',
+    });
+  }
+
   async notifyBankTransferFailed(
     userId: string,
     amountNgn: string,
