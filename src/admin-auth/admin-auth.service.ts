@@ -1123,7 +1123,7 @@ export class AdminAuthService {
   }) {
     const { page, limit, status, type, search, userId, direction } = query;
 
-    const IN_TYPES  = ['deposit', 'yield_credit', 'referral_bonus'];
+    const IN_TYPES  = ['deposit', 'yield_credit', 'referral_bonus', 'trivia_reward'];
     const OUT_TYPES = ['withdrawal', 'send_username', 'send_address', 'bank_transfer', 'card_payment', 'pay_request', 'bill_payment', 'fee'];
 
     const qb = this.txRepo

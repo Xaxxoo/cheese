@@ -421,9 +421,9 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                           fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
                           color: txFilter === 'in' ? c.green
                             : txFilter === 'out' ? c.red
-                            : ['receive', 'deposit', 'bank_in'].includes(tx.type) ? c.green : c.red,
+                            : ['deposit', 'yield_credit', 'referral_bonus', 'trivia_reward'].includes(tx.type) ? c.green : c.red,
                         }}>
-                          {txFilter === 'all' && (['receive', 'deposit', 'bank_in'].includes(tx.type) ? '+' : '−')}${parseFloat(tx.amountUsdc ?? '0').toFixed(2)}
+                          {txFilter === 'all' && (['deposit', 'yield_credit', 'referral_bonus', 'trivia_reward'].includes(tx.type) ? '+' : '−')}${parseFloat(tx.amountUsdc ?? '0').toFixed(2)}
                         </div>
                         <div style={{ fontSize: 10.5, color: txStatusColor(tx.status), marginTop: 2 }}>
                           {tx.status}
