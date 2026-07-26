@@ -440,7 +440,7 @@ export class AdminAuthService {
       failed:    KycStatus.REJECTED,
     };
 
-    const CREDIT_TYPES = `'deposit','yield_credit','referral_bonus'`;
+    const CREDIT_TYPES = `'deposit','yield_credit','referral_bonus','trivia_reward'`;
 
     const qb = this.userRepo
       .createQueryBuilder('u')
@@ -448,7 +448,10 @@ export class AdminAuthService {
         SELECT GREATEST(0, COALESCE(SUM(
           CASE WHEN t.type IN (${CREDIT_TYPES})
                THEN CAST(t.amount_usdc AS DECIMAL)
-               ELSE -CAST(t.amount_usdc AS DECIMAL)
+               ELSE -(CAST(t.amount_usdc AS DECIMAL)
+                 + CASE WHEN t.type != 'bank_transfer'
+                        THEN COALESCE(CAST(t.fee_usdc AS DECIMAL), 0)
+                        ELSE 0 END)
           END
         ), 0))
         FROM transactions t
