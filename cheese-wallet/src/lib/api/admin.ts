@@ -305,6 +305,7 @@ export interface AdminUserDetail {
   points:           number
   createdAt:        string
   usdcBalance:      string | null
+  balanceError:     string | null
   txCount:          number
   failedTransferCount: number
   totalInUsdc:      number

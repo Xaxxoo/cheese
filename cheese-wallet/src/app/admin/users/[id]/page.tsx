@@ -499,12 +499,21 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: c.textMid }}>Wallets</div>
-              {user.usdcBalance !== null && (
+              {user.balanceError ? (
+                <div style={{ fontSize: 11, fontWeight: 600, color: c.amber }}>
+                  Balance unavailable
+                </div>
+              ) : user.usdcBalance !== null ? (
                 <div style={{ fontSize: 13, fontWeight: 700, color: c.green }}>
                   ${parseFloat(user.usdcBalance).toFixed(4)} <span style={{ fontSize: 10, fontWeight: 500, color: c.textDim }}>USDC</span>
                 </div>
-              )}
+              ) : null}
             </div>
+            {user.balanceError && (
+              <div style={{ fontSize: 10.5, color: c.amber, marginTop: 6, lineHeight: 1.4 }}>
+                {user.balanceError}
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Stellar */}
@@ -634,7 +643,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 </div>
                 <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
                   Moves the user's USDC to the platform treasury. Tries the Soroban contract first, then falls back to their classic Stellar wallet automatically.
-                  Current balance: <span style={{ color: c.text, fontWeight: 600 }}>${parseFloat(user?.usdcBalance ?? '0').toFixed(2)} USDC</span>
+                  Current balance: <span style={{ color: user?.balanceError ? c.amber : c.text, fontWeight: 600 }}>{user?.balanceError ? 'unavailable' : `$${parseFloat(user?.usdcBalance ?? '0').toFixed(2)} USDC`}</span>
                 </div>
                 <button
                   onClick={handleSweep}
