@@ -120,7 +120,7 @@ export class TransactionsService {
    * whether sends went through the Soroban contract or classic Stellar.
    */
   async computeNetUsdcBalance(userId: string): Promise<number> {
-    const INBOUND = [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS];
+    const INBOUND = [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS, TxType.TRIVIA_REWARD];
     const OUTBOUND = [
       TxType.SEND_USERNAME,
       TxType.SEND_ADDRESS,
@@ -128,7 +128,7 @@ export class TransactionsService {
       TxType.BANK_TRANSFER,
       TxType.CARD_PAYMENT,
       TxType.PAY_REQUEST,
-      TxType.FEE,
+      TxType.BILL_PAYMENT,
     ];
 
     // Note: TypeORM only expands :...spread parameters in .where()/.andWhere(),
@@ -142,7 +142,10 @@ export class TransactionsService {
         `COALESCE(SUM(
           CASE WHEN tx.type IN (${inboundLiterals})
                THEN CAST(tx.amount_usdc AS DECIMAL)
-               ELSE -CAST(tx.amount_usdc AS DECIMAL)
+               ELSE -(CAST(tx.amount_usdc AS DECIMAL)
+                 + CASE WHEN tx.type != 'bank_transfer'
+                        THEN COALESCE(CAST(tx.fee_usdc AS DECIMAL), 0)
+                        ELSE 0 END)
           END
         ), 0)`,
         'net',
@@ -159,7 +162,7 @@ export class TransactionsService {
   async getStats(
     userId: string,
   ): Promise<{ totalInUsdc: string; totalOutUsdc: string; txCount: number }> {
-    const INBOUND = [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS];
+    const INBOUND = [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS, TxType.TRIVIA_REWARD];
     const OUTBOUND = [
       TxType.SEND_USERNAME,
       TxType.SEND_ADDRESS,
@@ -168,7 +171,6 @@ export class TransactionsService {
       TxType.CARD_PAYMENT,
       TxType.PAY_REQUEST,
       TxType.BILL_PAYMENT,
-      TxType.FEE,
     ];
 
     const [inResult, outResult, txCount] = await Promise.all([
@@ -181,7 +183,13 @@ export class TransactionsService {
         .getRawOne<{ total: string }>(),
       this.txRepo
         .createQueryBuilder('tx')
-        .select('COALESCE(SUM(CAST(tx.amount_usdc AS DECIMAL)), 0)', 'total')
+        .select(
+          `COALESCE(SUM(CAST(tx.amount_usdc AS DECIMAL)
+            + CASE WHEN tx.type != 'bank_transfer'
+                   THEN COALESCE(CAST(tx.fee_usdc AS DECIMAL), 0)
+                   ELSE 0 END), 0)`,
+          'total',
+        )
         .where('tx.user_id = :userId', { userId })
         .andWhere('tx.type IN (:...types)', { types: OUTBOUND })
         .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })

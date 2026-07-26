@@ -357,28 +357,37 @@ export class AdminAuthService {
         .select('SUM(CAST(t.amount_usdc AS DECIMAL(20,6)))', 'total')
         .where('t.status = :s', { s: TxStatus.COMPLETED })
         .getRawOne<{ total: string }>(),
-      // Inbound: deposits, yield credits, referral bonuses
+      // Inbound: deposits, yield credits, referral bonuses, trivia rewards
       this.txRepo
         .createQueryBuilder('t')
         .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
         .where('t.status = :s', { s: TxStatus.COMPLETED })
-        .andWhere('t.type IN (:...types)', { types: [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS] })
+        .andWhere('t.type IN (:...types)', { types: [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS, TxType.TRIVIA_REWARD] })
         .getRawOne<{ total: string }>(),
-      // Outbound: sends, bank transfers, bills, cards, pay requests, fees, withdrawals
+      // Outbound: sends, bank transfers, bills, cards, pay requests, withdrawals (+ fee_usdc for non-bank_transfer)
       this.txRepo
         .createQueryBuilder('t')
-        .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
+        .select(
+          `COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))
+            + CASE WHEN t.type != 'bank_transfer'
+                   THEN COALESCE(CAST(t.fee_usdc AS DECIMAL(20,6)), 0)
+                   ELSE 0 END), 0)`,
+          'total',
+        )
         .where('t.status = :s', { s: TxStatus.COMPLETED })
-        .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.FEE, TxType.WITHDRAWAL] })
+        .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.WITHDRAWAL] })
         .getRawOne<{ total: string }>(),
       // Total balance: sum of each user's individual balance using the same formula as the users list
       this.userRepo
         .createQueryBuilder('u')
         .select(`COALESCE(SUM(GREATEST(0, COALESCE((
           SELECT SUM(
-            CASE WHEN t.type IN ('deposit','yield_credit','referral_bonus')
+            CASE WHEN t.type IN ('deposit','yield_credit','referral_bonus','trivia_reward')
                  THEN CAST(t.amount_usdc AS DECIMAL(20,6))
-                 ELSE -CAST(t.amount_usdc AS DECIMAL(20,6))
+                 ELSE -(CAST(t.amount_usdc AS DECIMAL(20,6))
+                   + CASE WHEN t.type != 'bank_transfer'
+                          THEN COALESCE(CAST(t.fee_usdc AS DECIMAL(20,6)), 0)
+                          ELSE 0 END)
             END
           )
           FROM transactions t
@@ -758,21 +767,30 @@ export class AdminAuthService {
               return { usdc: horizonRaw };
             })()
           : Promise.resolve(null),
-        // Per-user inbound total (completed deposits, yield, referrals)
+        // Per-user inbound total (completed deposits, yield, referrals, trivia)
         this.txRepo
           .createQueryBuilder('t')
           .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
           .where('t.user_id = :id', { id })
           .andWhere('t.status = :s', { s: TxStatus.COMPLETED })
-          .andWhere('t.type IN (:...types)', { types: [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS] })
+          .andWhere('t.type IN (:...types)', { types: [TxType.DEPOSIT, TxType.YIELD_CREDIT, TxType.REFERRAL_BONUS, TxType.TRIVIA_REWARD] })
           .getRawOne<{ total: string }>(),
         // Per-user outbound total (completed sends, transfers, bills, etc.)
+        // Note: for bank_transfer the fee is already baked into amount_usdc,
+        // but for sends/cards/bills the fee is stored separately in fee_usdc.
+        // Sum amount_usdc + fee_usdc, then subtract the double-counted bank_transfer fees.
         this.txRepo
           .createQueryBuilder('t')
-          .select('COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))), 0)', 'total')
+          .select(
+            `COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL(20,6))
+              + CASE WHEN t.type != 'bank_transfer'
+                     THEN COALESCE(CAST(t.fee_usdc AS DECIMAL(20,6)), 0)
+                     ELSE 0 END), 0)`,
+            'total',
+          )
           .where('t.user_id = :id', { id })
           .andWhere('t.status = :s', { s: TxStatus.COMPLETED })
-          .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.FEE, TxType.WITHDRAWAL] })
+          .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.WITHDRAWAL] })
           .getRawOne<{ total: string }>(),
       ]);
 
