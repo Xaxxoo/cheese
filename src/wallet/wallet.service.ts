@@ -119,11 +119,49 @@ export class WalletService {
               .catch(() => '0.0000000');
           })()
         : Promise.resolve('0.0000000'),
-      user.evmAddress && this.blockchainService.isEvmReady
-        ? this.blockchainService
-            .getEvmBalance(user.evmAddress)
-            .catch(() => '0.00000000')
-        : Promise.resolve('0.00000000'),
+      // Query USDC + USDT across ALL configured EVM chains, not just primary.
+      (async (): Promise<string> => {
+        if (!this.blockchainService.isEvmReady) return '0.00000000';
+
+        const wallets = await this.blockchainWalletRepo.find({
+          where: { userId, status: BlockchainWalletStatus.ACTIVE },
+          select: ['walletAddress', 'chainId'],
+        });
+        const activeWallets = wallets.filter((w) => w.walletAddress);
+
+        if (activeWallets.length === 0) {
+          // Legacy fallback: user has evmAddress but no blockchain_wallets rows
+          return user.evmAddress
+            ? this.blockchainService
+                .getEvmBalance(user.evmAddress)
+                .catch(() => '0.00000000')
+            : '0.00000000';
+        }
+
+        const balancePromises: Promise<string>[] = [];
+        for (const wallet of activeWallets) {
+          // USDC
+          balancePromises.push(
+            this.blockchainService
+              .getEvmBalance(wallet.walletAddress!, undefined, wallet.chainId)
+              .catch(() => '0.00000000'),
+          );
+          // USDT (if configured on this chain)
+          const usdtAddr = this.blockchainService.getEvmUsdtAddress(wallet.chainId);
+          if (usdtAddr) {
+            balancePromises.push(
+              this.blockchainService
+                .getEvmBalance(wallet.walletAddress!, usdtAddr, wallet.chainId)
+                .catch(() => '0.00000000'),
+            );
+          }
+        }
+
+        const balances = await Promise.all(balancePromises);
+        return balances
+          .reduce((sum, b) => sum + parseFloat(b), 0)
+          .toFixed(8);
+      })(),
       this.ratesService.getCurrentRate().catch(() => null),
     ]);
 
