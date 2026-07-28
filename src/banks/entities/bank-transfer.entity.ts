@@ -82,6 +82,9 @@ export class BankTransfer {
   @Column({ name: 'evm_amount', type: 'varchar', nullable: true })
   evmAmount: string | null;
 
+  @Column({ name: 'evm_token_address', type: 'varchar', nullable: true })
+  evmTokenAddress: string | null;
+
   @Column({ name: 'stellar_amount', type: 'varchar', nullable: true })
   stellarAmount: string | null;
 

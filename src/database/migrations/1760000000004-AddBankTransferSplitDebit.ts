@@ -16,6 +16,9 @@ export class AddBankTransferSplitDebit1760000000004
       `ALTER TABLE "bank_transfers" ADD COLUMN IF NOT EXISTS "evm_amount" varchar NULL`,
     );
     await queryRunner.query(
+      `ALTER TABLE "bank_transfers" ADD COLUMN IF NOT EXISTS "evm_token_address" varchar NULL`,
+    );
+    await queryRunner.query(
       `ALTER TABLE "bank_transfers" ADD COLUMN IF NOT EXISTS "stellar_amount" varchar NULL`,
     );
     await queryRunner.query(
@@ -29,6 +32,9 @@ export class AddBankTransferSplitDebit1760000000004
     );
     await queryRunner.query(
       `ALTER TABLE "bank_transfers" DROP COLUMN IF EXISTS "stellar_amount"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "bank_transfers" DROP COLUMN IF EXISTS "evm_token_address"`,
     );
     await queryRunner.query(
       `ALTER TABLE "bank_transfers" DROP COLUMN IF EXISTS "evm_amount"`,

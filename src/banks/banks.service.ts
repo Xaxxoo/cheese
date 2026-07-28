@@ -200,6 +200,7 @@ export interface BankTransferJobData {
   evmWalletAddress?: string;
   evmChainId?: number;
   evmAmount?: string;
+  evmTokenAddress?: string;
   stellarAmount?: string;
 }
 
@@ -407,15 +408,30 @@ export class BanksService {
     let evmBal = 0;
     let evmWalletAddress: string | undefined;
     let evmChainId: number | undefined;
+    let evmTokenAddress: string | undefined;
 
     if (user.evmAddress) {
       evmWalletAddress = user.evmAddress;
-      const evmBalStr = await this.blockchainService.getEvmBalance(
-        user.evmAddress,
-        this.blockchainService.getEvmUsdtAddress() ?? undefined,
-      );
-      evmBal = parseFloat(evmBalStr);
       evmChainId = undefined; // default chain
+
+      // Check USDC balance (default token)
+      const evmUsdcBal = parseFloat(
+        await this.blockchainService.getEvmBalance(user.evmAddress),
+      );
+      // Check USDT balance
+      const usdtAddr = this.blockchainService.getEvmUsdtAddress();
+      const evmUsdtBal = usdtAddr
+        ? parseFloat(await this.blockchainService.getEvmBalance(user.evmAddress, usdtAddr))
+        : 0;
+
+      // Prefer USDC; fall back to USDT if USDC is insufficient
+      if (evmUsdcBal >= evmUsdtBal) {
+        evmBal = evmUsdcBal;
+        evmTokenAddress = undefined; // USDC default
+      } else {
+        evmBal = evmUsdtBal;
+        evmTokenAddress = usdtAddr ?? undefined;
+      }
     }
 
     const combinedBalance = stellarBal + evmBal;
@@ -483,6 +499,7 @@ export class BanksService {
         evmWalletAddress: evmWalletAddress ?? null,
         evmChainId: evmChainId ?? null,
         evmAmount: evmAmount ?? null,
+        evmTokenAddress: evmTokenAddress ?? null,
         stellarAmount: stellarAmount ?? null,
       }),
     );
@@ -524,6 +541,7 @@ export class BanksService {
       evmWalletAddress,
       evmChainId,
       evmAmount,
+      evmTokenAddress,
       stellarAmount,
     };
 
@@ -629,7 +647,7 @@ export class BanksService {
           data.evmWalletAddress,
           data.evmAmount,
           this.blockchainService.getEvmSignerAddress(data.evmChainId),
-          undefined,
+          data.evmTokenAddress,
           data.evmChainId,
         );
         evmTxHash = evmResult.txHash;
@@ -705,7 +723,7 @@ export class BanksService {
             await this.blockchainService.evmCredit(
               data.evmWalletAddress,
               data.evmAmount!,
-              undefined,
+              data.evmTokenAddress,
               data.evmChainId,
             );
             this.logger.log(
@@ -857,6 +875,7 @@ export class BanksService {
         reason: errMsg,
         evmWalletAddress: data.evmWalletAddress,
         evmAmount: data.evmAmount,
+        evmTokenAddress: data.evmTokenAddress,
         evmChainId: data.evmChainId,
         stellarAmount: data.stellarAmount,
       });
@@ -1050,6 +1069,7 @@ export class BanksService {
             reason: dto.failureReason ?? dto.event,
             evmWalletAddress: transfer.evmWalletAddress,
             evmAmount: transfer.evmAmount,
+            evmTokenAddress: transfer.evmTokenAddress,
             evmChainId: transfer.evmChainId,
             stellarAmount: transfer.stellarAmount,
           });
@@ -1604,6 +1624,7 @@ export class BanksService {
     reason: string;
     evmWalletAddress?: string | null;
     evmAmount?: string | null;
+    evmTokenAddress?: string | null;
     evmChainId?: number | null;
     stellarAmount?: string | null;
   }): Promise<void> {
@@ -1639,7 +1660,7 @@ export class BanksService {
         await this.blockchainService.evmCredit(
           opts.evmWalletAddress!,
           opts.evmAmount!,
-          undefined,
+          opts.evmTokenAddress ?? undefined,
           opts.evmChainId ?? undefined,
         );
         this.logger.log(
