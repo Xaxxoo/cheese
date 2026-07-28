@@ -42,6 +42,15 @@ export class SendToUsernameDto {
   @IsString()
   @IsNotEmpty()
   deviceId: string;
+
+  @ApiPropertyOptional({
+    example: 'stellar',
+    description:
+      'Network to send from — "stellar" (default) or an EVM chain name like "celo".',
+  })
+  @IsString()
+  @IsOptional()
+  network?: string;
 }
 
 export class SendToAddressDto {
@@ -63,8 +72,8 @@ export class SendToAddressDto {
 
   @ApiProperty({
     example: 'stellar',
-    description: 'Network identifier — currently only "stellar" is supported',
-    enum: ['stellar'],
+    description:
+      'Network identifier — "stellar" or an EVM chain name like "celo".',
   })
   @IsString()
   @IsNotEmpty()
