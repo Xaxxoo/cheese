@@ -196,6 +196,11 @@ export interface BankTransferJobData {
   reference: string;
   username: string;
   userEmail?: string;
+  // Split-debit fields (EVM + Stellar)
+  evmWalletAddress?: string;
+  evmChainId?: number;
+  evmAmount?: string;
+  stellarAmount?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -393,11 +398,46 @@ export class BanksService {
     const feeUsdc = getTransferFeeUsdc(amountNgn, effectiveRate).toFixed(6);
     const amountUsdc = (amountNgn / effectiveRate + parseFloat(feeUsdc)).toFixed(6);
 
-    // 6. Check USDC balance
-    const { usdc: usdcBalance } =
+    // 6. Check combined USDC balance (Stellar + EVM) and compute split
+    const { usdc: stellarUsdcBalance } =
       await this.blockchainService.getStellarBalance(user.stellarPublicKey);
-    if (parseFloat(usdcBalance) < parseFloat(amountUsdc)) {
+    const stellarBal = parseFloat(stellarUsdcBalance);
+    const totalNeeded = parseFloat(amountUsdc);
+
+    let evmBal = 0;
+    let evmWalletAddress: string | undefined;
+    let evmChainId: number | undefined;
+
+    if (user.evmAddress) {
+      evmWalletAddress = user.evmAddress;
+      const evmBalStr = await this.blockchainService.getEvmBalance(
+        user.evmAddress,
+        this.blockchainService.getEvmUsdtAddress() ?? undefined,
+      );
+      evmBal = parseFloat(evmBalStr);
+      evmChainId = undefined; // default chain
+    }
+
+    const combinedBalance = stellarBal + evmBal;
+    if (combinedBalance < totalNeeded) {
       throw new BadRequestException('Insufficient USDC balance');
+    }
+
+    // Compute per-chain debit amounts: prefer Stellar first, spill to EVM
+    let stellarAmount: string | undefined;
+    let evmAmount: string | undefined;
+
+    if (stellarBal >= totalNeeded) {
+      // Stellar covers everything — single-chain, no split
+      stellarAmount = amountUsdc;
+    } else if (stellarBal <= 0) {
+      // EVM covers everything
+      evmAmount = amountUsdc;
+      stellarAmount = undefined;
+    } else {
+      // Split: take all available Stellar, remainder from EVM
+      stellarAmount = stellarBal.toFixed(6);
+      evmAmount = (totalNeeded - stellarBal).toFixed(6);
     }
 
     // 7. Resolve bank + confirm beneficiary name
@@ -440,6 +480,10 @@ export class BanksService {
         rateApplied: rate.effectiveRate,
         reference,
         status: BankTransferStatus.PENDING,
+        evmWalletAddress: evmWalletAddress ?? null,
+        evmChainId: evmChainId ?? null,
+        evmAmount: evmAmount ?? null,
+        stellarAmount: stellarAmount ?? null,
       }),
     );
 
@@ -477,6 +521,10 @@ export class BanksService {
       reference,
       username: user.username,
       userEmail: user.email ?? undefined,
+      evmWalletAddress,
+      evmChainId,
+      evmAmount,
+      stellarAmount,
     };
 
     if (this.bankTransferQueue) {
@@ -534,10 +582,13 @@ export class BanksService {
 
   // ── Transfer SAGA ─────────────────────────────────────────────────────────
   //
-  // Executes the two-step SAGA for a bank transfer:
+  // Executes the multi-step SAGA for a bank transfer:
   //
-  //   Step 1 — Deduct USDC from the user's Stellar wallet → platform wallet.
-  //            On failure: mark FAILED (no USDC moved, no compensation needed).
+  //   Step 1 — Deduct USDC from the user's wallet(s) → platform.
+  //            When split-debit data is present, Phase A debits EVM first,
+  //            then Phase B debits Stellar.  If Stellar fails after EVM
+  //            succeeded, the EVM leg is refunded (compensation).
+  //            On total failure: mark FAILED, no compensation needed.
   //
   //   Step 2 — Initiate NGN payout via PulseMFB.
   //            On timeout: mark PROCESSING (scheduler + webhook resolve later).
@@ -568,55 +619,193 @@ export class BanksService {
       userEmail,
     } = data;
 
-    // ── SAGA Step 1: Deduct USDC ───────────────────────────────────────────
-    try {
-      const stellarTxHash = await this.blockchainService.platformWithdrawUsdc(
-        userSecretEnc,
-        amountUsdc,
-        reference,
-      );
-      await this.txService.update(txId, { txHash: stellarTxHash });
-      this.logger.log(
-        `USDC deducted [ref=${reference}] [hash=${stellarTxHash}]`,
-      );
-    } catch (err) {
-      // USDC never left the user — mark FAILED, no compensating transaction needed
-      const errMsg = (err as Error).message;
-      await this.transferRepo.update(
-        { id: transferId },
-        { status: BankTransferStatus.FAILED, failureReason: errMsg },
-      );
-      await this.txService.update(txId, {
-        status: TxStatus.FAILED,
-        failureReason: errMsg,
-      });
-      void this.alertsService
-        .notifyFailedTransfer({
-          username,
-          userEmail,
-          amountNgn,
-          amountUsdc,
-          feeUsdc,
-          bankName,
-          accountName,
-          accountNumber,
+    // ── SAGA Step 1: Deduct USDC (split-aware) ─────────────────────────────
+    let evmTxHash: string | undefined;
+
+    // Phase A: EVM debit → platform signer address
+    if (data.evmAmount && data.evmWalletAddress) {
+      try {
+        const evmResult = await this.blockchainService.evmDebit(
+          data.evmWalletAddress,
+          data.evmAmount,
+          this.blockchainService.getEvmSignerAddress(data.evmChainId),
+          undefined,
+          data.evmChainId,
+        );
+        evmTxHash = evmResult.txHash;
+        await this.transferRepo.update(
+          { id: transferId },
+          { evmTxHash },
+        );
+        this.logger.log(
+          `EVM USDC deducted [ref=${reference}] [hash=${evmTxHash}] [amount=${data.evmAmount}]`,
+        );
+      } catch (err) {
+        // EVM debit failed — no money moved, mark FAILED
+        const errMsg = (err as Error).message;
+        await this.transferRepo.update(
+          { id: transferId },
+          { status: BankTransferStatus.FAILED, failureReason: `EVM debit failed: ${errMsg}` },
+        );
+        await this.txService.update(txId, {
+          status: TxStatus.FAILED,
+          failureReason: `EVM debit failed: ${errMsg}`,
+        });
+        void this.alertsService
+          .notifyFailedTransfer({
+            username,
+            userEmail,
+            amountNgn,
+            amountUsdc,
+            feeUsdc,
+            bankName,
+            accountName,
+            accountNumber,
+            reference,
+            failureReason: `EVM debit failed: ${errMsg}`,
+            stage: 'stellar',
+          })
+          .catch((e: Error) =>
+            this.logger.error(
+              `Failed transfer alert error [ref=${reference}]: ${e.message}`,
+            ),
+          );
+        void this.notificationsService
+          .notifyBankTransferFailed(userId, String(amountNgn), `EVM debit failed: ${errMsg}`)
+          .catch((e: Error) =>
+            this.logger.warn(
+              `Bank transfer failure notification error [ref=${reference}]: ${e.message}`,
+            ),
+          );
+        return;
+      }
+    }
+
+    // Phase B: Stellar debit → platform wallet
+    if (data.stellarAmount && parseFloat(data.stellarAmount) > 0) {
+      try {
+        const stellarTxHash = await this.blockchainService.platformWithdrawUsdc(
+          userSecretEnc,
+          data.stellarAmount,
           reference,
-          failureReason: errMsg,
-          stage: 'stellar',
-        })
-        .catch((e: Error) =>
-          this.logger.error(
-            `Failed transfer alert error [ref=${reference}]: ${e.message}`,
-          ),
         );
-      void this.notificationsService
-        .notifyBankTransferFailed(userId, String(amountNgn), errMsg)
-        .catch((e: Error) =>
+        await this.txService.update(txId, { txHash: stellarTxHash });
+        this.logger.log(
+          `Stellar USDC deducted [ref=${reference}] [hash=${stellarTxHash}] [amount=${data.stellarAmount}]`,
+        );
+      } catch (err) {
+        // Stellar failed — compensate EVM if it succeeded
+        const errMsg = (err as Error).message;
+
+        if (evmTxHash && data.evmWalletAddress) {
           this.logger.warn(
-            `Bank transfer failure notification error [ref=${reference}]: ${e.message}`,
-          ),
+            `Stellar debit failed after EVM succeeded — compensating EVM [ref=${reference}]`,
+          );
+          try {
+            await this.blockchainService.evmCredit(
+              data.evmWalletAddress,
+              data.evmAmount!,
+              undefined,
+              data.evmChainId,
+            );
+            this.logger.log(
+              `EVM compensated after Stellar failure [ref=${reference}] [amount=${data.evmAmount}]`,
+            );
+          } catch (compErr) {
+            this.logger.error(
+              `[CRITICAL] EVM compensation FAILED — MANUAL ACTION REQUIRED ` +
+                `[ref=${reference}] [evmAmount=${data.evmAmount}] [wallet=${data.evmWalletAddress}]: ` +
+                (compErr as Error).message,
+            );
+          }
+        }
+
+        await this.transferRepo.update(
+          { id: transferId },
+          { status: BankTransferStatus.FAILED, failureReason: `Stellar debit failed: ${errMsg}` },
         );
-      return;
+        await this.txService.update(txId, {
+          status: TxStatus.FAILED,
+          failureReason: `Stellar debit failed: ${errMsg}`,
+        });
+        void this.alertsService
+          .notifyFailedTransfer({
+            username,
+            userEmail,
+            amountNgn,
+            amountUsdc,
+            feeUsdc,
+            bankName,
+            accountName,
+            accountNumber,
+            reference,
+            failureReason: `Stellar debit failed: ${errMsg}`,
+            stage: 'stellar',
+          })
+          .catch((e: Error) =>
+            this.logger.error(
+              `Failed transfer alert error [ref=${reference}]: ${e.message}`,
+            ),
+          );
+        void this.notificationsService
+          .notifyBankTransferFailed(userId, String(amountNgn), `Stellar debit failed: ${errMsg}`)
+          .catch((e: Error) =>
+            this.logger.warn(
+              `Bank transfer failure notification error [ref=${reference}]: ${e.message}`,
+            ),
+          );
+        return;
+      }
+    } else if (!data.evmAmount) {
+      // Legacy path: no split data present — single Stellar debit of full amount
+      try {
+        const stellarTxHash = await this.blockchainService.platformWithdrawUsdc(
+          userSecretEnc,
+          amountUsdc,
+          reference,
+        );
+        await this.txService.update(txId, { txHash: stellarTxHash });
+        this.logger.log(
+          `USDC deducted [ref=${reference}] [hash=${stellarTxHash}]`,
+        );
+      } catch (err) {
+        const errMsg = (err as Error).message;
+        await this.transferRepo.update(
+          { id: transferId },
+          { status: BankTransferStatus.FAILED, failureReason: errMsg },
+        );
+        await this.txService.update(txId, {
+          status: TxStatus.FAILED,
+          failureReason: errMsg,
+        });
+        void this.alertsService
+          .notifyFailedTransfer({
+            username,
+            userEmail,
+            amountNgn,
+            amountUsdc,
+            feeUsdc,
+            bankName,
+            accountName,
+            accountNumber,
+            reference,
+            failureReason: errMsg,
+            stage: 'stellar',
+          })
+          .catch((e: Error) =>
+            this.logger.error(
+              `Failed transfer alert error [ref=${reference}]: ${e.message}`,
+            ),
+          );
+        void this.notificationsService
+          .notifyBankTransferFailed(userId, String(amountNgn), errMsg)
+          .catch((e: Error) =>
+            this.logger.warn(
+              `Bank transfer failure notification error [ref=${reference}]: ${e.message}`,
+            ),
+          );
+        return;
+      }
     }
 
     // ── SAGA Step 2: Initiate NGN payout ──────────────────────────────────
@@ -666,6 +855,10 @@ export class BanksService {
         amountUsdc,
         reference,
         reason: errMsg,
+        evmWalletAddress: data.evmWalletAddress,
+        evmAmount: data.evmAmount,
+        evmChainId: data.evmChainId,
+        stellarAmount: data.stellarAmount,
       });
       await this.transferRepo.update(
         { id: transferId },
@@ -848,17 +1041,21 @@ export class BanksService {
         const user = await this.userRepo.findOne({
           where: { id: transfer.userId },
         });
-        if (user?.stellarPublicKey) {
+        if (user?.stellarPublicKey || transfer.evmWalletAddress) {
           await this.refundUsdc({
             userId: transfer.userId,
-            toPublicKey: user.stellarPublicKey,
+            toPublicKey: user?.stellarPublicKey ?? '',
             amountUsdc: transfer.amountUsdc,
             reference: transfer.reference,
             reason: dto.failureReason ?? dto.event,
+            evmWalletAddress: transfer.evmWalletAddress,
+            evmAmount: transfer.evmAmount,
+            evmChainId: transfer.evmChainId,
+            stellarAmount: transfer.stellarAmount,
           });
         } else {
           this.logger.error(
-            `Cannot refund — user ${transfer.userId} has no Stellar wallet [ref=${transfer.reference}]`,
+            `Cannot refund — user ${transfer.userId} has no wallet [ref=${transfer.reference}]`,
           );
         }
 
@@ -1393,7 +1590,8 @@ export class BanksService {
 
   // ── USDC refund helper ────────────────────────────────────────────────────
   //
-  // Sends USDC back from the platform wallet to the user's Stellar address.
+  // Sends USDC back from the platform wallet to the user's wallet(s).
+  // For split-debit transfers, refunds both the Stellar and EVM legs.
   // Called when the banking provider fails AFTER the USDC has already been
   // moved to the platform wallet.  Errors are logged but never re-thrown —
   // a failed refund must be flagged for manual ops resolution.
@@ -1404,23 +1602,58 @@ export class BanksService {
     amountUsdc: string;
     reference: string;
     reason: string;
+    evmWalletAddress?: string | null;
+    evmAmount?: string | null;
+    evmChainId?: number | null;
+    stellarAmount?: string | null;
   }): Promise<void> {
-    try {
-      const refundHash = await this.blockchainService.platformDepositUsdc(
-        opts.toPublicKey,
-        opts.amountUsdc,
-      );
-      this.logger.log(
-        `USDC refunded [user=${opts.userId}] [amount=${opts.amountUsdc}] ` +
-          `[hash=${refundHash}] [ref=${opts.reference}] [reason=${opts.reason}]`,
-      );
-    } catch (err) {
-      // CRITICAL — needs manual intervention by ops team
-      this.logger.error(
-        `[CRITICAL] USDC refund FAILED — MANUAL ACTION REQUIRED ` +
-          `[user=${opts.userId}] [amount=${opts.amountUsdc}] [ref=${opts.reference}]: ` +
-          (err as Error).message,
-      );
+    // Determine what to refund per chain
+    const stellarRefund = opts.stellarAmount ?? opts.amountUsdc;
+    const shouldRefundStellar = parseFloat(stellarRefund) > 0;
+    const shouldRefundEvm =
+      opts.evmWalletAddress && opts.evmAmount && parseFloat(opts.evmAmount) > 0;
+
+    // Refund Stellar
+    if (shouldRefundStellar) {
+      try {
+        const refundHash = await this.blockchainService.platformDepositUsdc(
+          opts.toPublicKey,
+          stellarRefund,
+        );
+        this.logger.log(
+          `Stellar USDC refunded [user=${opts.userId}] [amount=${stellarRefund}] ` +
+            `[hash=${refundHash}] [ref=${opts.reference}] [reason=${opts.reason}]`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `[CRITICAL] Stellar USDC refund FAILED — MANUAL ACTION REQUIRED ` +
+            `[user=${opts.userId}] [amount=${stellarRefund}] [ref=${opts.reference}]: ` +
+            (err as Error).message,
+        );
+      }
+    }
+
+    // Refund EVM
+    if (shouldRefundEvm) {
+      try {
+        await this.blockchainService.evmCredit(
+          opts.evmWalletAddress!,
+          opts.evmAmount!,
+          undefined,
+          opts.evmChainId ?? undefined,
+        );
+        this.logger.log(
+          `EVM USDC refunded [user=${opts.userId}] [amount=${opts.evmAmount}] ` +
+            `[wallet=${opts.evmWalletAddress}] [ref=${opts.reference}] [reason=${opts.reason}]`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `[CRITICAL] EVM USDC refund FAILED — MANUAL ACTION REQUIRED ` +
+            `[user=${opts.userId}] [amount=${opts.evmAmount}] [wallet=${opts.evmWalletAddress}] ` +
+            `[ref=${opts.reference}]: ` +
+            (err as Error).message,
+        );
+      }
     }
   }
 
