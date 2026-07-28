@@ -72,6 +72,22 @@ export class BankTransfer {
   @Column({ name: 'failure_reason', type: 'varchar', nullable: true })
   failureReason: string | null;
 
+  // ── Split-debit fields (EVM + Stellar) ──────────────────────────────────
+  @Column({ name: 'evm_wallet_address', type: 'varchar', nullable: true })
+  evmWalletAddress: string | null;
+
+  @Column({ name: 'evm_chain_id', type: 'int', nullable: true })
+  evmChainId: number | null;
+
+  @Column({ name: 'evm_amount', type: 'varchar', nullable: true })
+  evmAmount: string | null;
+
+  @Column({ name: 'stellar_amount', type: 'varchar', nullable: true })
+  stellarAmount: string | null;
+
+  @Column({ name: 'evm_tx_hash', type: 'varchar', nullable: true })
+  evmTxHash: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
