@@ -20,6 +20,7 @@ export interface EvmTreasuryTokenBalance {
   fees: string;
   total: string;
   vaultBalance: string;
+  signerBalance: string;
   accountingOk: boolean;
   error?: string;
 }
@@ -206,8 +207,24 @@ export class AdminTreasuryService {
           fees:         '0.00000000',
           total:        '0.00000000',
           vaultBalance: '0.00000000',
+          signerBalance: '0.00000000',
           accountingOk: false,
         };
+
+        // Fetch signer token balance (funds collected from bank transfer split-debits)
+        if (backendSigner) {
+          try {
+            summary.signerBalance = await this.blockchain.getErc20Balance(
+              backendSigner,
+              token.address,
+              chain.chainId,
+            );
+          } catch (err) {
+            this.logger.warn(
+              `EVM signer balance fetch failed [chain=${chain.name}] [token=${token.symbol}]: ${(err as Error).message}`,
+            );
+          }
+        }
 
         if (!vaultAddress) {
           summary.error = 'Vault address not configured for this chain';
