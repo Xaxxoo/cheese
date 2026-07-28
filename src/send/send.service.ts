@@ -68,6 +68,7 @@ export class SendService {
       deviceId: dto.deviceId,
       deviceSignature: dto.deviceSignature,
       recipientUsername: recipient.username,
+      network: dto.network,
       type: TxType.SEND_USERNAME,
     });
   }
@@ -158,6 +159,192 @@ export class SendService {
     if (isNaN(amount) || amount < MIN_USDC) {
       throw new BadRequestException(`Minimum send amount is ${MIN_USDC} USDC`);
     }
+
+    // ── EVM path ────────────────────────────────────────────
+    const chainId = this.resolveChainId(params.network);
+    if (chainId !== null) {
+      // Resolve sender's EVM wallet
+      const senderWallet = await this.blockchainService.resolveEvmUsername(
+        sender.username!,
+        chainId,
+      );
+      if (!senderWallet) {
+        throw new BadRequestException(
+          'No EVM wallet found for your account on this chain',
+        );
+      }
+
+      // Check USDC balance first, then USDT — pick whichever covers the amount
+      const usdcBal = parseFloat(
+        await this.blockchainService.getEvmBalance(senderWallet, undefined, chainId),
+      );
+      const usdtAddr = this.blockchainService.getEvmUsdtAddress(chainId);
+      let tokenAddress: string | undefined;
+      if (usdcBal >= amount) {
+        tokenAddress = undefined; // defaults to USDC
+      } else if (usdtAddr) {
+        const usdtBal = parseFloat(
+          await this.blockchainService.getEvmBalance(senderWallet, usdtAddr, chainId),
+        );
+        if (usdtBal >= amount) {
+          tokenAddress = usdtAddr;
+        }
+      }
+      if (tokenAddress === undefined && usdcBal < amount) {
+        throw new BadRequestException('Insufficient balance on this chain');
+      }
+
+      // Fee & NGN conversion
+      const feeRate = await this.getFeeRate();
+      const feeUsdc = amount * feeRate;
+      const ngnAmount = await this.ratesService.usdcToNgn(amount);
+      const rateRecord = await this.ratesService.getCurrentRate();
+
+      // Create pending transaction
+      const reference = `CW-SEND-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
+      const tx = await this.txService.create({
+        userId: senderId,
+        type: params.type,
+        status: TxStatus.PENDING,
+        amountUsdc: params.amountUsdc,
+        amountNgn: String(ngnAmount.toFixed(2)),
+        feeUsdc: String(feeUsdc.toFixed(6)),
+        rateApplied: rateRecord.effectiveRate,
+        recipientAddress: params.toAddress,
+        recipientUsername: params.recipientUsername || null,
+        network: params.network || 'stellar',
+        reference,
+      });
+
+      try {
+        let txHash: string;
+        if (params.type === TxType.SEND_USERNAME && params.recipientUsername) {
+          const result = await this.blockchainService.evmTransferByUsername(
+            sender.username!,
+            params.recipientUsername,
+            params.amountUsdc,
+            tokenAddress,
+            chainId,
+          );
+          txHash = result.txHash;
+        } else {
+          const result = await this.blockchainService.evmDebit(
+            senderWallet,
+            params.amountUsdc,
+            params.toAddress,
+            tokenAddress,
+            chainId,
+          );
+          txHash = result.txHash;
+        }
+
+        await this.txService.update(tx.id, {
+          status: TxStatus.COMPLETED,
+          txHash,
+        });
+
+        // Fire-and-forget milestone + referral
+        void this.tierMilestone.checkAndNotify(senderId);
+        void this.referralService
+          .qualifyReferral(senderId)
+          .catch((e: Error) =>
+            this.logger.warn(`qualifyReferral failed [user=${senderId}]: ${e.message}`),
+          );
+
+        // Fire-and-forget: email to sender
+        const appUrl = this.config.get<string>(
+          'app.frontendUrl',
+          'https://cheesepay.xyz',
+        );
+        this.emailService
+          .sendMoneySent({
+            to: sender.email,
+            fullName: sender.fullName,
+            amountUsdc: params.amountUsdc,
+            amountNgn: String(ngnAmount.toFixed(2)),
+            recipientUsername: params.recipientUsername,
+            recipientAddress: params.toAddress,
+            txHash,
+            reference,
+            fee: String(feeUsdc.toFixed(6)),
+            appUrl,
+          })
+          .catch((err: Error) =>
+            this.logger.error(
+              `Sender transfer email failed [tx=${tx.id}]: ${err.message}`,
+            ),
+          );
+
+        // Record receipt + notify recipient (SEND_USERNAME only)
+        if (params.type === TxType.SEND_USERNAME && params.recipientUsername) {
+          const recipientUser = await this.userRepo.findOne({
+            where: { username: params.recipientUsername },
+          });
+          if (recipientUser) {
+            const recvRef = `CW-RECV-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
+            const recvInserted = await this.txService
+              .createDeposit({
+                userId: recipientUser.id,
+                type: TxType.DEPOSIT,
+                status: TxStatus.COMPLETED,
+                amountUsdc: params.amountUsdc,
+                amountNgn: String(ngnAmount.toFixed(2)),
+                feeUsdc: '0.000000',
+                rateApplied: rateRecord.effectiveRate,
+                txHash,
+                network: params.network || 'stellar',
+                reference: recvRef,
+                description: `from @${sender.username ?? 'someone'}`,
+              })
+              .catch((e: Error) => {
+                this.logger.warn(
+                  `Recipient deposit record failed [tx=${tx.id}]: ${e.message}`,
+                );
+                return false;
+              });
+
+            const senderLabel = sender.username ? `@${sender.username}` : 'someone';
+
+            void this.notificationsService
+              .notifyMoneyReceived(recipientUser.id, params.amountUsdc, senderLabel)
+              .catch((err: Error) =>
+                this.logger.warn(`Recipient push failed [tx=${tx.id}]: ${err.message}`),
+              );
+
+            if (recvInserted && recipientUser.email) {
+              void this.emailService
+                .sendMoneyReceived({
+                  to: recipientUser.email,
+                  fullName: recipientUser.fullName,
+                  amountUsdc: params.amountUsdc,
+                  amountNgn: String(ngnAmount.toFixed(2)),
+                  txHash,
+                  network: params.network || 'stellar',
+                  senderName: senderLabel,
+                  appUrl,
+                })
+                .catch((err: Error) =>
+                  this.logger.error(
+                    `Recipient transfer email failed [tx=${tx.id}]: ${err.message}`,
+                  ),
+                );
+            }
+          }
+        }
+
+        return this.txService.getById(senderId, tx.id);
+      } catch (err) {
+        await this.txService.update(tx.id, {
+          status: TxStatus.FAILED,
+          failureReason: (err as Error).message,
+        });
+        throw new BadRequestException(
+          `Transaction failed: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // ── Stellar path (existing) ─────────────────────────────
 
     // 5a. Trustline guard — external address sends only.
     //     All Cheese Pay users already have a USDC trustline; external wallets may not.
@@ -389,6 +576,20 @@ export class SendService {
   }
 
   // ── Helpers ───────────────────────────────────────────────
+
+  /**
+   * Map a network name (e.g. 'celo') to an EVM chain ID.
+   * Returns null for 'stellar' or unknown names.
+   */
+  private resolveChainId(network?: string): number | null {
+    if (!network || network === 'stellar') return null;
+    const chains = this.blockchainService.getConfiguredEvmChains();
+    const match = chains.find(
+      (c) => c.name.toLowerCase() === network.toLowerCase(),
+    );
+    return match?.chainId ?? null;
+  }
+
   private async getFeeRate(): Promise<number> {
     if (!this.blockchainService.isSorobanReady) return FALLBACK_FEE_RATE;
     try {
