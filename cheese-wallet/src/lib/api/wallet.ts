@@ -87,6 +87,7 @@ export async function sendToUsername(payload: {
   pinHash: string
   deviceSignature: string
   deviceId: string
+  network?: string
 }): Promise<Transaction> {
   const { data } = await apiClient.post<ApiResponse<Transaction>>(
     ENDPOINTS.SEND.TO_USERNAME,
