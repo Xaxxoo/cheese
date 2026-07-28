@@ -734,7 +734,7 @@ export class AdminAuthService {
     const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
     if (!user) throw new NotFoundException('User not found');
 
-    const [txCount, failedTransferCount, recentTxs, recentTransfers, balances, inResult, outResult] =
+    const [txCount, failedTransferCount, recentTxs, recentTransfers, balances, evmBalance, inResult, outResult] =
       await Promise.all([
         this.txRepo.count({ where: { userId: id } }),
         this.bankTransferRepo.count({
@@ -772,6 +772,26 @@ export class AdminAuthService {
                 this.logger.warn(`getUserDetail: Horizon balance failed for ${id}: ${(e as Error).message}`);
                 return { usdc: null, balanceError: sorobanFailed ? 'Both Soroban and Horizon balance fetches failed' : 'Horizon balance fetch failed' };
               }
+            })()
+          : Promise.resolve(null),
+        // Celo (EVM) balance — query USDC + USDT across all configured chains
+        user.evmAddress && this.blockchainService.isEvmReady
+          ? (async () => {
+              let total = 0;
+              for (const { chainId } of this.blockchainService.getConfiguredEvmChains()) {
+                try {
+                  const usdc = await this.blockchainService.getEvmBalance(user.evmAddress!, undefined, chainId);
+                  total += parseFloat(usdc);
+                } catch { /* chain not deployed */ }
+                const usdtAddr = this.blockchainService.getEvmUsdtAddress(chainId);
+                if (usdtAddr) {
+                  try {
+                    const usdt = await this.blockchainService.getEvmBalance(user.evmAddress!, usdtAddr, chainId);
+                    total += parseFloat(usdt);
+                  } catch { /* skip */ }
+                }
+              }
+              return total > 0 ? total.toFixed(6) : null;
             })()
           : Promise.resolve(null),
         // Per-user inbound total (completed deposits, yield, referrals, trivia)
@@ -827,6 +847,7 @@ export class AdminAuthService {
       points:           user.points,
       createdAt:        user.createdAt,
       usdcBalance:      balances?.usdc ?? null,
+      evmBalance:       evmBalance ?? null,
       balanceError:     balances?.balanceError ?? null,
       txCount,
       failedTransferCount,

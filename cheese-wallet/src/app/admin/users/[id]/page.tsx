@@ -527,12 +527,17 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
 
-              {/* EVM */}
+              {/* Celo */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, color: c.textDim, fontWeight: 500 }}>EVM</div>
+                  <div style={{ fontSize: 11, color: c.textDim, fontWeight: 500 }}>Celo</div>
                   <Pill label={user.evmWalletStatus} color={evmWs.color} bg={evmWs.bg} brd={evmWs.brd} />
                 </div>
+                {user.evmBalance && (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.green, marginBottom: 6 }}>
+                    ${parseFloat(user.evmBalance).toFixed(4)} <span style={{ fontSize: 10, fontWeight: 500, color: c.textDim }}>USDC+USDT</span>
+                  </div>
+                )}
                 <div style={{ fontSize: 10.5, color: c.textMid, fontFamily: 'monospace', wordBreak: 'break-all', background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.border}` }}>
                   {user.evmAddress ?? 'Not provisioned'}
                 </div>
@@ -549,7 +554,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                         opacity: saving ? 0.55 : 1,
                       }}
                     >
-                      {saving ? 'Provisioning…' : 'Provision EVM Wallet'}
+                      {saving ? 'Provisioning…' : 'Provision Celo Wallet'}
                     </button>
                     {provisionError && (
                       <div style={{ fontSize: 11, color: c.red }}>{provisionError}</div>
