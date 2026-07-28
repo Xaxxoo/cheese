@@ -295,7 +295,7 @@ function EvmVaultSection({
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr 1fr 1fr 92px', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr 1fr 1fr 1fr 92px', gap: 8, alignItems: 'center' }}>
                   {vault.tokens.map((token) => (
                     <TokenRow
                       key={`${vault.chainId}:${token.tokenAddress}`}
@@ -405,6 +405,7 @@ function TokenRow({
         {token.symbol}
       </button>
       <Metric label="Vault balance" value={`$${fmtUsd(token.vaultBalance)}`} />
+      <Metric label="Signer balance" value={`$${fmtUsd(token.signerBalance ?? '0')}`} />
       <Metric label="Withdrawable" value={`$${fmtUsd(token.total)}`} />
       <Metric label="Fees" value={`$${fmtUsd(token.fees)}`} />
       <div style={{ fontSize: 11, color: token.error ? c.amber : token.accountingOk ? c.green : c.red, fontWeight: 600 }}>

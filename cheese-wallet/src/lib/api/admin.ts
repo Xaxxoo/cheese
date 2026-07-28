@@ -403,6 +403,7 @@ export interface EvmVaultTokenBalance {
   fees:         string
   total:        string
   vaultBalance: string
+  signerBalance: string
   accountingOk: boolean
   error?:       string
 }
