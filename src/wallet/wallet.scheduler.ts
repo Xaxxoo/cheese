@@ -317,18 +317,19 @@ export class WalletDepositScheduler {
         .map((w) => [w.walletAddress!.toLowerCase(), w.userId]),
     );
 
-    // Load cursor (upsert 0 on first run)
+    // Load cursor — on first run, start from the current block so we don't
+    // try to scan millions of historical blocks with no user wallets.
+    const headBlock = await this.blockchainService.getEvmBlockNumber(chainId);
     let cursor = await this.cursorRepo.findOne({ where: { chainId } });
     if (!cursor) {
-      cursor = this.cursorRepo.create({ chainId, lastProcessedBlock: 0 });
+      cursor = this.cursorRepo.create({ chainId, lastProcessedBlock: headBlock });
       await this.cursorRepo.save(cursor);
+      this.logger.log(`EVM cursor initialized [chain=${chainName}] [block=${headBlock}]`);
+      return; // start scanning from the next cycle
     }
 
-    // Get current chain head
-    const toBlock = await this.blockchainService.getEvmBlockNumber(chainId);
     const fromBlock = cursor.lastProcessedBlock + 1;
-
-    if (fromBlock > toBlock) return; // already up to date
+    if (fromBlock > headBlock) return; // already up to date
 
     const usdcAddress = this.blockchainService.getEvmUsdcAddress(chainId);
     const usdtAddress = this.blockchainService.getEvmUsdtAddress(chainId);
@@ -336,83 +337,93 @@ export class WalletDepositScheduler {
     const tokenAddresses = [usdcAddress];
     if (usdtAddress) tokenAddresses.push(usdtAddress);
 
-    for (const tokenAddress of tokenAddresses) {
-      try {
-        const events = await this.blockchainService.getEvmDepositEvents(
-          chainId,
-          tokenAddress,
-          addresses,
-          fromBlock,
-          toBlock,
-        );
+    // Batch block ranges to avoid RPC limits (most providers cap at 2000–10000 blocks)
+    const MAX_BLOCK_RANGE = 2000;
+    let batchFrom = fromBlock;
 
-        for (const event of events) {
-          const userId = addrToUserId.get(event.to.toLowerCase());
-          if (!userId) continue;
+    while (batchFrom <= headBlock) {
+      const batchTo = Math.min(batchFrom + MAX_BLOCK_RANGE - 1, headBlock);
 
-          const reference = `CW-DEP-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
+      for (const tokenAddress of tokenAddresses) {
+        try {
+          const events = await this.blockchainService.getEvmDepositEvents(
+            chainId,
+            tokenAddress,
+            addresses,
+            batchFrom,
+            batchTo,
+          );
 
-          const inserted = await this.txService.createDeposit({
-            userId,
-            type: TxType.DEPOSIT,
-            status: TxStatus.COMPLETED,
-            amountUsdc: event.amount,
-            txHash: event.txHash,
-            network: chainName,
-            reference,
-            description: `USDC deposit on ${chainName} from ${event.from}`,
-          });
+          for (const event of events) {
+            const userId = addrToUserId.get(event.to.toLowerCase());
+            if (!userId) continue;
 
-          if (inserted) {
-            this.logger.log(
-              `EVM deposit recorded [chain=${chainName}] [user=${userId}] [amount=${event.amount}] [hash=${event.txHash}]`,
-            );
+            const reference = `CW-DEP-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
 
-            // Fire-and-forget notifications
-            void this.userRepo
-              .findOne({
-                where: { id: userId },
-                select: ['id', 'email', 'fullName', 'username'],
-              })
-              .then((depositUser) => {
-                if (!depositUser) return;
-                void this.notificationsService
-                  .notifyMoneyReceived(depositUser.id, event.amount, 'external wallet')
-                  .catch((e: Error) =>
-                    this.logger.warn(`EVM deposit notification failed [user=${userId}]: ${e.message}`),
-                  );
-                if (depositUser.email) {
-                  this.emailService
-                    .sendMoneyReceived({
-                      to: depositUser.email,
-                      fullName: depositUser.fullName ?? depositUser.username,
-                      amountUsdc: event.amount,
-                      txHash: event.txHash,
-                      network: chainName,
-                      senderName: 'external wallet',
-                      appUrl: 'https://cheesepay.xyz',
-                    })
-                    .catch((e: Error) =>
-                      this.logger.error(`EVM deposit email failed [user=${userId}]: ${e.message}`),
-                    );
-                }
-              })
-              .catch((e: Error) =>
-                this.logger.warn(`EVM deposit user lookup failed [user=${userId}]: ${e.message}`),
+            const inserted = await this.txService.createDeposit({
+              userId,
+              type: TxType.DEPOSIT,
+              status: TxStatus.COMPLETED,
+              amountUsdc: event.amount,
+              txHash: event.txHash,
+              network: chainName,
+              reference,
+              description: `USDC deposit on ${chainName} from ${event.from}`,
+            });
+
+            if (inserted) {
+              this.logger.log(
+                `EVM deposit recorded [chain=${chainName}] [user=${userId}] [amount=${event.amount}] [hash=${event.txHash}]`,
               );
-          }
-        }
-      } catch (err) {
-        this.logger.error(
-          `EVM event scan failed [chain=${chainName}] [token=${tokenAddress}]: ${(err as Error).message}`,
-        );
-      }
-    }
 
-    // Advance cursor
-    await this.cursorRepo.upsert(
-      { chainId, lastProcessedBlock: toBlock },
-      ['chainId'],
-    );
+              // Fire-and-forget notifications
+              void this.userRepo
+                .findOne({
+                  where: { id: userId },
+                  select: ['id', 'email', 'fullName', 'username'],
+                })
+                .then((depositUser) => {
+                  if (!depositUser) return;
+                  void this.notificationsService
+                    .notifyMoneyReceived(depositUser.id, event.amount, 'external wallet')
+                    .catch((e: Error) =>
+                      this.logger.warn(`EVM deposit notification failed [user=${userId}]: ${e.message}`),
+                    );
+                  if (depositUser.email) {
+                    this.emailService
+                      .sendMoneyReceived({
+                        to: depositUser.email,
+                        fullName: depositUser.fullName ?? depositUser.username,
+                        amountUsdc: event.amount,
+                        txHash: event.txHash,
+                        network: chainName,
+                        senderName: 'external wallet',
+                        appUrl: 'https://cheesepay.xyz',
+                      })
+                      .catch((e: Error) =>
+                        this.logger.error(`EVM deposit email failed [user=${userId}]: ${e.message}`),
+                      );
+                  }
+                })
+                .catch((e: Error) =>
+                  this.logger.warn(`EVM deposit user lookup failed [user=${userId}]: ${e.message}`),
+                );
+            }
+          }
+        } catch (err) {
+          this.logger.error(
+            `EVM event scan failed [chain=${chainName}] [token=${tokenAddress}] [blocks=${batchFrom}-${batchTo}]: ${(err as Error).message}`,
+          );
+        }
+      }
+
+      // Advance cursor after each batch so progress isn't lost on crash
+      await this.cursorRepo.upsert(
+        { chainId, lastProcessedBlock: batchTo },
+        ['chainId'],
+      );
+
+      batchFrom = batchTo + 1;
+    }
   }
 }
