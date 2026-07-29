@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
-  X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle,
+  X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle, Clock,
   AtSign, Wallet, ChevronRight, Building2, ArrowUpRight, User, Layers, Search, Share2,
 } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
@@ -1819,19 +1819,25 @@ function BankSuccessScreen({
   const [sharing, setSharing] = useState<ShareFormat | false>(false)
   const [showPicker, setShowPicker] = useState(false)
 
+  const isCompleted = transfer?.status === 'completed'
+
   useEffect(() => {
-    playChaChing()
-    const burst = (angle: number, origin: { x: number; y: number }) =>
-      confetti({ particleCount: 60, angle, spread: 55, origin, colors: ['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399'], scalar: 0.8 })
-    burst(60, { x: 0, y: 0.65 })
-    burst(120, { x: 1, y: 0.65 })
-    setTimeout(() => { burst(80, { x: 0.2, y: 0.7 }); burst(100, { x: 0.8, y: 0.7 }) }, 250)
-  }, [])
+    if (isCompleted) {
+      playChaChing()
+      const burst = (angle: number, origin: { x: number; y: number }) =>
+        confetti({ particleCount: 60, angle, spread: 55, origin, colors: ['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399'], scalar: 0.8 })
+      burst(60, { x: 0, y: 0.65 })
+      burst(120, { x: 1, y: 0.65 })
+      setTimeout(() => { burst(80, { x: 0.2, y: 0.7 }); burst(100, { x: 0.8, y: 0.7 }) }, 250)
+    }
+  }, [isCompleted])
 
   const formattedAmount = parseInt(amountNgn, 10).toLocaleString('en-NG')
-  const isCompleted = transfer?.status === 'completed'
   const statusLabel = isCompleted ? 'Completed' : 'Processing'
-  const subtitle = transfer?.message ?? 'Bank transfer initiated'
+  const heading = isCompleted ? 'Sent!' : 'Transfer submitted'
+  const subtitle = isCompleted
+    ? (transfer?.message ?? 'Bank transfer complete')
+    : (transfer?.message ?? 'You\u2019ll be notified once the payout settles.')
 
   const statusColor = isCompleted ? '#34d399' : '#fbbf24'
   const statusBg    = isCompleted ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.15)'
@@ -1931,11 +1937,18 @@ function BankSuccessScreen({
         <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', letterSpacing: '0.04em' }}>cheesepay.xyz</p>
       </div>
 
-      <div className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mb-6">
-        <CheckCircle2 size={38} className="text-emerald-400" />
+      <div className={cn(
+        'w-20 h-20 rounded-full flex items-center justify-center mb-6 border',
+        isCompleted
+          ? 'bg-emerald-500/15 border-emerald-500/20'
+          : 'bg-amber-500/15 border-amber-500/20',
+      )}>
+        {isCompleted
+          ? <CheckCircle2 size={38} className="text-emerald-400" />
+          : <Clock size={38} className="text-amber-400" />}
       </div>
 
-      <h2 className="text-2xl font-semibold text-white mb-1">Sent!</h2>
+      <h2 className="text-2xl font-semibold text-white mb-1">{heading}</h2>
       <p className="text-sm text-white/40 mb-8 text-center">{subtitle}</p>
 
       <div className="w-full rounded-3xl border border-white/8 bg-white/4 p-5 mb-8">

@@ -166,7 +166,7 @@ export interface BankTransferPayload {
 export interface BankTransferResponse {
   reference: string;
   providerReference?: string | null;
-  status: 'processing' | 'completed';
+  status: 'pending' | 'processing' | 'completed';
   message: string;
   amountNgn: string;
   amountUsdc: string;
