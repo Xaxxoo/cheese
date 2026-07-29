@@ -447,7 +447,7 @@ export function moneyReceived(params: {
   senderName?: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `$${params.amountUsdc} USDC received — start spending`;
+  const subject = `You received ${params.amountUsdc} USDC on Cheese Pay`;
   const html = baseLayout({
     preheader: `$${params.amountUsdc} USDC has been credited to your Cheese Pay.`,
     body: `

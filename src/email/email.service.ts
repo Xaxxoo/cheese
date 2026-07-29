@@ -243,12 +243,24 @@ export class EmailService {
     senderName?: string;
     appUrl?: string;
   }): Promise<void> {
+    const name = params.fullName || 'User';
     const { subject, html } = moneyReceived({
       ...params,
-      fullName: params.fullName || 'User',
+      fullName: name,
       appUrl: params.appUrl || 'https://cheesepay.xyz',
     });
-    await this.send({ to: params.to, subject, html });
+    const text =
+      `Hi ${name},\n\n` +
+      (params.senderName
+        ? `${params.senderName} sent you USDC. Your funds are safe and ready to use.\n\n`
+        : 'A USDC deposit has landed in your Cheese Pay. Your funds are safe and ready to use.\n\n') +
+      `Amount: ${params.amountUsdc} USDC` +
+      (params.amountNgn ? ` (~₦${params.amountNgn})` : '') + '\n' +
+      (params.network ? `Network: ${params.network}\n` : '') +
+      (params.txHash ? `Tx: ${params.txHash}\n` : '') +
+      '\nOpen your wallet: https://cheesepay.xyz\n\n' +
+      '– The Cheese Team';
+    await this.send({ to: params.to, subject, html, text });
   }
 
   async sendMoneySent(params: {
