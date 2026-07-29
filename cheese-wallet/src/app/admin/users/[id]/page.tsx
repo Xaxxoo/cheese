@@ -787,7 +787,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
           </div>
 
           {/* Recent Bank Transfers */}
-          <div style={card}>
+          <div style={{ ...card, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: c.textMid, marginBottom: 14 }}>
               Recent Bank Transfers
             </div>
@@ -840,6 +840,8 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                       <div style={{
                         fontSize: 10.5, color: c.red, marginTop: 5,
                         background: c.redDim, padding: '4px 9px', borderRadius: 6,
+                        wordBreak: 'break-all', overflow: 'hidden',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
                       }}>
                         {bt.failureReason}
                       </div>
