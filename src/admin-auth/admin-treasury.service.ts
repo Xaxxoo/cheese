@@ -405,6 +405,62 @@ export class AdminTreasuryService {
     };
   }
 
+  // ── POST /admin/treasury/evm-sweep-signer ───────────────────────────────
+  async evmSweepSigner(opts: {
+    chainId: number;
+    tokenAddress: string;
+  }): Promise<{
+    txHash: string;
+    toAddress: string;
+    amount: string;
+    chainId: number;
+    tokenAddress: string;
+    tokenSymbol: string;
+  }> {
+    if (!this.blockchain.isEvmReady) {
+      throw new ServiceUnavailableException(
+        'EVM not configured — check {CHAIN}_RPC_URL, {CHAIN}_FACTORY_ADDRESS, and token env vars',
+      );
+    }
+
+    const depositChains = this.blockchain.getConfiguredEvmDepositChains();
+    const configuredChains = depositChains.length > 0
+      ? depositChains
+      : this.blockchain.getConfiguredEvmChainsWithTokens();
+    const chain = configuredChains.find((item) => item.chainId === opts.chainId);
+    if (!chain) {
+      throw new BadRequestException(`Chain ${opts.chainId} is not configured for EVM treasury`);
+    }
+
+    const token = chain.tokens.find(
+      (item) => item.address.toLowerCase() === opts.tokenAddress.toLowerCase(),
+    );
+    if (!token) {
+      throw new BadRequestException('Token is not configured for this chain');
+    }
+
+    const toAddress = this.getWithdrawalDestination(chain.name, true);
+    this.logger.log(
+      `evmSweepSigner initiated [chain=${chain.name}] [token=${token.symbol}] [to=${toAddress}]`,
+    );
+    const result = await this.blockchain.sweepSignerBalance(
+      toAddress,
+      token.address,
+      chain.chainId,
+    );
+    this.logger.log(
+      `evmSweepSigner settled [chain=${chain.name}] [token=${token.symbol}] [txHash=${result.txHash}] [amount=${result.amount}] [to=${toAddress}]`,
+    );
+    return {
+      txHash: result.txHash,
+      toAddress,
+      amount: result.amount,
+      chainId: chain.chainId,
+      tokenAddress: token.address,
+      tokenSymbol: token.symbol,
+    };
+  }
+
   // ── POST /admin/treasury/recover-contract-balance ─────────────────────────
   // Calls withdraw(username, amount, stellarAddress) on the Soroban contract,
   // which debits the user's internal balance and sends USDC back to their

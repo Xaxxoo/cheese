@@ -93,6 +93,23 @@ export class AdminTreasuryController {
     });
   }
 
+  // ── POST /admin/treasury/evm-sweep-signer ───────────────────────────────
+  @Post('evm-sweep-signer')
+  @ApiOperation({ summary: 'Sweep all ERC-20 tokens from the backend signer wallet to the withdrawal address' })
+  evmSweepSigner(
+    @CurrentUser() admin: User,
+    @Body() dto: EvmWithdrawDto,
+  ) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException('Only super_admin or treasurer roles can sweep the signer wallet');
+    }
+    return this.treasury.evmSweepSigner({
+      chainId: dto.chainId,
+      tokenAddress: dto.tokenAddress,
+    });
+  }
+
   // ── POST /admin/treasury/recover-contract-balance ─────────────────────────
   @Post('recover-contract-balance')
   @ApiOperation({
