@@ -467,6 +467,30 @@ export async function evmTreasuryWithdraw(payload: {
   return data.data
 }
 
+export async function evmTreasurySweepSigner(payload: {
+  chainId:      number
+  tokenAddress: string
+}): Promise<{
+  txHash: string
+  toAddress: string
+  amount: string
+  chainId: number
+  tokenAddress: string
+  tokenSymbol: string
+}> {
+  const { data } = await adminApiClient.post<
+    ApiResponse<{
+      txHash: string
+      toAddress: string
+      amount: string
+      chainId: number
+      tokenAddress: string
+      tokenSymbol: string
+    }>
+  >('/admin/treasury/evm-sweep-signer', payload)
+  return data.data
+}
+
 export async function recoverContractBalance(
   userId: string,
   amountUsdc: string,

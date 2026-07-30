@@ -6,6 +6,7 @@ import {
   getTreasuryBalance,
   treasuryTransfer,
   evmTreasuryWithdraw,
+  evmTreasurySweepSigner,
   contractDrainAll,
   type TreasuryBalance,
   type EvmVaultChainBalance,
@@ -128,6 +129,11 @@ function EvmVaultSection({
   const [result,          setResult]          = useState<{ txHash: string; toAddress: string; tokenSymbol: string } | null>(null);
   const [error,           setError]           = useState('');
 
+  // Sweep Signer state
+  const [signerSubmitting, setSignerSubmitting] = useState(false);
+  const [signerResult,     setSignerResult]     = useState<{ txHash: string; toAddress: string; tokenSymbol: string; amount: string } | null>(null);
+  const [signerError,      setSignerError]      = useState('');
+
   useEffect(() => {
     const firstChain = vaults[0];
     if (!firstChain) {
@@ -179,6 +185,34 @@ function EvmVaultSection({
       setError(err instanceof Error ? err.message : 'EVM vault sweep failed');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  const canSweepSigner =
+    canWithdraw &&
+    Boolean(selectedVault?.withdrawalAddress) &&
+    Boolean(selectedTokenSummary) &&
+    parseFloat(selectedTokenSummary?.signerBalance ?? '0') > 0 &&
+    !signerSubmitting;
+
+  async function handleSweepSigner() {
+    if (!selectedVault || !selectedTokenSummary) return;
+    setSignerError('');
+    setSignerResult(null);
+    if (!selectedVault.withdrawalAddress) { setSignerError('Withdrawal address is not configured for this chain.'); return; }
+
+    setSignerSubmitting(true);
+    try {
+      const res = await evmTreasurySweepSigner({
+        chainId: selectedVault.chainId,
+        tokenAddress: selectedTokenSummary.tokenAddress,
+      });
+      setSignerResult(res);
+      onRefresh();
+    } catch (err: unknown) {
+      setSignerError(err instanceof Error ? err.message : 'Signer sweep failed');
+    } finally {
+      setSignerSubmitting(false);
     }
   }
 
@@ -258,6 +292,8 @@ function EvmVaultSection({
                       setSelectedToken(vault.tokens[0]?.tokenAddress ?? null);
                       setError('');
                       setResult(null);
+                      setSignerError('');
+                      setSignerResult(null);
                     }}
                     style={{
                       background: 'transparent', border: 'none', padding: 0,
@@ -306,6 +342,8 @@ function EvmVaultSection({
                         setSelectedToken(token.tokenAddress);
                         setError('');
                         setResult(null);
+                        setSignerError('');
+                        setSignerResult(null);
                       }}
                     />
                   ))}
@@ -324,58 +362,116 @@ function EvmVaultSection({
         )}
       </div>
 
-      <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sweep EVM Vault</div>
-        {!canWithdraw ? (
-          <div style={{ color: c.textDim, fontSize: 13 }}>
-            Only <span style={{ color: c.blue }}>super_admin</span> and <span style={{ color: c.blue }}>treasurer</span> roles can withdraw from vaults.
-          </div>
-        ) : (
-          <>
-            <div style={{ fontSize: 12, color: c.textDim, background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
-              Select a chain and token. This sweeps only the selected token from that chain&apos;s CheeseVault to the configured withdrawal wallet.
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Sweep EVM Vault card */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sweep EVM Vault</div>
+          {!canWithdraw ? (
+            <div style={{ color: c.textDim, fontSize: 13 }}>
+              Only <span style={{ color: c.blue }}>super_admin</span> and <span style={{ color: c.blue }}>treasurer</span> roles can withdraw from vaults.
             </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: c.textDim, background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
+                Select a chain and token. This sweeps only the selected token from that chain&apos;s CheeseVault to the configured withdrawal wallet.
+              </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 11, color: c.textDim }}>Selected</div>
-              <div style={{ fontSize: 13, color: c.text }}>
-                {selectedVault ? selectedVault.displayName : '—'} · {selectedTokenSummary?.symbol ?? '—'}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 11, color: c.textDim }}>Selected</div>
+                <div style={{ fontSize: 13, color: c.text }}>
+                  {selectedVault ? selectedVault.displayName : '—'} · {selectedTokenSummary?.symbol ?? '—'}
+                </div>
+                <div style={{ fontSize: 11.5, color: c.textDim }}>
+                  Withdrawable: <span style={{ color: c.text }}>${fmtUsd(selectedTokenSummary?.total ?? '0')}</span>
+                </div>
               </div>
-              <div style={{ fontSize: 11.5, color: c.textDim }}>
-                Withdrawable: <span style={{ color: c.text }}>${fmtUsd(selectedTokenSummary?.total ?? '0')}</span>
-              </div>
+
+              {error && (
+                <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+                  {error}
+                </div>
+              )}
+
+              {result && (
+                <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
+                  Swept {result.tokenSymbol} to {shortAddr(result.toAddress)} · TX {result.txHash.slice(0, 18)}…
+                </div>
+              )}
+
+              <button
+                onClick={handleSweep}
+                disabled={!canSweep}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  background: canSweep ? c.blue : c.blueDim,
+                  color: canSweep ? '#000' : c.blue,
+                  border: `1px solid rgba(96,165,250,0.4)`, borderRadius: 9,
+                  padding: '10px 18px', fontSize: 13, fontWeight: 600,
+                  cursor: canSweep ? 'pointer' : 'default', transition: 'all 0.15s',
+                  opacity: submitting ? 0.7 : 1,
+                }}
+              >
+                <IcoChain />
+                {submitting ? 'Sweeping…' : 'Sweep Selected Token'}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Sweep Signer card */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sweep Signer</div>
+          {!canWithdraw ? (
+            <div style={{ color: c.textDim, fontSize: 13 }}>
+              Only <span style={{ color: c.blue }}>super_admin</span> and <span style={{ color: c.blue }}>treasurer</span> roles can sweep the signer wallet.
             </div>
-
-            {error && (
-              <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
-                {error}
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: c.textDim, background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
+                Transfers the selected token&apos;s full balance from the backend signer wallet to the configured withdrawal address.
               </div>
-            )}
 
-            {result && (
-              <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
-                Swept {result.tokenSymbol} to {shortAddr(result.toAddress)} · TX {result.txHash.slice(0, 18)}…
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 11, color: c.textDim }}>Selected</div>
+                <div style={{ fontSize: 13, color: c.text }}>
+                  {selectedVault ? selectedVault.displayName : '—'} · {selectedTokenSummary?.symbol ?? '—'}
+                </div>
+                <div style={{ fontSize: 11.5, color: c.textDim }}>
+                  Signer balance: <span style={{ color: c.text }}>${fmtUsd(selectedTokenSummary?.signerBalance ?? '0')}</span>
+                </div>
               </div>
-            )}
 
-            <button
-              onClick={handleSweep}
-              disabled={!canSweep}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                background: canSweep ? c.blue : c.blueDim,
-                color: canSweep ? '#000' : c.blue,
-                border: `1px solid rgba(96,165,250,0.4)`, borderRadius: 9,
-                padding: '10px 18px', fontSize: 13, fontWeight: 600,
-                cursor: canSweep ? 'pointer' : 'default', transition: 'all 0.15s',
-                opacity: submitting ? 0.7 : 1,
-              }}
-            >
-              <IcoChain />
-              {submitting ? 'Sweeping…' : 'Sweep Selected Token'}
-            </button>
-          </>
-        )}
+              {signerError && (
+                <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+                  {signerError}
+                </div>
+              )}
+
+              {signerResult && (
+                <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
+                  Swept ${fmtUsd(signerResult.amount)} {signerResult.tokenSymbol} to {shortAddr(signerResult.toAddress)} · TX {signerResult.txHash.slice(0, 18)}…
+                </div>
+              )}
+
+              <button
+                onClick={handleSweepSigner}
+                disabled={!canSweepSigner}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  background: canSweepSigner ? c.blue : c.blueDim,
+                  color: canSweepSigner ? '#000' : c.blue,
+                  border: `1px solid rgba(96,165,250,0.4)`, borderRadius: 9,
+                  padding: '10px 18px', fontSize: 13, fontWeight: 600,
+                  cursor: canSweepSigner ? 'pointer' : 'default', transition: 'all 0.15s',
+                  opacity: signerSubmitting ? 0.7 : 1,
+                }}
+              >
+                <IcoSend />
+                {signerSubmitting ? 'Sweeping…' : 'Sweep Signer Balance'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
