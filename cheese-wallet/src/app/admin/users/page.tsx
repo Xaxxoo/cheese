@@ -248,7 +248,7 @@ export default function UsersPage() {
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 4, padding: 0,
           }}>
-            Balance (est.) {sortBy === 'balance' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
+            Balance {sortBy === 'balance' ? (sortDir === 'desc' ? <IcoArrowDn /> : <IcoArrowUp />) : null}
           </button>
           <div />
         </div>
