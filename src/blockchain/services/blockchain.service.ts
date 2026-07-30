@@ -2275,6 +2275,43 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // EVM — Sweep signer balance (direct ERC-20 transfer from backend signer)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async sweepSignerBalance(
+    toAddress: string,
+    tokenAddress: string,
+    chainId: number,
+  ): Promise<{ txHash: string; amount: string }> {
+    this.requireEvm('sweepSignerBalance', chainId);
+    const ctx = this.getChainContext(chainId);
+    const tokenContract = this.getTokenContract(ctx, tokenAddress);
+
+    const raw: bigint = await tokenContract.balanceOf(ctx.signer.address);
+    const amount = this.toHuman(raw);
+    if (raw === 0n) {
+      throw new ContractCallException(
+        'sweepSignerBalance',
+        'Signer token balance is 0 — nothing to sweep',
+      );
+    }
+
+    this.logger.log(
+      `sweepSignerBalance [from=${ctx.signer.address}] [to=${toAddress}] [amount=${amount}] [token=${tokenAddress}] [chain=${ctx.name}]`,
+    );
+    try {
+      const tx = await tokenContract.transfer(toAddress, raw);
+      const receipt = (await tx.wait(1)) as ethers.TransactionReceipt;
+      this.logger.log(
+        `sweepSignerBalance confirmed [txHash=${receipt.hash}] [amount=${amount}]`,
+      );
+      return { txHash: receipt.hash, amount };
+    } catch (err) {
+      throw this.wrapError('sweepSignerBalance', err);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // USDC SAC balance — how much USDC the Soroban contract itself holds
   // ─────────────────────────────────────────────────────────────────────────
 
