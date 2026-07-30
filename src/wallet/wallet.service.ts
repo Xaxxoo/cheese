@@ -171,6 +171,12 @@ export class WalletService {
     const ngnRate      = rate ? parseFloat(rate.effectiveRate) : 0;
     const ngnTotal     = totalAmount * ngnRate;
 
+    // Cache the real on-chain balance for admin dashboard queries
+    void this.userRepo.update(
+      { id: userId },
+      { cachedBalanceUsdc: totalAmount.toFixed(6), cachedBalanceAt: new Date() },
+    ).catch(() => {});
+
     return {
       stellarUsdc:        stellarRaw,
       stellarUsdcDisplay: `$${stellarAmount.toFixed(2)}`,
