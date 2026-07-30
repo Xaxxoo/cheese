@@ -430,7 +430,7 @@ export class AdminAuthService {
 
     const qb = this.userRepo
       .createQueryBuilder('u')
-      .addSelect('u.cached_balance_usdc', 'u_balance_usdc')
+      .addSelect('u.cachedBalanceUsdc', 'u_balance_usdc')
       .addSelect(`(
         SELECT COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL)), 0)
         FROM transactions t
