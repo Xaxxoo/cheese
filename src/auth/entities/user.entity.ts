@@ -189,6 +189,13 @@ export class User {
   @Column({ name: 'must_change_password', default: false })
   mustChangePassword: boolean;
 
+  // ── Cached on-chain balance ─────────────────────────────────────────────
+  @Column({ name: 'cached_balance_usdc', type: 'decimal', precision: 20, scale: 6, nullable: true })
+  cachedBalanceUsdc: string | null;
+
+  @Column({ name: 'cached_balance_at', type: 'timestamp', nullable: true })
+  cachedBalanceAt: Date | null;
+
   // ── Timestamps ───────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
