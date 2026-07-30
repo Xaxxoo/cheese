@@ -53,7 +53,7 @@ type BankDirectoryEntry = {
 // Some banks (notably Access Bank) are reachable via multiple bank codes on PulseMFB.
 // When the primary code fails name enquiry we try the alternates in order.
 const BANK_CODE_FALLBACKS: Record<string, string[]> = {
-  '000014': ['044', '100013', '100042'], // Access Bank
+  '000014': ['100013', '000005', '100052'], // Access Bank / Access Money / Access (Diamond) / Access Yello & Beta
 };
 
 const NIGERIAN_BANKS: BankDirectoryEntry[] = [
@@ -86,7 +86,6 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
   { code: '000015', name: 'Zenith Bank',              shortName: 'Zenith',    color: '#C8102E', nipEnabled: true, type: 'commercial' },
 
   // ── Microfinance banks (standard NIBSS 090xxx codes) ───────────────────────
-  { code: '090713', name: 'Pulse Microfinance Bank',      shortName: 'Pulse MFB',    color: '#0F7B52', nipEnabled: true,  type: 'microfinance' },
   { code: '090405', name: 'Moniepoint Microfinance Bank', shortName: 'Moniepoint',   color: '#004B87', nipEnabled: true,  type: 'microfinance' },
   { code: '090267', name: 'Kuda Microfinance Bank',       shortName: 'Kuda',         color: '#40196D', nipEnabled: true,  type: 'microfinance' },
 

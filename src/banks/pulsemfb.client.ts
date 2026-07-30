@@ -110,7 +110,7 @@ export class PulseMfbClient implements OnModuleInit {
   ): Promise<PulseMfbNameEnquiryResult> {
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/transfers/name-enquiry',
-      { accountNumber, bankCode },
+      { account_number: accountNumber, bank_code: bankCode },
     );
     return data.data;
   }
@@ -321,9 +321,12 @@ export class PulseMfbClient implements OnModuleInit {
       // Never expose raw provider messages (they can contain internal balances,
       // account numbers, or other sensitive details).  Log the real reason above
       // and return a generic user-facing message instead.
+      const isNameEnquiry = path.includes('name-enquiry');
       const userMessage = /insufficient|balance|liquidity|funds/i.test(msg)
         ? 'Bank transfer is temporarily unavailable. Please try again shortly.'
-        : 'Bank transfer failed. Please try again or contact support.';
+        : isNameEnquiry
+          ? 'Could not verify the account. Please try again.'
+          : 'Bank transfer failed. Please try again or contact support.';
       const err = new BadRequestException(userMessage);
       // Tag "not found" responses so the scheduler can detect them and stop
       // polling (the transfer was never received by PulseMFB).
