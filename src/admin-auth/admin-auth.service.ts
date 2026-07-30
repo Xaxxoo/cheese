@@ -377,22 +377,10 @@ export class AdminAuthService {
         .where('t.status = :s', { s: TxStatus.COMPLETED })
         .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.WITHDRAWAL] })
         .getRawOne<{ total: string }>(),
-      // Total balance: sum of each user's individual balance using the same formula as the users list
+      // Total balance: sum of cached on-chain balances
       this.userRepo
         .createQueryBuilder('u')
-        .select(`COALESCE(SUM(GREATEST(0, COALESCE((
-          SELECT SUM(
-            CASE WHEN t.type IN ('deposit','yield_credit','referral_bonus','trivia_reward')
-                 THEN CAST(t.amount_usdc AS DECIMAL(20,6))
-                 ELSE -(CAST(t.amount_usdc AS DECIMAL(20,6))
-                   + CASE WHEN t.type != 'bank_transfer'
-                          THEN COALESCE(CAST(t.fee_usdc AS DECIMAL(20,6)), 0)
-                          ELSE 0 END)
-            END
-          )
-          FROM transactions t
-          WHERE t.user_id = u.id AND t.status = 'completed'
-        ), 0))), 0)`, 'total')
+        .select('COALESCE(SUM(CAST(u.cached_balance_usdc AS DECIMAL(20,6))), 0)', 'total')
         .where('u.is_admin = :isAdmin', { isAdmin: false })
         .getRawOne<{ total: string }>(),
     ]);
@@ -440,23 +428,9 @@ export class AdminAuthService {
       failed:    KycStatus.REJECTED,
     };
 
-    const CREDIT_TYPES = `'deposit','yield_credit','referral_bonus','trivia_reward'`;
-
     const qb = this.userRepo
       .createQueryBuilder('u')
-      .addSelect(`(
-        SELECT GREATEST(0, COALESCE(SUM(
-          CASE WHEN t.type IN (${CREDIT_TYPES})
-               THEN CAST(t.amount_usdc AS DECIMAL)
-               ELSE -(CAST(t.amount_usdc AS DECIMAL)
-                 + CASE WHEN t.type != 'bank_transfer'
-                        THEN COALESCE(CAST(t.fee_usdc AS DECIMAL), 0)
-                        ELSE 0 END)
-          END
-        ), 0))
-        FROM transactions t
-        WHERE t.user_id = u.id AND t.status = 'completed'
-      )`, 'u_balance_usdc')
+      .addSelect('u.cached_balance_usdc', 'u_balance_usdc')
       .addSelect(`(
         SELECT COALESCE(SUM(CAST(t.amount_usdc AS DECIMAL)), 0)
         FROM transactions t
