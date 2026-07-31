@@ -81,7 +81,7 @@ export class PulseMfbClient implements OnModuleInit {
       );
       if (!this.debitAccount) {
         this.logger.warn(
-          'PULSE_MFB_DEBIT_ACCOUNT not set — account resolution and status lookups will work, but transfer initiation is disabled',
+          'PULSE_MFB_DEBIT_ACCOUNT not set — account resolution and transfer initiation are disabled',
         );
       }
     } else {
@@ -108,9 +108,19 @@ export class PulseMfbClient implements OnModuleInit {
     accountNumber: string,
     bankCode: string,
   ): Promise<PulseMfbNameEnquiryResult> {
+    if (!this.debitAccount) {
+      throw new BadRequestException(
+        'Banking provider debit account ID not configured',
+      );
+    }
+
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/transfers/name-enquiry',
-      { accountNumber, bankCode },
+      {
+        accountNumber,
+        bankCode,
+        debitAccountId: this.debitAccount,
+      },
     );
     return data.data;
   }
