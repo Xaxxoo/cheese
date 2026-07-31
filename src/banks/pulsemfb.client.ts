@@ -142,8 +142,6 @@ export class PulseMfbClient implements OnModuleInit {
         debit_account_number: params.debitAccount,
         beneficiary_account_number: params.beneficiaryAccountNumber,
         beneficiary_bank_code: params.beneficiaryBankCode,
-        beneficiary_bank_name: params.beneficiaryBankName,
-        beneficiary_name: params.beneficiaryName,
         amount: params.amount,
         narration: params.narration,
         reference: params.reference,
