@@ -58,6 +58,7 @@ export class PulseMfbClient implements OnModuleInit {
   private publicKey!: string;
   private privateKey!: string;
   private debitAccount!: string;
+  private debitAccountId!: string;
   private ready = false;
 
   constructor(private readonly config: ConfigService) {}
@@ -71,6 +72,7 @@ export class PulseMfbClient implements OnModuleInit {
     this.publicKey = this.config.get<string>('pulsemfb.publicKey') ?? '';
     this.privateKey = this.config.get<string>('pulsemfb.privateKey') ?? '';
     this.debitAccount = this.config.get<string>('pulsemfb.debitAccount') ?? '';
+    this.debitAccountId = this.config.get<string>('pulsemfb.debitAccountId') ?? '';
 
     if (this.publicKey && this.privateKey) {
       this.ready = true;
@@ -79,9 +81,9 @@ export class PulseMfbClient implements OnModuleInit {
           `[account=${this.debitAccount || 'not-configured'}] ` +
           `[base=${this.baseUrl}${this.apiBasePath}]`,
       );
-      if (!this.debitAccount) {
+      if (!this.debitAccount || !this.debitAccountId) {
         this.logger.warn(
-          'PULSE_MFB_DEBIT_ACCOUNT not set — account resolution and transfer initiation are disabled',
+          'PULSE_MFB_DEBIT_ACCOUNT and/or PULSE_MFB_DEBIT_ACCOUNT_ID not set — name enquiry and/or transfer initiation are disabled',
         );
       }
     } else {
@@ -108,7 +110,7 @@ export class PulseMfbClient implements OnModuleInit {
     accountNumber: string,
     bankCode: string,
   ): Promise<PulseMfbNameEnquiryResult> {
-    if (!this.debitAccount) {
+    if (!this.debitAccountId) {
       throw new BadRequestException(
         'Banking provider debit account ID not configured',
       );
@@ -119,7 +121,7 @@ export class PulseMfbClient implements OnModuleInit {
       {
         accountNumber,
         bankCode,
-        debitAccountId: this.debitAccount,
+        debitAccountId: this.debitAccountId,
       },
     );
     return data.data;

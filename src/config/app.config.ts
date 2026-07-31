@@ -92,6 +92,7 @@ export const pulseMfbConfig = registerAs('pulsemfb', () => ({
   publicKey: process.env.PULSE_MFB_PUBLIC_KEY,
   privateKey: process.env.PULSE_MFB_PRIVATE_KEY,
   debitAccount: process.env.PULSE_MFB_DEBIT_ACCOUNT, // platform's NGN account at PulseMFB
+  debitAccountId: process.env.PULSE_MFB_DEBIT_ACCOUNT_ID, // PulseMFB internal debit account ID for name enquiry
   webhookSecret: process.env.PULSE_MFB_WEBHOOK_SECRET, // for verifying inbound webhooks
 }));
 
