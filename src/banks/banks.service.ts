@@ -12,7 +12,7 @@ import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual } from 'crypto';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -990,10 +990,35 @@ export class BanksService {
     switch (dto.event) {
       // ── NGN landed in recipient account ──────────────────────────────────
       case 'transfer.success': {
-        await this.transferRepo.update(
-          { id: transfer.id },
+        // Claim settlement atomically. The webhook and the status poller can
+        // resolve the same transfer at nearly the same time; a read-then-write
+        // check is not sufficient because both handlers can observe a
+        // non-terminal status before either update commits. Only the handler
+        // that changes pending/processing to completed may send notifications.
+        const settlement = await this.transferRepo.update(
+          {
+            id: transfer.id,
+            status: In([
+              BankTransferStatus.PENDING,
+              BankTransferStatus.PROCESSING,
+            ]),
+          },
           { status: BankTransferStatus.COMPLETED },
         );
+
+        if (settlement.affected !== 1) {
+          this.logger.warn(
+            `Webhook received for already-settled transfer [ref=${dto.reference}] ` +
+              `[status=${transfer.status}]`,
+          );
+          return {
+            alreadyProcessed: true,
+            reference: transfer.reference,
+            providerReference: transfer.providerReference,
+            status: transfer.status,
+          };
+        }
+
         await this.txService.updateByReference(transfer.reference, {
           status: TxStatus.COMPLETED,
         });
