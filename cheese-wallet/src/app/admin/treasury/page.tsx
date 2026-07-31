@@ -158,28 +158,41 @@ function EvmVaultSection({
 
   const selectedVault = vaults.find((item) => item.chainId === selectedChainId) ?? vaults[0];
   const selectedTokenSummary = selectedVault?.tokens.find((item) => item.tokenAddress === selectedToken) ?? selectedVault?.tokens[0];
+  const vaultSweepable = parseFloat(selectedTokenSummary?.total ?? '0') > 0;
+  const signerSweepable = parseFloat(selectedTokenSummary?.signerBalance ?? '0') > 0;
   const canSweep =
     canWithdraw &&
-    Boolean(selectedVault?.vaultAddress) &&
     Boolean(selectedVault?.withdrawalAddress) &&
     Boolean(selectedTokenSummary) &&
-    parseFloat(selectedTokenSummary?.total ?? '0') > 0 &&
-    !submitting;
+    (vaultSweepable || signerSweepable) &&
+    !submitting &&
+    !signerSubmitting;
 
   async function handleSweep() {
     if (!selectedVault || !selectedTokenSummary) return;
     setError('');
     setResult(null);
-    if (!selectedVault.vaultAddress) { setError('Vault address is not configured for this chain.'); return; }
     if (!selectedVault.withdrawalAddress) { setError('Withdrawal address is not configured for this chain.'); return; }
 
     setSubmitting(true);
     try {
-      const res = await evmTreasuryWithdraw({
-        chainId: selectedVault.chainId,
-        tokenAddress: selectedTokenSummary.tokenAddress,
-      });
-      setResult(res);
+      if (vaultSweepable) {
+        if (!selectedVault.vaultAddress) {
+          setError('Vault address is not configured for this chain.');
+          return;
+        }
+        const res = await evmTreasuryWithdraw({
+          chainId: selectedVault.chainId,
+          tokenAddress: selectedTokenSummary.tokenAddress,
+        });
+        setResult(res);
+      } else {
+        const res = await evmTreasurySweepSigner({
+          chainId: selectedVault.chainId,
+          tokenAddress: selectedTokenSummary.tokenAddress,
+        });
+        setSignerResult(res);
+      }
       onRefresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'EVM vault sweep failed');
@@ -373,7 +386,7 @@ function EvmVaultSection({
           ) : (
             <>
               <div style={{ fontSize: 12, color: c.textDim, background: c.blueDim, border: `1px solid rgba(96,165,250,0.22)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
-                Select a chain and token. This sweeps only the selected token from that chain&apos;s CheeseVault to the configured withdrawal wallet.
+                Select a chain and token. The action sweeps the selected token from the vault, or from the backend signer when the signer is the available source.
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -382,7 +395,10 @@ function EvmVaultSection({
                   {selectedVault ? selectedVault.displayName : '—'} · {selectedTokenSummary?.symbol ?? '—'}
                 </div>
                 <div style={{ fontSize: 11.5, color: c.textDim }}>
-                  Withdrawable: <span style={{ color: c.text }}>${fmtUsd(selectedTokenSummary?.total ?? '0')}</span>
+                  Vault withdrawable: <span style={{ color: c.text }}>${fmtUsd(selectedTokenSummary?.total ?? '0')}</span>
+                </div>
+                <div style={{ fontSize: 11.5, color: c.textDim }}>
+                  Signer sweepable: <span style={{ color: c.text }}>${fmtUsd(selectedTokenSummary?.signerBalance ?? '0')}</span>
                 </div>
               </div>
 
@@ -412,7 +428,7 @@ function EvmVaultSection({
                 }}
               >
                 <IcoChain />
-                {submitting ? 'Sweeping…' : 'Sweep Selected Token'}
+                {submitting ? 'Sweeping…' : vaultSweepable ? 'Sweep Selected Token' : 'Sweep Selected Signer Token'}
               </button>
             </>
           )}
