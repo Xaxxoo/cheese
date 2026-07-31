@@ -110,7 +110,7 @@ export class PulseMfbClient implements OnModuleInit {
   ): Promise<PulseMfbNameEnquiryResult> {
     const data = await this.post<{ data: PulseMfbNameEnquiryResult }>(
       '/transfers/name-enquiry',
-      { accountNumber, bankCode, debitAccountNumber: this.debitAccount },
+      { accountNumber, bankCode },
     );
     return data.data;
   }
