@@ -7,11 +7,9 @@ import {
   treasuryTransfer,
   evmTreasuryWithdraw,
   evmTreasurySweepSigner,
-  contractDrainAll,
   type TreasuryBalance,
   type EvmVaultChainBalance,
   type EvmVaultTokenBalance,
-  type ContractDrainResult,
 } from '@/lib/api/admin';
 import { useAdminAuthStore } from '@/store/adminAuthStore';
 
@@ -502,6 +500,8 @@ function TokenRow({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const sweepable = parseFloat(token.total ?? '0') + parseFloat(token.signerBalance ?? '0');
+
   return (
     <>
       <button
@@ -518,7 +518,7 @@ function TokenRow({
       </button>
       <Metric label="Vault balance" value={`$${fmtUsd(token.vaultBalance)}`} />
       <Metric label="Signer balance" value={`$${fmtUsd(token.signerBalance ?? '0')}`} />
-      <Metric label="Withdrawable" value={`$${fmtUsd(token.total)}`} />
+      <Metric label="Sweepable" value={`$${fmtUsd(String(sweepable))}`} />
       <Metric label="Fees" value={`$${fmtUsd(token.fees)}`} />
       <div style={{ fontSize: 11, color: token.error ? c.amber : token.accountingOk ? c.green : c.red, fontWeight: 600 }}>
         {token.error ? 'Check config' : token.accountingOk ? 'Healthy' : 'Mismatch'}
@@ -656,180 +656,6 @@ function TransferPanel({ onSent }: { onSent: () => void }) {
   );
 }
 
-// ── Soroban Contract balance card ─────────────────────────────────────────
-function ContractBalanceCard({ contractUsdc, loading }: { contractUsdc?: string; loading: boolean }) {
-  const card: CSSProperties = {
-    background: c.surface, border: `1px solid ${c.border}`,
-    borderRadius: 14, padding: '22px 26px',
-    display: 'flex', alignItems: 'center', gap: 16,
-  };
-  return (
-    <div style={card}>
-      <div style={{
-        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-        background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'rgb(167,139,250)', fontSize: 18,
-      }}>◈</div>
-      <div>
-        <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>
-          Contract USDC Balance
-        </div>
-        {loading && contractUsdc === undefined ? (
-          <div style={{ fontSize: 26, fontWeight: 700, color: c.textDim }}>—</div>
-        ) : (
-          <div style={{ fontSize: 26, fontWeight: 700, color: c.text, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-            ${parseFloat(contractUsdc ?? '0').toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
-            <span style={{ fontSize: 13, color: c.textDim, fontWeight: 500, marginLeft: 6 }}>USDC</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Soroban Contract Drain panel ──────────────────────────────────────────
-function ContractDrainPanel({ onDrained }: { onDrained: () => void }) {
-  const { admin } = useAdminAuthStore();
-  const isSuperAdmin = admin?.adminRole === 'super_admin';
-
-  const [confirm,    setConfirm]    = useState(false);
-  const [confirmText, setConfirmText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [result,     setResult]     = useState<ContractDrainResult | null>(null);
-  const [error,      setError]      = useState('');
-  const canDrain = confirmText === 'DRAIN SOROBAN';
-
-  async function handleDrain() {
-    setError('');
-    setResult(null);
-    setSubmitting(true);
-    try {
-      const res = await contractDrainAll();
-      setResult(res);
-      setConfirm(false);
-      setConfirmText('');
-      onDrained();
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? (err as Error)?.message
-        ?? 'Drain failed';
-      setError(msg);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const card: CSSProperties = {
-    background: c.surface, border: `1px solid ${c.border}`,
-    borderRadius: 14, padding: '20px 24px',
-    display: 'flex', flexDirection: 'column', gap: 14,
-  };
-
-  if (!isSuperAdmin) {
-    return (
-      <div style={{ ...card, alignItems: 'center', padding: '24px', textAlign: 'center' }}>
-        <div style={{ color: c.textDim, fontSize: 13 }}>
-          Only <span style={{ color: 'rgb(167,139,250)' }}>super_admin</span> can drain the contract.
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={card}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Drain Soroban Contract → Treasury</div>
-      <div style={{ fontSize: 12, color: c.textDim, background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
-        Withdraws all tracked user balances and sweeps untracked excess USDC from the Soroban contract
-        directly to the platform treasury wallet. This is a recovery-only operation and is irreversible.
-      </div>
-
-      {error && (
-        <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
-          {error}
-        </div>
-      )}
-
-      {result && (
-        <div style={{ fontSize: 12, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4,
-          color: result.excessSweepError ? c.red : c.green,
-          background: result.excessSweepError ? c.redDim : c.greenDim,
-          border: `1px solid ${result.excessSweepError ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`,
-        }}>
-          <div style={{ fontWeight: 600 }}>{result.excessSweepError ? 'Drain incomplete — sweep failed' : 'Drain complete'}</div>
-          <div>Tracked USDC drained: <b>${parseFloat(result.totalTrackedUsdc).toFixed(4)}</b></div>
-          <div>Users drained: <b>{result.trackedWithdrawn.length}</b></div>
-          {result.excessSweepError && (
-            <div style={{ marginTop: 4, fontFamily: 'monospace', fontSize: 10.5, wordBreak: 'break-all', color: c.red }}>
-              Sweep error: {result.excessSweepError}
-            </div>
-          )}
-          {result.excessSweepTxHash && (
-            <div style={{ fontFamily: 'monospace', fontSize: 10.5, wordBreak: 'break-all' }}>
-              Sweep tx: {result.excessSweepTxHash}
-            </div>
-          )}
-        </div>
-      )}
-
-      {!confirm ? (
-        <button
-          onClick={() => setConfirm(true)}
-          style={{
-            background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)',
-            color: 'rgb(167,139,250)', borderRadius: 9, padding: '10px 18px',
-            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          Drain All Contract USDC
-        </button>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 12, color: c.red, lineHeight: 1.5 }}>
-            This will empty the Soroban contract. Type <b>DRAIN SOROBAN</b> to continue.
-          </div>
-          <input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="DRAIN SOROBAN"
-            style={{
-              background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`,
-              borderRadius: 8, padding: '8px 10px', color: c.text, fontSize: 12,
-              outline: 'none', fontFamily: 'inherit',
-            }}
-          />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleDrain}
-              disabled={submitting || !canDrain}
-              style={{
-                flex: 1, background: 'rgb(139,92,246)', border: 'none', color: '#fff',
-                borderRadius: 8, padding: '8px 0', fontSize: 13, fontWeight: 600,
-                cursor: submitting || !canDrain ? 'default' : 'pointer', opacity: submitting || !canDrain ? 0.45 : 1,
-                fontFamily: 'inherit',
-              }}
-            >
-              {submitting ? 'Draining…' : 'Yes, drain now'}
-            </button>
-            <button
-              onClick={() => { setConfirm(false); setConfirmText(''); }}
-              disabled={submitting}
-              style={{
-                padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                background: 'transparent', border: `1px solid ${c.border}`, color: c.textMid,
-                fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
   const [treasury,   setTreasury]  = useState<TreasuryBalance | null>(null);
@@ -885,15 +711,6 @@ export default function TreasuryPage() {
           loading={balLoading}
           onRefresh={loadBalance}
         />
-      </div>
-
-      {/* Soroban Contract recovery section */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={sectionLabel('Soroban Recovery / Danger Zone', 'rgb(167,139,250)')}>Soroban Recovery / Danger Zone</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
-          <ContractBalanceCard contractUsdc={treasury?.contractUsdc} loading={balLoading} />
-          <ContractDrainPanel onDrained={loadBalance} />
-        </div>
       </div>
 
     </div>
