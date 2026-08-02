@@ -95,7 +95,7 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
 ];
 
 function getTransferFeeUsdc(amountNgn: number, effectiveRate: number): number {
-  if (amountNgn < 50_000)  return 0.03
+  if (amountNgn <= 50_000) return 200 / effectiveRate
   if (amountNgn < 100_000) return 500 / effectiveRate
   if (amountNgn < 500_000) return 1_000 / effectiveRate
   return 1_300 / effectiveRate

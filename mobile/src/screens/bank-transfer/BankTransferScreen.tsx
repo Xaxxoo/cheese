@@ -155,7 +155,7 @@ export default function BankTransferScreen({ navigation }: Props) {
 
   function computeFeeUsdc(ngn: number, r: number): number {
     if (r <= 0) return 0
-    if (ngn < 50_000)  return 0.03
+    if (ngn <= 50_000) return 200 / r
     if (ngn < 100_000) return 500 / r
     if (ngn < 500_000) return 1_000 / r
     return 1_300 / r
