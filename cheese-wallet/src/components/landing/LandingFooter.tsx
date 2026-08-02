@@ -29,7 +29,12 @@ export function LandingFooter() {
               <ul className="space-y-3">
                 {links.map(link => (
                   <li key={link}>
-                    <a href="#" className="text-[#B5B5B5] text-xs hover:text-white transition-colors">{link}</a>
+                    <a
+                      href={link === 'Privacy Policy' ? '/privacy' : '#'}
+                      className="text-[#B5B5B5] text-xs hover:text-white transition-colors"
+                    >
+                      {link}
+                    </a>
                   </li>
                 ))}
               </ul>
