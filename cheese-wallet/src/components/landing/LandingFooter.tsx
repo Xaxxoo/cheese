@@ -30,7 +30,7 @@ export function LandingFooter() {
                 {links.map(link => (
                   <li key={link}>
                     <a
-                      href={link === 'Privacy Policy' ? '/privacy' : '#'}
+                      href={link === 'Privacy Policy' ? '/privacy' : link === 'Terms of Service' ? '/terms' : '#'}
                       className="text-[#B5B5B5] text-xs hover:text-white transition-colors"
                     >
                       {link}
