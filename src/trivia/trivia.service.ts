@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { TriviaScore } from './entities/trivia-score.entity';
@@ -17,6 +17,7 @@ import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { EmailService } from '../email/email.service';
+import { TriviaReward, TriviaRewardStatus } from './entities/trivia-reward.entity';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ const DIFFICULTY_POINTS: Record<string, number> = {
 
 const MAX_ROUNDS_PER_DAY = 20;
 const ROUND_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TRIVIA_REWARD_USDC = '2';
+const REWARD_LOCK_TTL_MS = 15 * 60 * 1000;
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -86,6 +89,8 @@ export class TriviaService {
   constructor(
     @InjectRepository(TriviaScore)
     private readonly scoreRepo: Repository<TriviaScore>,
+    @InjectRepository(TriviaReward)
+    private readonly rewardRepo: Repository<TriviaReward>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly blockchainService: BlockchainService,
@@ -332,56 +337,210 @@ export class TriviaService {
       return;
     }
 
-    const winner = await this.userRepo.findOne({ where: { id: topRow.userId } });
-    if (!winner?.stellarPublicKey) {
-      this.logger.warn(`Trivia winner ${topRow.userId} has no wallet — skipping reward`);
-      return;
+    const reward = await this.getOrCreateReward(
+      lastWeekStart,
+      topRow.userId,
+      parseInt(topRow.totalScore, 10),
+    );
+    await this.claimAndSettleReward(reward);
+  }
+
+  // Recover rewards that were interrupted after the blockchain transfer or by
+  // a transient database/provider failure. The deterministic memo lets us
+  // find an already-submitted Stellar payment before sending another one.
+  @Cron('*/10 * * * *')
+  async recoverTriviaRewards() {
+    const rewards = await this.rewardRepo.find({
+      where: {
+        status: In([
+          TriviaRewardStatus.PENDING,
+          TriviaRewardStatus.PROCESSING,
+          TriviaRewardStatus.FAILED,
+        ]),
+      },
+    });
+
+    for (const reward of rewards) {
+      if (
+        reward.status === TriviaRewardStatus.PROCESSING &&
+        reward.lockedAt &&
+        Date.now() - reward.lockedAt.getTime() < REWARD_LOCK_TTL_MS
+      ) {
+        continue;
+      }
+      if (reward.status === TriviaRewardStatus.PROCESSING) {
+        await this.rewardRepo.update(reward.id, {
+          status: TriviaRewardStatus.FAILED,
+          lockedAt: null,
+          failureReason: 'Previous reward attempt timed out; retrying safely',
+        });
+      }
+      await this.claimAndSettleReward(reward);
+    }
+  }
+
+  private async getOrCreateReward(
+    weekStart: string,
+    winnerId: string,
+    totalScore: number,
+  ): Promise<TriviaReward> {
+    const reference = `CW-TRIVIA-${weekStart.replace(/-/g, '')}`;
+    const description = `Trivia weekly winner reward — week of ${weekStart}`;
+    const existingTransaction = await this.txService.findByTypeAndDescription(
+      TxType.TRIVIA_REWARD,
+      description,
+    );
+
+    await this.rewardRepo
+      .createQueryBuilder()
+      .insert()
+      .into(TriviaReward)
+      .values({
+        weekStart,
+        winnerId: existingTransaction?.userId ?? winnerId,
+        totalScore,
+        amountUsdc: existingTransaction?.amountUsdc ?? TRIVIA_REWARD_USDC,
+        reference: existingTransaction?.reference ?? reference,
+        txHash: existingTransaction?.txHash ?? null,
+        status: existingTransaction
+          ? TriviaRewardStatus.COMPLETED
+          : TriviaRewardStatus.PENDING,
+        attempts: 0,
+        rewardedAt: existingTransaction?.createdAt ?? null,
+      })
+      .orIgnore()
+      .execute();
+
+    const reward = await this.rewardRepo.findOne({ where: { weekStart } });
+    if (!reward) throw new Error(`Could not create trivia reward for ${weekStart}`);
+
+    if (existingTransaction && reward.status !== TriviaRewardStatus.COMPLETED) {
+      await this.rewardRepo.update(reward.id, {
+        winnerId: existingTransaction.userId,
+        txHash: existingTransaction.txHash,
+        amountUsdc: existingTransaction.amountUsdc,
+        reference: existingTransaction.reference,
+        status: TriviaRewardStatus.COMPLETED,
+        rewardedAt: existingTransaction.createdAt,
+        lockedAt: null,
+        failureReason: null,
+      });
+      return (await this.rewardRepo.findOne({ where: { id: reward.id } })) ?? reward;
     }
 
-    // Credit $2 USDC
-    const reference = `CW-TRIVIA-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
-    try {
-      const txHash = await this.blockchainService.platformDepositUsdc(
-        winner.stellarPublicKey,
-        '2',
-      );
+    return reward;
+  }
 
-      await this.txService.create({
+  private async claimAndSettleReward(reward: TriviaReward): Promise<void> {
+    const claim = await this.rewardRepo
+      .createQueryBuilder()
+      .update(TriviaReward)
+      .set({
+        status: TriviaRewardStatus.PROCESSING,
+        lockedAt: new Date(),
+        failureReason: null,
+        attempts: () => '"attempts" + 1',
+      })
+      .where('"id" = :id', { id: reward.id })
+      .andWhere('"status" IN (:...statuses)', {
+        statuses: [
+          TriviaRewardStatus.PENDING,
+          TriviaRewardStatus.FAILED,
+        ],
+      })
+      .execute();
+
+    if (!claim.affected) return;
+
+    try {
+      const winner = await this.userRepo.findOne({ where: { id: reward.winnerId } });
+      if (!winner?.stellarPublicKey) {
+        throw new Error('Trivia winner has no Stellar wallet');
+      }
+
+      const memo = `CW-TRIVIA-${reward.weekStart.replace(/-/g, '')}`;
+      let txHash = reward.txHash;
+
+      if (!txHash) {
+        txHash = await this.blockchainService.findPlatformUsdcPaymentByMemo(
+          winner.stellarPublicKey,
+          reward.amountUsdc,
+          memo,
+        );
+      }
+
+      if (!txHash) {
+        txHash = await this.blockchainService.platformDepositUsdc(
+          winner.stellarPublicKey,
+          reward.amountUsdc,
+          memo,
+        );
+      }
+
+      // Persist the hash before creating the user ledger row. If the process
+      // dies after the chain transfer, the next recovery run can finish it.
+      await this.rewardRepo.update(reward.id, {
+        txHash,
+        lockedAt: new Date(),
+      });
+
+      await this.txService.createIfAbsent({
         userId: winner.id,
         type: TxType.TRIVIA_REWARD,
         status: TxStatus.COMPLETED,
-        amountUsdc: '2',
+        amountUsdc: reward.amountUsdc,
         feeUsdc: '0',
-        reference,
+        reference: reward.reference,
         txHash,
-        description: `Trivia weekly winner reward — week of ${lastWeekStart}`,
+        description: `Trivia weekly winner reward — week of ${reward.weekStart}`,
       });
 
-      await this.notificationsService.create({
-        userId: winner.id,
-        type: NotificationType.POINTS_AWARDED,
-        title: 'Trivia Winner!',
-        body: `Congrats! You won the weekly trivia and earned $2 USDC.`,
+      await this.rewardRepo.update(reward.id, {
+        status: TriviaRewardStatus.COMPLETED,
+        rewardedAt: new Date(),
+        lockedAt: null,
+        failureReason: null,
       });
 
-      // Send winner email
-      if (winner.email) {
-        await this.emailService.sendTriviaWinner({
-          to: winner.email,
-          fullName: winner.fullName ?? winner.username,
-          username: winner.username,
-          totalScore: parseInt(topRow.totalScore, 10),
-          weekOf: lastWeekStart,
-          amountUsdc: '2',
+      try {
+        await this.notificationsService.create({
+          userId: winner.id,
+          type: NotificationType.POINTS_AWARDED,
+          title: 'Trivia Winner!',
+          body: `Congrats! You won the weekly trivia and earned $2 USDC.`,
         });
+
+        if (winner.email) {
+          await this.emailService.sendTriviaWinner({
+            to: winner.email,
+            fullName: winner.fullName ?? winner.username,
+            username: winner.username,
+            totalScore: reward.totalScore,
+            weekOf: reward.weekStart,
+            amountUsdc: reward.amountUsdc,
+          });
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Trivia reward delivered but notification/email failed ` +
+            `[week=${reward.weekStart}]: ${(err as Error).message}`,
+        );
       }
 
       this.logger.log(
-        `Trivia reward sent to ${winner.username} (${winner.id}) — $2 USDC [hash=${txHash}]`,
+        `Trivia reward reconciled for ${winner.username} (${winner.id}) — ` +
+          `$${reward.amountUsdc} USDC [week=${reward.weekStart}] [hash=${txHash}]`,
       );
     } catch (err) {
+      const reason = (err as Error).message;
+      await this.rewardRepo.update(reward.id, {
+        status: TriviaRewardStatus.FAILED,
+        lockedAt: null,
+        failureReason: reason.slice(0, 255),
+      });
       this.logger.error(
-        `[CRITICAL] Trivia reward failed for user ${winner.id}: ${(err as Error).message}`,
+        `Trivia reward reconciliation failed [week=${reward.weekStart}] ` +
+          `[attempt=${reward.attempts + 1}]: ${reason}`,
       );
     }
   }

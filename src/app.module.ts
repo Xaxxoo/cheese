@@ -97,6 +97,7 @@ import { VeilModule } from './veil/veil.module';
 import { ShieldedNote } from './veil/entities/shielded-note.entity';
 import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
 import { TriviaScore } from './trivia/entities/trivia-score.entity';
+import { TriviaReward } from './trivia/entities/trivia-reward.entity';
 
 @Module({
   controllers: [AppController],
@@ -194,6 +195,7 @@ import { TriviaScore } from './trivia/entities/trivia-score.entity';
                 ShieldedNote,
                 SpentNullifier,
                 TriviaScore,
+                TriviaReward,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -243,6 +245,7 @@ import { TriviaScore } from './trivia/entities/trivia-score.entity';
                 ShieldedNote,
                 SpentNullifier,
                 TriviaScore,
+                TriviaReward,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -287,7 +290,8 @@ import { TriviaScore } from './trivia/entities/trivia-score.entity';
             PrivateInvoice,
             ShieldedNote,
             SpentNullifier,
-            TriviaScore,
+                TriviaScore,
+                TriviaReward,
           ],
           synchronize: config.get<string>('app.nodeEnv') !== 'production',
           logging: config.get<string>('app.nodeEnv') === 'development',

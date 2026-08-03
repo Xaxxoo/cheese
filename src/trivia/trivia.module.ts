@@ -8,10 +8,11 @@ import { EmailModule } from '../email/email.module';
 import { TriviaController } from './trivia.controller';
 import { TriviaService } from './trivia.service';
 import { TriviaScore } from './entities/trivia-score.entity';
+import { TriviaReward } from './entities/trivia-reward.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TriviaScore, User]),
+    TypeOrmModule.forFeature([TriviaScore, TriviaReward, User]),
     BlockchainModule,
     TransactionsModule,
     NotificationsModule,

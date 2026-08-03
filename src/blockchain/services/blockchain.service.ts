@@ -1246,6 +1246,7 @@ export class BlockchainService implements OnModuleInit {
   async platformDepositUsdc(
     toPublicKey: string,
     amountUsdc: string,
+    memo = 'Cheese deposit',
   ): Promise<string> {
     this.requireStellar('platformDepositUsdc');
     this.requireEncryption('platformDepositUsdc');
@@ -1256,9 +1257,52 @@ export class BlockchainService implements OnModuleInit {
       fromSecretEnc: this.encryptSecret(this.stellarPlatformKeypair.secret()),
       toPublicKey,
       amountUsdc,
-      memo: 'Cheese deposit',
+      memo,
     });
     return result.txHash;
+  }
+
+  async findPlatformUsdcPaymentByMemo(
+    toPublicKey: string,
+    amountUsdc: string,
+    memo: string,
+  ): Promise<string | null> {
+    this.requireStellar('findPlatformUsdcPaymentByMemo');
+
+    const platformPublicKey = this.stellarPlatformKeypair.publicKey();
+    const response = await this.stellarServer
+      .payments()
+      .forAccount(platformPublicKey)
+      .order('desc' as const)
+      .limit(100)
+      .call();
+
+    for (const payment of response.records as Array<Record<string, unknown>>) {
+      if (
+        payment.asset_type !== 'credit_alphanum4' ||
+        payment.asset_code !== 'USDC' ||
+        payment.asset_issuer !== this.stellarUsdcIssuer ||
+        payment.from !== platformPublicKey ||
+        payment.to !== toPublicKey ||
+        parseFloat(String(payment.amount)) !== parseFloat(amountUsdc)
+      ) {
+        continue;
+      }
+
+      try {
+        const transaction = await this.stellarServer
+          .transactions()
+          .transaction(String(payment.transaction_hash))
+          .call();
+        if (transaction.memo_type === 'text' && transaction.memo === memo) {
+          return String(payment.transaction_hash);
+        }
+      } catch {
+        // Ignore individual records that are no longer available from Horizon.
+      }
+    }
+
+    return null;
   }
 
   async platformWithdrawUsdc(

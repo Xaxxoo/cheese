@@ -39,6 +39,24 @@ export class TransactionsService {
     return this.txRepo.save(this.txRepo.create(data));
   }
 
+  async createIfAbsent(data: Partial<Transaction>): Promise<boolean> {
+    const result = await this.txRepo
+      .createQueryBuilder()
+      .insert()
+      .into(Transaction)
+      .values(data)
+      .orIgnore()
+      .execute();
+    return result.identifiers.length > 0;
+  }
+
+  async findByTypeAndDescription(
+    type: TxType,
+    description: string,
+  ): Promise<Transaction | null> {
+    return this.txRepo.findOne({ where: { type, description, status: TxStatus.COMPLETED } });
+  }
+
   async update(id: string, data: Partial<Transaction>): Promise<void> {
     await this.txRepo.update({ id }, data);
   }
