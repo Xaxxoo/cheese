@@ -1277,7 +1277,7 @@ export class BlockchainService implements OnModuleInit {
       .limit(100)
       .call();
 
-    for (const payment of response.records as Array<Record<string, unknown>>) {
+    for (const payment of response.records as unknown as Array<Record<string, unknown>>) {
       if (
         payment.asset_type !== 'credit_alphanum4' ||
         payment.asset_code !== 'USDC' ||
