@@ -22,8 +22,8 @@ const STEPS = [
   {
     icon: CheckCircle2,
     step: '03',
-    title: 'Recipient Gets Naira',
-    description: 'Your stablecoins are quietly settled in the background. The recipient receives Naira in their bank account — instantly.',
+    title: 'Recipient Gets Fiat',
+    description: 'Your stablecoins are quietly settled in the background. The recipient receives local fiat through their bank or payment account — instantly.',
     detail: 'Instant. No crypto knowledge needed.',
   },
 ]
