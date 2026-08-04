@@ -5,7 +5,7 @@
 const FAQS = [
   {
     q: 'What is Cheese Pay?',
-    a: 'Cheese Pay is a Nigerian digital dollar wallet. You hold your money as USDC — a US dollar-pegged stablecoin — and send directly to any Nigerian bank account in Naira. It is available as a mobile web app with no download required.',
+    a: 'Cheese Pay is a digital dollar wallet for users across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia. You hold your money as USDC or USDT and access local payment rails through a mobile web app with no download required.',
   },
   {
     q: 'How does Cheese Pay protect my money from naira devaluation?',
@@ -17,15 +17,15 @@ const FAQS = [
   },
   {
     q: 'Does the recipient need a Cheese Pay account?',
-    a: 'No. Recipients do not need a Cheese Pay account or any crypto wallet. They receive plain Naira in their regular Nigerian bank account — GTBank, Zenith, Access, Opay, Kuda, or any other bank.',
+    a: 'No. Recipients do not need a Cheese Pay account or any crypto wallet. They receive local currency through supported payment rails in Nigeria, Kenya, Rwanda, Ghana, and Ethiopia.',
   },
   {
-    q: 'Which Nigerian banks does Cheese Pay support?',
-    a: 'Cheese Pay supports all major Nigerian banks and fintechs including GTBank, Zenith Bank, Access Bank, First Bank, UBA, Kuda, Opay, Moniepoint, Palmpay, and more. Any bank account reachable on the Nigerian interbank settlement system (NIP) is supported.',
+    q: 'Which payment rails does Cheese Pay support?',
+    a: 'Cheese Pay is building local payment access across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia. Supported banks, mobile-money providers, and payment rails vary by market and are shown in the app.',
   },
   {
-    q: 'How do I send money to a Nigerian bank account from USDC?',
-    a: 'Tap Send, select Bank Transfer, enter the account number and bank name, enter the amount in Naira or USDC, confirm with your PIN, and send. The recipient gets Naira in their account — typically within seconds.',
+    q: 'How do I make a local payment from USDC?',
+    a: 'Tap Send, select the available local payment rail, enter the recipient details and amount, confirm with your PIN, and send. The recipient receives local currency through the supported rail.',
   },
   {
     q: 'What are the fees on Cheese Pay?',
@@ -45,11 +45,11 @@ const FAQS = [
   },
   {
     q: 'What currencies does Cheese Pay support?',
-    a: 'Cheese Pay supports USDC and USDT (US dollar-pegged stablecoins). Outgoing transfers are always settled in Nigerian Naira. Support for additional stablecoins may be added in future.',
+    a: 'Cheese Pay supports USDC and USDT (US dollar-pegged stablecoins). Outgoing transfers are settled in the local currency supported by the selected market and payment rail.',
   },
   {
-    q: 'Is Cheese Pay available outside Nigeria?',
-    a: 'Cheese Pay is currently focused on Nigeria. The product is designed for Nigerians — including those in the diaspora — who need to send money to Nigerian bank accounts in Naira from a stablecoin balance.',
+    q: 'Where is Cheese Pay available?',
+    a: 'Cheese Pay covers Nigeria, Kenya, Rwanda, Ghana, and Ethiopia, with local payment-rail availability varying by market as coverage expands.',
   },
 ]
 
@@ -71,7 +71,7 @@ export function FaqSection() {
           Frequently asked questions
         </h2>
         <p style={{ color: '#666', textAlign: 'center', fontSize: 15, marginBottom: 64, lineHeight: 1.6 }}>
-          Everything you need to know about holding dollars and spending in Nigeria.
+          Everything you need to know about holding dollars and making local payments across Africa.
         </p>
 
         {/* FAQ items */}

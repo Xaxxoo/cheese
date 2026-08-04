@@ -8,7 +8,7 @@ import {
 
 const FEATURES = [
   { icon: Coins,      title: 'Hold Stablecoins',         desc: 'Your balance stays in USDC or USDT — protected from Naira volatility, always ready to spend.' },
-  { icon: Send,       title: 'Instant Bank Transfers',   desc: 'Send money directly to any Nigerian bank account in seconds, straight from your stablecoin balance.' },
+  { icon: Send,       title: 'Instant Local Transfers',  desc: 'Send money through local payment rails across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia, straight from your stablecoin balance.' },
   { icon: Building2,  title: 'Familiar Transfer Flow',   desc: 'Bank name, account number, amount, send. The exact same flow you already know from Kuda, Opay, or your bank app.' },
   { icon: TrendingUp, title: 'Spend Without Converting', desc: 'No pre-conversion. No swap. Just enter an amount and send — CheesePay handles everything behind the scenes.' },
   { icon: Shield,     title: 'Device-Secured Wallet',    desc: 'Your funds are protected by cryptographic keys tied to your device. Only you can authorise a transfer.' },
@@ -34,7 +34,7 @@ export function FeaturesSection() {
             Your stablecoins, usable everywhere
           </h2>
           <p className="text-[#B5B5B5] max-w-xl mx-auto">
-            Live your everyday Nigerian financial life directly from your USDC or USDT balance.
+            Live your everyday financial life across five African markets directly from your USDC or USDT balance.
           </p>
         </motion.div>
 

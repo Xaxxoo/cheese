@@ -18,7 +18,7 @@ export function LandingFooter() {
               <span className="text-white font-semibold text-sm">CheesePay</span>
             </div>
             <p className="text-[#555] text-xs leading-relaxed max-w-[180px]">
-              Hold stablecoins. Send Naira. Live normally in Nigeria.
+              Hold stablecoins. Make local payments across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia.
             </p>
           </div>
 
@@ -44,7 +44,7 @@ export function LandingFooter() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t gap-4" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           <p className="text-[#333] text-xs">&copy; {new Date().getFullYear()} CheesePay. All rights reserved.</p>
-          <p className="text-[#333] text-xs">Your stablecoins, usable everywhere in Nigeria.</p>
+          <p className="text-[#333] text-xs">Your stablecoins, connected to local payment rails across five African markets.</p>
         </div>
       </div>
     </footer>

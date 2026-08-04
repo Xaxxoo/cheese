@@ -32,7 +32,7 @@ export function CtaSection() {
             </span>
           </h2>
           <p className="text-[#B5B5B5] text-lg max-w-xl mx-auto mb-12 leading-relaxed">
-            You shouldn&apos;t have to choose between the stability of stablecoins and the convenience of everyday Nigerian life. CheesePay gives you both.
+            You shouldn&apos;t have to choose between the stability of stablecoins and the convenience of everyday life across Africa. CheesePay gives you both.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

@@ -16,7 +16,7 @@ const STEPS = [
     icon: Building2,
     step: '02',
     title: 'Enter Bank Details',
-    description: 'Pick a bank, enter an account number, type an amount. Exactly like every Nigerian bank transfer you have ever made.',
+    description: 'Pick a local payment rail, enter an account number, type an amount. The familiar transfer flow you already know.',
     detail: 'GTBank, Zenith, Kuda, Opay & more',
   },
   {

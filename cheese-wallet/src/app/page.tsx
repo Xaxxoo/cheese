@@ -1,5 +1,6 @@
 import { HeroSection } from '@/components/landing/HeroSection'
 import { MetricsSection } from '@/components/landing/MetricsSection'
+import { CoverageSection } from '@/components/landing/CoverageSection'
 import { HowItWorksSection } from '@/components/landing/HowItWorksSection'
 import { FeaturesSection } from '@/components/landing/FeaturesSection'
 import { DashboardSection } from '@/components/landing/DashboardSection'
@@ -14,6 +15,7 @@ export default function HomePage() {
     <main>
       <HeroSection />
       <MetricsSection />
+      <CoverageSection />
       <HowItWorksSection />
       <FeaturesSection />
       <DashboardSection />

@@ -98,7 +98,7 @@ export function HeroSection() {
           style={{ borderColor: 'rgba(212,175,55,0.25)', background: 'rgba(212,175,55,0.06)' }}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-          <span className="text-xs text-[#D4AF37] font-medium tracking-wide">Now live in Nigeria</span>
+          <span className="text-xs text-[#D4AF37] font-medium tracking-wide">Nigeria · Kenya · Rwanda · Ghana · Ethiopia</span>
         </motion.div>
 
         <motion.h1
@@ -120,7 +120,7 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="text-lg md:text-xl text-[#B5B5B5] max-w-xl mx-auto mb-10 leading-relaxed"
         >
-          Keep your money in USDC or USDT. Send to any Nigerian bank account instantly — with the familiar transfer experience you already know.
+          Keep your money in USDC or USDT. Access local payment rails across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia — with the familiar transfer experience you already know.
         </motion.p>
 
         <motion.div
