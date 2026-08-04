@@ -4,11 +4,11 @@ import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 
 const COUNTRIES = [
-  { name: 'Nigeria', flag: '🇳🇬' },
   { name: 'Kenya', flag: '🇰🇪' },
   { name: 'Rwanda', flag: '🇷🇼' },
   { name: 'Ghana', flag: '🇬🇭' },
   { name: 'Ethiopia', flag: '🇪🇹' },
+  { name: 'Nigeria', flag: '🇳🇬' },
 ]
 
 export function CoverageSection() {
