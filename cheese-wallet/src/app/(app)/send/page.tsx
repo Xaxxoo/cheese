@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
   X, ArrowLeft, CheckCircle2, AlertCircle, AlertTriangle, Clock,
-  AtSign, Wallet, ChevronRight, Building2, ArrowUpRight, User, Layers, Search, Share2,
+  AtSign, Wallet, ChevronRight, ChevronDown, Building2, ArrowUpRight, User, Layers, Search, Share2,
 } from 'lucide-react'
 import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
@@ -58,6 +58,14 @@ const NIGERIAN_BANKS = [
   'Wema Bank', 'FCMB', 'Ecobank', 'Kuda Bank', 'OPay', 'Moniepoint',
 ]
 
+const BANK_COUNTRIES = [
+  { name: 'Kenya', flag: '🇰🇪' },
+  { name: 'Rwanda', flag: '🇷🇼' },
+  { name: 'Ghana', flag: '🇬🇭' },
+  { name: 'Ethiopia', flag: '🇪🇹' },
+  { name: 'Nigeria', flag: '🇳🇬' },
+]
+
 // ─────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────
@@ -80,17 +88,23 @@ function formatNgn(usdc: number, rate: number) {
   })
 }
 
-function getBankTransferFeeUsdc(amountNgn: number): number {
-  if (amountNgn < 50_000)  return 0.02
-  if (amountNgn < 150_000) return 0.05
-  if (amountNgn < 500_000) return 0.10
-  return 0.30
+function getBankTransferFeeUsdc(amountNgn: number, effectiveRate: number): number {
+  if (effectiveRate <= 0) return 0
+  if (amountNgn < 10_000) return 50 / effectiveRate
+  if (amountNgn <= 50_000) return 200 / effectiveRate
+  if (amountNgn < 100_000) return 500 / effectiveRate
+  if (amountNgn < 500_000) return 1_000 / effectiveRate
+  return 1_300 / effectiveRate
 }
 
 // ─────────────────────────────────────────────────────────
 // Mode Selector — first screen
 // ─────────────────────────────────────────────────────────
 function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
+  const [bankOpen, setBankOpen] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
+  const [countryMessage, setCountryMessage] = useState('')
+
   const modes = [
     {
       id: 'username' as SendMode,
@@ -107,8 +121,8 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
     {
       id: 'bank' as SendMode,
       icon: <Building2 size={22} className="text-[#d4a843]" />,
-      title: 'Send to Nigerian Bank',
-      desc: 'Cash out directly to a bank account',
+      title: 'Send to Bank',
+      desc: 'Choose a country and cash out locally',
     },
   ]
 
@@ -116,11 +130,18 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
     <div className="flex flex-col gap-3 flex-1">
       <p className="text-sm text-white/40 mb-2">How would you like to send?</p>
       {modes.map((m) => (
-        <button
-          key={m.id}
+        <div key={m.id}>
+          <button
           type="button"
-          onClick={() => onSelect(m.id)}
-          className="flex items-center gap-4 p-4 rounded-2xl border transition-all duration-150 text-left border-white/10 bg-white/4 hover:bg-white/8 hover:border-white/20"
+          onClick={() => {
+            if (m.id === 'bank') {
+              setBankOpen((open) => !open)
+              setCountryMessage('')
+            } else {
+              onSelect(m.id)
+            }
+          }}
+          className="w-full flex items-center gap-4 p-4 rounded-2xl border transition-all duration-150 text-left border-white/10 bg-white/4 hover:bg-white/8 hover:border-white/20"
         >
           <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-[#d4a843]/12">
             {m.icon}
@@ -129,9 +150,43 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
             <p className="text-sm font-semibold text-white">{m.title}</p>
             <p className="text-xs text-white/40 mt-0.5">{m.desc}</p>
           </div>
-          <ChevronRight size={16} className="text-white/25 shrink-0" />
-        </button>
+          {m.id === 'bank'
+            ? <ChevronDown size={17} className={cn('text-white/25 shrink-0 transition-transform', bankOpen && 'rotate-180')} />
+            : <ChevronRight size={16} className="text-white/25 shrink-0" />}
+          </button>
+          {m.id === 'bank' && bankOpen && (
+          <div className="-mt-2 rounded-2xl border border-white/10 bg-[#141414] overflow-hidden">
+            {BANK_COUNTRIES.map((country) => {
+              const isAvailable = country.name === 'Nigeria'
+              return (
+                <button
+                  key={country.name}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCountry(country.name)
+                    setBankOpen(false)
+                    if (isAvailable) {
+                      setCountryMessage('')
+                      onSelect('bank')
+                    } else {
+                      setCountryMessage(`Bank payouts in ${country.name} are coming soon.`)
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-white/75 hover:bg-white/8 transition-colors border-b border-white/5 last:border-0"
+                >
+                  <span className="text-lg leading-none">{country.flag}</span>
+                  <span className="flex-1">{country.name}</span>
+                  <span className="text-[10px] text-white/30">{isAvailable ? 'Available' : 'Coming soon'}</span>
+                </button>
+              )
+            })}
+          </div>
+          )}
+        </div>
       ))}
+      {selectedCountry && countryMessage && (
+        <p className="text-xs text-[#d4a843]/80 px-1 -mt-1">{countryMessage}</p>
+      )}
     </div>
   )
 }
@@ -592,7 +647,7 @@ function BankDetailsStep({
     const raw = v.replace(/\D/g, '')
     setAmountRaw(raw)
     const parsed   = parseInt(raw, 10) || 0
-    const parsedFee   = parsed >= 100 ? getBankTransferFeeUsdc(parsed) : 0
+    const parsedFee   = parsed >= 100 ? getBankTransferFeeUsdc(parsed, effectiveRate) : 0
     const parsedTotal = effectiveRate > 0 && parsed > 0 ? parsed / effectiveRate + parsedFee : 0
     if (usdcBalance > 0 && parsedTotal > 0 && parsedTotal > usdcBalance) {
       setAmountError(`Insufficient balance — available: ₦${Math.floor(maxNgn).toLocaleString('en-NG')}`)
@@ -603,7 +658,7 @@ function BankDetailsStep({
 
   const amount         = parseInt(amountRaw, 10) || 0
   const effectiveRate  = rateQ.data ? parseFloat(rateQ.data.effectiveRate) : 0
-  const feeUsdcAmount  = amount >= 100 ? getBankTransferFeeUsdc(amount) : 0
+  const feeUsdcAmount  = amount >= 100 ? getBankTransferFeeUsdc(amount, effectiveRate) : 0
   const totalUsdc      = effectiveRate > 0 && amount > 0 ? amount / effectiveRate + feeUsdcAmount : 0
   const overBalance    = usdcBalance > 0 && totalUsdc > 0 && totalUsdc > usdcBalance
   const canConfirm = verified && !!acctName && !!selectedBank && amount >= 100 && !overBalance
@@ -1409,7 +1464,7 @@ function BankPinStep({
   })
   const effectiveRate  = rate ? parseFloat(rate.effectiveRate) : 0
   const ngnAmount      = parseInt(amountNgn, 10)
-  const feeUsdcAmount  = getBankTransferFeeUsdc(ngnAmount)
+  const feeUsdcAmount  = getBankTransferFeeUsdc(ngnAmount, effectiveRate)
   const totalUsdc      = effectiveRate > 0 ? ngnAmount / effectiveRate + feeUsdcAmount : 0
 
   // ── Forgot PIN reset flow ───────────────────────────────
@@ -2120,7 +2175,7 @@ export default function SendPage() {
     step === 'username_network' ? 'Send by Username' :
     step === 'recipient'        ? (mode === 'username' ? 'Send by Username' : usdcType === 'evm' ? `${chainLabel} USDC` : 'Stellar USDC') :
     step === 'amount'           ? 'Enter amount' :
-    step === 'bank_details'     ? 'Bank Transfer' :
+    step === 'bank_details'     ? 'Send to Bank' :
     step === 'pin'              ? 'Confirm transfer' : ''
 
   const headerBack =
