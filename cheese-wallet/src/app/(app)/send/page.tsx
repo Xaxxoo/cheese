@@ -102,8 +102,7 @@ function getBankTransferFeeUsdc(amountNgn: number, effectiveRate: number): numbe
 // ─────────────────────────────────────────────────────────
 function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
   const [bankOpen, setBankOpen] = useState(false)
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
-  const [countryMessage, setCountryMessage] = useState('')
+  const [comingSoonCountry, setComingSoonCountry] = useState<{ name: string; flag: string } | null>(null)
 
   const modes = [
     {
@@ -136,7 +135,7 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
           onClick={() => {
             if (m.id === 'bank') {
               setBankOpen((open) => !open)
-              setCountryMessage('')
+              setComingSoonCountry(null)
             } else {
               onSelect(m.id)
             }
@@ -163,13 +162,12 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
                   key={country.name}
                   type="button"
                   onClick={() => {
-                    setSelectedCountry(country.name)
                     setBankOpen(false)
                     if (isAvailable) {
-                      setCountryMessage('')
+                      setComingSoonCountry(null)
                       onSelect('bank')
                     } else {
-                      setCountryMessage(`Bank payouts in ${country.name} are coming soon.`)
+                      setComingSoonCountry(country)
                     }
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-white/75 hover:bg-white/8 transition-colors border-b border-white/5 last:border-0"
@@ -184,8 +182,40 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
           )}
         </div>
       ))}
-      {selectedCountry && countryMessage && (
-        <p className="text-xs text-[#d4a843]/80 px-1 -mt-1">{countryMessage}</p>
+      {comingSoonCountry && (
+        <div className="rounded-2xl border border-[#d4a843]/25 bg-[#d4a843]/[0.06] p-4 mt-1">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#d4a843]/12 flex items-center justify-center shrink-0 text-xl">
+              {comingSoonCountry.flag}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white">
+                Bank payments in {comingSoonCountry.name} are coming soon
+              </p>
+              <p className="text-xs text-white/45 leading-relaxed mt-1.5">
+                We’re working with local partners to make stablecoin payments available in {comingSoonCountry.name}. We’ll announce it when this option launches.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-4">
+            <a
+              href={`mailto:support@cheesepay.xyz?subject=${encodeURIComponent(`${comingSoonCountry.name} bank payments`)}`}
+              className="flex-1 text-center rounded-xl bg-[#d4a843] text-black text-xs font-semibold py-2.5 hover:bg-[#e2bd5e] transition-colors"
+            >
+              Request an update
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                setComingSoonCountry(null)
+                setBankOpen(true)
+              }}
+              className="rounded-xl border border-white/10 text-white/60 text-xs font-medium px-3 py-2.5 hover:bg-white/8 transition-colors"
+            >
+              View countries
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
