@@ -15,7 +15,7 @@ export function LandingFooter() {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <img src="/logo.png" alt="Cheese Pay" className="w-7 h-7 rounded-lg object-contain" />
-              <span className="text-white font-semibold text-sm">CheesePay</span>
+              <span className="text-white font-brand font-black text-sm uppercase tracking-wide">CheesePay</span>
             </div>
             <p className="text-[#555] text-xs leading-relaxed max-w-[180px]">
               Hold stablecoins. Make local payments across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia.

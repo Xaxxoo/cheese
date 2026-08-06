@@ -18,7 +18,7 @@ export function AppHeader({ title }: AppHeaderProps) {
           <h1 className="text-base font-semibold text-white">{title}</h1>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-[#d4a843] font-display text-lg font-semibold">cheese</span>
+            <span className="text-[#d4a843] font-brand text-lg font-black uppercase tracking-wide">cheesepay</span>
             {user && (
               <span className="text-white/30 text-sm">·</span>
             )}

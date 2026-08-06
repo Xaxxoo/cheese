@@ -211,7 +211,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <img src="/logo.png" alt="Cheese Pay" style={{ width: 32, height: 32, borderRadius: 10, objectFit: 'contain', display: 'block' }} />
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13.5, color: c.text, lineHeight: 1 }}>Cheese Pay</div>
+                <div style={{ fontFamily: "var(--font-brand), sans-serif", fontWeight: 900, fontSize: 13.5, color: c.text, lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.05em' }}>CheesePay</div>
                 <div style={{ fontSize: 10, color: c.textDim, marginTop: 3 }}>Admin Console</div>
               </div>
             </div>

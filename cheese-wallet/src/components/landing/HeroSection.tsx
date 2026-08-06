@@ -71,7 +71,7 @@ export function HeroSection() {
         style={{ background: 'rgba(5,5,5,0.85)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="Cheese Pay" className="w-7 h-7 rounded-lg object-contain" />
-          <span className="text-white font-semibold tracking-tight">CheesePay</span>
+          <span className="text-white font-brand font-black uppercase tracking-wide">CheesePay</span>
         </div>
         <div className="hidden md:flex items-center gap-8">
           {['Features', 'How It Works', 'Security'].map(item => (

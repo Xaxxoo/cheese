@@ -19,6 +19,7 @@ module.exports = {
         display:          ['var(--font-display)', 'serif'],
         body:             ['var(--font-body)', 'sans-serif'],
         mono:             ['var(--font-mono)', 'monospace'],
+        brand:            ['var(--font-brand)', 'sans-serif'],
         merchant:         ['var(--merchant-font-sans)', 'sans-serif'],
         'merchant-serif': ['var(--merchant-font-display)', 'serif'],
       },
