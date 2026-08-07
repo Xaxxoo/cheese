@@ -4,11 +4,28 @@ import { User } from '../auth/entities/user.entity';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminAuthService } from './admin-auth.service';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('Admin')
 @Controller('admin')
 export class AdminDashboardController {
   constructor(private readonly adminAuthService: AdminAuthService) {}
+
+  // ── GET /admin/public-stats (no auth) ───────────────────────────────────────
+  @Get('public-stats')
+  @Public()
+  @ApiOperation({ summary: 'Public platform metrics (no auth required)' })
+  getPublicStats() {
+    return this.adminAuthService.getPublicStats();
+  }
+
+  // ── GET /admin/public-stats/chart (no auth) ─────────────────────────────────
+  @Get('public-stats/chart')
+  @Public()
+  @ApiOperation({ summary: 'Public daily volume chart (no auth required)' })
+  getPublicVolumeChart(@Query('days') days?: string) {
+    return this.adminAuthService.getVolumeChart(days === '7' ? 7 : 30);
+  }
 
   // ── GET /admin/stats ───────────────────────────────────────────────────────
   @Get('stats')

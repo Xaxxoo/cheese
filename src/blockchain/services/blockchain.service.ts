@@ -1336,8 +1336,10 @@ export class BlockchainService implements OnModuleInit {
   ): Promise<{ payments: StellarPayment[]; nextCursor: string | null }> {
     this.requireStellar('fetchInboundStellarUsdc');
 
+    // Use operations() instead of payments() so we also see
+    // invoke_host_function records (Soroban USDC transfers).
     let builder = this.stellarServer
-      .payments()
+      .operations()
       .forAccount(publicKey)
       .order('asc' as const)
       .limit(50);
@@ -1356,27 +1358,50 @@ export class BlockchainService implements OnModuleInit {
     let nextCursor: string | null = null;
 
     for (const record of response.records) {
-      nextCursor = (record as any).paging_token as string;
+      const op = record as any;
+      nextCursor = op.paging_token as string;
 
-      if (record.type !== 'payment') continue;
+      // ── Classic payment ────────────────────────────────────────────
+      if (op.type === 'payment') {
+        if (op.asset_type !== 'credit_alphanum4') continue;
+        if (op.asset_code !== 'USDC') continue;
+        if (op.asset_issuer !== this.stellarUsdcIssuer) continue;
+        if (op.to !== publicKey) continue;
 
-      const payment = record as any;
+        results.push({
+          txHash: op.transaction_hash,
+          from: op.from,
+          to: op.to,
+          amount: op.amount,
+          assetCode: op.asset_code,
+          assetIssuer: op.asset_issuer,
+          createdAt: op.created_at,
+          pagingToken: op.paging_token,
+        });
+        continue;
+      }
 
-      if (payment.asset_type !== 'credit_alphanum4') continue;
-      if (payment.asset_code !== 'USDC') continue;
-      if (payment.asset_issuer !== this.stellarUsdcIssuer) continue;
-      if (payment.to !== publicKey) continue;
+      // ── Soroban contract invocation (e.g. SAC token transfer) ──────
+      if (op.type === 'invoke_host_function') {
+        const changes: any[] = op.asset_balance_changes ?? [];
+        for (const change of changes) {
+          if (change.type !== 'transfer') continue;
+          if (change.asset_code !== 'USDC') continue;
+          if (change.asset_issuer !== this.stellarUsdcIssuer) continue;
+          if (change.to !== publicKey) continue;
 
-      results.push({
-        txHash: payment.transaction_hash,
-        from: payment.from,
-        to: payment.to,
-        amount: payment.amount,
-        assetCode: payment.asset_code,
-        assetIssuer: payment.asset_issuer,
-        createdAt: payment.created_at,
-        pagingToken: payment.paging_token,
-      });
+          results.push({
+            txHash: op.transaction_hash,
+            from: change.from ?? op.source_account,
+            to: change.to,
+            amount: change.amount,
+            assetCode: change.asset_code,
+            assetIssuer: change.asset_issuer,
+            createdAt: op.created_at,
+            pagingToken: op.paging_token,
+          });
+        }
+      }
     }
 
     return { payments: results, nextCursor };

@@ -170,6 +170,12 @@ export const ENDPOINTS = {
     LEADERBOARD: '/trivia/leaderboard',
     STATS:       '/trivia/stats',
   },
+
+  // ── Public Stats ───────────────────────────────────
+  PUBLIC_STATS: {
+    METRICS:     '/admin/public-stats',
+    CHART:       '/admin/public-stats/chart',
+  },
 } as const
 
 // ── React Query Keys ──────────────────────────────────────
@@ -230,6 +236,10 @@ export const QUERY_KEYS = {
   // Trivia
   TRIVIA_LEADERBOARD:   ['trivia', 'leaderboard'] as const,
   TRIVIA_STATS:         ['trivia', 'stats'] as const,
+
+  // Public Stats
+  PUBLIC_STATS:         ['public', 'stats'] as const,
+  PUBLIC_CHART:         (days: number) => ['public', 'chart', days] as const,
 } as const
 
 // ── Stale times ───────────────────────────────────────────

@@ -6,6 +6,7 @@ import { FeaturesSection } from '@/components/landing/FeaturesSection'
 import { DashboardSection } from '@/components/landing/DashboardSection'
 import { NetworksSection } from '@/components/landing/NetworksSection'
 import { SecuritySection } from '@/components/landing/SecuritySection'
+import { PlatformStatsSection } from '@/components/landing/PlatformStatsSection'
 import { CtaSection } from '@/components/landing/CtaSection'
 import { FaqSection } from '@/components/landing/FaqSection'
 import { LandingFooter } from '@/components/landing/LandingFooter'
@@ -21,6 +22,7 @@ export default function HomePage() {
       <DashboardSection />
       <NetworksSection />
       <SecuritySection />
+      <PlatformStatsSection />
       <CtaSection />
       <FaqSection />
       <LandingFooter />

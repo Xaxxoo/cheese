@@ -407,6 +407,47 @@ export class AdminAuthService {
     };
   }
 
+  // ── Public stats (safe subset — no PII, no sensitive counts) ─────────────
+
+  async getPublicStats() {
+    const [
+      totalUsers,
+      verifiedUsers,
+      totalTransactions,
+      activeWallets,
+      silverCount,
+      goldCount,
+      blackCount,
+      volumeResult,
+    ] = await Promise.all([
+      this.userRepo.count({ where: { isAdmin: false } }),
+      this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.VERIFIED } }),
+      this.txRepo.count(),
+      this.userRepo.count({ where: { isAdmin: false, stellarWalletStatus: WalletStatus.ACTIVE } }),
+      this.userRepo.count({ where: { isAdmin: false, tier: Tier.SILVER } }),
+      this.userRepo.count({ where: { isAdmin: false, tier: Tier.GOLD } }),
+      this.userRepo.count({ where: { isAdmin: false, tier: Tier.BLACK } }),
+      this.txRepo
+        .createQueryBuilder('t')
+        .select('SUM(CAST(t.amount_usdc AS DECIMAL(20,6)))', 'total')
+        .where('t.status = :s', { s: TxStatus.COMPLETED })
+        .getRawOne<{ total: string }>(),
+    ]);
+
+    return {
+      totalUsers,
+      verifiedUsers,
+      totalTransactions,
+      activeWallets,
+      totalVolumeUsdc: parseFloat(volumeResult?.total ?? '0') || 0,
+      tierDistribution: {
+        silver: silverCount,
+        gold: goldCount,
+        black: blackCount,
+      },
+    };
+  }
+
   // ── User listing ──────────────────────────────────────────────────────────
 
   async listUsers(query: {
