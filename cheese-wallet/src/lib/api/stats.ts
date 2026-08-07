@@ -20,16 +20,16 @@ export interface ChartPoint {
 }
 
 export async function fetchPublicStats(): Promise<PublicStats> {
-  const { data } = await axios.get<PublicStats>(
+  const { data } = await axios.get<{ data: PublicStats }>(
     `${API_URL}${ENDPOINTS.PUBLIC_STATS.METRICS}`,
   );
-  return data;
+  return data.data;
 }
 
 export async function fetchPublicChart(days: number = 30): Promise<ChartPoint[]> {
-  const { data } = await axios.get<ChartPoint[]>(
+  const { data } = await axios.get<{ data: ChartPoint[] }>(
     `${API_URL}${ENDPOINTS.PUBLIC_STATS.CHART}`,
     { params: { days } },
   );
-  return data;
+  return data.data;
 }
