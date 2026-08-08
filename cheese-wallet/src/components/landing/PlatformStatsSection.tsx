@@ -48,29 +48,66 @@ function KpiCard({ label, value, sub, delay, inView }: { label: string; value: s
   )
 }
 
-function BarChart({ data, days }: { data: ChartPoint[]; days: number }) {
-  const max = Math.max(...data.map((d) => d.volume), 1)
+function AreaChart({ data, days }: { data: ChartPoint[]; days: number }) {
+  const W = 600, H = 100
+  const p = { t: 6, r: 2, b: 2, l: 2 }
+  const iW = W - p.l - p.r, iH = H - p.t - p.b
+
+  const volumes = data.map((d) => d.volume)
+  const hasData = volumes.some((v) => v > 0)
+  const max = Math.max(...volumes, 1)
+
+  const xForIndex = (i: number) => p.l + (i / (data.length - 1 || 1)) * iW
+
+  const pts = volumes.map((v, i) => ({
+    x: xForIndex(i),
+    y: p.t + iH - (v / max) * iH,
+  }))
+
+  const labels = days === 7
+    ? data.map((d, i) => ({ x: xForIndex(i), label: shortDate(d.date) }))
+    : [0, 7, 14, 21, Math.min(29, data.length - 1)].filter(i => i < data.length).map((i) => ({
+        x: xForIndex(i),
+        label: shortDate(data[i].date),
+      }))
+
+  if (!hasData) {
+    return (
+      <svg width="100%" viewBox={`0 0 ${W} ${H + 16}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <text x={W / 2} y={H / 2 + 4} fill="rgba(255,255,255,0.18)" fontSize="10"
+          textAnchor="middle" fontFamily="system-ui">No transaction volume in this period</text>
+        {labels.map((l) => (
+          <text key={l.label} x={l.x} y={H + 14} fill="rgba(255,255,255,0.22)"
+            fontSize="7" textAnchor="middle" fontFamily="system-ui">{l.label}</text>
+        ))}
+      </svg>
+    )
+  }
+
+  let line = `M${pts[0].x},${pts[0].y}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1], cur = pts[i]
+    const cx = (prev.x + cur.x) / 2
+    line += ` C${cx},${prev.y} ${cx},${cur.y} ${cur.x},${cur.y}`
+  }
+  const area = `${line} L${p.l + iW},${p.t + iH} L${p.l},${p.t + iH} Z`
 
   return (
-    <div className="flex items-end gap-[3px] h-40 w-full">
-      {data.map((point, idx) => {
-        const pct = (point.volume / max) * 100
-        return (
-          <div key={point.date} className="flex-1 flex flex-col items-center gap-1 group relative">
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#111] border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/70 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-              {shortDate(point.date)}: {fmtUsd(point.volume)}
-            </div>
-            <div
-              className="w-full rounded-t transition-all min-h-[2px]"
-              style={{ height: `${Math.max(pct, 1)}%`, background: 'linear-gradient(to top, #D4AF37, #F0D060)' }}
-            />
-            {(days <= 7 || idx % Math.ceil(data.length / 6) === 0) && (
-              <span className="text-[8px] text-[#333] mt-1">{shortDate(point.date)}</span>
-            )}
-          </div>
-        )
-      })}
-    </div>
+    <svg width="100%" viewBox={`0 0 ${W} ${H + 16}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id="pub-area-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.01" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#pub-area-grad)" />
+      <path d={line} fill="none" stroke="#D4AF37" strokeWidth="1.6" />
+      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" fill="#D4AF37" />
+      {labels.map((l) => (
+        <text key={l.label} x={l.x} y={H + 14} fill="rgba(255,255,255,0.22)"
+          fontSize="7" textAnchor="middle" fontFamily="system-ui">{l.label}</text>
+      ))}
+    </svg>
   )
 }
 
@@ -223,7 +260,7 @@ export function PlatformStatsSection() {
           {chartLoading ? (
             <Skeleton className="h-40 w-full" />
           ) : chart && chart.length > 0 ? (
-            <BarChart data={chart} days={chartDays} />
+            <AreaChart data={chart} days={chartDays} />
           ) : (
             <div className="h-40 flex items-center justify-center text-[#333] text-sm">No chart data</div>
           )}
