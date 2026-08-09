@@ -168,7 +168,7 @@ export async function hasDeviceKey(deviceId: string): Promise<boolean> {
  */
 export function buildTxPayload(opts: {
   userId:    string
-  action:    'send_username' | 'send_address' | 'bank_transfer' | 'reveal_cvv' | 'change_pin'
+  action:    'send_username' | 'send_address' | 'bank_transfer' | 'bridge_transfer' | 'reveal_cvv' | 'change_pin'
   amount:    string
   recipient: string
   timestamp: number
@@ -191,7 +191,7 @@ export function buildTxPayload(opts: {
 export async function signTransaction(opts: {
   deviceId:  string
   userId:    string
-  action:    'send_username' | 'send_address' | 'bank_transfer' | 'reveal_cvv' | 'change_pin'
+  action:    'send_username' | 'send_address' | 'bank_transfer' | 'bridge_transfer' | 'reveal_cvv' | 'change_pin'
   amount:    string
   recipient: string
 }): Promise<{

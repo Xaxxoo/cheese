@@ -176,6 +176,13 @@ export const ENDPOINTS = {
     METRICS:     '/admin/public-stats',
     CHART:       '/admin/public-stats/chart',
   },
+
+  // ── Bridge (non-Nigeria off-ramp) ─────────────────
+  BRIDGE: {
+    COUNTRIES:       '/bridge/countries',
+    TRANSFER:        '/bridge/transfer',
+    TRANSFER_STATUS: (ref: string) => `/bridge/transfer/${ref}`,
+  },
 } as const
 
 // ── React Query Keys ──────────────────────────────────────
@@ -240,6 +247,9 @@ export const QUERY_KEYS = {
   // Public Stats
   PUBLIC_STATS:         ['public', 'stats'] as const,
   PUBLIC_CHART:         (days: number) => ['public', 'chart', days] as const,
+
+  // Bridge
+  BRIDGE_COUNTRIES:     ['bridge', 'countries'] as const,
 } as const
 
 // ── Stale times ───────────────────────────────────────────
