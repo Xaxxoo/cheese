@@ -14,6 +14,7 @@ import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
 import { useQueryClient } from '@tanstack/react-query'
 import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer, getBalance } from '@/lib/api/wallet'
+import { bridgeTransfer, getBridgeCountries, type BridgeCountry, type BridgeTransferResponse } from '@/lib/api/bridge'
 import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
 import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
@@ -27,7 +28,7 @@ import type { BankTransferResponse, Transaction, NigerianBank } from '@/types'
 // ─────────────────────────────────────────────────────────
 type SendMode = 'username' | 'usdc' | 'bank'
 type UsdcType = 'stellar' | 'evm'
-type SendStep = 'mode' | 'usdc_network' | 'username_network' | 'recipient' | 'amount' | 'bank_details' | 'bank_amount' | 'pin' | 'success' | 'error'
+type SendStep = 'mode' | 'usdc_network' | 'username_network' | 'recipient' | 'amount' | 'bank_details' | 'bank_amount' | 'bridge_details' | 'pin' | 'success' | 'error'
 
 interface ResolvedRecipient {
   display: string
@@ -59,11 +60,11 @@ const NIGERIAN_BANKS = [
 ]
 
 const BANK_COUNTRIES = [
-  { name: 'Kenya', flag: '🇰🇪' },
-  { name: 'Rwanda', flag: '🇷🇼' },
-  { name: 'Ghana', flag: '🇬🇭' },
-  { name: 'Ethiopia', flag: '🇪🇹' },
-  { name: 'Nigeria', flag: '🇳🇬' },
+  { name: 'Nigeria', flag: '🇳🇬', code: 'NG', provider: 'pulsemfb' as const },
+  { name: 'Kenya', flag: '🇰🇪', code: 'KE', provider: 'bridge' as const },
+  { name: 'Ghana', flag: '🇬🇭', code: 'GH', provider: 'bridge' as const },
+  { name: 'Rwanda', flag: '🇷🇼', code: 'RW', provider: 'bridge' as const },
+  { name: 'Ethiopia', flag: '🇪🇹', code: 'ET', provider: 'bridge' as const },
 ]
 
 // ─────────────────────────────────────────────────────────
@@ -100,9 +101,8 @@ function getBankTransferFeeUsdc(amountNgn: number, effectiveRate: number): numbe
 // ─────────────────────────────────────────────────────────
 // Mode Selector — first screen
 // ─────────────────────────────────────────────────────────
-function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
+function ModeSelector({ onSelect, onSelectBridge }: { onSelect: (mode: SendMode) => void; onSelectBridge: (countryCode: string) => void }) {
   const [bankOpen, setBankOpen] = useState(false)
-  const [comingSoonCountry, setComingSoonCountry] = useState<{ name: string; flag: string } | null>(null)
 
   const modes = [
     {
@@ -135,7 +135,6 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
           onClick={() => {
             if (m.id === 'bank') {
               setBankOpen((open) => !open)
-              setComingSoonCountry(null)
             } else {
               onSelect(m.id)
             }
@@ -155,68 +154,29 @@ function ModeSelector({ onSelect }: { onSelect: (mode: SendMode) => void }) {
           </button>
           {m.id === 'bank' && bankOpen && (
           <div className="-mt-2 rounded-2xl border border-white/10 bg-[#141414] overflow-hidden">
-            {BANK_COUNTRIES.map((country) => {
-              const isAvailable = country.name === 'Nigeria'
-              return (
+            {BANK_COUNTRIES.map((country) => (
                 <button
                   key={country.name}
                   type="button"
                   onClick={() => {
                     setBankOpen(false)
-                    if (isAvailable) {
-                      setComingSoonCountry(null)
+                    if (country.provider === 'pulsemfb') {
                       onSelect('bank')
                     } else {
-                      setComingSoonCountry(country)
+                      onSelectBridge(country.code)
                     }
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-white/75 hover:bg-white/8 transition-colors border-b border-white/5 last:border-0"
                 >
                   <span className="text-lg leading-none">{country.flag}</span>
                   <span className="flex-1">{country.name}</span>
-                  <span className="text-[10px] text-white/30">{isAvailable ? 'Available' : 'Coming soon'}</span>
+                  <span className="text-[10px] text-white/30">Available</span>
                 </button>
-              )
-            })}
+            ))}
           </div>
           )}
         </div>
       ))}
-      {comingSoonCountry && (
-        <div className="rounded-2xl border border-[#d4a843]/25 bg-[#d4a843]/[0.06] p-4 mt-1">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#d4a843]/12 flex items-center justify-center shrink-0 text-xl">
-              {comingSoonCountry.flag}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white">
-                Bank payments in {comingSoonCountry.name} are coming soon
-              </p>
-              <p className="text-xs text-white/45 leading-relaxed mt-1.5">
-                We’re working with local partners to make stablecoin payments available in {comingSoonCountry.name}. We’ll announce it when this option launches.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 mt-4">
-            <a
-              href={`mailto:support@cheesepay.xyz?subject=${encodeURIComponent(`${comingSoonCountry.name} bank payments`)}`}
-              className="flex-1 text-center rounded-xl bg-[#d4a843] text-black text-xs font-semibold py-2.5 hover:bg-[#e2bd5e] transition-colors"
-            >
-              Request an update
-            </a>
-            <button
-              type="button"
-              onClick={() => {
-                setComingSoonCountry(null)
-                setBankOpen(true)
-              }}
-              className="rounded-xl border border-white/10 text-white/60 text-xs font-medium px-3 py-2.5 hover:bg-white/8 transition-colors"
-            >
-              View countries
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -2103,6 +2063,526 @@ function BankSuccessScreen({
 }
 
 // ─────────────────────────────────────────────────────────
+// Bridge details step — amount + recipient for non-Nigeria
+// ─────────────────────────────────────────────────────────
+interface BridgeRecipient {
+  countryCode: string
+  countryName: string
+  currency: string
+  recipientName: string
+  accountIdentifier: string
+  bankCode?: string
+  bankName?: string
+  feePercent: number
+  minTransferUsdc: number
+  maxTransferUsdc: number
+}
+
+function BridgeDetailsStep({
+  countryCode,
+  onNext,
+}: {
+  countryCode: string
+  onNext: (recipient: BridgeRecipient, amountUsdc: string) => void
+}) {
+  const country = BANK_COUNTRIES.find((c) => c.code === countryCode)
+  const [recipientName, setRecipientName] = useState('')
+  const [accountId, setAccountId] = useState('')
+  const [amountRaw, setAmountRaw] = useState('')
+  const [amountError, setAmountError] = useState('')
+
+  const bridgeCountriesQ = useQuery({
+    queryKey: QUERY_KEYS.BRIDGE_COUNTRIES,
+    queryFn: getBridgeCountries,
+    staleTime: STALE_TIMES.BANKS,
+  })
+  const bridgeConfig = bridgeCountriesQ.data?.find((c) => c.code === countryCode)
+
+  const balanceQ = useQuery({
+    queryKey: QUERY_KEYS.BALANCE,
+    queryFn: getBalance,
+    staleTime: STALE_TIMES.BALANCE,
+  })
+  const usdcBalance = parseFloat(balanceQ.data?.totalUsdc ?? '0')
+
+  const minUsdc = bridgeConfig?.minTransferUsdc ?? 1
+  const maxUsdc = bridgeConfig?.maxTransferUsdc ?? 500
+  const feePercent = bridgeConfig?.feePercent ?? 1.5
+
+  const amount = parseFloat(amountRaw) || 0
+  const feeUsdc = amount > 0 ? (amount * feePercent) / 100 : 0
+  const totalUsdc = amount + feeUsdc
+  const overBalance = usdcBalance > 0 && totalUsdc > usdcBalance
+
+  function handleAmountInput(v: string) {
+    const clean = v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+    setAmountRaw(clean)
+    const parsed = parseFloat(clean) || 0
+    const parsedFee = parsed > 0 ? (parsed * feePercent) / 100 : 0
+    const parsedTotal = parsed + parsedFee
+    if (usdcBalance > 0 && parsedTotal > usdcBalance) {
+      setAmountError(`Insufficient balance — available: $${usdcBalance.toFixed(2)} USDC`)
+    } else {
+      setAmountError('')
+    }
+  }
+
+  const canConfirm =
+    recipientName.trim().length >= 2 &&
+    accountId.trim().length >= 4 &&
+    amount >= minUsdc &&
+    amount <= maxUsdc &&
+    !overBalance
+
+  function handleConfirm() {
+    if (!bridgeConfig) return
+    if (amount < minUsdc) { setAmountError(`Minimum is $${minUsdc} USDC`); return }
+    if (amount > maxUsdc) { setAmountError(`Maximum is $${maxUsdc} USDC`); return }
+    if (overBalance) { setAmountError(`Insufficient balance`); return }
+    onNext(
+      {
+        countryCode,
+        countryName: country?.name ?? countryCode,
+        currency: bridgeConfig.currency,
+        recipientName: recipientName.trim(),
+        accountIdentifier: accountId.trim(),
+        feePercent,
+        minTransferUsdc: minUsdc,
+        maxTransferUsdc: maxUsdc,
+      },
+      amountRaw,
+    )
+  }
+
+  if (bridgeCountriesQ.isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center flex-1 gap-3">
+        <Spinner size="lg" />
+        <p className="text-sm text-white/40">Loading country config…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-5 flex-1">
+      {/* Country badge */}
+      <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/4 border border-white/8">
+        <span className="text-xl leading-none">{country?.flag ?? '🌍'}</span>
+        <div>
+          <p className="text-sm font-semibold text-white">{country?.name ?? countryCode}</p>
+          <p className="text-xs text-white/40">{bridgeConfig?.currency ?? ''} via {bridgeConfig?.paymentRail === 'mpesa' ? 'M-Pesa' : 'Bank Transfer'}</p>
+        </div>
+      </div>
+
+      {/* Recipient name */}
+      <div>
+        <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">Recipient Name</p>
+        <div className={cn(
+          'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
+          recipientName.length >= 2 ? 'border-white/15' : 'border-white/10 focus-within:border-[#d4a843]/50',
+        )}>
+          <User size={15} className="text-white/30 shrink-0" />
+          <input
+            type="text"
+            value={recipientName}
+            onChange={(e) => setRecipientName(e.target.value)}
+            placeholder="Full name"
+            autoFocus
+            className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none"
+          />
+          {recipientName.length >= 2 && <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />}
+        </div>
+      </div>
+
+      {/* Account identifier (phone or bank account) */}
+      <div>
+        <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">
+          {bridgeConfig?.paymentRail === 'mpesa' ? 'Phone Number' : 'Account Number'}
+        </p>
+        <div className={cn(
+          'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
+          accountId.length >= 4 ? 'border-white/15' : 'border-white/10 focus-within:border-[#d4a843]/50',
+        )}>
+          <Building2 size={15} className="text-white/30 shrink-0" />
+          <input
+            type="text"
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            placeholder={bridgeConfig?.paymentRail === 'mpesa' ? '+254…' : 'Account number'}
+            className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none font-mono"
+          />
+          {accountId.length >= 4 && <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />}
+        </div>
+      </div>
+
+      {/* Amount in USDC */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-white/40 uppercase tracking-wider font-medium">Amount (USDC)</p>
+          {balanceQ.data && (
+            <p className={cn('text-xs', overBalance ? 'text-red-400' : 'text-white/30')}>
+              Available: ${usdcBalance.toFixed(2)}
+            </p>
+          )}
+        </div>
+        <div className={cn(
+          'flex items-center gap-3 h-14 px-4 rounded-2xl border bg-white/6 transition-all duration-150',
+          overBalance || amountError ? 'border-red-500/40' :
+          amount >= minUsdc          ? 'border-[#d4a843]/40' :
+          'border-white/10 focus-within:border-[#d4a843]/50',
+        )}>
+          <span className="text-white/30 text-sm font-medium shrink-0">$</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={amountRaw}
+            onChange={(e) => handleAmountInput(e.target.value)}
+            placeholder="0.00"
+            className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none"
+          />
+          <span className="text-white/20 text-xs shrink-0">USDC</span>
+        </div>
+
+        {amountError && (
+          <p className="text-xs text-red-400 mt-2 px-1">{amountError}</p>
+        )}
+        {amountRaw && amount > 0 && amount < minUsdc && !amountError && (
+          <p className="text-xs text-amber-400 mt-2 px-1">Minimum transfer is ${minUsdc} USDC</p>
+        )}
+
+        {/* Fee summary */}
+        {amount >= minUsdc && !amountError && totalUsdc > 0 && (
+          <div className="rounded-2xl bg-white/4 border border-white/6 px-4 py-3 mt-3 flex flex-col gap-1.5">
+            <div className="flex justify-between text-xs">
+              <span className="text-white/40">You send</span>
+              <span className="text-white/70">${amount.toFixed(2)} USDC</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-white/40">Fee ({feePercent}%)</span>
+              <span className="text-white/50">${feeUsdc.toFixed(4)} USDC</span>
+            </div>
+            <div className="flex justify-between text-xs border-t border-white/6 pt-1.5">
+              <span className="text-white/40">Total deducted</span>
+              <span className="text-white font-medium">${totalUsdc.toFixed(4)} USDC</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-auto">
+        <Button
+          fullWidth
+          size="lg"
+          onClick={handleConfirm}
+          disabled={!canConfirm}
+        >
+          Confirm
+          <ChevronRight size={16} />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// PIN step — Bridge transfer
+// ─────────────────────────────────────────────────────────
+function BridgePinStep({
+  recipient,
+  amountUsdc,
+  onBack,
+  onSuccess,
+  onError,
+}: {
+  recipient: BridgeRecipient
+  amountUsdc: string
+  onBack: () => void
+  onSuccess: (result: BridgeTransferResponse) => void
+  onError: (msg: string) => void
+}) {
+  const { user, deviceId, updateUser } = useAuthStore()
+  const queryClient               = useQueryClient()
+  const [pin, setPin]             = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [pinError, setPinError]   = useState('')
+  const submittedRef              = useRef(false)
+
+  const amount     = parseFloat(amountUsdc)
+  const feeUsdc    = (amount * recipient.feePercent) / 100
+  const totalUsdc  = amount + feeUsdc
+
+  // ── Forgot PIN reset flow ───────────────────────────────
+  type ResetFlow = 'off' | 'new' | 'confirm'
+  const [resetFlow, setResetFlow]   = useState<ResetFlow>('off')
+  const [firstNewPin, setFirstNewPin] = useState('')
+  const [resetPin, setResetPin]     = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+
+  const submitResetPin = useCallback(async (input: string) => {
+    if (resetFlow === 'new') {
+      setFirstNewPin(input)
+      setResetPin('')
+      setResetFlow('confirm')
+      return
+    }
+    if (resetFlow === 'confirm') {
+      if (input !== firstNewPin) {
+        setPinError("PINs don't match — try again")
+        setResetPin('')
+        setResetFlow('new')
+        setFirstNewPin('')
+        return
+      }
+      if (!user) { onError('Session expired'); return }
+      setResetLoading(true)
+      try {
+        await apiResetPin()
+        const newHash = await hashPin(firstNewPin, user.id)
+        await apiSetPin(newHash)
+        updateUser({ hasPin: true })
+        setResetFlow('off')
+        setResetPin('')
+        setFirstNewPin('')
+        setPinError('')
+        setPin('')
+      } catch (err) {
+        onError(err instanceof Error ? err.message : 'PIN reset failed')
+      } finally {
+        setResetLoading(false)
+      }
+    }
+  }, [resetFlow, firstNewPin, user, onError])
+
+  useEffect(() => {
+    if (resetFlow !== 'off' && resetPin.length === 6 && !resetLoading) {
+      void submitResetPin(resetPin)
+    }
+  }, [resetPin, resetFlow, resetLoading, submitResetPin])
+  // ────────────────────────────────────────────────────────
+
+  const submit = useCallback(async (currentPin: string) => {
+    if (submittedRef.current) return
+    if (!user || !deviceId) { onError('Session expired — please log in again.'); return }
+
+    submittedRef.current = true
+    setLoading(true)
+    setPinError('')
+
+    try {
+      const pinHash = await hashPin(currentPin, user.id)
+      const sig = await signTransaction({
+        action:    'bridge_transfer',
+        userId:    user.id,
+        deviceId,
+        amount:    amountUsdc,
+        recipient: `${recipient.countryCode}:${recipient.accountIdentifier}`,
+      })
+      const result = await bridgeTransfer({
+        countryCode:       recipient.countryCode,
+        amountUsdc,
+        recipientName:     recipient.recipientName,
+        accountIdentifier: recipient.accountIdentifier,
+        bankCode:          recipient.bankCode,
+        bankName:          recipient.bankName,
+        pinHash,
+        deviceSignature:   sig.deviceSignature,
+        deviceId:          sig.deviceId,
+        timestamp:         String(sig.timestamp),
+        nonce:             sig.nonce,
+      })
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BALANCE })
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS(1) })
+      onSuccess(result)
+    } catch (err) {
+      submittedRef.current = false
+      const msg = err instanceof Error ? err.message : 'Transfer failed'
+      if (msg.toLowerCase().includes('incorrect pin')) {
+        setPinError('Incorrect PIN — try again')
+        setPin('')
+      } else {
+        onError(msg)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [user, deviceId, queryClient, recipient, amountUsdc, onSuccess, onError])
+
+  useEffect(() => {
+    if (resetFlow === 'off' && pin.length === 6 && !loading) {
+      void submit(pin)
+    }
+  }, [pin, loading, submit, resetFlow])
+
+  return (
+    <div className="flex flex-col flex-1">
+      {/* Summary card */}
+      <div className="rounded-3xl border border-white/8 bg-white/4 p-5 mb-6">
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
+          <span className="text-xs text-white/40 uppercase tracking-wide">To</span>
+          <span className="text-sm text-white/80 font-medium">{recipient.recipientName}</span>
+        </div>
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Country</span>
+          <span className="text-sm text-white/80 font-medium">{recipient.countryName}</span>
+        </div>
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Account</span>
+          <span className="text-sm text-white/80 font-mono">{recipient.accountIdentifier}</span>
+        </div>
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Amount</span>
+          <span className="text-base font-semibold text-white">${amount.toFixed(2)} USDC</span>
+        </div>
+        <div className="flex items-center justify-between py-2 border-b border-white/6">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Fee ({recipient.feePercent}%)</span>
+          <span className="text-xs text-white/50">${feeUsdc.toFixed(4)} USDC</span>
+        </div>
+        <div className="flex items-center justify-between py-2">
+          <span className="text-xs text-white/40 uppercase tracking-wide">Total</span>
+          <span className="text-sm font-semibold text-white">${totalUsdc.toFixed(4)} USDC</span>
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center">
+        {!user?.hasPin ? (
+          <SetPinFlow onCancel={onBack} />
+        ) : (loading || resetLoading) ? (
+          <div className="flex flex-col items-center gap-4">
+            <Spinner size="lg" />
+            <p className="text-sm text-white/40">
+              {resetLoading ? 'Setting new PIN…' : 'Processing transfer…'}
+            </p>
+          </div>
+        ) : resetFlow !== 'off' ? (
+          <PinPad
+            value={resetPin}
+            onChange={setResetPin}
+            maxLength={6}
+            label={resetFlow === 'new' ? 'Enter your new PIN' : 'Confirm your new PIN'}
+            error={pinError}
+          />
+        ) : (
+          <PinPad
+            value={pin}
+            onChange={setPin}
+            maxLength={6}
+            label="Enter your PIN to confirm"
+            error={pinError}
+          />
+        )}
+      </div>
+
+      {user?.hasPin && !loading && !resetLoading && (
+        <div className="flex flex-col items-center gap-3 mt-4">
+          {resetFlow === 'off' ? (
+            <>
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors"
+              >
+                <ArrowLeft size={14} />
+                Change details
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPinError(''); setPin(''); setResetFlow('new') }}
+                className="text-xs text-white/25 hover:text-[#d4a843]/60 transition-colors"
+              >
+                Forgot PIN?
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setResetFlow('off'); setResetPin(''); setFirstNewPin(''); setPinError('') }}
+              className="flex items-center justify-center gap-1.5 text-sm text-white/30 hover:text-white/50 transition-colors"
+            >
+              <ArrowLeft size={14} />
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// Success screen — Bridge transfer
+// ─────────────────────────────────────────────────────────
+function BridgeSuccessScreen({
+  transfer,
+  recipient,
+  amountUsdc,
+  onDone,
+  onSendAnother,
+}: {
+  transfer: BridgeTransferResponse | null
+  recipient: BridgeRecipient
+  amountUsdc: string
+  onDone: () => void
+  onSendAnother: () => void
+}) {
+  const isProcessing = transfer?.status === 'processing'
+
+  useEffect(() => {
+    playChaChing()
+    const burst = (angle: number, origin: { x: number; y: number }) =>
+      confetti({ particleCount: 60, angle, spread: 55, origin, colors: ['#d4a843', '#FFD700', '#FFA500', '#fff', '#34d399'], scalar: 0.8 })
+    burst(60, { x: 0, y: 0.65 })
+    burst(120, { x: 1, y: 0.65 })
+    setTimeout(() => { burst(80, { x: 0.2, y: 0.7 }); burst(100, { x: 0.8, y: 0.7 }) }, 250)
+  }, [])
+
+  const amount = parseFloat(amountUsdc)
+  const heading = 'Transfer submitted'
+  const subtitle = transfer?.message ?? `You'll be notified once the payout to ${recipient.countryName} settles.`
+
+  const rows = [
+    { label: 'To',        value: recipient.recipientName },
+    { label: 'Country',   value: recipient.countryName },
+    { label: 'Account',   value: recipient.accountIdentifier },
+    { label: 'Amount',    value: `$${amount.toFixed(2)} USDC` },
+    { label: 'Currency',  value: transfer?.currency ?? recipient.currency },
+    { label: 'Status',    value: isProcessing ? 'Processing' : (transfer?.status ?? 'Pending') },
+    ...(transfer?.reference ? [{ label: 'Reference', value: transfer.reference }] : []),
+  ]
+
+  return (
+    <div className="flex flex-col items-center flex-1 pt-8 pb-4">
+      <div className="w-20 h-20 rounded-full bg-amber-500/15 border border-amber-500/20 flex items-center justify-center mb-6">
+        <Clock size={38} className="text-amber-400" />
+      </div>
+
+      <h2 className="text-2xl font-semibold text-white mb-1">{heading}</h2>
+      <p className="text-sm text-white/40 mb-8 text-center">{subtitle}</p>
+
+      <div className="w-full rounded-3xl border border-white/8 bg-white/4 p-5 mb-8">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
+            <span className="text-xs text-white/35 uppercase tracking-wide">{label}</span>
+            <span className="text-sm text-white/80 font-medium">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      <Button fullWidth size="lg" onClick={onDone} className="mb-3">
+        Back to home
+      </Button>
+
+      <button
+        type="button"
+        onClick={onSendAnother}
+        className="text-sm text-[#d4a843]/70 hover:text-[#d4a843] transition-colors"
+      >
+        Send to someone else
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
 // Error screen
 // ─────────────────────────────────────────────────────────
 function ErrorScreen({
@@ -2156,6 +2636,12 @@ export default function SendPage() {
   const [bankRecipient, setBankRecipient] = useState<BankRecipient | null>(null)
   const [bankAmount,    setBankAmount]    = useState('')
   const [bankTransferResult, setBankTransferResult] = useState<BankTransferResponse | null>(null)
+  // Bridge (non-Nigeria) state
+  const [bridgeCountry,       setBridgeCountry]       = useState('')
+  const [bridgeRecipient,     setBridgeRecipient]     = useState<BridgeRecipient | null>(null)
+  const [bridgeAmount,        setBridgeAmount]        = useState('')
+  const [bridgeTransferResult, setBridgeTransferResult] = useState<BridgeTransferResponse | null>(null)
+  const isBridgeFlow = !!bridgeCountry
 
   function handleModeSelect(m: SendMode) {
     setMode(m)
@@ -2167,7 +2653,20 @@ export default function SendPage() {
     setBankRecipient(null)
     setBankAmount('')
     setBankTransferResult(null)
+    setBridgeCountry('')
+    setBridgeRecipient(null)
+    setBridgeAmount('')
+    setBridgeTransferResult(null)
     setStep(m === 'bank' ? 'bank_details' : m === 'usdc' ? 'usdc_network' : m === 'username' ? 'username_network' : 'recipient')
+  }
+
+  function handleBridgeCountrySelect(countryCode: string) {
+    setMode(null)
+    setBridgeCountry(countryCode)
+    setBridgeRecipient(null)
+    setBridgeAmount('')
+    setBridgeTransferResult(null)
+    setStep('bridge_details')
   }
 
   function resetRecipient() {
@@ -2190,6 +2689,10 @@ export default function SendPage() {
     setBankRecipient(null)
     setBankAmount('')
     setBankTransferResult(null)
+    setBridgeCountry('')
+    setBridgeRecipient(null)
+    setBridgeAmount('')
+    setBridgeTransferResult(null)
   }
 
   const isBankFlow = mode === 'bank'
@@ -2199,6 +2702,8 @@ export default function SendPage() {
 
   const showHeader = step !== 'success' && step !== 'error'
 
+  const bridgeCountryName = BANK_COUNTRIES.find((c) => c.code === bridgeCountry)?.name ?? bridgeCountry
+
   const headerTitle =
     step === 'mode'             ? 'Send' :
     step === 'usdc_network'     ? 'Send USDC' :
@@ -2206,6 +2711,7 @@ export default function SendPage() {
     step === 'recipient'        ? (mode === 'username' ? 'Send by Username' : usdcType === 'evm' ? `${chainLabel} USDC` : 'Stellar USDC') :
     step === 'amount'           ? 'Enter amount' :
     step === 'bank_details'     ? 'Send to Bank' :
+    step === 'bridge_details'   ? `Send to ${bridgeCountryName}` :
     step === 'pin'              ? 'Confirm transfer' : ''
 
   const headerBack =
@@ -2215,7 +2721,8 @@ export default function SendPage() {
     step === 'recipient'        ? () => { if (mode === 'usdc') setStep('usdc_network'); else if (mode === 'username') setStep('username_network'); else setStep('mode') } :
     step === 'amount'           ? () => setStep('recipient') :
     step === 'bank_details'     ? () => setStep('mode') :
-    step === 'pin'              ? () => { if (isBankFlow) setStep('bank_details'); else setStep('amount') } :
+    step === 'bridge_details'   ? () => { setBridgeCountry(''); setStep('mode') } :
+    step === 'pin'              ? () => { if (isBridgeFlow) setStep('bridge_details'); else if (isBankFlow) setStep('bank_details'); else setStep('amount') } :
     () => {}
 
   return (
@@ -2236,7 +2743,7 @@ export default function SendPage() {
 
       {/* Mode selection — entry point */}
       {step === 'mode' && (
-        <ModeSelector onSelect={handleModeSelect} />
+        <ModeSelector onSelect={handleModeSelect} onSelectBridge={handleBridgeCountrySelect} />
       )}
 
       {/* USDC network selection — Stellar vs EVM */}
@@ -2331,8 +2838,16 @@ export default function SendPage() {
         />
       )}
 
+      {/* Bridge details step — non-Nigeria off-ramp */}
+      {step === 'bridge_details' && bridgeCountry && (
+        <BridgeDetailsStep
+          countryCode={bridgeCountry}
+          onNext={(r, amt) => { setBridgeRecipient(r); setBridgeAmount(amt); setStep('pin') }}
+        />
+      )}
+
       {/* PIN — USDC flows */}
-      {step === 'pin' && !isBankFlow && recipient && (
+      {step === 'pin' && !isBankFlow && !isBridgeFlow && recipient && (
         <PinStep
           recipient={recipient}
           amount={amount}
@@ -2354,8 +2869,19 @@ export default function SendPage() {
         />
       )}
 
+      {/* PIN — Bridge flow */}
+      {step === 'pin' && isBridgeFlow && bridgeRecipient && (
+        <BridgePinStep
+          recipient={bridgeRecipient}
+          amountUsdc={bridgeAmount}
+          onBack={() => setStep('bridge_details')}
+          onSuccess={(result) => { setBridgeTransferResult(result); setStep('success') }}
+          onError={(msg) => { setErrMsg(msg); setStep('error') }}
+        />
+      )}
+
       {/* Success — USDC flows */}
-      {step === 'success' && !isBankFlow && sentTx && recipient && (
+      {step === 'success' && !isBankFlow && !isBridgeFlow && sentTx && recipient && (
         <SuccessScreen
           tx={sentTx}
           recipient={recipient}
@@ -2371,6 +2897,17 @@ export default function SendPage() {
           transfer={bankTransferResult}
           recipient={bankRecipient}
           amountNgn={bankAmount}
+          onDone={() => router.push('/dashboard')}
+          onSendAnother={reset}
+        />
+      )}
+
+      {/* Success — Bridge flow */}
+      {step === 'success' && isBridgeFlow && bridgeRecipient && (
+        <BridgeSuccessScreen
+          transfer={bridgeTransferResult}
+          recipient={bridgeRecipient}
+          amountUsdc={bridgeAmount}
           onDone={() => router.push('/dashboard')}
           onSendAnother={reset}
         />
