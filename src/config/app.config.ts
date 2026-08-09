@@ -108,3 +108,9 @@ export const flutterwaveBillsConfig = registerAs('flutterwaveBills', () => ({
   clientSecret: process.env.FLUTTERWAVE_BILLS_CLIENT_SECRET,
   callbackUrl: process.env.FLUTTERWAVE_BILLS_CALLBACK_URL || '',
 }));
+
+export const bridgeConfig = registerAs('bridge', () => ({
+  apiKey: process.env.BRIDGE_API_KEY || '',
+  baseUrl: process.env.BRIDGE_BASE_URL || 'https://api.bridge.xyz',
+  webhookSecret: process.env.BRIDGE_WEBHOOK_SECRET || '',
+}));

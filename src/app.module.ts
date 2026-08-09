@@ -22,6 +22,7 @@ import {
   dojahConfig,
   alertsConfig,
   flutterwaveBillsConfig,
+  bridgeConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -60,6 +61,7 @@ import { PayLinkModule } from './paylink/paylink.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { BillsModule } from './bills/bills.module';
 import { TriviaModule } from './trivia/trivia.module';
+import { BridgeModule } from './bridge/bridge.module';
 
 // Active entities
 import { User } from './auth/entities/user.entity';
@@ -117,6 +119,7 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
         dojahConfig,
         alertsConfig,
         flutterwaveBillsConfig,
+        bridgeConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -333,6 +336,7 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
     TriviaModule,
     PrivateGatewayModule,
     VeilModule,
+    BridgeModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },

@@ -91,6 +91,22 @@ export class BankTransfer {
   @Column({ name: 'evm_tx_hash', type: 'varchar', nullable: true })
   evmTxHash: string | null;
 
+  // ── Bridge integration fields (nullable — PulseMFB records unaffected) ────
+  @Column({ type: 'varchar', nullable: true })
+  provider: string | null;
+
+  @Column({ name: 'country_code', type: 'varchar', length: 2, nullable: true })
+  countryCode: string | null;
+
+  @Column({ name: 'fiat_currency', type: 'varchar', length: 3, nullable: true })
+  fiatCurrency: string | null;
+
+  @Column({ name: 'amount_fiat', type: 'varchar', nullable: true })
+  amountFiat: string | null;
+
+  @Column({ name: 'bridge_transfer_id', type: 'varchar', nullable: true })
+  bridgeTransferId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
