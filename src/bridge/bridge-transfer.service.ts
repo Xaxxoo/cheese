@@ -70,7 +70,12 @@ export class BridgeTransferService {
       throw new BadRequestException('Wallet not initialised');
     }
 
-    // 3. KYC gate
+    // 3. KYC gate — currently uses manual beta verification (kycStatus).
+    //    TODO: once Bridge integration is live, also require bridgeCustomerId
+    //    for non-Nigeria users:
+    //    if (!user.bridgeCustomerId) {
+    //      throw new ForbiddenException('Bridge identity verification required.');
+    //    }
     if (user.kycStatus !== KycStatus.VERIFIED) {
       throw new ForbiddenException(
         'Identity verification required before withdrawing. Please complete KYC in your profile.',
@@ -374,6 +379,80 @@ export class BridgeTransferService {
     }
 
     return { processed: true, status: newStatus };
+  }
+
+  // ── Bridge KYC ──────────────────────────────────────────────────────────
+  // Not enforced during beta — users are manually verified. These endpoints
+  // let users optionally start Bridge KYC ahead of time. When beta ends,
+  // uncomment the bridgeCustomerId check in createTransfer() above.
+
+  async startKyc(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Already has a Bridge customer — return existing state
+    if (user.bridgeCustomerId) {
+      return {
+        status: 'completed',
+        bridgeCustomerId: user.bridgeCustomerId,
+        message: 'Bridge identity verification already completed.',
+      };
+    }
+
+    // Already has a pending KYC link
+    if (user.bridgeKycLinkId) {
+      return {
+        status: 'pending',
+        bridgeKycLinkId: user.bridgeKycLinkId,
+        message:
+          'A verification link was already generated. Complete it in your browser.',
+      };
+    }
+
+    // Create a new KYC link via Bridge
+    try {
+      const result = await this.bridgeService.createKycLink({
+        full_name: user.fullName ?? user.username,
+        email: user.email,
+        type: 'individual',
+      });
+
+      await this.userRepo.update(userId, {
+        bridgeKycLinkId: result.id,
+        bridgeCustomerId: result.customer_id,
+      });
+
+      return {
+        status: 'pending',
+        kycLink: result.kyc_link,
+        bridgeKycLinkId: result.id,
+        message:
+          'Open this link to complete Bridge identity verification.',
+      };
+    } catch (err) {
+      this.logger.error(
+        `Bridge KYC link creation failed for user ${userId}: ${err instanceof Error ? err.message : err}`,
+      );
+      const message =
+        err instanceof BadRequestException
+          ? (err.getResponse() as { message?: string })?.message ??
+            err.message
+          : 'Bridge identity verification is not available right now. Please try again later.';
+      throw new BadRequestException(message);
+    }
+  }
+
+  async getKycStatus(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.bridgeCustomerId) {
+      return { status: 'completed', bridgeCustomerId: user.bridgeCustomerId };
+    }
+    if (user.bridgeKycLinkId) {
+      return { status: 'pending', bridgeKycLinkId: user.bridgeKycLinkId };
+    }
+    return { status: 'none' };
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

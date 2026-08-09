@@ -189,6 +189,15 @@ export class User {
   @Column({ name: 'must_change_password', default: false })
   mustChangePassword: boolean;
 
+  // ── Bridge (non-Nigeria off-ramp) ───────────────────────────────────────
+  /** Bridge customer ID — set when the user completes Bridge KYC. */
+  @Column({ name: 'bridge_customer_id', type: 'varchar', nullable: true })
+  bridgeCustomerId: string | null;
+
+  /** Bridge KYC link ID — set when a KYC link is generated for the user. */
+  @Column({ name: 'bridge_kyc_link_id', type: 'varchar', nullable: true })
+  bridgeKycLinkId: string | null;
+
   // ── Cached on-chain balance ─────────────────────────────────────────────
   @Column({ name: 'cached_balance_usdc', type: 'decimal', precision: 20, scale: 6, nullable: true })
   cachedBalanceUsdc: string | null;

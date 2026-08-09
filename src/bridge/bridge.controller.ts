@@ -104,6 +104,46 @@ export class BridgeController {
     return this.bridgeTransferService.syncTransferStatus(user.id, reference);
   }
 
+  // ── POST /bridge/kyc ─────────────────────────────────────────────────────
+  @Post('kyc')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Start Bridge KYC for the current user',
+    description:
+      'Generates a Bridge KYC link for the user. Not enforced during beta — ' +
+      'users can optionally complete this ahead of time. Returns the hosted ' +
+      'KYC link URL if Bridge API keys are configured.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'KYC link generated or already completed',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bridge not configured or KYC creation failed',
+  })
+  startKyc(@CurrentUser() user: User) {
+    return this.bridgeTransferService.startKyc(user.id);
+  }
+
+  // ── GET /bridge/kyc ─────────────────────────────────────────────────────
+  @Get('kyc')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Check Bridge KYC status for the current user',
+    description:
+      'Returns whether the user has completed Bridge KYC, has a pending link, ' +
+      'or has not started yet.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current Bridge KYC status',
+  })
+  getKycStatus(@CurrentUser() user: User) {
+    return this.bridgeTransferService.getKycStatus(user.id);
+  }
+
   // ── POST /bridge/webhook ──────────────────────────────────────────────────
   @Public()
   @Post('webhook')
