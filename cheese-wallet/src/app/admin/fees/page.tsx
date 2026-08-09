@@ -142,7 +142,8 @@ export default function FeesPage() {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[
-            { range: '₦500 – ₦50,000',            fee: '₦500 / rate' },
+            { range: '₦500 – ₦9,999',             fee: '₦200 / rate' },
+            { range: '₦10,000 – ₦49,999',         fee: '₦500 / rate' },
             { range: '₦50,001 – ₦99,999',         fee: '₦1,000 / rate' },
             { range: '₦100,000 – ₦199,999',       fee: '$1' },
             { range: '₦200,000 – ₦500,000',       fee: '$2' },
