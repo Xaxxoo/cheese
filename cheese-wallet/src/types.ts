@@ -35,6 +35,7 @@ export interface User {
   stellarWalletStatus?: 'pending' | 'active' | 'failed';
   evmAddress?: string | null;
   evmWalletStatus?: 'pending' | 'active' | 'failed';
+  country?: string | null;
   hasPin?: boolean;
 }
 

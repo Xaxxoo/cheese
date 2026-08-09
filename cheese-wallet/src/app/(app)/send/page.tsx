@@ -102,7 +102,11 @@ function getBankTransferFeeUsdc(amountNgn: number, effectiveRate: number): numbe
 // Mode Selector — first screen
 // ─────────────────────────────────────────────────────────
 function ModeSelector({ onSelect, onSelectBridge }: { onSelect: (mode: SendMode) => void; onSelectBridge: (countryCode: string) => void }) {
-  const [bankOpen, setBankOpen] = useState(false)
+  const [crossBorderOpen, setCrossBorderOpen] = useState(false)
+  const user = useAuthStore((s) => s.user)
+  const userCountry = user?.country ?? null
+  const homeCountryInfo = userCountry ? BANK_COUNTRIES.find((c) => c.code === userCountry) : null
+  const otherCountries = userCountry ? BANK_COUNTRIES.filter((c) => c.code !== userCountry) : BANK_COUNTRIES
 
   const modes = [
     {
@@ -121,7 +125,7 @@ function ModeSelector({ onSelect, onSelectBridge }: { onSelect: (mode: SendMode)
       id: 'bank' as SendMode,
       icon: <Building2 size={22} className="text-[#d4a843]" />,
       title: 'Send to Bank',
-      desc: 'Choose a country and cash out locally',
+      desc: homeCountryInfo ? `Cash out to ${homeCountryInfo.name} ${homeCountryInfo.flag}` : 'Choose a country and cash out locally',
     },
   ]
 
@@ -134,7 +138,17 @@ function ModeSelector({ onSelect, onSelectBridge }: { onSelect: (mode: SendMode)
           type="button"
           onClick={() => {
             if (m.id === 'bank') {
-              setBankOpen((open) => !open)
+              if (homeCountryInfo) {
+                // Default to user's own country
+                if (homeCountryInfo.provider === 'pulsemfb') {
+                  onSelect('bank')
+                } else {
+                  onSelectBridge(homeCountryInfo.code)
+                }
+              } else {
+                // No country on file — expand country list
+                setCrossBorderOpen((open) => !open)
+              }
             } else {
               onSelect(m.id)
             }
@@ -148,18 +162,58 @@ function ModeSelector({ onSelect, onSelectBridge }: { onSelect: (mode: SendMode)
             <p className="text-sm font-semibold text-white">{m.title}</p>
             <p className="text-xs text-white/40 mt-0.5">{m.desc}</p>
           </div>
-          {m.id === 'bank'
-            ? <ChevronDown size={17} className={cn('text-white/25 shrink-0 transition-transform', bankOpen && 'rotate-180')} />
+          {m.id === 'bank' && !homeCountryInfo
+            ? <ChevronDown size={17} className={cn('text-white/25 shrink-0 transition-transform', crossBorderOpen && 'rotate-180')} />
             : <ChevronRight size={16} className="text-white/25 shrink-0" />}
           </button>
-          {m.id === 'bank' && bankOpen && (
+
+          {/* Cross-border option — shown when user has a home country */}
+          {m.id === 'bank' && homeCountryInfo && (
+            <>
+              <button
+                type="button"
+                onClick={() => setCrossBorderOpen((open) => !open)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 mt-1 rounded-xl text-left text-xs font-medium text-[#d4a843]/80 hover:bg-white/5 transition-colors"
+              >
+                <ArrowUpRight size={14} className="text-[#d4a843]/60" />
+                <span className="flex-1">Send to another country</span>
+                <ChevronDown size={14} className={cn('text-white/25 transition-transform', crossBorderOpen && 'rotate-180')} />
+              </button>
+              {crossBorderOpen && (
+                <div className="rounded-2xl border border-white/10 bg-[#141414] overflow-hidden">
+                  {otherCountries.map((country) => (
+                    <button
+                      key={country.name}
+                      type="button"
+                      onClick={() => {
+                        setCrossBorderOpen(false)
+                        if (country.provider === 'pulsemfb') {
+                          onSelect('bank')
+                        } else {
+                          onSelectBridge(country.code)
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-white/75 hover:bg-white/8 transition-colors border-b border-white/5 last:border-0"
+                    >
+                      <span className="text-lg leading-none">{country.flag}</span>
+                      <span className="flex-1">{country.name}</span>
+                      <span className="text-[10px] text-white/30">Cross-border</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Country list fallback — shown when user has no country set */}
+          {m.id === 'bank' && !homeCountryInfo && crossBorderOpen && (
           <div className="-mt-2 rounded-2xl border border-white/10 bg-[#141414] overflow-hidden">
-            {BANK_COUNTRIES.map((country) => (
+            {otherCountries.map((country) => (
                 <button
                   key={country.name}
                   type="button"
                   onClick={() => {
-                    setBankOpen(false)
+                    setCrossBorderOpen(false)
                     if (country.provider === 'pulsemfb') {
                       onSelect('bank')
                     } else {
