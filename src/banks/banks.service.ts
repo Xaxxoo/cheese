@@ -95,11 +95,12 @@ const NIGERIAN_BANKS: BankDirectoryEntry[] = [
 ];
 
 function getTransferFeeUsdc(amountNgn: number, effectiveRate: number): number {
-  if (amountNgn < 10_000) return 50 / effectiveRate
-  if (amountNgn <= 50_000) return 200 / effectiveRate
-  if (amountNgn < 100_000) return 500 / effectiveRate
-  if (amountNgn < 500_000) return 1_000 / effectiveRate
-  return 1_300 / effectiveRate
+  if (effectiveRate <= 0) return 0
+  if (amountNgn <= 50_000) return 500 / effectiveRate
+  if (amountNgn < 100_000) return 1_000 / effectiveRate
+  if (amountNgn < 200_000) return 1            // $1 flat
+  if (amountNgn <= 500_000) return 2            // $2 flat
+  return 3                                      // $3 flat
 }
 const MIN_TRANSFER_NGN = 500;
 const MAX_TRANSFER_NGN = 10_000_000; // Black tier ceiling — daily limit enforced per-tier above
@@ -1177,7 +1178,7 @@ export class BanksService {
     availableUsdcDisplay: string;
   }> {
     const treasuryBalance = await this.blockchainService.getPlatformUsdcBalance();
-    const available = parseFloat(treasuryBalance) * 0.4;
+    const available = parseFloat(treasuryBalance) * 0.6;
     return {
       availableUsdc:        available.toFixed(2),
       availableUsdcDisplay: `$${available.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
