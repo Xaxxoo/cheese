@@ -143,38 +143,54 @@ export class BridgeTransferService {
     // 9. Generate reference
     const reference = `CW-BRG-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
 
-    // 10. Create BankTransfer record with Bridge-specific fields
-    const transfer = await this.transferRepo.save(
-      this.transferRepo.create({
+    // 10–12. Create records and call Bridge API
+    //        Wrapped in a single try/catch so DB errors (e.g. missing
+    //        migration) return a clean user-facing message instead of
+    //        leaking raw Postgres errors.
+    let transfer: BankTransfer;
+    let tx: { id: string };
+
+    try {
+      // 10. Create BankTransfer record with Bridge-specific fields
+      transfer = await this.transferRepo.save(
+        this.transferRepo.create({
+          userId,
+          accountNumber: dto.accountIdentifier,
+          bankCode: dto.bankCode ?? countryConfig.paymentRail,
+          bankName: dto.bankName ?? countryConfig.name,
+          accountName: dto.recipientName,
+          amountNgn: '0', // Not an NGN transfer
+          amountUsdc: totalUsdc,
+          feeUsdc,
+          rateApplied: '1', // USDC→fiat rate determined by Bridge
+          reference,
+          status: BankTransferStatus.PENDING,
+          provider: 'bridge',
+          countryCode: countryConfig.code,
+          fiatCurrency: countryConfig.currency,
+          stellarAmount: totalUsdc,
+        }),
+      );
+
+      // 11. Create Transaction record
+      tx = await this.txService.create({
         userId,
-        accountNumber: dto.accountIdentifier,
-        bankCode: dto.bankCode ?? countryConfig.paymentRail,
-        bankName: dto.bankName ?? countryConfig.name,
-        accountName: dto.recipientName,
-        amountNgn: '0', // Not an NGN transfer
+        type: TxType.BANK_TRANSFER,
+        status: TxStatus.PENDING,
         amountUsdc: totalUsdc,
         feeUsdc,
-        rateApplied: '1', // USDC→fiat rate determined by Bridge
+        recipientName: dto.recipientName,
         reference,
-        status: BankTransferStatus.PENDING,
-        provider: 'bridge',
-        countryCode: countryConfig.code,
-        fiatCurrency: countryConfig.currency,
-        stellarAmount: totalUsdc,
-      }),
-    );
-
-    // 11. Create Transaction record
-    const tx = await this.txService.create({
-      userId,
-      type: TxType.BANK_TRANSFER,
-      status: TxStatus.PENDING,
-      amountUsdc: totalUsdc,
-      feeUsdc,
-      recipientName: dto.recipientName,
-      reference,
-      description: `Off-ramp to ${dto.recipientName} — ${countryConfig.name} (${countryConfig.currency})`,
-    });
+        description: `Off-ramp to ${dto.recipientName} — ${countryConfig.name} (${countryConfig.currency})`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to create Bridge transfer records: ${err instanceof Error ? err.message : err}`,
+      );
+      throw new BadRequestException(
+        'Bridge payments are temporarily unavailable. Please try again later.',
+      );
+    }
 
     // 12. Call Bridge API — gracefully handle "not configured"
     try {
@@ -214,8 +230,8 @@ export class BridgeTransferService {
         status: BankTransferStatus.FAILED,
         failureReason:
           err instanceof Error ? err.message : 'Bridge API error',
-      });
-      await this.txService.update(tx.id, { status: TxStatus.FAILED });
+      }).catch(() => {});
+      await this.txService.update(tx.id, { status: TxStatus.FAILED }).catch(() => {});
 
       const message =
         err instanceof BadRequestException
