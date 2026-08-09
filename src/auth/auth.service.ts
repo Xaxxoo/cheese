@@ -49,6 +49,7 @@ import {
 import { ReferralService } from '../referral/referral.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 import { generateShortCode } from '../common/utils/random-code.util';
+import { countryFromPhone } from '../common/utils/phone-country.util';
 import {
   normalizeEmail,
   normalizeIdentifier,
@@ -177,6 +178,7 @@ export class AuthService {
       existingUnverified.fullName = dto.fullName;
       existingUnverified.phone = dto.phone;
       existingUnverified.username = dto.username;
+      existingUnverified.country = countryFromPhone(dto.phone);
       existingUnverified.passwordHash = await bcrypt.hash(
         dto.password,
         BCRYPT_ROUNDS,
@@ -213,6 +215,7 @@ export class AuthService {
       email: dto.email,
       phone: dto.phone,
       username: dto.username,
+      country: countryFromPhone(dto.phone),
       passwordHash,
       referralCode: generateShortCode(8),
       referredBy: waitlistEntry?.referrerId || null,

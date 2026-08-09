@@ -69,6 +69,10 @@ export class User {
   @Column({ name: 'full_name', nullable: true, type: 'varchar' })
   fullName: string | null;
 
+  /** ISO alpha-2 country code inferred from phone number at signup. */
+  @Column({ type: 'varchar', length: 2, nullable: true })
+  country: string | null;
+
   @Exclude()
   @Column({ name: 'password_hash', type: 'varchar', nullable: true })
   passwordHash: string | null;
