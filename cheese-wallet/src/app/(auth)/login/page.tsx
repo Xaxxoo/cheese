@@ -23,6 +23,7 @@ export default function LoginPage() {
     identifier?: string;
     password?: string;
   }>({});
+  const [deviceError, setDeviceError] = useState(false);
 
   // Auth boot: mark booting done (layout already checked user)
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function LoginPage() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
+    setDeviceError(false);
 
     try {
       const deviceId = ensureDeviceId();
@@ -102,9 +104,7 @@ export default function LoginPage() {
       // recovery failed), direct the user to the add-device flow.
       const isDeviceError = /device|signature|unrecognized/i.test(msg);
       if (isDeviceError) {
-        notify.error(
-          'This device is not recognised. Use "New device? Register it" below.',
-        );
+        setDeviceError(true);
       } else {
         notify.error(msg);
       }
@@ -152,12 +152,27 @@ export default function LoginPage() {
           }
         />
 
+        {deviceError && (
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+            <div className="w-8 h-8 rounded-full bg-red-500/15 flex items-center justify-center shrink-0 mt-0.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-red-400">Unrecognised device</p>
+              <p className="text-xs text-white/50 mt-0.5">This device is not registered to your account. Register it below to continue.</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
           <Link
             href="/add-device"
-            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+            className={deviceError
+              ? "text-sm font-semibold text-[#d4a843] underline underline-offset-2 animate-pulse"
+              : "text-xs text-white/40 hover:text-white/70 transition-colors"
+            }
           >
-            New device? Register it
+            {deviceError ? 'Register this device' : 'New device? Register it'}
           </Link>
           <Link
             href="/forgot-password"
