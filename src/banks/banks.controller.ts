@@ -148,7 +148,7 @@ export class BanksController {
   // ── GET /banks/onramp-availability ───────────────────────────────────────
   @Get('onramp-availability')
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Get available USDC for purchase (40% of platform treasury)' })
+  @ApiOperation({ summary: 'Get available USDC for purchase (60% of platform treasury)' })
   getOnRampAvailability() {
     return this.banksService.getAvailableOnRampUsdc();
   }
