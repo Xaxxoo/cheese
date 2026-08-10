@@ -489,8 +489,6 @@ function CryptoTab() {
 
 // ── Page ───────────────────────────────────────────────────
 export default function AddMoneyPage() {
-  const [tab, setTab] = useState<'bank' | 'crypto'>('bank')
-
   return (
     <div className="flex flex-col pb-10">
 
@@ -502,38 +500,12 @@ export default function AddMoneyPage() {
         >
           <ArrowLeft size={18} />
         </Link>
-        <h1 className="text-lg font-semibold text-white tracking-tight">Add Money</h1>
+        <h1 className="text-lg font-semibold text-white tracking-tight">Add USDC</h1>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-5 flex justify-center">
-        <div className="flex gap-1 p-1 rounded-2xl bg-white/6 border border-white/8 w-[80%]">
-          {([
-            { key: 'bank',   label: 'Bank Transfer', icon: Building2 },
-            { key: 'crypto', label: 'Crypto',         icon: Wallet    },
-          ] as const).map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all',
-                tab === key
-                  ? 'bg-[#d4a843] text-black'
-                  : 'text-white/50 hover:text-white',
-              )}
-            >
-              <Icon size={14} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tab content */}
+      {/* Crypto funding only */}
       <div className="px-4">
-        {tab === 'bank'   && <BankTransferTab />}
-        {tab === 'crypto' && <CryptoTab />}
+        <CryptoTab />
       </div>
     </div>
   )
