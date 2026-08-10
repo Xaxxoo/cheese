@@ -97,7 +97,11 @@ export async function getMe(): Promise<User> {
 
 // ── Forgot password ───────────────────────────────────────
 export async function forgotPassword(email: string): Promise<void> {
-  await apiClient.post(ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
+  await apiClient.post(
+    ENDPOINTS.AUTH.FORGOT_PASSWORD,
+    { email },
+    { timeout: 60_000 },
+  )
 }
 
 // ── Reset password ────────────────────────────────────────

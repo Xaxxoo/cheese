@@ -214,7 +214,14 @@ export class EmailService {
       expiresIn: params.expiresIn || '5 minutes',
       ipAddress: params.ipAddress,
     });
-    await this.send({ to: params.to, subject, html });
+    const text =
+      `Hi ${params.fullName},\n\n` +
+      `Your Cheese Pay password reset code is: ${params.otp}\n\n` +
+      `This code expires in ${params.expiresIn || '5 minutes'}.\n` +
+      (params.ipAddress ? `Request IP: ${params.ipAddress}\n` : '') +
+      `If you did not request this, secure your account immediately.\n\n` +
+      `– The Cheese Team`;
+    await this.send({ to: params.to, subject, html, text });
   }
 
   async sendPasswordChanged(params: {
