@@ -23,7 +23,7 @@ Cheese is a B2C and B2B payment settlement platform that enables businesses and 
 
 - **Framework**: NestJS (TypeScript)
 - **Database**: PostgreSQL with TypeORM
-- **Blockchain Integration**: ethers.js, Stellar SDK, Starknet.js, Stacks.js
+- **Blockchain Integration**: ethers.js, Stellar SDK
 - **Payment Processing**: Automated monitoring and settlement
 - **API Design**: RESTful with webhook support
 - **Job Scheduling**: Cron-based blockchain monitoring
@@ -69,20 +69,10 @@ Cheese is a B2C and B2B payment settlement platform that enables businesses and 
 
 #### Non-EVM Chains
 
-6. **Starknet** (ZK-Rollup)
-   - Gas: Very low
-   - Speed: ~10 seconds
-   - Best for: High-security applications
-
-7. **Stellar** (Fast & Low-Cost)
+6. **Stellar** (Fast & Low-Cost)
    - Gas: Minimal (~$0.0001)
    - Speed: ~5 seconds
    - Best for: Cross-border payments, remittances
-
-8. **Stacks** (Bitcoin Layer 2)
-   - Gas: Moderate
-   - Speed: Bitcoin block time
-   - Best for: Bitcoin-secured settlements
 
 ## Features
 
@@ -276,11 +266,6 @@ OPTIMISM_RPC_URL=https://opt-mainnet.g.alchemy.com/v2/YOUR_KEY
 # Non-EVM Networks
 STELLAR_NETWORK=PUBLIC # or TESTNET
 STELLAR_ACCOUNT_SECRET=SXXX...
-STARKNET_RPC_URL=https://starknet-mainnet.public.blastapi.io
-STARKNET_PRIVATE_KEY=0x...
-STACKS_RPC_URL=https://stacks-node-api.mainnet.stacks.co
-STACKS_PRIVATE_KEY=...
-
 # Partner API (Fiat Liquidity Provider)
 PARTNER_API_URL=https://partner-api.com/v1
 PARTNER_API_KEY=your_partner_api_key
