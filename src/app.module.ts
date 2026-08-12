@@ -93,11 +93,6 @@ import { MerchantStore } from './merchant/entities/merchant-store.entity';
 import { MerchantPayment } from './merchant/entities/merchant-payment.entity';
 import { MerchantSettlement } from './merchant/entities/merchant-settlement.entity';
 import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-account.entity';
-import { PrivateGatewayModule } from './private-gateway/private-gateway.module';
-import { PrivateInvoice } from './private-gateway/entities/private-invoice.entity';
-import { VeilModule } from './veil/veil.module';
-import { ShieldedNote } from './veil/entities/shielded-note.entity';
-import { SpentNullifier } from './veil/entities/spent-nullifier.entity';
 import { TriviaScore } from './trivia/entities/trivia-score.entity';
 import { TriviaReward } from './trivia/entities/trivia-reward.entity';
 
@@ -194,9 +189,7 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
                 MerchantPayment,
                 MerchantSettlement,
                 MerchantPayoutAccount,
-                PrivateInvoice,
-                ShieldedNote,
-                SpentNullifier,
+
                 TriviaScore,
                 TriviaReward,
               ],
@@ -244,9 +237,7 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
                 MerchantPayment,
                 MerchantSettlement,
                 MerchantPayoutAccount,
-                PrivateInvoice,
-                ShieldedNote,
-                SpentNullifier,
+
                 TriviaScore,
                 TriviaReward,
               ],
@@ -290,9 +281,7 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
             MerchantPayment,
             MerchantSettlement,
             MerchantPayoutAccount,
-            PrivateInvoice,
-            ShieldedNote,
-            SpentNullifier,
+
                 TriviaScore,
                 TriviaReward,
           ],
@@ -334,8 +323,6 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
     AlertsModule,
     BillsModule,
     TriviaModule,
-    PrivateGatewayModule,
-    VeilModule,
     BridgeModule,
   ],
   providers: [

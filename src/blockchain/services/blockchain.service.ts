@@ -1408,7 +1408,7 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Stellar — hot-wallet payment polling (for private gateway / Veil ZK)
+  // Stellar — hot-wallet payment polling
   // ─────────────────────────────────────────────────────────────────────────
 
   async fetchHotWalletPayments(cursor?: string): Promise<{
