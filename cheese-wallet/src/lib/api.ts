@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
-// console.log('API_BASE:', API_BASE);
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -75,69 +74,49 @@ export interface RankResponse {
 // ── API Functions ────────────────────────────────────────────────────────────
 
 export async function registerWaitlist(payload: RegisterPayload): Promise<RegisterResponse> {
-  try {
-    const { data } = await api.post<any>('/waitlist/register', payload);
-    console.log('Register response:', data);
-    return data?.data || data;
-  } catch (error) {
-    console.error('Register error:', error);
-    throw error;
-  }
+  const { data } = await api.post<any>('/waitlist/register', payload);
+  return data?.data || data;
 }
 
 export async function checkUsername(username: string): Promise<UsernameCheckResponse> {
   try {
-    console.log('[checkUsername] Checking:', username);
     const { data } = await api.get<any>('/waitlist/check-username', {
       params: { username },
     });
-    
-    console.log('[checkUsername] Raw response:', data);
-    
-    // Handle wrapped response: { success: true, data: {...} }
+
     const response = data?.data || data;
-    
+
     if (response && typeof response === 'object') {
       return {
-        available: response.available === true, // Explicitly check for true
+        available: response.available === true,
         username: response.username ?? username,
         reason: response.reason,
       };
     }
-    
+
     return { available: true, username, reason: undefined };
   } catch (error: any) {
     const status = error.response?.status;
     const errorData = error.response?.data;
-    
-    console.error('[checkUsername] ❌ Error:', {
-      status,
-      message: error.message,
-      errorData,
-    });
-    
-    // Handle validation errors (400)
+
     if (status === 400) {
       let msgStr = 'Invalid username';
-      
+
       if (errorData?.message) {
-        msgStr = Array.isArray(errorData.message) 
+        msgStr = Array.isArray(errorData.message)
           ? errorData.message.join(', ')
           : String(errorData.message);
       } else if (errorData?.error) {
         msgStr = String(errorData.error);
       }
-      
-      console.warn('[checkUsername] Validation error:', msgStr);
+
       return {
-        available: true, // Don't block on validation errors
+        available: true,
         username,
         reason: msgStr,
       };
     }
-    
-    // For any other error, return available to not block
-    console.warn('[checkUsername] Other error, treating as available');
+
     return {
       available: true,
       username,
@@ -147,22 +126,15 @@ export async function checkUsername(username: string): Promise<UsernameCheckResp
 }
 
 export async function trackShare(payload: SharePayload): Promise<ShareResponse> {
-  try {
-    const { data } = await api.post<any>('/waitlist/share', payload);
-    return data?.data || data;
-  } catch (error: any) {
-    console.error('[trackShare] Error:', error);
-    throw error;
-  }
+  const { data } = await api.post<any>('/waitlist/share', payload);
+  return data?.data || data;
 }
 
 export async function getLeaderboard(): Promise<LeaderboardResponse> {
   try {
     const { data } = await api.get<any>('/leaderboard');
-    // Handle wrapped response: { success: true, data: {...} }
     const response = data?.data || data;
 
-    // Normalize both object and array shapes
     if (Array.isArray(response)) {
       return { entries: response, total: response.length };
     }
@@ -180,68 +152,31 @@ export async function getLeaderboard(): Promise<LeaderboardResponse> {
     }
 
     return { entries: [], total: 0 };
-  } catch (error: any) {
-    console.error('[getLeaderboard] Error:', error);
+  } catch {
     return { entries: [], total: 0 };
   }
 }
 
 export async function getReferralInfo(code: string) {
-  try {
-    const { data } = await api.get<any>(`/waitlist/referral/${code}`);
-    return data?.data || data;
-  } catch (error: any) {
-    console.error('[getReferralInfo] Error:', error);
-    throw error;
-  }
+  const { data } = await api.get<any>(`/waitlist/referral/${code}`);
+  return data?.data || data;
 }
 
 export async function getUserPoints(userId: string): Promise<PointsResponse> {
-  try {
-    const { data } = await api.get<any>(`/waitlist/points/${userId}`);
-    return data?.data || data;
-  } catch (error: any) {
-    console.error('[getUserPoints] Error:', error);
-    throw error;
-  }
+  const { data } = await api.get<any>(`/waitlist/points/${userId}`);
+  return data?.data || data;
 }
 
 export async function getUserRank(userId: string): Promise<RankResponse> {
-  try {
-    const { data } = await api.get<any>(`/leaderboard/rank/${userId}`);
-    return data?.data || data;
-  } catch (error: any) {
-    console.error('[getUserRank] Error:', error);
-    throw error;
-  }
+  const { data } = await api.get<any>(`/leaderboard/rank/${userId}`);
+  return data?.data || data;
 }
-
-
-
-
-// export async function getReservedUsernamesCount(): Promise<number> {
-//   try {
-//     const { data } = await api.get<any>('/waitlist/count');
-//     console.log('[count] raw response:', JSON.stringify(data));
-    
-//     const payload = data?.data ?? data;
-//     console.log('[count] payload:', JSON.stringify(payload));
-
-//     if (typeof payload === 'number') return payload;
-//     if (typeof payload?.count === 'number') return payload.count;
-
-//     return 0;
-//   } catch (error: any) {
-//     console.error('[getReservedUsernamesCount] Error:', error);
-//     return 0;
-//   }
-// }
 
 export async function getReservedUsernamesCount(): Promise<number> {
   const { data } = await api.get<any>('/waitlist/count');
-  
+
   const value = data?.data ?? data;
   if (typeof value === 'number') return value;
-  
+
   throw new Error('Invalid response format for count');
 }
