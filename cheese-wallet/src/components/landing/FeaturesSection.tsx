@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 
 const FEATURES = [
-  { icon: Coins,      title: 'Hold Stablecoins',         desc: 'Your balance stays in USDC or USDT — protected from Naira volatility, always ready to spend.' },
+  { icon: Coins,      title: 'Hold Stablecoins',         desc: 'Your balance stays in USDC or USDT — protected from fiat volatility, always ready to spend.' },
   { icon: Send,       title: 'Instant Local Transfers',  desc: 'Send money through local payment rails across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia, straight from your stablecoin balance.' },
   { icon: Building2,  title: 'Familiar Transfer Flow',   desc: 'Bank name, account number, amount, send. The exact same flow you already know from Kuda, Opay, or your bank app.' },
   { icon: TrendingUp, title: 'Spend Without Converting', desc: 'No pre-conversion. No swap. Just enter an amount and send — CheesePay handles everything behind the scenes.' },

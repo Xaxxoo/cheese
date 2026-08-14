@@ -8,8 +8,8 @@ const FAQS = [
     a: 'Cheese Pay is a digital dollar wallet for users across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia. You hold your money as USDC or USDT and access local payment rails through a mobile web app with no download required.',
   },
   {
-    q: 'How does Cheese Pay protect my money from naira devaluation?',
-    a: 'When you hold money in Naira in a traditional bank, it loses value every time the exchange rate rises. Cheese Pay lets you hold your balance in USDC, which tracks the US dollar. Since 2020, the naira has lost over 70% of its value against the dollar — money held in USDC would have maintained its purchasing power.',
+    q: 'How does Cheese Pay protect my money from fiat devaluation?',
+    a: 'When you hold money in fiat in a traditional bank, it loses value every time the exchange rate rises. Cheese Pay lets you hold your balance in USDC, which tracks the US dollar. Local currencies across Africa have lost significant value against the dollar — money held in USDC would have maintained its purchasing power.',
   },
   {
     q: 'Do I need to know about crypto to use Cheese Pay?',

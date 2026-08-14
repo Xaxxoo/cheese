@@ -161,7 +161,7 @@ export function HeroSection() {
 
       {/* Subtext */}
       <p className="max-w-md mx-auto text-lg text-[#888] leading-relaxed mb-12 opacity-0 animate-fade-up delay-300">
-        Keep your money in dollars. Pay anyone in naira or USDC.{' '}
+        Keep your money in dollars. Pay anyone in fiat or USDC.{' '}
         Send and receive money instantly with just a <em className="text-white not-italic">@username</em> .
       </p>
 

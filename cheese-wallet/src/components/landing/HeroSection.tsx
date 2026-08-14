@@ -110,7 +110,7 @@ export function HeroSection() {
           Hold USDC.
           <br />
           <span style={{ background: 'linear-gradient(135deg, #D4AF37, #F0D060, #B8941F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            Send Naira.
+            Send Fiat.
           </span>
         </motion.h1>
 

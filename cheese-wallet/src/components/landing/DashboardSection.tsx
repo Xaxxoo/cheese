@@ -156,7 +156,7 @@ export function DashboardSection() {
 
                 {/* Amount */}
                 <div className="mb-5">
-                  <div className="text-[#555] text-[10px] mb-1.5 uppercase tracking-wider">Amount (Naira)</div>
+                  <div className="text-[#555] text-[10px] mb-1.5 uppercase tracking-wider">Amount (Fiat)</div>
                   <div className="px-3 py-2.5 rounded-lg border"
                     style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="text-white text-lg font-bold">₦150,000</div>
@@ -177,7 +177,7 @@ export function DashboardSection() {
                 </motion.button>
 
                 <p className="text-center text-[#333] text-[9px] mt-3">
-                  Recipient gets Naira · You spend USDC
+                  Recipient gets Fiat · You spend USDC
                 </p>
               </motion.div>
             </div>
