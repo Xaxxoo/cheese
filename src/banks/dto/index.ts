@@ -14,7 +14,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class ResolveAccountDto {
   @ApiProperty({
     example: '0123456789',
-    description: 'Nigerian bank account number (exactly 10 digits)',
+    description: 'Bank account number (exactly 10 digits)',
     minLength: 10,
     maxLength: 10,
   })
@@ -37,7 +37,7 @@ export class ResolveAccountDto {
 export class BankTransferDto {
   @ApiProperty({
     example: '0123456789',
-    description: 'Destination Nigerian bank account number (10 digits)',
+    description: 'Destination bank account number (10 digits)',
   })
   @IsString()
   @IsNotEmpty()

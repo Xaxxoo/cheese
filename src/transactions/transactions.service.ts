@@ -109,7 +109,7 @@ export class TransactionsService {
     return parseFloat(result?.total ?? '0');
   }
 
-  /** Total NGN transferred to Nigerian banks today. */
+  /** Total NGN transferred to banks today. */
   async getDailyOutboundNgn(userId: string): Promise<number> {
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);

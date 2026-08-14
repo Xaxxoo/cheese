@@ -1,32 +1,32 @@
 # Cheese Pay
 
-> Cheese Pay lets Nigerians hold money in USDC — a dollar-stable currency — and send
-> directly to any Nigerian bank account number in Naira. Protect your savings from naira
+> Cheese Pay lets you hold money in USDC — a dollar-stable currency — and send
+> directly to any local bank account in fiat. Protect your savings from fiat
 > devaluation without losing the ability to transact locally the normal way.
-> Built on Stellar and EVM. Available in Nigeria.
+> Built on Stellar and EVM. Available across Africa.
 
 ## The core problem Cheese Pay solves
-Nigeria has one of the highest inflation and currency devaluation rates in the world.
-Nigerians who hold savings in Naira watch their money lose value daily. But switching
+Many African countries face high inflation and currency devaluation.
+People who hold savings in fiat watch their money lose value daily. But switching
 to dollars traditionally means losing the ability to do normal local transactions —
-paying rent, sending money to family, paying vendors — which all happen via Nigerian
+paying rent, sending money to family, paying vendors — which all happen via local
 bank account numbers.
 
 Cheese Pay solves both problems at once:
 - Hold your money in USDC (a USD-pegged stablecoin) so it does not devalue
-- Send directly to any Nigerian bank account number in Naira, just like a normal transfer
-- No crypto knowledge required. Recipients get Naira in their regular bank account.
+- Send directly to any local bank account in fiat, just like a normal transfer
+- No crypto knowledge required. Recipients get fiat in their regular bank account.
 
 ## Who it is for
-- Nigerians who want to protect savings from naira devaluation
-- Freelancers and remote workers earning in USD who need to spend locally in Nigeria
-- Businesses that invoice in dollars but pay Nigerian suppliers in Naira
-- Nigerians in the diaspora sending money home to local bank accounts
-- Travellers to Nigeria who want to pay locally without currency friction
+- People who want to protect savings from fiat devaluation
+- Freelancers and remote workers earning in USD who need to spend locally
+- Businesses that invoice in dollars but pay local suppliers in fiat
+- Diaspora communities sending money home to local bank accounts
+- Travellers who want to pay locally without currency friction
 
 ## Key features
-- Send to any Nigerian bank account number directly from a USDC balance
-- Hold savings in USDC — stable, dollar-pegged, not subject to naira inflation
+- Send to any local bank account directly from a USDC balance
+- Hold savings in USDC — stable, dollar-pegged, not subject to fiat inflation
 - Username-based transfers as an optional alternative to account numbers
 - QR code payments for merchants
 - Earn yield on idle USDC balance
@@ -36,15 +36,15 @@ Cheese Pay solves both problems at once:
 
 ## How it works
 1. User deposits USDC into their Cheese wallet
-2. To send money locally, they enter a Nigerian bank account number and amount in Naira
-3. Cheese converts and delivers Naira to the recipient's bank account instantly
+2. To send money locally, they enter a bank account number and amount in fiat
+3. Cheese converts and delivers fiat to the recipient's bank account instantly
 4. The sender's balance remains in USDC for future use
 
 ## Get started
 - https://cheesepay.xyz
 
 ## Built on
-- Stellar blockchain for USDC payments and Naira settlement
+- Stellar blockchain for USDC payments and fiat settlement
 - EVM / Celo for cUSDC with sponsored gas fees
 
 ## Contact

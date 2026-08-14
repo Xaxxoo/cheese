@@ -3,12 +3,12 @@
 // import { ThemeProvider } from '@/providers/ThemeProvider'
 
 // export const metadata: Metadata = {
-//   title: 'Cheese Wallet — Dollar Wallet for Smart Nigerians',
-//   description: 'Hold your money in US dollars. Send and receive Naira instantly. Built for Nigeria.',
+//   title: 'Cheese Wallet — Dollar Wallet for Africa',
+//   description: 'Hold your money in US dollars. Send and receive fiat instantly. Built for Africa.',
 //   openGraph: {
 //     type: 'website',
 //     title: 'Cheese Wallet',
-//     description: 'Dollar wallet for smart Nigerians',
+//     description: 'Dollar wallet for Africa',
 //     siteName: 'Cheese Wallet',
 //   },
 //   icons: { icon: '/icons/icon-192.png' },
@@ -115,9 +115,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 { "@type": "Question", "name": "What is Cheese Pay?", "acceptedAnswer": { "@type": "Answer", "text": "Cheese Pay is a digital dollar wallet for Africa. You hold your money as USDC — a US dollar-pegged stablecoin — and send directly to any local bank account in fiat. It is available as a mobile web app with no download required." } },
                 { "@type": "Question", "name": "How does Cheese Pay protect my money from fiat devaluation?", "acceptedAnswer": { "@type": "Answer", "text": "Cheese Pay lets you hold your balance in USDC, which tracks the US dollar. Local currencies across Africa have lost significant value against the dollar — money held in USDC maintains its purchasing power." } },
                 { "@type": "Question", "name": "Does the recipient need a Cheese Pay account?", "acceptedAnswer": { "@type": "Answer", "text": "No. Recipients do not need a Cheese Pay account or any crypto wallet. They receive fiat in their regular local bank account through supported payment rails." } },
-                { "@type": "Question", "name": "Which Nigerian banks does Cheese Pay support?", "acceptedAnswer": { "@type": "Answer", "text": "Cheese Pay supports all major Nigerian banks including GTBank, Zenith Bank, Access Bank, First Bank, UBA, Kuda, Opay, Moniepoint, Palmpay, and more — any bank reachable on the Nigerian interbank settlement system." } },
+                { "@type": "Question", "name": "Which banks does Cheese Pay support?", "acceptedAnswer": { "@type": "Answer", "text": "Cheese Pay supports banks across Nigeria, Kenya, Rwanda, Ghana, and Ethiopia. Supported banks and payment rails vary by market and are shown in the app." } },
                 { "@type": "Question", "name": "Do I need to know about crypto to use Cheese Pay?", "acceptedAnswer": { "@type": "Answer", "text": "No. You sign up like a normal app, top up your wallet, and send money using the same bank-transfer flow you already know. Cheese Pay handles everything invisibly." } },
-                { "@type": "Question", "name": "What are the fees on Cheese Pay?", "acceptedAnswer": { "@type": "Answer", "text": "Cheese Pay charges a small conversion fee when you send to a Nigerian bank account. The exact rate is shown before you confirm any transfer. Cheese Gold and Black tier members receive reduced or zero conversion fees." } },
+                { "@type": "Question", "name": "What are the fees on Cheese Pay?", "acceptedAnswer": { "@type": "Answer", "text": "Cheese Pay charges a small conversion fee when you send to a bank account. The exact rate is shown before you confirm any transfer. Cheese Gold and Black tier members receive reduced or zero conversion fees." } },
                 { "@type": "Question", "name": "What are the Cheese Pay tier levels?", "acceptedAnswer": { "@type": "Answer", "text": "Silver is the default tier. Gold requires identity verification and unlocks higher limits and reduced fees. Black is the premium tier with zero fees, a metal card, and priority support." } },
                 { "@type": "Question", "name": "Is Cheese Pay safe?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Cheese Pay uses cryptographic device keys so only your registered device can authorise transfers. USDC is held on the Stellar blockchain and every transaction is recorded with a verifiable blockchain hash." } }
               ]

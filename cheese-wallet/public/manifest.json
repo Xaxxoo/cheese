@@ -1,7 +1,7 @@
 {
   "name": "Cheese Pay",
   "short_name": "Cheese",
-  "description": "Your money, stronger than the Naira. Hold USDC, send Naira, pay bills.",
+  "description": "Your money, stronger than fiat. Hold USDC, send fiat, pay bills.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0904",

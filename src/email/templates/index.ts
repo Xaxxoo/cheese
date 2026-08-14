@@ -87,7 +87,7 @@ export function waitlistConfirmation(params: {
         </p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:36px;">
           ${featureRow(ICONS.dollar(), 'Hold & earn on USDC', 'Up to 5% APY — no lock-ups')}
-          ${featureRow(ICONS.zap(), 'Instant NGN withdrawals', 'Send to any Nigerian bank in seconds')}
+          ${featureRow(ICONS.zap(), 'Instant NGN withdrawals', 'Send to any bank in seconds')}
           ${featureRow(ICONS.creditCard(), 'Virtual dollar card', 'Pay globally with your USDC balance')}
           ${featureRow(ICONS.send(), 'Send money by username', 'Just @username — no account numbers')}
         </table>
@@ -141,7 +141,7 @@ export function appLaunch(params: { username: string; appUrl: string }): {
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
                 <div style="margin-bottom:10px;">${ICONS.zap(BRAND.gold, 20)}</div>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Instant Withdrawals</p>
-                <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">To any Nigerian bank</p>
+                <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">To any bank</p>
               </div>
             </td>
             <td width="50%" style="padding:0 0 12px 6px;vertical-align:top;">

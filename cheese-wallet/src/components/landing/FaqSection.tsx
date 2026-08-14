@@ -29,7 +29,7 @@ const FAQS = [
   },
   {
     q: 'What are the fees on Cheese Pay?',
-    a: 'Cheese Pay charges a small conversion fee when you send to a Nigerian bank account. The exact rate is shown before you confirm any transfer — there are no hidden charges. Cheese Gold and Black tier members receive reduced or zero conversion fees.',
+    a: 'Cheese Pay charges a small conversion fee when you send to a bank account. The exact rate is shown before you confirm any transfer — there are no hidden charges. Cheese Gold and Black tier members receive reduced or zero conversion fees.',
   },
   {
     q: 'What are the Cheese Pay tier levels?',

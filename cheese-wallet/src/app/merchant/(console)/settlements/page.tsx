@@ -172,7 +172,7 @@ function PayoutAccountModal({ account, onClose }: ModalProps) {
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
                   >
-                    <option value="NGN">NGN – Naira</option>
+                    <option value="NGN">NGN – Nigerian Naira</option>
                     <option value="USD">USD – Dollar</option>
                     <option value="EUR">EUR – Euro</option>
                     <option value="GBP">GBP – Pound</option>

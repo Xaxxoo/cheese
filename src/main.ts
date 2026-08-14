@@ -103,7 +103,7 @@ async function bootstrap() {
       .addTag('Rates', 'USD → NGN exchange rate (cached 60 s)')
       .addTag('Transactions', 'Transaction history with pagination')
       .addTag('Send', 'Send USDC by username or Stellar address')
-      .addTag('Banks', 'Nigerian banks · Account resolution · NGN payout')
+      .addTag('Banks', 'Banks · Account resolution · NGN payout')
       .addTag('Card', 'Virtual Mastercard — provision · freeze · CVV reveal')
       .addTag('Notifications', 'In-app notification feed')
       .addTag('Profile', 'Update display name · username · phone number')

@@ -45,8 +45,8 @@ export class BanksController {
   @Get()
   @ApiBearerAuth('access-token')
   @ApiOperation({
-    summary: 'List Nigerian banks',
-    description: 'Returns all supported Nigerian banks with their bank codes.',
+    summary: 'List banks',
+    description: 'Returns all supported banks with their bank codes.',
   })
   @ApiResponse({
     status: 200,

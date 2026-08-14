@@ -45,7 +45,7 @@ type BankDirectoryEntry = {
   type: 'commercial' | 'microfinance' | 'fintech' | 'merchant';
 };
 
-// ── Nigerian banks ────────────────────────────────────────────────────────────
+// ── Banks ────────────────────────────────────────────────────────────
 // Commercial banks use 6-digit CBN sort codes (000xxx) as required by PulseMFB.
 // Fintechs and MFBs retain their standard NIBSS codes (090xxx / 100xxx).
 // Heritage Bank (000020) and Diamond Bank (000005) removed — both defunct.
