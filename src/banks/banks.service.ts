@@ -1374,9 +1374,15 @@ export class BanksService {
       return { processed: false, reason };
     }
 
-    // Persist a pending record first so a crash mid-flight is recoverable
-    const deposit = await this.depositRepo.save(
-      this.depositRepo.create({
+    // Claim the reference atomically before crediting the wallet. Webhook
+    // providers may deliver the same event more than once (or retry while a
+    // previous request is still running). A read-then-save sequence allows
+    // both requests through and would send the confirmation email twice.
+    const claim = await this.depositRepo
+      .createQueryBuilder()
+      .insert()
+      .into(BankDeposit)
+      .values({
         userId:               user.id,
         reference,
         virtualAccountNumber: accountNumber,
@@ -1386,8 +1392,18 @@ export class BanksService {
         senderName:           senderName || null,
         senderAccountNumber:  senderAccount || null,
         status:               BankDepositStatus.PENDING,
-      }),
-    );
+      })
+      .orIgnore()
+      .execute();
+
+    if (claim.identifiers.length === 0) {
+      this.logger.log(
+        `VAS deposit already claimed [ref=${reference}] [user=@${user.username}]`,
+      );
+      return { processed: true, reason: 'already processing' };
+    }
+
+    const depositId = claim.identifiers[0].id as string;
 
     this.logger.log(
       `VAS deposit processing [ref=${reference}] [user=@${user.username}] ` +
@@ -1407,7 +1423,7 @@ export class BanksService {
         `VAS deposit credit failed [ref=${reference}] [user=@${user.username}]: ${reason}`,
       );
       await this.depositRepo.update(
-        { id: deposit.id },
+        { id: depositId },
         { status: BankDepositStatus.FAILED, failureReason: reason },
       );
       return { processed: false, reason: 'credit failed' };
@@ -1428,7 +1444,7 @@ export class BanksService {
     });
 
     await this.depositRepo.update(
-      { id: deposit.id },
+      { id: depositId },
       { status: BankDepositStatus.COMPLETED, txHash },
     );
 
