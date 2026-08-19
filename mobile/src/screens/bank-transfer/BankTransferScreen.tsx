@@ -155,16 +155,31 @@ export default function BankTransferScreen({ navigation }: Props) {
 
   function computeFeeUsdc(ngn: number, r: number): number {
     if (r <= 0) return 0
-    if (ngn < 10_000) return 50 / r
-    if (ngn <= 50_000) return 200 / r
-    if (ngn < 100_000) return 500 / r
-    if (ngn < 500_000) return 1_000 / r
-    return 1_300 / r
+    if (ngn < 10_000) return 200 / r
+    if (ngn < 50_000) return 500 / r
+    if (ngn < 100_000) return 0.8
+    if (ngn < 200_000) return 1
+    if (ngn <= 500_000) return 2
+    return 3
+  }
+
+  function getMaxTransferNgn(usdcBalance: number, effectiveRate: number): number {
+    if (usdcBalance <= 0 || effectiveRate <= 0) return 0
+    let low = 0
+    let high = 10_000_000
+    while (low < high) {
+      const candidate = Math.ceil((low + high) / 2)
+      const total = candidate / effectiveRate + computeFeeUsdc(candidate, effectiveRate)
+      if (total <= usdcBalance) low = candidate
+      else high = candidate - 1
+    }
+    return low
   }
 
   const feeUsdc    = computeFeeUsdc(amountNum, rate)
   const usdcNeeded = rate > 0 ? amountNum / rate : 0
   const totalUsdc  = usdcNeeded + feeUsdc
+  const maxTransferNgn = getMaxTransferNgn(balanceNum, rate)
 
   // ── Step 1 handlers ──
 
@@ -370,6 +385,9 @@ export default function BankTransferScreen({ navigation }: Props) {
                   <View style={s.balanceBanner}>
                     <Text style={s.balanceBannerLabel}>Available Balance</Text>
                     <Text style={s.balanceBannerValue}>{fmtUsdc(balance)}</Text>
+                    <Text style={s.balanceBannerHint}>
+                      Max withdrawal: ₦{maxTransferNgn.toLocaleString('en-NG')} (fee included)
+                    </Text>
                   </View>
 
                   <Text style={s.fieldLabel}>Amount (NGN)</Text>
@@ -381,6 +399,16 @@ export default function BankTransferScreen({ navigation }: Props) {
                     onChangeText={(v) => { setAmountNgn(v.replace(/[^0-9.]/g, '')); setAmountError(null) }}
                     keyboardType="decimal-pad"
                   />
+
+                  <TouchableOpacity
+                    style={s.maxButton}
+                    onPress={() => { setAmountNgn(String(maxTransferNgn)); setAmountError(null) }}
+                    disabled={maxTransferNgn < 500}
+                  >
+                    <Text style={[s.maxButtonText, maxTransferNgn < 500 && s.maxButtonTextDisabled]}>
+                      Withdraw maximum · ₦{maxTransferNgn.toLocaleString('en-NG')}
+                    </Text>
+                  </TouchableOpacity>
 
                   {amountNum > 0 && rate > 0 && (
                     <View style={s.feeCard}>
@@ -552,6 +580,15 @@ const s = StyleSheet.create({
   },
   balanceBannerLabel:{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 4 },
   balanceBannerValue:{ fontSize: 20, fontWeight: '700', color: '#fff' },
+  balanceBannerHint: { fontSize: 12, color: '#d4a843', marginTop: 6 },
+
+  maxButton:       {
+    borderWidth: 1, borderColor: 'rgba(212,168,67,0.35)', borderRadius: 12,
+    padding: 12, alignItems: 'center', marginBottom: 16,
+    backgroundColor: 'rgba(212,168,67,0.08)',
+  },
+  maxButtonText:   { color: '#d4a843', fontSize: 13, fontWeight: '600' },
+  maxButtonTextDisabled: { color: 'rgba(255,255,255,0.2)' },
 
   feeCard:           {
     backgroundColor: '#141414', borderRadius: 14, padding: 16, marginBottom: 16,

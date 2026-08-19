@@ -99,6 +99,22 @@ function getBankTransferFeeUsdc(amountNgn: number, effectiveRate: number): numbe
   return 3                                      // $3 flat
 }
 
+function getMaxBankTransferNgn(usdcBalance: number, effectiveRate: number): number {
+  if (usdcBalance <= 0 || effectiveRate <= 0) return 0
+
+  // Total cost is monotonic even though the fee changes at tier boundaries,
+  // so binary search finds the largest whole-naira amount that fits.
+  let low = 0
+  let high = 10_000_000
+  while (low < high) {
+    const candidate = Math.ceil((low + high) / 2)
+    const total = candidate / effectiveRate + getBankTransferFeeUsdc(candidate, effectiveRate)
+    if (total <= usdcBalance) low = candidate
+    else high = candidate - 1
+  }
+  return low
+}
+
 // ─────────────────────────────────────────────────────────
 // Mode Selector — first screen
 // ─────────────────────────────────────────────────────────
@@ -636,8 +652,9 @@ function BankDetailsStep({
     staleTime: STALE_TIMES.EXCHANGE_RATE,
     retry: 1,
   })
-  const maxNgn     = parseFloat((balanceQ.data?.ngnEquivalent ?? '0').replace(/[^0-9.]/g, ''))
   const usdcBalance = parseFloat(balanceQ.data?.totalUsdc ?? '0')
+  const effectiveRate = rateQ.data ? parseFloat(rateQ.data.effectiveRate) : 0
+  const maxNgn = getMaxBankTransferNgn(usdcBalance, effectiveRate)
 
   function handleAcctNum(v: string) {
     const clean = v.replace(/\D/g, '').slice(0, 10)
@@ -702,7 +719,6 @@ function BankDetailsStep({
   }
 
   const amount         = parseInt(amountRaw, 10) || 0
-  const effectiveRate  = rateQ.data ? parseFloat(rateQ.data.effectiveRate) : 0
   const feeUsdcAmount  = amount >= 100 ? getBankTransferFeeUsdc(amount, effectiveRate) : 0
   const totalUsdc      = effectiveRate > 0 && amount > 0 ? amount / effectiveRate + feeUsdcAmount : 0
   const overBalance    = usdcBalance > 0 && totalUsdc > 0 && totalUsdc > usdcBalance
@@ -894,7 +910,7 @@ function BankDetailsStep({
             <p className="text-xs text-white/40 uppercase tracking-wider font-medium">Amount</p>
             {balanceQ.data && (
               <p className={cn('text-xs', overBalance ? 'text-red-400' : 'text-white/30')}>
-                Available: ₦{Math.floor(maxNgn).toLocaleString('en-NG')}
+                Maximum: ₦{maxNgn.toLocaleString('en-NG')}
               </p>
             )}
           </div>
@@ -919,8 +935,25 @@ function BankDetailsStep({
             )}
           </div>
 
+          <p className="text-xs text-white/35 mt-2">
+            Maximum you can withdraw: <span className="text-[#d4a843]">₦{maxNgn.toLocaleString('en-NG')}</span> (fee included)
+          </p>
+
           {/* Quick-select preset amounts */}
           <div className="grid grid-cols-3 gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => { setAmountRaw(String(maxNgn)); setAmountError('') }}
+              disabled={maxNgn < 100}
+              className={cn(
+                'col-span-3 py-2.5 rounded-xl border text-sm font-medium transition-colors',
+                maxNgn >= 100
+                  ? 'bg-[#d4a843]/15 border-[#d4a843]/40 text-[#d4a843] hover:bg-[#d4a843]/20'
+                  : 'bg-white/2 border-white/5 text-white/20 cursor-not-allowed',
+              )}
+            >
+              Withdraw maximum · ₦{maxNgn.toLocaleString('en-NG')}
+            </button>
             {[500, 1000, 2000, 5000, 10000, 20000].map((preset) => {
               const exceedsBalance = maxNgn > 0 && preset > maxNgn
               return (
