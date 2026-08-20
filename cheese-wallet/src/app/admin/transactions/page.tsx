@@ -75,6 +75,7 @@ export default function TransactionsPage() {
   const [typeFilter,     setTypeFilter]     = useState<TypeFilter>('all');
   const [search,         setSearch]         = useState('');
   const [page,           setPage]           = useState(1);
+  const [retryTick,      setRetryTick]      = useState(0);
   const [txns,           setTxns]           = useState<AdminTransactionItem[]>([]);
   const [total,          setTotal]          = useState(0);
   const [loading,        setLoading]        = useState(true);
@@ -133,7 +134,7 @@ export default function TransactionsPage() {
       }
     }, delay);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [page, search, statusFilter, typeFilter]);
+  }, [page, search, statusFilter, typeFilter, retryTick]);
 
   const handleStatus = (s: StatusFilter) => { setStatusFilter(s); setPage(1); };
   const handleType   = (t: TypeFilter)   => { setTypeFilter(t);   setPage(1); };
@@ -342,7 +343,7 @@ export default function TransactionsPage() {
               <div style={{ fontSize: 14, color: c.red, fontWeight: 500, marginBottom: 6 }}>Failed to load transactions</div>
               <div style={{ fontSize: 12, color: c.textDim, marginBottom: 16 }}>{error}</div>
               <button
-                onClick={() => { setPage(1); setStatusFilter('all'); setTypeFilter('all'); setSearch(''); }}
+                onClick={() => setRetryTick((tick) => tick + 1)}
                 style={{
                   fontSize: 12, color: c.textMid, background: 'rgba(255,255,255,0.05)',
                   border: `1px solid ${c.border}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
