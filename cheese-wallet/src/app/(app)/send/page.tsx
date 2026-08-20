@@ -1969,7 +1969,7 @@ function BankSuccessScreen({
   const statusLabel = isCompleted ? 'Completed' : 'Processing'
   const heading = isCompleted ? 'Sent!' : 'Transfer submitted'
   const subtitle = isCompleted
-    ? (transfer?.message ?? 'Bank transfer complete')
+    ? 'Bank transfer sent successfully'
     : (transfer?.message ?? 'You\u2019ll be notified once the payout settles.')
 
   const statusColor = isCompleted ? '#34d399' : '#fbbf24'
