@@ -1087,19 +1087,29 @@ export class AdminAuthService {
     return { id, status: TxStatus.COMPLETED };
   }
 
-  /**
-   * Refund a failed/pending transaction by sending the debited USDC back
-   * to the user's Stellar wallet from the platform treasury, then marking
-   * the transaction (and its bank_transfer record) as REVERSED.
-   */
-  async refundTransaction(id: string) {
+  /** Resolve a failed/pending transaction according to an admin decision. */
+  async resolveTransaction(id: string, resolution: 'refund_user' | 'treasury') {
     const tx = await this.txRepo.findOne({ where: { id } });
     if (!tx) throw new NotFoundException('Transaction not found');
 
     if (tx.status !== TxStatus.PENDING && tx.status !== TxStatus.FAILED) {
       throw new BadRequestException(
-        `Only pending or failed transactions can be refunded (current status: ${tx.status})`,
+        `Only pending or failed transactions can be resolved (current status: ${tx.status})`,
       );
+    }
+
+    if (resolution === 'treasury') {
+      await this.txRepo.update({ id }, { status: TxStatus.COMPLETED });
+      if (tx.type === TxType.BANK_TRANSFER) {
+        await this.bankTransferRepo.update(
+          { reference: tx.reference },
+          { status: BankTransferStatus.COMPLETED },
+        );
+      }
+      this.logger.log(
+        `Admin resolution: ${tx.amountUsdc} USDC retained in treasury [original tx=${id}]`,
+      );
+      return { id, status: TxStatus.COMPLETED, resolution: 'treasury', amountUsdc: tx.amountUsdc };
     }
 
     const user = await this.userRepo.findOne({
@@ -1166,10 +1176,10 @@ export class AdminAuthService {
     }
 
     this.logger.log(
-      `Admin refund: ${tx.amountUsdc} USDC returned to @${user.username} [original tx=${id}] [txHash=${txHash}]`,
+      `Admin resolution: ${tx.amountUsdc} USDC returned to @${user.username} [original tx=${id}] [txHash=${txHash}]`,
     );
 
-    return { txHash, amountUsdc: tx.amountUsdc, toAddress: user.stellarPublicKey };
+    return { txHash, amountUsdc: tx.amountUsdc, toAddress: user.stellarPublicKey, resolution: 'refund_user' };
   }
 
   // ── Transactions listing ──────────────────────────────────────────────────

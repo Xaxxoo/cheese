@@ -1,10 +1,16 @@
-import { Controller, Get, Patch, Delete, Post, Param, Query, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Post, Param, Query, Body, UseGuards, HttpCode, HttpStatus, ForbiddenException } from '@nestjs/common';
+import { IsIn } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { User } from '../auth/entities/user.entity';
+import { User, AdminRole } from '../auth/entities/user.entity';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminAuthService } from './admin-auth.service';
 import { Public } from '../common/decorators/public.decorator';
+
+class ResolveTransactionDto {
+  @IsIn(['refund_user', 'treasury'])
+  resolution: 'refund_user' | 'treasury';
+}
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -141,13 +147,23 @@ export class AdminDashboardController {
     return this.adminAuthService.completeTransactionById(id);
   }
 
-  // ── POST /admin/transactions/:id/refund ───────────────────────────────────
-  @Post('transactions/:id/refund')
+  // ── POST /admin/transactions/:id/resolve ──────────────────────────────────
+  @Post('transactions/:id/resolve')
   @UseGuards(AdminJwtGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Refund a failed/pending transaction — returns USDC to user wallet from platform treasury' })
-  refundTransaction(@Param('id') id: string) {
-    return this.adminAuthService.refundTransaction(id);
+  @ApiOperation({ summary: 'Resolve a failed/pending transaction by refunding the user or retaining funds in the treasury' })
+  resolveTransaction(
+    @Param('id') id: string,
+    @Body() dto: ResolveTransactionDto,
+    @CurrentUser() admin: User,
+  ) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException(
+        'Only super_admin or treasurer roles can resolve transactions',
+      );
+    }
+    return this.adminAuthService.resolveTransaction(id, dto.resolution);
   }
 
   // ── PATCH /admin/users/:id/kyc ────────────────────────────────────────────

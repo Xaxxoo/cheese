@@ -3,7 +3,7 @@
 import React, { useState, useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { c, IcoSearch, Pill, IcoRefresh, IcoCheck, IcoX, IcoArrowDn, IcoArrowUp, IcoChevron, IcoChevLeft } from '../_shared';
-import { listAdminTransactions, getAdminTransaction, completeAdminTransaction, refundAdminTransaction, getAdminStats, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
+import { listAdminTransactions, getAdminTransaction, resolveAdminTransaction, getAdminStats, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'failed' | 'reversed';
 type TypeFilter   = 'all' | 'deposit' | 'withdrawal' | 'send_username' | 'send_address'
@@ -85,7 +85,7 @@ export default function TransactionsPage() {
   const [detailLoading,  setDetailLoading]  = useState(false);
   const [actionBusy,     setActionBusy]     = useState(false);
   const [actionMsg,      setActionMsg]      = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [confirmRefund,  setConfirmRefund]  = useState(false);
+  const [confirmAction,  setConfirmAction]  = useState<'refund_user' | 'treasury' | null>(null);
 
   // ── Summary counts + USDC totals ─────────────────────────────────────────
   useEffect(() => {
@@ -144,44 +144,29 @@ export default function TransactionsPage() {
     setDetailLoading(true);
     setDetail(null);
     setActionMsg(null);
-    setConfirmRefund(false);
+    setConfirmAction(null);
     getAdminTransaction(id)
       .then(setDetail)
       .catch(console.error)
       .finally(() => setDetailLoading(false));
   }
 
-  async function handleMarkComplete() {
+  async function handleResolve(resolution: 'refund_user' | 'treasury') {
     if (!detail || actionBusy) return;
     setActionBusy(true);
     setActionMsg(null);
     try {
-      await completeAdminTransaction(detail.id);
-      setDetail((d) => d ? { ...d, status: 'completed' } : d);
-      setTxns((prev) => prev.map((t) => t.id === detail.id ? { ...t, status: 'completed' } : t));
-      setActionMsg({ type: 'success', text: 'Transaction marked as completed.' });
+      const result = await resolveAdminTransaction(detail.id, resolution);
+      const status = resolution === 'refund_user' ? 'reversed' : 'completed';
+      setDetail((d) => d ? { ...d, status } : d);
+      setTxns((prev) => prev.map((t) => t.id === detail.id ? { ...t, status } : t));
+      setConfirmAction(null);
+      setActionMsg({ type: 'success', text: resolution === 'refund_user'
+        ? `$${parseFloat(result.amountUsdc).toFixed(2)} USDC refunded to the user.`
+        : `$${parseFloat(result.amountUsdc).toFixed(2)} USDC retained in the treasury.` });
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? (e instanceof Error ? e.message : 'Action failed');
-      setActionMsg({ type: 'error', text: msg });
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleRefund() {
-    if (!detail || actionBusy) return;
-    setActionBusy(true);
-    setActionMsg(null);
-    setConfirmRefund(false);
-    try {
-      const result = await refundAdminTransaction(detail.id);
-      setDetail((d) => d ? { ...d, status: 'reversed' } : d);
-      setTxns((prev) => prev.map((t) => t.id === detail.id ? { ...t, status: 'reversed' } : t));
-      setActionMsg({ type: 'success', text: `$${parseFloat(result.amountUsdc).toFixed(2)} USDC refunded to user wallet.` });
-    } catch (e) {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? (e instanceof Error ? e.message : 'Refund failed');
+        ?? (e instanceof Error ? e.message : 'Transaction resolution failed');
       setActionMsg({ type: 'error', text: msg });
     } finally {
       setActionBusy(false);
@@ -590,68 +575,46 @@ export default function TransactionsPage() {
                         </div>
                       )}
 
-                      {/* Mark Complete */}
-                      <button
-                        disabled={actionBusy}
-                        onClick={handleMarkComplete}
-                        style={{
-                          width: '100%', padding: '10px 16px', borderRadius: 10,
-                          background: actionBusy ? 'rgba(34,197,94,0.06)' : 'rgba(34,197,94,0.12)',
-                          border: '1px solid rgba(34,197,94,0.25)',
-                          color: c.green, fontSize: 13, fontWeight: 600,
-                          cursor: actionBusy ? 'not-allowed' : 'pointer',
-                          opacity: actionBusy ? 0.6 : 1,
-                          transition: 'opacity 0.15s',
-                        }}
-                      >
-                        {actionBusy ? 'Processing…' : 'Mark Complete'}
-                      </button>
-
-                      {/* Refund USDC */}
-                      {!confirmRefund ? (
-                        <button
-                          disabled={actionBusy}
-                          onClick={() => setConfirmRefund(true)}
-                          style={{
-                            width: '100%', padding: '10px 16px', borderRadius: 10,
-                            background: 'rgba(239,68,68,0.08)',
-                            border: '1px solid rgba(239,68,68,0.22)',
-                            color: c.red, fontSize: 13, fontWeight: 600,
-                            cursor: actionBusy ? 'not-allowed' : 'pointer',
-                            opacity: actionBusy ? 0.6 : 1,
-                            transition: 'opacity 0.15s',
-                          }}
-                        >
-                          Refund USDC to User
-                        </button>
+                      {/* Resolve transaction */}
+                      {!confirmAction ? (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button disabled={actionBusy} onClick={() => setConfirmAction('refund_user')} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', color: c.red, fontSize: 12, fontWeight: 600, cursor: actionBusy ? 'not-allowed' : 'pointer', opacity: actionBusy ? 0.6 : 1 }}>
+                            Refund User
+                          </button>
+                          <button disabled={actionBusy} onClick={() => setConfirmAction('treasury')} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.22)', color: c.green, fontSize: 12, fontWeight: 600, cursor: actionBusy ? 'not-allowed' : 'pointer', opacity: actionBusy ? 0.6 : 1 }}>
+                            Send to Treasury
+                          </button>
+                        </div>
                       ) : (
                         <div style={{
                           padding: '12px 14px', borderRadius: 10,
-                          background: 'rgba(239,68,68,0.08)',
-                          border: '1px solid rgba(239,68,68,0.3)',
+                          background: confirmAction === 'refund_user' ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+                          border: `1px solid ${confirmAction === 'refund_user' ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
                           display: 'flex', flexDirection: 'column', gap: 10,
                         }}>
-                          <div style={{ fontSize: 12, color: c.red, fontWeight: 500 }}>
-                            Send ${parseFloat(detail.amountUsdc).toFixed(2)} USDC from treasury back to this user?
+                          <div style={{ fontSize: 12, color: confirmAction === 'refund_user' ? c.red : c.green, fontWeight: 500 }}>
+                            {confirmAction === 'refund_user'
+                              ? `Send $${parseFloat(detail.amountUsdc).toFixed(2)} USDC back to this user?`
+                              : `Retain $${parseFloat(detail.amountUsdc).toFixed(2)} USDC in the treasury?`}
                           </div>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
                               disabled={actionBusy}
-                              onClick={handleRefund}
+                              onClick={() => handleResolve(confirmAction)}
                               style={{
                                 flex: 1, padding: '8px 0', borderRadius: 8,
-                                background: 'rgba(239,68,68,0.18)',
-                                border: '1px solid rgba(239,68,68,0.35)',
-                                color: c.red, fontSize: 12, fontWeight: 600,
+                                background: confirmAction === 'refund_user' ? 'rgba(239,68,68,0.18)' : 'rgba(34,197,94,0.18)',
+                                border: `1px solid ${confirmAction === 'refund_user' ? 'rgba(239,68,68,0.35)' : 'rgba(34,197,94,0.35)'}`,
+                                color: confirmAction === 'refund_user' ? c.red : c.green, fontSize: 12, fontWeight: 600,
                                 cursor: actionBusy ? 'not-allowed' : 'pointer',
                                 opacity: actionBusy ? 0.6 : 1,
                               }}
                             >
-                              {actionBusy ? 'Sending…' : 'Confirm Refund'}
+                              {actionBusy ? 'Processing…' : confirmAction === 'refund_user' ? 'Confirm Refund' : 'Confirm Treasury'}
                             </button>
                             <button
                               disabled={actionBusy}
-                              onClick={() => setConfirmRefund(false)}
+                              onClick={() => setConfirmAction(null)}
                               style={{
                                 flex: 1, padding: '8px 0', borderRadius: 8,
                                 background: 'rgba(255,255,255,0.05)',

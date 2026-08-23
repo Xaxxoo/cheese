@@ -361,9 +361,13 @@ export async function completeAdminTransaction(id: string): Promise<{ id: string
   return data.data
 }
 
-export async function refundAdminTransaction(id: string): Promise<{ txHash: string; amountUsdc: string; toAddress: string }> {
-  const { data } = await adminApiClient.post<ApiResponse<{ txHash: string; amountUsdc: string; toAddress: string }>>(
-    `/admin/transactions/${id}/refund`,
+export async function resolveAdminTransaction(
+  id: string,
+  resolution: 'refund_user' | 'treasury',
+): Promise<{ txHash?: string; amountUsdc: string; toAddress?: string; status: string; resolution: string }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ txHash?: string; amountUsdc: string; toAddress?: string; status: string; resolution: string }>>(
+    `/admin/transactions/${id}/resolve`,
+    { resolution },
   )
   return data.data
 }
