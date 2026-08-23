@@ -37,6 +37,17 @@ class SweepClassicWalletDto {
   userId: string;
 }
 
+class PartialSweepClassicWalletDto {
+  @IsUUID()
+  userId: string;
+
+  @IsNumberString({}, { message: 'amountUsdc must be a numeric string' })
+  @Matches(/^(?:0|[1-9]\d*)(?:\.\d{1,7})?$/, {
+    message: 'amountUsdc must be a positive USDC amount with at most 7 decimals',
+  })
+  amountUsdc: string;
+}
+
 class EvmWithdrawDto {
   @IsInt()
   chainId: number;
@@ -170,6 +181,24 @@ export class AdminTreasuryController {
       );
     }
     return this.treasury.sweepClassicWallet({ userId: dto.userId });
+  }
+
+  // ── POST /admin/treasury/sweep-classic-wallet/amount ─────────────────────
+  @Post('sweep-classic-wallet/amount')
+  @ApiOperation({
+    summary: "Sweep a specific USDC amount from a user's classic Stellar wallet",
+  })
+  sweepClassicWalletAmount(
+    @CurrentUser() admin: User,
+    @Body() dto: PartialSweepClassicWalletDto,
+  ) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException(
+        'Only super_admin or treasurer roles can sweep wallets',
+      );
+    }
+    return this.treasury.sweepClassicWalletAmount(dto);
   }
 
   // ── POST /admin/treasury/contract-drain-all ────────────────────────────────

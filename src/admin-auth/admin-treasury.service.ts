@@ -543,24 +543,58 @@ export class AdminTreasuryService {
       );
     }
 
+    return this.sweepClassicWalletAmount({
+      userId: opts.userId,
+      amountUsdc: horizonBalance,
+    });
+  }
+
+  async sweepClassicWalletAmount(opts: {
+    userId: string;
+    amountUsdc: string;
+  }): Promise<{ txHash: string; amountUsdc: string; fromAddress: string; toAddress: string }> {
+    const user = await this.userRepo.findOne({ where: { id: opts.userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.stellarPublicKey) throw new BadRequestException('User has no Stellar wallet');
+    if (!user.stellarSecretEnc) throw new BadRequestException('User has no encrypted Stellar secret on record');
+
+    const platformAddress = this.blockchain.platformPublicKey;
+    if (!platformAddress) {
+      throw new ServiceUnavailableException('Stellar not configured — check STELLAR_PLATFORM_SECRET_KEY');
+    }
+
+    const amount = parseFloat(opts.amountUsdc);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('amountUsdc must be greater than zero');
+    }
+
+    const horizonBalance = await this.blockchain.getStellarUsdcBalance(user.stellarPublicKey);
+    if (amount > parseFloat(horizonBalance) + 0.0000000001) {
+      throw new BadRequestException(
+        `Requested ${opts.amountUsdc} USDC exceeds the wallet balance of ${horizonBalance} USDC`,
+      );
+    }
+
     this.logger.log(
-      `sweepClassicWallet initiated [user=@${user.username}] [amount=${horizonBalance}] [to=${platformAddress}]`,
+      `sweepClassicWalletAmount initiated [user=@${user.username}] [amount=${opts.amountUsdc}] [to=${platformAddress}]`,
     );
 
     const result = await this.blockchain.sendStellarUsdc({
       fromSecretEnc: user.stellarSecretEnc,
       toPublicKey:   platformAddress,
-      amountUsdc:    horizonBalance,
+      amountUsdc:    opts.amountUsdc,
+      memo:          `Recovery ${opts.userId.slice(0, 8)}`,
     });
 
     this.logger.log(
-      `sweepClassicWallet settled [user=@${user.username}] [hash=${result.txHash}]`,
+      `sweepClassicWalletAmount settled [user=@${user.username}] [amount=${opts.amountUsdc}] [hash=${result.txHash}]`,
     );
 
     return {
       txHash:      result.txHash,
-      amountUsdc:  horizonBalance,
+      amountUsdc:  opts.amountUsdc,
       fromAddress: user.stellarPublicKey,
+      toAddress:   platformAddress,
     };
   }
 

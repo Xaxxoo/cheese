@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar, IcoArrowDn, IcoArrowUp, IcoChevron, IcoChevLeft } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet,
+  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
   provisionAdminUserWallet, listAdminTransactions, type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
@@ -35,6 +35,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [deleteError,   setDeleteError]   = useState('');
   const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
   const [recoverError,  setRecoverError]  = useState('');
+  const [partialSweepAmount, setPartialSweepAmount] = useState('');
   const [provisionError, setProvisionError] = useState('');
 
   // ── Tx history slide-over ─────────────────────────────────────────────────
@@ -182,6 +183,24 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       } else {
         setRecoverError(contractMsg || 'Sweep failed');
       }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePartialSweep = async () => {
+    if (!user || saving || !partialSweepAmount) return;
+    setSaving(true);
+    setRecoverError('');
+    setRecoverResult(null);
+    try {
+      const result = await sweepClassicWalletAmount(user.id, partialSweepAmount);
+      setRecoverResult({ txHash: result.txHash, amountUsdc: result.amountUsdc });
+      setPartialSweepAmount('');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (err as Error)?.message ?? 'Partial sweep failed';
+      setRecoverError(msg);
     } finally {
       setSaving(false);
     }
@@ -663,6 +682,23 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 >
                   {saving ? 'Sweeping…' : `Sweep $${parseFloat(user?.usdcBalance ?? '0').toFixed(2)}`}
                 </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    value={partialSweepAmount}
+                    onChange={(e) => setPartialSweepAmount(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="Exact USDC amount"
+                    aria-label="Exact USDC amount to recover"
+                    style={{ width: 150, padding: '7px 9px', borderRadius: 7, border: `1px solid ${c.border}`, background: 'rgba(255,255,255,0.05)', color: c.text, fontFamily: 'inherit', fontSize: 12 }}
+                  />
+                  <button
+                    onClick={handlePartialSweep}
+                    disabled={saving || !partialSweepAmount}
+                    style={{ padding: '6px 14px', borderRadius: 7, cursor: (saving || !partialSweepAmount) ? 'default' : 'pointer', background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, opacity: (saving || !partialSweepAmount) ? 0.5 : 1 }}
+                  >
+                    {saving ? 'Recovering…' : 'Recover Exact Amount'}
+                  </button>
+                </div>
                 {recoverResult && (
                   <div style={{ fontSize: 11, color: 'rgb(34,197,94)', wordBreak: 'break-all' }}>
                     Swept ${recoverResult.amountUsdc} USDC — tx: {recoverResult.txHash.slice(0, 20)}…

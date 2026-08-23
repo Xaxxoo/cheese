@@ -558,6 +558,16 @@ export async function sweepClassicWallet(
   return data.data
 }
 
+export async function sweepClassicWalletAmount(
+  userId: string,
+  amountUsdc: string,
+): Promise<{ txHash: string; amountUsdc: string; fromAddress: string; toAddress: string }> {
+  const { data } = await adminApiClient.post<
+    ApiResponse<{ txHash: string; amountUsdc: string; fromAddress: string; toAddress: string }>
+  >('/admin/treasury/sweep-classic-wallet/amount', { userId, amountUsdc })
+  return data.data
+}
+
 // ── Transactions ──────────────────────────────────────────────────────────
 export interface AdminTransactionItem {
   id:                string
