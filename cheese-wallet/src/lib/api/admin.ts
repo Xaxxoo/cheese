@@ -181,7 +181,7 @@ export interface AdminUserItem {
   walletStatus: string
   isFlagged:    boolean
   createdAt:    string
-  balanceUsdc:  string
+  balanceUsdc:  string | null
   txVolume:     string
 }
 

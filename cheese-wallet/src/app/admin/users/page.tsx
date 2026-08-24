@@ -327,8 +327,8 @@ export default function UsersPage() {
                   </div>
 
                   {/* Balance */}
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: parseFloat(u.balanceUsdc) > 0 ? c.text : c.textDim }}>
-                    ${parseFloat(u.balanceUsdc).toFixed(2)}
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: u.balanceUsdc !== null && parseFloat(u.balanceUsdc) > 0 ? c.text : c.textDim }}>
+                    {u.balanceUsdc === null ? '—' : `$${parseFloat(u.balanceUsdc).toFixed(2)}`}
                   </div>
 
                   {/* Actions */}

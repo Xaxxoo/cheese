@@ -68,6 +68,31 @@ export class AdminAuthService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  /** Read combined EVM + Stellar balances in small batches to avoid saturating providers. */
+  private async getLiveAccountBalances(userIds: string[]): Promise<(string | null)[]> {
+    const balances: (string | null)[] = [];
+    const batchSize = 10;
+
+    for (let i = 0; i < userIds.length; i += batchSize) {
+      const batch = userIds.slice(i, i + batchSize);
+      balances.push(
+        ...(await Promise.all(
+          batch.map(async (userId) => {
+            try {
+              const result = await this.blockchainWalletService.getBalance(userId);
+              return result.totalBalance;
+            } catch (err) {
+              this.logger.warn(`account balance fetch failed [userId=${userId}]: ${(err as Error).message}`);
+              return null;
+            }
+          }),
+        )),
+      );
+    }
+
+    return balances;
+  }
+
   // ── Login ─────────────────────────────────────────────────────────────────
 
   async login(
@@ -336,7 +361,7 @@ export class AdminAuthService {
       volumeResult,
       inResult,
       outResult,
-      totalBalanceResult,
+      totalBalanceUsers,
     ] = await Promise.all([
       this.userRepo.count({ where: { isAdmin: false } }),
       this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.VERIFIED } }),
@@ -377,13 +402,14 @@ export class AdminAuthService {
         .where('t.status = :s', { s: TxStatus.COMPLETED })
         .andWhere('t.type IN (:...types)', { types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER, TxType.BILL_PAYMENT, TxType.CARD_PAYMENT, TxType.PAY_REQUEST, TxType.WITHDRAWAL] })
         .getRawOne<{ total: string }>(),
-      // Total balance: sum of cached on-chain balances
+      // EVM + Stellar account balances are read live below; this query only supplies IDs.
       this.userRepo
-        .createQueryBuilder('u')
-        .select('COALESCE(SUM(CAST(u.cached_balance_usdc AS DECIMAL(20,6))), 0)', 'total')
-        .where('u.is_admin = :isAdmin', { isAdmin: false })
-        .getRawOne<{ total: string }>(),
+        .find({ where: { isAdmin: false }, select: ['id'] }),
     ]);
+
+    const liveAccountBalances = await this.getLiveAccountBalances(
+      totalBalanceUsers.map((user) => user.id),
+    );
 
     return {
       totalUsers,
@@ -403,7 +429,10 @@ export class AdminAuthService {
       totalVolumeUsdc:    parseFloat(volumeResult?.total ?? '0') || 0,
       totalInUsdc:        parseFloat(inResult?.total  ?? '0') || 0,
       totalOutUsdc:       parseFloat(outResult?.total ?? '0') || 0,
-      totalBalanceUsdc:   parseFloat(totalBalanceResult?.total ?? '0') || 0,
+      totalBalanceUsdc:   liveAccountBalances.reduce(
+        (sum, balance) => sum + (parseFloat(balance ?? '0') || 0),
+        0,
+      ),
     };
   }
 
@@ -521,6 +550,10 @@ export class AdminAuthService {
       [KycStatus.REJECTED]:  'Failed',
     };
 
+    const liveBalances = await this.getLiveAccountBalances(
+      entities.map((user) => user.id),
+    );
+
     return {
       users: entities.map((u, i) => ({
         id:           u.id,
@@ -532,7 +565,7 @@ export class AdminAuthService {
         walletStatus: u.stellarWalletStatus.charAt(0).toUpperCase() + u.stellarWalletStatus.slice(1),
         isFlagged:    u.isFlagged,
         createdAt:    u.createdAt,
-        balanceUsdc:  parseFloat(raw[i]?.u_balance_usdc ?? '0').toFixed(2),
+        balanceUsdc:  liveBalances[i],
         txVolume:     parseFloat(raw[i]?.u_tx_volume ?? '0').toFixed(2),
       })),
       total,
