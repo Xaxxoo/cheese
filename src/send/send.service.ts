@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual } from 'crypto';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -25,6 +25,7 @@ import { ReferralService } from '../referral/referral.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
+import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
 
 const FALLBACK_FEE_RATE = 0.001; // 0.1% — used when Soroban contract is unavailable
 const MIN_USDC = 0.01;
@@ -44,6 +45,7 @@ export class SendService {
     private readonly referralService: ReferralService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   // ── GET /send/resolve/:username ───────────────────────────
@@ -95,6 +97,25 @@ export class SendService {
 
   // ── Shared execution logic ────────────────────────────────
   private async executeSend(
+    senderId: string,
+    params: {
+      toAddress: string;
+      amountUsdc: string;
+      pinHash: string;
+      deviceId: string;
+      deviceSignature: string;
+      recipientUsername?: string;
+      network?: string;
+      memo?: string;
+      type: TxType;
+    },
+  ) {
+    return withUserTransactionLock(this.dataSource, senderId, () =>
+      this.executeSendLocked(senderId, params),
+    );
+  }
+
+  private async executeSendLocked(
     senderId: string,
     params: {
       toAddress: string;

@@ -8,7 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual } from 'crypto';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -20,6 +20,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { FlutterwaveBillsClient } from './flutterwave-bills.client';
 import { PayBillDto, VerifyBillCustomerDto } from './dto/pay-bill.dto';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
+import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
 
 // Small flat fee in USDC for each bill payment
 const BILL_PAYMENT_FEE_USDC = '0.02';
@@ -49,6 +50,7 @@ export class BillsService {
     private readonly txService: TransactionsService,
     private readonly fwClient: FlutterwaveBillsClient,
     private readonly notificationsService: NotificationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   // ── GET /bills/billers ──────────────────────────────────────────────────
@@ -132,6 +134,12 @@ export class BillsService {
 
   // ── POST /bills/pay ───────────────────────────────────────────────────────
   async payBill(userId: string, dto: PayBillDto) {
+    return withUserTransactionLock(this.dataSource, userId, () =>
+      this.payBillLocked(userId, dto),
+    );
+  }
+
+  private async payBillLocked(userId: string, dto: PayBillDto) {
     // 1. Load user
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user?.stellarPublicKey || !user.stellarSecretEnc) {

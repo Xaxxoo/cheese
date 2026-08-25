@@ -12,7 +12,7 @@ import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual } from 'crypto';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -35,6 +35,7 @@ import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { ReferralService } from '../referral/referral.service';
+import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
 
 type BankDirectoryEntry = {
   code: string;
@@ -228,6 +229,7 @@ export class BanksService {
     private readonly pulseMfb: PulseMfbClient,
     private readonly tierMilestone: TierMilestoneService,
     private readonly referralService: ReferralService,
+    private readonly dataSource: DataSource,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly alertsService: AlertsService,
@@ -331,6 +333,12 @@ export class BanksService {
 
   // ── POST /banks/transfer ──────────────────────────────────────────────────
   async bankTransfer(userId: string, dto: BankTransferDto) {
+    return withUserTransactionLock(this.dataSource, userId, () =>
+      this.bankTransferLocked(userId, dto),
+    );
+  }
+
+  private async bankTransferLocked(userId: string, dto: BankTransferDto) {
     // 1. Load user
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user?.stellarPublicKey || !user.stellarSecretEnc) {
@@ -621,6 +629,12 @@ export class BanksService {
   // This method never throws — all error paths are handled internally.
   //
   async executeTransferSaga(data: BankTransferJobData): Promise<void> {
+    return withUserTransactionLock(this.dataSource, data.userId, () =>
+      this.executeTransferSagaLocked(data),
+    );
+  }
+
+  private async executeTransferSagaLocked(data: BankTransferJobData): Promise<void> {
     const {
       transferId,
       txId,

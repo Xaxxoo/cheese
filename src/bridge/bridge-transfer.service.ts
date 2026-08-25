@@ -13,7 +13,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual } from 'crypto';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
 import { User, KycStatus } from '../auth/entities/user.entity';
@@ -35,6 +35,7 @@ import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-s
 import { BridgeService } from './bridge.service';
 import { BridgeTransferDto, BridgeWebhookDto } from './dto';
 import { getBridgeCountryConfig } from './bridge.config';
+import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
 
 @Injectable()
 export class BridgeTransferService {
@@ -52,10 +53,17 @@ export class BridgeTransferService {
     private readonly txService: TransactionsService,
     private readonly notificationsService: NotificationsService,
     private readonly config: ConfigService,
+    private readonly dataSource: DataSource,
   ) {}
 
   // ── POST /bridge/transfer ──────────────────────────────────────────────────
   async createTransfer(userId: string, dto: BridgeTransferDto) {
+    return withUserTransactionLock(this.dataSource, userId, () =>
+      this.createTransferLocked(userId, dto),
+    );
+  }
+
+  private async createTransferLocked(userId: string, dto: BridgeTransferDto) {
     // 1. Validate country
     const countryConfig = getBridgeCountryConfig(dto.countryCode);
     if (!countryConfig) {

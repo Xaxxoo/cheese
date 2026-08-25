@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { createHmac, timingSafeEqual } from 'crypto';
@@ -180,6 +181,17 @@ export class PayLinkService {
 
   // ── POST /paylink/:token/pay ───────────────────────────────
   async payLink(
+    payerId: string,
+    token: string,
+    dto: PayLinkPayDto,
+    payerIp?: string,
+  ) {
+    return withUserTransactionLock(this.dataSource, payerId, () =>
+      this.payLinkLocked(payerId, token, dto, payerIp),
+    );
+  }
+
+  private async payLinkLocked(
     payerId: string,
     token: string,
     dto: PayLinkPayDto,
