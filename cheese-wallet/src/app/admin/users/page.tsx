@@ -33,6 +33,7 @@ export default function UsersPage() {
   const [stats,      setStats]      = useState<AdminStats | null>(null);
   const [sortBy,     setSortBy]     = useState<SortBy>('createdAt');
   const [sortDir,    setSortDir]    = useState<SortDir>('desc');
+  const [fundedOnly, setFundedOnly] = useState(false);
 
   // Header chips — fetch once
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function UsersPage() {
           search:  search || undefined,
           tier:    tierFilter !== 'All' ? tierFilter : undefined,
           kyc:     kycFilter  !== 'All' ? kycFilter  : undefined,
+          hasBalance: fundedOnly || undefined,
           sortBy,
           sortDir,
         });
@@ -63,12 +65,13 @@ export default function UsersPage() {
       }
     }, delay);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [page, search, tierFilter, kycFilter, sortBy, sortDir]);
+  }, [page, search, tierFilter, kycFilter, fundedOnly, sortBy, sortDir]);
 
   // Handlers — reset page on filter change
   const handleSearch = (s: string)      => { setSearch(s);     setPage(1); };
   const handleTier   = (t: TierFilter)  => { setTierFilter(t); setPage(1); };
   const handleKyc    = (k: KycFilter)   => { setKycFilter(k);  setPage(1); };
+  const handleFunded = () => { setFundedOnly((active) => !active); setPage(1); };
 
   const n = (v: number) => v.toLocaleString();
   const totalPages = Math.ceil(total / LIMIT);
@@ -113,19 +116,22 @@ export default function UsersPage() {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             {stats ? [
-              { label: `${n(stats.totalUsers)} total`,     color: c.textMid, bg: 'rgba(255,255,255,0.06)', brd: c.border },
-              { label: `${n(stats.verifiedUsers)} verified`, color: c.green, bg: c.greenDim, brd: 'rgba(34,197,94,0.2)' },
-              { label: `${n(stats.premiumUsers)} premium`,   color: c.amber, bg: c.amberDim, brd: c.amberBrd },
-              { label: `${n(stats.flaggedUsers)} flagged`,   color: c.red,   bg: c.redDim,   brd: 'rgba(239,68,68,0.2)' },
-              { label: `$${stats.totalBalanceUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total balance`, color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', brd: 'rgba(96,165,250,0.2)' },
+              { label: `${n(stats.totalUsers)} total`,     color: c.textMid, bg: 'rgba(255,255,255,0.06)', brd: c.border, clickable: false },
+              { label: `${n(stats.verifiedUsers)} verified`, color: c.green, bg: c.greenDim, brd: 'rgba(34,197,94,0.2)', clickable: false },
+              { label: `${n(stats.premiumUsers)} premium`,   color: c.amber, bg: c.amberDim, brd: c.amberBrd, clickable: false },
+              { label: `${n(stats.flaggedUsers)} flagged`,   color: c.red,   bg: c.redDim,   brd: 'rgba(239,68,68,0.2)', clickable: false },
+              { label: `$${stats.totalBalanceUsdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total balance`, color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', brd: 'rgba(96,165,250,0.2)', clickable: true },
             ].map((chip) => (
-              <span key={chip.label} style={{
+              <button key={chip.label} type="button" onClick={chip.clickable ? handleFunded : undefined} style={{
                 fontSize: 11, fontWeight: 600, color: chip.color,
                 background: chip.bg, border: `1px solid ${chip.brd}`,
                 padding: '3px 10px', borderRadius: 99,
+                cursor: chip.clickable ? 'pointer' : 'default',
+                opacity: chip.clickable && fundedOnly ? 1 : undefined,
+                boxShadow: chip.clickable && fundedOnly ? '0 0 0 1px rgba(96,165,250,0.35)' : undefined,
               }}>
                 {chip.label}
-              </span>
+              </button>
             )) : (
               <span style={{ fontSize: 11, color: c.textDim }}>Loading stats…</span>
             )}

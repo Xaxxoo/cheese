@@ -193,6 +193,7 @@ export async function listAdminUsers(params?: {
   kyc?:     string
   wallet?:  string
   flagged?: boolean
+  hasBalance?: boolean
   sortBy?:  string
   sortDir?: 'asc' | 'desc'
 }): Promise<{ users: AdminUserItem[]; total: number; page: number; limit: number }> {

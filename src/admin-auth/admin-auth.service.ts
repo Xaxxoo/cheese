@@ -487,10 +487,11 @@ export class AdminAuthService {
     kyc?: string;
     wallet?: string;
     flagged?: boolean;
+    hasBalance?: boolean;
     sortBy?: string;
     sortDir?: string;
   }) {
-    const { page, limit, search, tier, kyc, wallet, flagged, sortBy, sortDir } = query;
+    const { page, limit, search, tier, kyc, wallet, flagged, hasBalance, sortBy, sortDir } = query;
     const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
     const kycMap: Record<string, string> = {
@@ -536,9 +537,11 @@ export class AdminAuthService {
       qb.orderBy('u.createdAt', 'DESC');
     }
 
-    qb.skip((page - 1) * limit).take(limit);
+    // Live balances are fetched after the query, so funded-only mode must
+    // paginate after filtering rather than filtering the current page.
+    if (!hasBalance) qb.skip((page - 1) * limit).take(limit);
 
-    const [{ entities, raw }, total] = await Promise.all([
+    const [{ entities, raw }, databaseTotal] = await Promise.all([
       qb.getRawAndEntities(),
       qb.getCount(),
     ]);
@@ -550,25 +553,39 @@ export class AdminAuthService {
       [KycStatus.REJECTED]:  'Failed',
     };
 
-    const liveBalances = await this.getLiveAccountBalances(
+    const allLiveBalances = await this.getLiveAccountBalances(
       entities.map((user) => user.id),
     );
 
+    const fundedIndexes = hasBalance
+      ? entities.reduce<number[]>((indexes, user, index) => {
+          if (parseFloat(allLiveBalances[index] ?? '0') > 0) indexes.push(index);
+          return indexes;
+        }, [])
+      : entities.map((_, index) => index);
+    const visibleIndexes = hasBalance
+      ? fundedIndexes.slice((page - 1) * limit, page * limit)
+      : fundedIndexes;
+
     return {
-      users: entities.map((u, i) => ({
-        id:           u.id,
-        name:         u.fullName || u.username,
-        username:     `@${u.username}`,
-        email:        u.email,
-        tier:         u.tier.charAt(0).toUpperCase() + u.tier.slice(1),
-        kycStatus:    kycDisplay[u.kycStatus] ?? u.kycStatus,
-        walletStatus: u.stellarWalletStatus.charAt(0).toUpperCase() + u.stellarWalletStatus.slice(1),
-        isFlagged:    u.isFlagged,
-        createdAt:    u.createdAt,
-        balanceUsdc:  liveBalances[i],
-        txVolume:     parseFloat(raw[i]?.u_tx_volume ?? '0').toFixed(2),
-      })),
-      total,
+      users: visibleIndexes.map((index) => {
+        const u = entities[index];
+        const i = index;
+        return {
+          id:           u.id,
+          name:         u.fullName || u.username,
+          username:     `@${u.username}`,
+          email:        u.email,
+          tier:         u.tier.charAt(0).toUpperCase() + u.tier.slice(1),
+          kycStatus:    kycDisplay[u.kycStatus] ?? u.kycStatus,
+          walletStatus: u.stellarWalletStatus.charAt(0).toUpperCase() + u.stellarWalletStatus.slice(1),
+          isFlagged:    u.isFlagged,
+          createdAt:    u.createdAt,
+          balanceUsdc:  allLiveBalances[i],
+          txVolume:     parseFloat(raw[i]?.u_tx_volume ?? '0').toFixed(2),
+        };
+      }),
+      total: hasBalance ? fundedIndexes.length : databaseTotal,
       page,
       limit,
     };

@@ -64,6 +64,7 @@ export class AdminDashboardController {
     @Query('kyc')     kyc?:     string,
     @Query('wallet')  wallet?:  string,
     @Query('flagged') flagged?: string,
+    @Query('hasBalance') hasBalance?: string,
     @Query('sortBy')  sortBy?:  string,
     @Query('sortDir') sortDir?: string,
   ) {
@@ -75,6 +76,7 @@ export class AdminDashboardController {
       kyc,
       wallet,
       flagged: flagged === 'true' ? true : flagged === 'false' ? false : undefined,
+      hasBalance: hasBalance === 'true' ? true : undefined,
       sortBy,
       sortDir,
     });
