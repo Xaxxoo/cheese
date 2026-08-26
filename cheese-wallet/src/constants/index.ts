@@ -163,14 +163,6 @@ export const ENDPOINTS = {
     PAY:        '/bills/pay',
   },
 
-  // ── Trivia ──────────────────────────────────────────
-  TRIVIA: {
-    START:       '/trivia/start',
-    SUBMIT:      '/trivia/submit',
-    LEADERBOARD: '/trivia/leaderboard',
-    STATS:       '/trivia/stats',
-  },
-
   // ── Public Stats ───────────────────────────────────
   PUBLIC_STATS: {
     METRICS:     '/admin/public-stats',
@@ -240,10 +232,6 @@ export const QUERY_KEYS = {
   // Deposits
   DEPOSITS:             (page: number) => ['banks', 'deposits', page] as const,
 
-  // Trivia
-  TRIVIA_LEADERBOARD:   ['trivia', 'leaderboard'] as const,
-  TRIVIA_STATS:         ['trivia', 'stats'] as const,
-
   // Public Stats
   PUBLIC_STATS:         ['public', 'stats'] as const,
   PUBLIC_CHART:         (days: number) => ['public', 'chart', days] as const,
@@ -262,5 +250,4 @@ export const STALE_TIMES = {
   CARD:             60_000,    // 1min
   NOTIFICATIONS:    30_000,    // 30s
   EARN:             60_000,    // 1min
-  TRIVIA:           30_000,    // 30s
 } as const

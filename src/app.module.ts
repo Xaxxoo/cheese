@@ -60,7 +60,6 @@ import { KycModule } from './kyc/kyc.module';
 import { PayLinkModule } from './paylink/paylink.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { BillsModule } from './bills/bills.module';
-import { TriviaModule } from './trivia/trivia.module';
 import { BridgeModule } from './bridge/bridge.module';
 
 // Active entities
@@ -93,8 +92,6 @@ import { MerchantStore } from './merchant/entities/merchant-store.entity';
 import { MerchantPayment } from './merchant/entities/merchant-payment.entity';
 import { MerchantSettlement } from './merchant/entities/merchant-settlement.entity';
 import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-account.entity';
-import { TriviaScore } from './trivia/entities/trivia-score.entity';
-import { TriviaReward } from './trivia/entities/trivia-reward.entity';
 
 @Module({
   controllers: [AppController],
@@ -190,8 +187,6 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
                 MerchantSettlement,
                 MerchantPayoutAccount,
 
-                TriviaScore,
-                TriviaReward,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -238,8 +233,6 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
                 MerchantSettlement,
                 MerchantPayoutAccount,
 
-                TriviaScore,
-                TriviaReward,
               ],
               synchronize: config.get<string>('app.nodeEnv') !== 'production',
               logging: config.get<string>('app.nodeEnv') === 'development',
@@ -281,8 +274,6 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
             MerchantSettlement,
             MerchantPayoutAccount,
 
-                TriviaScore,
-                TriviaReward,
           ],
           synchronize: config.get<string>('app.nodeEnv') !== 'production',
           logging: config.get<string>('app.nodeEnv') === 'development',
@@ -321,7 +312,6 @@ import { TriviaReward } from './trivia/entities/trivia-reward.entity';
     PayLinkModule,
     AlertsModule,
     BillsModule,
-    TriviaModule,
     BridgeModule,
   ],
   providers: [
