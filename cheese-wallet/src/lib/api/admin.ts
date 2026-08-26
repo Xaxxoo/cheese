@@ -648,6 +648,20 @@ export async function listAdminTransactions(params?: {
   return data.data
 }
 
+export async function exportAdminTransactions(params?: {
+  status?:    string
+  type?:      string
+  search?:    string
+  userId?:    string
+  direction?: 'in' | 'out'
+}): Promise<Blob> {
+  const { data } = await adminApiClient.get<Blob>('/admin/transactions/export', {
+    params,
+    responseType: 'blob',
+  })
+  return data
+}
+
 // ── Fee revenue ───────────────────────────────────────────────────────────
 export interface AdminFeeTransferItem {
   id:            string

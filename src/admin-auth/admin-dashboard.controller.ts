@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Post, Param, Query, Body, UseGuards, HttpCode, HttpStatus, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Post, Param, Query, Body, UseGuards, HttpCode, HttpStatus, ForbiddenException, Header } from '@nestjs/common';
 import { IsIn } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User, AdminRole } from '../auth/entities/user.entity';
@@ -203,6 +203,23 @@ export class AdminDashboardController {
       status,
       search,
     });
+  }
+
+  // ── GET /admin/transactions/export ───────────────────────────────────────
+  @Get('transactions/export')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="cheesepay-transactions.csv"')
+  @ApiOperation({ summary: 'Export all filtered transactions as CSV' })
+  exportTransactions(
+    @Query('status') status?: string,
+    @Query('type') type?: string,
+    @Query('search') search?: string,
+    @Query('userId') userId?: string,
+    @Query('direction') direction?: string,
+  ) {
+    return this.adminAuthService.exportTransactions({ status, type, search, userId, direction });
   }
 
   // ── GET /admin/transactions/:id ───────────────────────────────────────────

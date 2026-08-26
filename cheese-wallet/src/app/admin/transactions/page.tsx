@@ -3,7 +3,7 @@
 import React, { useState, useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { c, IcoSearch, Pill, IcoRefresh, IcoCheck, IcoX, IcoArrowDn, IcoArrowUp, IcoChevron, IcoChevLeft } from '../_shared';
-import { listAdminTransactions, getAdminTransaction, resolveAdminTransaction, getAdminStats, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
+import { listAdminTransactions, exportAdminTransactions, getAdminTransaction, resolveAdminTransaction, getAdminStats, type AdminTransactionItem, type AdminTransactionDetail } from '@/lib/api/admin';
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'failed' | 'reversed';
 type TypeFilter   = 'all' | 'deposit' | 'withdrawal' | 'send_username' | 'send_address'
@@ -86,6 +86,7 @@ export default function TransactionsPage() {
   const [actionBusy,     setActionBusy]     = useState(false);
   const [actionMsg,      setActionMsg]      = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [confirmAction,  setConfirmAction]  = useState<'refund_user' | 'treasury' | null>(null);
+  const [exportBusy,     setExportBusy]     = useState(false);
 
   // ── Summary counts + USDC totals ─────────────────────────────────────────
   useEffect(() => {
@@ -139,6 +140,31 @@ export default function TransactionsPage() {
   const handleStatus = (s: StatusFilter) => { setStatusFilter(s); setPage(1); };
   const handleType   = (t: TypeFilter)   => { setTypeFilter(t);   setPage(1); };
   const handleSearch = (q: string)       => { setSearch(q);       setPage(1); };
+
+  async function handleExport() {
+    if (exportBusy) return;
+    setExportBusy(true);
+    try {
+      const blob = await exportAdminTransactions({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        type: typeFilter !== 'all' ? typeFilter : undefined,
+        search: search || undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cheesepay-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Transaction export failed', e);
+      setError('Failed to export transactions');
+    } finally {
+      setExportBusy(false);
+    }
+  }
 
   function openDetail(id: string) {
     setDetailLoading(true);
@@ -259,6 +285,19 @@ export default function TransactionsPage() {
             <span style={{ fontSize: 11.5, color: c.textDim }}>
               {loading ? 'Loading…' : `${n(total)} result${total !== 1 ? 's' : ''}`}
             </span>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exportBusy}
+              style={{
+                marginLeft: 12, padding: '6px 12px', borderRadius: 8,
+                color: c.text, background: c.amberDim, border: `1px solid ${c.amberBrd}`,
+                fontSize: 11.5, fontWeight: 600, cursor: exportBusy ? 'wait' : 'pointer',
+                opacity: exportBusy ? 0.65 : 1,
+              }}
+            >
+              {exportBusy ? 'Exporting…' : 'Export CSV'}
+            </button>
           </div>
         </div>
 

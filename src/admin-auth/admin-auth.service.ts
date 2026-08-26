@@ -1315,6 +1315,92 @@ export class AdminAuthService {
     };
   }
 
+  async exportTransactions(query: {
+    status?: string;
+    type?: string;
+    search?: string;
+    userId?: string;
+    direction?: string;
+  }): Promise<string> {
+    const { status, type, search, userId, direction } = query;
+    const IN_TYPES = ['deposit', 'yield_credit', 'referral_bonus', 'trivia_reward'];
+    const OUT_TYPES = ['withdrawal', 'send_username', 'send_address', 'bank_transfer', 'card_payment', 'pay_request', 'bill_payment', 'fee'];
+
+    const qb = this.txRepo
+      .createQueryBuilder('t')
+      .leftJoin(User, 'u', 'u.id = t.user_id')
+      .select([
+        't.id AS id',
+        't.reference AS reference',
+        't.user_id AS user_id',
+        'u.username AS username',
+        'u.email AS email',
+        't.type AS type',
+        't.status AS status',
+        't.amount_usdc AS amount_usdc',
+        't.amount_ngn AS amount_ngn',
+        't.fee_usdc AS fee_usdc',
+        't.rate_applied AS rate_applied',
+        't.recipient_username AS recipient_username',
+        't.recipient_address AS recipient_address',
+        't.recipient_name AS recipient_name',
+        't.bank_name AS bank_name',
+        't.account_number AS account_number',
+        't.tx_hash AS tx_hash',
+        't.network AS network',
+        't.description AS description',
+        't.failure_reason AS failure_reason',
+        't.created_at AS created_at',
+        't.updated_at AS updated_at',
+      ])
+      .orderBy('t.created_at', 'DESC');
+
+    if (status && status !== 'all') qb.andWhere('t.status = :status', { status });
+    if (type && type !== 'all') qb.andWhere('t.type = :type', { type });
+    if (direction === 'in') qb.andWhere('t.type IN (:...dirTypes)', { dirTypes: IN_TYPES });
+    if (direction === 'out') qb.andWhere('t.type IN (:...dirTypes)', { dirTypes: OUT_TYPES });
+    if (userId) qb.andWhere('t.user_id = :userId', { userId });
+    if (search) {
+      qb.andWhere(
+        `(LOWER(t.reference) LIKE :q
+          OR LOWER(t.recipient_username) LIKE :q
+          OR LOWER(t.bank_name) LIKE :q
+          OR LOWER(u.username) LIKE :q
+          OR LOWER(u.email) LIKE :q)`,
+        { q: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    const rows = await qb.getRawMany<Record<string, unknown>>();
+    const columns = [
+      'transaction_id', 'reference', 'user_id', 'username', 'email', 'type',
+      'status', 'amount_usdc', 'amount_ngn', 'fee_usdc', 'rate_applied',
+      'recipient_username', 'recipient_address', 'recipient_name', 'bank_name',
+      'account_number', 'stellar_or_chain_tx_hash', 'network', 'description',
+      'failure_reason', 'created_at', 'updated_at',
+    ];
+    const fields = [
+      'id', 'reference', 'user_id', 'username', 'email', 'type', 'status',
+      'amount_usdc', 'amount_ngn', 'fee_usdc', 'rate_applied',
+      'recipient_username', 'recipient_address', 'recipient_name', 'bank_name',
+      'account_number', 'tx_hash', 'network', 'description', 'failure_reason',
+      'created_at', 'updated_at',
+    ];
+    const csvValue = (value: unknown) => {
+      if (value === null || value === undefined) return '';
+      const text = value instanceof Date ? value.toISOString() : String(value);
+      // Prefix formula-like values so spreadsheet programs do not execute
+      // usernames, descriptions, or other user-controlled CSV fields.
+      const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+      return /[",\n\r]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
+    };
+
+    return '\uFEFF' + [
+      columns.join(','),
+      ...rows.map((row) => fields.map((field) => csvValue(row[field])).join(',')),
+    ].join('\n');
+  }
+
   // ── Referrals listing ────────────────────────────────────────────────────
 
   async listReferrals(query: { page: number; limit: number; status?: string; search?: string }) {
