@@ -27,6 +27,23 @@ import { SendToAddressDto, SendToUsernameDto } from './dto';
 export class SendController {
   constructor(private readonly sendService: SendService) {}
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get('recent-recipients')
+  @ApiOperation({
+    summary: 'Get recent send recipients',
+    description:
+      'Returns the last 5 unique recipients the user has sent to, ' +
+      'ordered by most recent. Use for quick-select on the send screen.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Array of up to 5 recent recipients with username, name, address, network, and lastSentAt',
+  })
+  getRecentRecipients(@CurrentUser() user: User) {
+    return this.sendService.getRecentRecipients(user.id);
+  }
+
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get('fee-rate')
   @ApiOperation({

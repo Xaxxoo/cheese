@@ -247,6 +247,35 @@ export class TransactionsService {
     };
   }
 
+  /** Last 5 unique recipients for the send screen quick-select. */
+  async getRecentRecipients(userId: string) {
+    const rows = await this.txRepo
+      .createQueryBuilder('tx')
+      .select('tx.recipient_username', 'recipientUsername')
+      .addSelect('tx.recipient_address', 'recipientAddress')
+      .addSelect('MAX(tx.recipient_name)', 'recipientName')
+      .addSelect('MAX(tx.network)', 'network')
+      .addSelect('MAX(tx.created_at)', 'lastSentAt')
+      .where('tx.user_id = :userId', { userId })
+      .andWhere('tx.type IN (:...types)', {
+        types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS],
+      })
+      .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
+      .groupBy('tx.recipient_username')
+      .addGroupBy('tx.recipient_address')
+      .orderBy('MAX(tx.created_at)', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    return rows.map((r) => ({
+      recipientUsername: r.recipientUsername ?? null,
+      recipientName: r.recipientName ?? null,
+      recipientAddress: r.recipientAddress ?? null,
+      network: r.network ?? null,
+      lastSentAt: r.lastSentAt,
+    }));
+  }
+
   private format(tx: Transaction) {
     return {
       id: tx.id,

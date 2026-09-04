@@ -48,6 +48,11 @@ export class SendService {
     private readonly dataSource: DataSource,
   ) {}
 
+  // ── GET /send/recent-recipients ──────────────────────────
+  async getRecentRecipients(userId: string) {
+    return this.txService.getRecentRecipients(userId);
+  }
+
   // ── GET /send/resolve/:username ───────────────────────────
   async resolveUsername(
     username: string,
