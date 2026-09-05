@@ -200,6 +200,15 @@ export interface DepositNetwork {
   isFeatured: boolean;
 }
 
+// ── Recent Recipients ────────────────────────────────────
+export interface RecentRecipient {
+  recipientUsername: string | null;
+  recipientName: string | null;
+  recipientAddress: string | null;
+  network: string | null;
+  lastSentAt: string;
+}
+
 // ── Card ──────────────────────────────────────────────────
 export interface VirtualCard {
   id: string;

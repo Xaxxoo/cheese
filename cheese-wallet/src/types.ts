@@ -232,6 +232,15 @@ export interface BankTransferResponse {
   createdAt: string;
 }
 
+// ── Recent Recipients ────────────────────────────────────
+export interface RecentRecipient {
+  recipientUsername: string | null;
+  recipientName: string | null;
+  recipientAddress: string | null;
+  network: string | null;
+  lastSentAt: string;
+}
+
 // ── Card Types ────────────────────────────────────────────
 export interface VirtualCard {
   id: string;

@@ -68,11 +68,12 @@ export const ENDPOINTS = {
 
   // ── Send (USDC) ───────────────────────────────────────
   SEND: {
-    TO_USERNAME:      '/send/username',
-    TO_ADDRESS:       '/send/address',
-    RESOLVE_USERNAME: (username: string) => `/send/resolve/${username}`,
-    FEE_RATE:         '/send/fee-rate',
-    ESTIMATE_FEE:     '/send/estimate-fee',
+    TO_USERNAME:        '/send/username',
+    TO_ADDRESS:         '/send/address',
+    RESOLVE_USERNAME:   (username: string) => `/send/resolve/${username}`,
+    FEE_RATE:           '/send/fee-rate',
+    ESTIMATE_FEE:       '/send/estimate-fee',
+    RECENT_RECIPIENTS:  '/send/recent-recipients',
   },
 
   // ── Bank Transfer (NGN out) ───────────────────────────
@@ -195,6 +196,7 @@ export const QUERY_KEYS = {
   // Send
   RESOLVE_USERNAME:     (u: string)    => ['resolve', 'username', u] as const,
   SEND_FEE_RATE:        ['send', 'fee-rate'] as const,
+  RECENT_RECIPIENTS:    ['send', 'recent-recipients'] as const,
 
   // Banks
   BANKS:                ['banks'] as const,

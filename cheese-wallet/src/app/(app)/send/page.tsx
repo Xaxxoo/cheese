@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { PinPad } from '@/components/ui/PinPad'
 import { useAuthStore } from '@/store/authStore'
 import { useQueryClient } from '@tanstack/react-query'
-import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer, getBalance } from '@/lib/api/wallet'
+import { resolveUsername, sendToUsername, sendToAddress, getExchangeRate, getSendFeeRate, getBanks, resolveAccount, bankTransfer, getBalance, getRecentRecipients } from '@/lib/api/wallet'
 import { bridgeTransfer, getBridgeCountries, type BridgeCountry, type BridgeTransferResponse } from '@/lib/api/bridge'
 import { resetPin as apiResetPin, setPin as apiSetPin } from '@/lib/api/auth'
 import { signTransaction, signDeviceChallenge, hashPin } from '@/lib/crypto/deviceSigning'
@@ -21,7 +21,7 @@ import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import { captureAndShare, type ShareFormat } from '@/lib/shareReceipt'
 import { playChaChing } from '@/lib/sound'
 import confetti from 'canvas-confetti'
-import type { BankTransferResponse, Transaction, NigerianBank } from '@/types'
+import type { BankTransferResponse, Transaction, NigerianBank, RecentRecipient } from '@/types'
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -2731,6 +2731,34 @@ export default function SendPage() {
   const [bridgeTransferResult, setBridgeTransferResult] = useState<BridgeTransferResponse | null>(null)
   const isBridgeFlow = !!bridgeCountry
 
+  // Recent recipients
+  const { data: recents = [] } = useQuery({
+    queryKey: QUERY_KEYS.RECENT_RECIPIENTS,
+    queryFn: getRecentRecipients,
+    staleTime: 60_000,
+  })
+
+  function handleSelectRecent(r: RecentRecipient) {
+    const isEvm = r.network && r.network !== 'stellar'
+    if (r.recipientUsername) {
+      setMode('username')
+      setUsdcType(isEvm ? 'evm' : 'stellar')
+      setEvmChain(isEvm ? r.network! : '')
+      setUsername(r.recipientUsername)
+      setAddress('')
+      setRecipient(null)
+      setStep('recipient')
+    } else if (r.recipientAddress) {
+      setMode('usdc')
+      setUsdcType(isEvm ? 'evm' : 'stellar')
+      setEvmChain(isEvm ? r.network! : '')
+      setUsername('')
+      setAddress(r.recipientAddress)
+      setRecipient(null)
+      setStep('recipient')
+    }
+  }
+
   function handleModeSelect(m: SendMode) {
     setMode(m)
     setUsdcType(null)
@@ -2831,7 +2859,37 @@ export default function SendPage() {
 
       {/* Mode selection — entry point */}
       {step === 'mode' && (
-        <ModeSelector onSelect={handleModeSelect} onSelectBridge={handleBridgeCountrySelect} />
+        <>
+          {recents.length > 0 && (
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Recent</p>
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+                {recents.map((r, i) => {
+                  const label = r.recipientUsername
+                    ? `@${r.recipientUsername}`
+                    : r.recipientAddress
+                      ? `${r.recipientAddress.slice(0, 6)}…${r.recipientAddress.slice(-4)}`
+                      : '?'
+                  const initial = (r.recipientUsername ?? r.recipientAddress ?? '?')[0].toUpperCase()
+                  return (
+                    <button
+                      key={r.recipientUsername ?? r.recipientAddress ?? i}
+                      type="button"
+                      onClick={() => handleSelectRecent(r)}
+                      className="flex flex-col items-center gap-1.5 min-w-[4rem] group"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-[#d4a843]/12 border border-[#d4a843]/25 flex items-center justify-center group-hover:bg-[#d4a843]/20 transition-colors">
+                        <span className="text-sm font-bold text-[#d4a843]">{initial}</span>
+                      </div>
+                      <span className="text-[11px] text-white/50 truncate max-w-[4.5rem] text-center">{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          <ModeSelector onSelect={handleModeSelect} onSelectBridge={handleBridgeCountrySelect} />
+        </>
       )}
 
       {/* USDC network selection — Stellar vs EVM */}

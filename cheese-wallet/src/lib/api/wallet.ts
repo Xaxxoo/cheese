@@ -103,6 +103,13 @@ export async function getSendFeeRate(): Promise<{ feeRate: number; feePct: strin
   return data.data
 }
 
+export async function getRecentRecipients(): Promise<import('@/types').RecentRecipient[]> {
+  const { data } = await apiClient.get<import('@/types').ApiResponse<import('@/types').RecentRecipient[]>>(
+    ENDPOINTS.SEND.RECENT_RECIPIENTS,
+  )
+  return data.data
+}
+
 export async function sendToAddress(payload: {
   address: string
   amountUsdc: string
