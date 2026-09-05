@@ -234,10 +234,13 @@ export interface BankTransferResponse {
 
 // ── Recent Recipients ────────────────────────────────────
 export interface RecentRecipient {
+  type: string;
   recipientUsername: string | null;
   recipientName: string | null;
   recipientAddress: string | null;
   network: string | null;
+  bankName: string | null;
+  accountNumber: string | null;
   lastSentAt: string;
 }
 

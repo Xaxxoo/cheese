@@ -618,8 +618,10 @@ function AddressInput({
 // ─────────────────────────────────────────────────────────
 function BankDetailsStep({
   onNext,
+  recentBankRecipients,
 }: {
   onNext: (recipient: BankRecipient, amountNgn: string) => void
+  recentBankRecipients: RecentRecipient[]
 }) {
   const [selectedBank, setSelectedBank] = useState<NigerianBank | null>(null)
   const [acctNum, setAcctNum]           = useState('')
@@ -705,6 +707,20 @@ function BankDetailsStep({
     }
   }, [acctNum, selectedBank, verified])
 
+  function handleSelectRecentBank(r: RecentRecipient) {
+    const bank = banks.find((b) => b.name === r.bankName) ?? null
+    if (bank && r.accountNumber) {
+      setSelectedBank(bank)
+      setAcctNum(r.accountNumber)
+      setAcctName(r.recipientName ?? '')
+      setVerified(true)
+      setNameUnverified(!r.recipientName)
+      setBankOpen(false)
+      setBankQuery('')
+      setVerifyError('')
+    }
+  }
+
   function handleAmountInput(v: string) {
     const raw = v.replace(/\D/g, '')
     setAmountRaw(raw)
@@ -740,6 +756,32 @@ function BankDetailsStep({
 
   return (
     <div className="flex flex-col gap-5 flex-1">
+      {/* Recent bank recipients */}
+      {recentBankRecipients.length > 0 && !verified && (
+        <div>
+          <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Recent</p>
+          <div className="flex flex-col gap-2">
+            {recentBankRecipients.map((r, i) => (
+              <button
+                key={`${r.bankName}-${r.accountNumber}-${i}`}
+                type="button"
+                onClick={() => handleSelectRecentBank(r)}
+                className="flex items-center gap-3 p-3 rounded-2xl border border-white/8 bg-white/4 hover:bg-white/8 hover:border-white/15 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-[#d4a843]/12 border border-[#d4a843]/25 flex items-center justify-center shrink-0">
+                  <Building2 size={14} className="text-[#d4a843]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{r.recipientName ?? r.accountNumber}</p>
+                  <p className="text-xs text-white/40 mt-0.5">{r.bankName} · {r.accountNumber}</p>
+                </div>
+                <ChevronRight size={14} className="text-white/20 shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Bank selector */}
       <div>
         <p className="text-xs text-white/40 uppercase tracking-wider mb-2 font-medium">Bank</p>
@@ -2981,6 +3023,7 @@ export default function SendPage() {
       {step === 'bank_details' && (
         <BankDetailsStep
           onNext={(r, amt) => { setBankRecipient(r); setBankAmount(amt); setStep('pin') }}
+          recentBankRecipients={recents.filter((r) => r.type === 'bank_transfer' && r.bankName)}
         />
       )}
 

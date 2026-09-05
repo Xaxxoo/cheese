@@ -251,27 +251,36 @@ export class TransactionsService {
   async getRecentRecipients(userId: string) {
     const rows = await this.txRepo
       .createQueryBuilder('tx')
-      .select('tx.recipient_username', 'recipientUsername')
+      .select('tx.type', 'type')
+      .addSelect('tx.recipient_username', 'recipientUsername')
       .addSelect('tx.recipient_address', 'recipientAddress')
       .addSelect('MAX(tx.recipient_name)', 'recipientName')
       .addSelect('MAX(tx.network)', 'network')
+      .addSelect('tx.bank_name', 'bankName')
+      .addSelect('tx.account_number', 'accountNumber')
       .addSelect('MAX(tx.created_at)', 'lastSentAt')
       .where('tx.user_id = :userId', { userId })
       .andWhere('tx.type IN (:...types)', {
-        types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS],
+        types: [TxType.SEND_USERNAME, TxType.SEND_ADDRESS, TxType.BANK_TRANSFER],
       })
       .andWhere('tx.status = :status', { status: TxStatus.COMPLETED })
-      .groupBy('tx.recipient_username')
+      .groupBy('tx.type')
+      .addGroupBy('tx.recipient_username')
       .addGroupBy('tx.recipient_address')
+      .addGroupBy('tx.bank_name')
+      .addGroupBy('tx.account_number')
       .orderBy('MAX(tx.created_at)', 'DESC')
       .limit(5)
       .getRawMany();
 
     return rows.map((r) => ({
+      type: r.type,
       recipientUsername: r.recipientUsername ?? null,
       recipientName: r.recipientName ?? null,
       recipientAddress: r.recipientAddress ?? null,
       network: r.network ?? null,
+      bankName: r.bankName ?? null,
+      accountNumber: r.accountNumber ?? null,
       lastSentAt: r.lastSentAt,
     }));
   }
