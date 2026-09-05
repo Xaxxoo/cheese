@@ -5,7 +5,7 @@ import type {
   Transaction, TransactionListResponse, TransactionStats,
   NigerianBank, AccountResolvePayload, AccountResolveResponse,
   BankTransferPayload, BankTransferResponse,
-  SendToUsernamePayload, SendToAddressPayload,
+  SendToUsernamePayload, SendToAddressPayload, RecentRecipient,
   ExchangeRate, EarnBalance, ReferralInfo,
   VirtualCard,
   VirtualAccount, OnRampAvailability,
@@ -73,6 +73,11 @@ export async function sendToUsername(payload: SendToUsernamePayload): Promise<Tr
 
 export async function sendToAddress(payload: SendToAddressPayload): Promise<Transaction> {
   const { data } = await client.post<ApiResponse<Transaction>>('/send/address', payload)
+  return data.data
+}
+
+export async function getRecentRecipients(): Promise<RecentRecipient[]> {
+  const { data } = await client.get<ApiResponse<RecentRecipient[]>>('/send/recent-recipients')
   return data.data
 }
 

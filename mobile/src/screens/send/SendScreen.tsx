@@ -8,12 +8,12 @@ import { ArrowLeft, CheckCircle } from 'lucide-react-native'
 import ConfettiCannon from 'react-native-confetti-cannon'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
-import { resolveUsername, getSendFeeRate, sendToUsername, sendToAddress, getBalance } from '../../api/wallet'
+import { resolveUsername, getSendFeeRate, sendToUsername, sendToAddress, getBalance, getRecentRecipients } from '../../api/wallet'
 import { useAuthStore } from '../../store/auth.store'
 import { getOrCreateDeviceId, getOrCreateDeviceKeyPair, signDeviceId, hashPin } from '../../utils/crypto'
 import { isBiometricAvailable, authenticateWithBiometrics } from '../../utils/biometrics'
 import { fmtUsdc } from '../../utils/format'
-import type { Transaction } from '../../types'
+import type { Transaction, RecentRecipient } from '../../types'
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Send'>
 type Mode = 'username' | 'address'
@@ -55,6 +55,13 @@ export default function SendScreen({ navigation }: Props) {
 
   // ── Step state ──
   const [step, setStep] = useState<Step>(1)
+
+  // ── Recent recipients ──
+  const [recents, setRecents] = useState<RecentRecipient[]>([])
+
+  useEffect(() => {
+    getRecentRecipients().then(setRecents).catch(() => {})
+  }, [])
 
   // ── Step 1: Recipient ──
   const [mode,            setMode]            = useState<Mode>('username')
@@ -120,6 +127,19 @@ export default function SendScreen({ navigation }: Props) {
       setResolveError(msg)
     } finally {
       setResolving(false)
+    }
+  }
+
+  function handleSelectRecent(r: RecentRecipient) {
+    setResolveError(null)
+    if (r.recipientUsername) {
+      setMode('username')
+      setRecipientInput(r.recipientUsername)
+      setResolvedName(r.recipientUsername)
+    } else if (r.recipientAddress) {
+      setMode('address')
+      setRecipientInput(r.recipientAddress)
+      setResolvedName(null)
     }
   }
 
@@ -274,6 +294,40 @@ export default function SendScreen({ navigation }: Props) {
                   <Text style={[s.modeBtnText, mode === 'address' && s.modeBtnTextActive]}>Address</Text>
                 </TouchableOpacity>
               </View>
+
+              {recents.length > 0 && (
+                <>
+                  <Text style={s.fieldLabel}>Recent</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={s.recentsRow}
+                    contentContainerStyle={s.recentsContent}
+                  >
+                    {recents.map((r, i) => {
+                      const label = r.recipientUsername
+                        ? `@${r.recipientUsername}`
+                        : r.recipientAddress
+                          ? `${r.recipientAddress.slice(0, 6)}…${r.recipientAddress.slice(-4)}`
+                          : '?'
+                      return (
+                        <TouchableOpacity
+                          key={`${r.recipientUsername ?? r.recipientAddress ?? i}`}
+                          style={s.recentChip}
+                          onPress={() => handleSelectRecent(r)}
+                        >
+                          <View style={s.recentAvatar}>
+                            <Text style={s.recentAvatarText}>
+                              {(r.recipientUsername ?? r.recipientAddress ?? '?')[0].toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={s.recentLabel} numberOfLines={1}>{label}</Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </ScrollView>
+                </>
+              )}
 
               {mode === 'username' ? (
                 <>
@@ -476,6 +530,19 @@ const s = StyleSheet.create({
   modeBtnActive:    { backgroundColor: '#d4a843', borderColor: '#d4a843' },
   modeBtnText:      { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
   modeBtnTextActive:{ color: '#000' },
+
+  recentsRow:       { marginBottom: 20 },
+  recentsContent:   { gap: 12 },
+  recentChip:       {
+    alignItems: 'center', width: 64,
+  },
+  recentAvatar:     {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(212,168,67,0.15)', borderWidth: 1, borderColor: 'rgba(212,168,67,0.3)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+  },
+  recentAvatarText: { fontSize: 16, fontWeight: '700', color: '#d4a843' },
+  recentLabel:      { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
 
   fieldLabel:       { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.4)',
                       textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
