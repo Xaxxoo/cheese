@@ -2899,11 +2899,11 @@ export default function SendPage() {
       {/* Mode selection — entry point */}
       {step === 'mode' && (
         <>
-          {recents.length > 0 && (
+          {recents.filter((r) => r.type !== 'bank_transfer').length > 0 && (
             <div className="mb-5">
               <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Recent</p>
               <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
-                {recents.map((r, i) => {
+                {recents.filter((r) => r.type !== 'bank_transfer').map((r, i) => {
                   const label = r.recipientUsername
                     ? `@${r.recipientUsername}`
                     : r.recipientAddress
