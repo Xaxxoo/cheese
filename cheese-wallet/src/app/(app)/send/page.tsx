@@ -759,23 +759,20 @@ function BankDetailsStep({
       {/* Recent bank recipients */}
       {recentBankRecipients.length > 0 && !verified && (
         <div>
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Recent</p>
-          <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Recent</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {recentBankRecipients.map((r, i) => (
               <button
                 key={`${r.bankName}-${r.accountNumber}-${i}`}
                 type="button"
                 onClick={() => handleSelectRecentBank(r)}
-                className="flex items-center gap-3 p-3 rounded-2xl border border-white/8 bg-white/4 hover:bg-white/8 hover:border-white/15 transition-all text-left"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/8 bg-white/4 hover:bg-white/8 hover:border-white/15 transition-all text-left shrink-0"
               >
-                <div className="w-9 h-9 rounded-full bg-[#d4a843]/12 border border-[#d4a843]/25 flex items-center justify-center shrink-0">
-                  <Building2 size={14} className="text-[#d4a843]" />
+                <Building2 size={12} className="text-[#d4a843] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-white truncate max-w-[7rem]">{r.recipientName ?? r.accountNumber}</p>
+                  <p className="text-[10px] text-white/35 truncate max-w-[7rem]">{r.bankName}</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{r.recipientName ?? r.accountNumber}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{r.bankName} · {r.accountNumber}</p>
-                </div>
-                <ChevronRight size={14} className="text-white/20 shrink-0" />
               </button>
             ))}
           </div>
