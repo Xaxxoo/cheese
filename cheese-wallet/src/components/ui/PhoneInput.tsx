@@ -187,7 +187,7 @@ export function PhoneInput({ label, value, onChange, error, hint }: PhoneInputPr
             onBlur={() => setFocused(false)}
             className={cn(
               'flex-1 h-12 border rounded-2xl px-4 text-sm text-white',
-              'placeholder:text-white/20',
+              'placeholder:text-white/20 placeholder:[-webkit-text-fill-color:rgba(255,255,255,0.2)]',
               'transition-[border-color] duration-150 focus:outline-none',
               borderColor,
             )}
