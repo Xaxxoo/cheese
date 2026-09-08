@@ -85,7 +85,11 @@ export class TransactionsService {
       .values(data)
       .orIgnore()
       .execute();
-    return result.identifiers.length > 0;
+    // TypeORM + PostgreSQL bug: with orIgnore(), identifiers always contains
+    // an entry (with id: undefined) even when ON CONFLICT DO NOTHING fires.
+    // Check that the returned id is a real value to know if the row was
+    // actually inserted.
+    return result.identifiers?.[0]?.id != null;
   }
 
   // ── Limit & milestone queries ─────────────────────────────
