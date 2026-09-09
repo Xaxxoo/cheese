@@ -33,6 +33,7 @@ import { TierMilestoneService } from '../kyc/tier-milestone.service';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AlertsService } from '../alerts/alerts.service';
 import { ReferralService } from '../referral/referral.service';
 import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
@@ -233,6 +234,7 @@ export class BanksService {
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly alertsService: AlertsService,
+    private readonly eventEmitter: EventEmitter2,
     @Optional() @InjectQueue('bank-transfer')
     private readonly bankTransferQueue: Queue | undefined,
   ) {}
@@ -842,6 +844,9 @@ export class BanksService {
       }
     }
 
+    // USDC debit succeeded — refresh the user's cached balance
+    this.eventEmitter.emit('balance.changed', { userId });
+
     // ── SAGA Step 2: Initiate NGN payout ──────────────────────────────────
     //
     // IMPORTANT: The SAGA rollback catch block ONLY wraps initiateBankingTransfer.
@@ -1114,6 +1119,7 @@ export class BanksService {
             evmChainId: transfer.evmChainId,
             stellarAmount: transfer.stellarAmount,
           });
+          this.eventEmitter.emit('balance.changed', { userId: transfer.userId });
         } else {
           this.logger.error(
             `Cannot refund — user ${transfer.userId} has no wallet [ref=${transfer.reference}]`,

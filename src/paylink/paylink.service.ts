@@ -17,6 +17,7 @@ import { DataSource, LessThan, Repository } from 'typeorm';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
@@ -69,6 +70,7 @@ export class PayLinkService {
     private readonly notificationsService: NotificationsService,
     private readonly config: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // ── Helpers ───────────────────────────────────────────────
@@ -365,6 +367,10 @@ export class PayLinkService {
       settledTxId: tx.id,
       settledTxHash: txHash,
     });
+
+    // Refresh cached balance for payer and creator
+    this.eventEmitter.emit('balance.changed', { userId: payerId });
+    this.eventEmitter.emit('balance.changed', { userId: pr.creatorId });
 
     const paidAt = new Date();
     const frontendUrl = this.config.get<string>(

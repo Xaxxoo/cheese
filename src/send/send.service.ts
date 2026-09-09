@@ -24,6 +24,7 @@ import { TierMilestoneService } from '../kyc/tier-milestone.service';
 import { ReferralService } from '../referral/referral.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
 
@@ -46,6 +47,7 @@ export class SendService {
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // ── GET /send/recent-recipients ──────────────────────────
@@ -269,6 +271,9 @@ export class SendService {
           txHash,
         });
 
+        // Refresh cached balance for sender
+        this.eventEmitter.emit('balance.changed', { userId: senderId });
+
         // Fire-and-forget milestone + referral
         void this.tierMilestone.checkAndNotify(senderId);
         void this.referralService
@@ -328,6 +333,9 @@ export class SendService {
                 );
                 return false;
               });
+
+            // Refresh cached balance for recipient
+            this.eventEmitter.emit('balance.changed', { userId: recipientUser.id });
 
             const senderLabel = sender.username ? `@${sender.username}` : 'someone';
 
@@ -491,6 +499,9 @@ export class SendService {
         txHash,
       });
 
+      // Refresh cached balance for sender
+      this.eventEmitter.emit('balance.changed', { userId: senderId });
+
       // Fire-and-forget milestone check
       void this.tierMilestone.checkAndNotify(senderId);
 
@@ -555,6 +566,9 @@ export class SendService {
               );
               return false;
             });
+
+          // Refresh cached balance for recipient
+          this.eventEmitter.emit('balance.changed', { userId: recipientUser.id });
 
           const senderLabel = sender.username ? `@${sender.username}` : 'someone';
 

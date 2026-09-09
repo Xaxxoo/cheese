@@ -19,6 +19,7 @@ import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FlutterwaveBillsClient } from './flutterwave-bills.client';
 import { PayBillDto, VerifyBillCustomerDto } from './dto/pay-bill.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
 
@@ -51,6 +52,7 @@ export class BillsService {
     private readonly fwClient: FlutterwaveBillsClient,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // ── GET /bills/billers ──────────────────────────────────────────────────
@@ -215,6 +217,7 @@ export class BillsService {
         reference,
       );
       await this.txService.update(tx.id, { txHash: stellarTxHash });
+      this.eventEmitter.emit('balance.changed', { userId });
     } catch (err) {
       await this.txService.update(tx.id, {
         status: TxStatus.FAILED,
@@ -287,6 +290,7 @@ export class BillsService {
         reference,
         reason: errMsg,
       });
+      this.eventEmitter.emit('balance.changed', { userId });
 
       await this.txService.update(tx.id, {
         status: TxStatus.FAILED,

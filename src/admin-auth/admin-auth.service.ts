@@ -26,6 +26,7 @@ import { VirtualCard } from '../cards/entities/virtual-card.entity';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminRoleDto } from './dto/update-admin-role.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { WalletService as BlockchainWalletService } from '../blockchain/services/wallet.service';
 import { EmailService } from '../email/email.service';
@@ -66,6 +67,7 @@ export class AdminAuthService {
     private readonly blockchainWalletService: BlockchainWalletService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /** Read combined EVM + Stellar balances in small batches to avoid saturating providers. */
@@ -1203,6 +1205,8 @@ export class AdminAuthService {
         description: `Refund for ${tx.reference}`,
       }),
     );
+
+    this.eventEmitter.emit('balance.changed', { userId: user.id });
 
     // Notify the user (fire-and-forget)
     void this.notificationsService

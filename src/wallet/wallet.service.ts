@@ -6,6 +6,7 @@ import {
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
@@ -18,6 +19,7 @@ import {
   WalletStatus as BlockchainWalletStatus,
 } from '../blockchain/entities/blockchain-wallet.entity';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface WalletBalance {
@@ -86,7 +88,17 @@ export class WalletService {
     private readonly blockchainWalletService: BlockchainWalletService | null,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  @OnEvent('balance.changed')
+  async handleBalanceChanged(payload: { userId: string }): Promise<void> {
+    this.getBalance(payload.userId).catch((err) =>
+      this.logger.warn(
+        `balance.changed cache refresh failed [user=${payload.userId}]: ${(err as Error).message}`,
+      ),
+    );
+  }
 
   async getBalance(userId: string): Promise<WalletBalance> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -622,7 +634,8 @@ export class WalletService {
         status: TxStatus.COMPLETED,
         txHash,
       });
-      this.logger.log(`Withdrawal: 
+      this.eventEmitter.emit('balance.changed', { userId });
+      this.logger.log(`Withdrawal:
         @${username} -$${amountUsdc} → ${toAddress} | ${txHash}`);
       return { txHash, reference };
     } catch (err) {

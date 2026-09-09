@@ -1,5 +1,6 @@
 // src/referral/referral.service.ts
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,6 +25,7 @@ export class ReferralService {
     private readonly txService: TransactionsService,
     private readonly notifService: NotificationsService,
     private readonly blockchainService: BlockchainService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // ── GET /referral ─────────────────────────────────────────
@@ -182,6 +184,8 @@ export class ReferralService {
         body: `You earned $${REFERRAL_REWARD_USDC.toFixed(2)} USDC — your friend just made their first transaction!`,
         deepLink: '/earn',
       });
+
+      this.eventEmitter.emit('balance.changed', { userId: referral.referrerId });
 
       this.logger.log(
         `Referral reward credited on-chain: $${REFERRAL_REWARD_USDC} → ${referral.referrerId} (txHash=${txHash})`,

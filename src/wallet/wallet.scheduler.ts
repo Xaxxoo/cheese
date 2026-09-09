@@ -1,5 +1,6 @@
 // src/wallet/wallet.scheduler.ts
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, IsNull, Repository } from 'typeorm';
@@ -33,6 +34,7 @@ export class WalletDepositScheduler {
     private readonly txService: TransactionsService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // ── Auto-provision missing Stellar wallets ────────────────────────────────
@@ -225,6 +227,8 @@ export class WalletDepositScheduler {
 
       if (!inserted) continue; // already recorded by a concurrent instance
 
+      this.eventEmitter.emit('balance.changed', { userId: user.id });
+
       this.logger.log(
         `Deposit recorded [user=${user.id}] [amount=${payment.amount} USDC] [hash=${payment.txHash}]`,
       );
@@ -372,6 +376,8 @@ export class WalletDepositScheduler {
             });
 
             if (inserted) {
+              this.eventEmitter.emit('balance.changed', { userId });
+
               this.logger.log(
                 `EVM deposit recorded [chain=${chainName}] [user=${userId}] [amount=${event.amount}] [hash=${event.txHash}]`,
               );
