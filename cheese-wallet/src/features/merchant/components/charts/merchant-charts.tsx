@@ -31,7 +31,7 @@ export function RevenueAreaChart({ points }: { points: RevenuePoint[] }) {
   return (
     <div className="space-y-3">
       {/* Legend */}
-      <div className="flex items-center gap-5 text-xs text-[color:var(--merchant-muted)]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[color:var(--merchant-muted)]">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-[#D4A843]" />
           Gross
@@ -107,9 +107,9 @@ export function RevenueAreaChart({ points }: { points: RevenuePoint[] }) {
       </div>
 
       {/* X-axis labels */}
-      <div className="flex items-center justify-between text-[10px] text-[color:var(--merchant-muted)]">
+      <div className="grid grid-flow-col auto-cols-fr gap-1 text-center text-[10px] text-[color:var(--merchant-muted)]">
         {displayPoints.map((p) => (
-          <span key={p.label}>{p.label}</span>
+          <span key={p.label} className="min-w-0 break-words">{p.label}</span>
         ))}
       </div>
     </div>
@@ -131,7 +131,7 @@ export function BreakdownDonutChart({ slices }: { slices: BreakdownSlice[] }) {
   }
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex flex-wrap items-center gap-4">
       {/* Donut */}
       <div className="relative h-20 w-20 flex-shrink-0">
         <svg viewBox="0 0 42 42" className="h-full w-full -rotate-90">
@@ -169,14 +169,14 @@ export function BreakdownDonutChart({ slices }: { slices: BreakdownSlice[] }) {
       </div>
 
       {/* Legend */}
-      <div className="flex-1 space-y-2 min-w-0">
+      <div className="min-w-0 flex-1 basis-32 space-y-2">
         {slices.map((slice) => (
           <div key={slice.label} className="flex items-center gap-2 text-xs">
             <span
               className="h-2 w-2 flex-shrink-0 rounded-full"
               style={{ backgroundColor: slice.color }}
             />
-            <span className="min-w-0 flex-1 truncate text-[color:var(--merchant-soft-text)]">
+            <span className="min-w-0 flex-1 break-words text-[color:var(--merchant-soft-text)]">
               {slice.label}
             </span>
             <span className="flex-shrink-0 font-medium text-[color:var(--merchant-text)]">

@@ -157,15 +157,15 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        'rounded-xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)]',
-        !noPadding && 'p-5',
+        'min-w-0 rounded-xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)]',
+        !noPadding && 'p-4 sm:p-5',
         className,
       )}
     >
       {hasHeader && (
         <div
           className={cn(
-            'flex items-start justify-between gap-4',
+            'flex flex-wrap items-start justify-between gap-4',
             !noPadding && (title || description) ? 'mb-5' : '',
           )}
         >
@@ -203,9 +203,9 @@ export function MetricCard({
   tone: 'positive' | 'neutral' | 'warning';
 }) {
   return (
-    <article className="group rounded-xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] p-4 transition-colors hover:bg-[color:var(--merchant-panel-strong)]">
-      <p className="text-xs font-medium text-[color:var(--merchant-muted)] truncate">{label}</p>
-      <p className="mt-2.5 font-merchant-serif text-2xl font-semibold tracking-tight text-[color:var(--merchant-text)]">
+    <article className="group min-w-0 rounded-xl border border-[color:var(--merchant-border)] bg-[color:var(--merchant-panel)] p-4 transition-colors hover:bg-[color:var(--merchant-panel-strong)]">
+      <p className="break-words text-xs font-medium text-[color:var(--merchant-muted)]">{label}</p>
+      <p className="mt-2.5 break-words font-merchant-serif text-2xl font-semibold tracking-tight text-[color:var(--merchant-text)]">
         {amount}
       </p>
       <p

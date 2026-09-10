@@ -169,7 +169,7 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* ── Main content ── */}
-        <div className="flex min-h-screen flex-col xl:pl-[232px]">
+        <div className="flex min-h-screen min-w-0 flex-col xl:pl-[232px]">
           {/* Header */}
           <header className="sticky top-0 z-30 h-14 border-b border-[color:var(--merchant-border)] bg-[color:var(--merchant-header)] backdrop-blur-xl">
             <div className="flex h-full items-center gap-3 px-4 sm:px-6">
@@ -177,7 +177,10 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(!mobileNavOpen)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--merchant-border)] text-[color:var(--merchant-soft-text)] transition-colors hover:bg-[color:var(--merchant-panel-strong)] xl:hidden"
+                aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
+                aria-expanded={mobileNavOpen}
+                aria-controls="merchant-mobile-navigation"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[color:var(--merchant-border)] text-[color:var(--merchant-soft-text)] transition-colors hover:bg-[color:var(--merchant-panel-strong)] xl:hidden"
               >
                 {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </button>
@@ -232,8 +235,8 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
 
           {/* Mobile nav drawer */}
           {mobileNavOpen && (
-            <div className="border-b border-[color:var(--merchant-border)] bg-[color:var(--merchant-side)] px-3 py-3 xl:hidden">
-              <nav className="space-y-0.5">
+            <div id="merchant-mobile-navigation" className="sticky top-14 z-20 max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b border-[color:var(--merchant-border)] bg-[color:var(--merchant-side)] px-3 py-3 xl:hidden">
+              <nav aria-label="Merchant navigation" className="space-y-0.5 [&_a]:min-h-11">
                 {NAV_ITEMS.map((item) => (
                   <NavItem
                     key={item.href}
@@ -243,11 +246,19 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
                   />
                 ))}
               </nav>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="mt-2 flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-sm text-[color:var(--merchant-soft-text)] hover:bg-[color:var(--merchant-panel)] sm:hidden"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
             </div>
           )}
 
           {/* Page content */}
-          <main className="flex-1">
+          <main className="min-w-0 flex-1">
             <div className="mx-auto w-full max-w-[1320px]">
               {children}
             </div>
