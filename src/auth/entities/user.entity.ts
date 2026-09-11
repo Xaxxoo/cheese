@@ -73,6 +73,9 @@ export class User {
   @Column({ type: 'varchar', length: 2, nullable: true })
   country: string | null;
 
+  @Column({ name: 'date_of_birth', type: 'date', nullable: true })
+  dateOfBirth: string | null;
+
   @Exclude()
   @Column({ name: 'password_hash', type: 'varchar', nullable: true })
   passwordHash: string | null;

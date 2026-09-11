@@ -304,6 +304,7 @@ export interface AdminUserDetail {
   emailVerified:    boolean
   referralCode:     string | null
   points:           number
+  dateOfBirth:      string | null
   createdAt:        string
   usdcBalance:      string | null
   evmBalance:       string | null
@@ -389,6 +390,37 @@ export async function setAdminUserKycVerified(id: string): Promise<{ id: string;
 
 export async function deleteAdminUser(id: string): Promise<void> {
   await adminApiClient.delete(`/admin/users/${id}`)
+}
+
+// ── Birthdays ─────────────────────────────────────────────────────────────
+export interface BirthdayUser {
+  id:          string
+  name:        string
+  username:    string
+  email:       string
+  dateOfBirth: string | null
+}
+
+export async function getTodaysBirthdays(): Promise<{ count: number; users: BirthdayUser[] }> {
+  const { data } = await adminApiClient.get<ApiResponse<{ count: number; users: BirthdayUser[] }>>(
+    '/admin/birthdays',
+  )
+  return data.data
+}
+
+export async function sendBirthdayEmail(userId: string): Promise<{ id: string; sent: boolean }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ id: string; sent: boolean }>>(
+    `/admin/users/${userId}/birthday-email`,
+  )
+  return data.data
+}
+
+export async function setAdminUserDob(id: string, dateOfBirth: string): Promise<{ id: string; dateOfBirth: string }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; dateOfBirth: string }>>(
+    `/admin/users/${id}/dob`,
+    { dateOfBirth },
+  )
+  return data.data
 }
 
 // ── Treasury ──────────────────────────────────────────────────────────────

@@ -912,6 +912,7 @@ export class AdminAuthService {
       emailVerified:    user.emailVerified,
       referralCode:     user.referralCode,
       points:           user.points,
+      dateOfBirth:      user.dateOfBirth,
       createdAt:        user.createdAt,
       usdcBalance:      balances?.usdc ?? null,
       evmBalance:       evmBalance ?? null,
@@ -1003,6 +1004,65 @@ export class AdminAuthService {
     user.isFlagged = flag;
     await this.userRepo.save(user);
     return { id: user.id, isFlagged: user.isFlagged };
+  }
+
+  // ── Birthday helpers ────────────────────────────────────────────────────────
+
+  async getTodaysBirthdays() {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+
+    const users = await this.userRepo
+      .createQueryBuilder('u')
+      .where('u.isAdmin = false')
+      .andWhere('u.isActive = true')
+      .andWhere('u.date_of_birth IS NOT NULL')
+      .andWhere('EXTRACT(MONTH FROM u.date_of_birth) = :month', { month })
+      .andWhere('EXTRACT(DAY FROM u.date_of_birth) = :day', { day })
+      .getMany();
+
+    return {
+      count: users.length,
+      users: users.map((u) => ({
+        id: u.id,
+        name: u.fullName || u.username,
+        username: u.username,
+        email: u.email,
+        dateOfBirth: u.dateOfBirth,
+      })),
+    };
+  }
+
+  async sendBirthdayEmail(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.emailService.sendHappyBirthday({
+      to: user.email,
+      fullName: user.fullName || user.username,
+      username: user.username,
+    });
+
+    return { id: user.id, sent: true };
+  }
+
+  async setUserDateOfBirth(id: string, dateOfBirth: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+      throw new BadRequestException('Invalid date format. Use YYYY-MM-DD.');
+    }
+    const parsed = new Date(dateOfBirth);
+    if (isNaN(parsed.getTime())) {
+      throw new BadRequestException('Invalid date.');
+    }
+
+    user.dateOfBirth = dateOfBirth;
+    await this.userRepo.save(user);
+    return { id: user.id, dateOfBirth: user.dateOfBirth };
   }
 
   async setUserActive(id: string, isActive: boolean) {

@@ -6,7 +6,8 @@ import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
   setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
-  provisionAdminUserWallet, listAdminTransactions, type AdminUserDetail, type AdminTransactionItem,
+  provisionAdminUserWallet, listAdminTransactions, setAdminUserDob, sendBirthdayEmail,
+  type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
 const fmtDate = (s: string) =>
@@ -37,6 +38,10 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [recoverError,  setRecoverError]  = useState('');
   const [partialSweepAmount, setPartialSweepAmount] = useState('');
   const [provisionError, setProvisionError] = useState('');
+  const [editingDob, setEditingDob] = useState(false);
+  const [dobValue, setDobValue] = useState('');
+  const [dobSaving, setDobSaving] = useState(false);
+  const [bdayEmailStatus, setBdayEmailStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   // ── Tx history slide-over ─────────────────────────────────────────────────
   const [txFilter,   setTxFilter]   = useState<'in' | 'out' | 'all' | null>(null);
@@ -496,6 +501,81 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   <div style={{ fontSize: 12.5, color: c.text, textAlign: 'right', maxWidth: '65%', wordBreak: 'break-all' }}>{v}</div>
                 </div>
               ))}
+              {/* Date of Birth */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                <div style={lbl}>Date of Birth</div>
+                {editingDob ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="date"
+                      value={dobValue}
+                      onChange={(e) => setDobValue(e.target.value)}
+                      style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.border}`, background: 'rgba(255,255,255,0.05)', color: c.text, fontFamily: 'inherit', fontSize: 12 }}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!dobValue || dobSaving) return;
+                        setDobSaving(true);
+                        try {
+                          const res = await setAdminUserDob(user.id, dobValue);
+                          setUser((u) => u ? { ...u, dateOfBirth: res.dateOfBirth } : u);
+                          setEditingDob(false);
+                        } catch { /* ignore */ }
+                        finally { setDobSaving(false); }
+                      }}
+                      disabled={dobSaving || !dobValue}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: c.greenDim, border: '1px solid rgba(34,197,94,0.25)', color: c.green, fontFamily: 'inherit', fontSize: 11, fontWeight: 600, cursor: dobSaving ? 'default' : 'pointer', opacity: dobSaving ? 0.55 : 1 }}
+                    >
+                      {dobSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setEditingDob(false)}
+                      style={{ padding: '4px 10px', borderRadius: 6, background: 'transparent', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12.5, color: c.text }}>{user.dateOfBirth ?? '—'}</span>
+                    <button
+                      onClick={() => { setDobValue(user.dateOfBirth ?? ''); setEditingDob(true); }}
+                      style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      {user.dateOfBirth ? 'Edit' : 'Set'}
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Send Birthday Email */}
+              {user.dateOfBirth && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                  <div style={lbl}>Birthday Email</div>
+                  <button
+                    onClick={async () => {
+                      if (bdayEmailStatus !== 'idle') return;
+                      setBdayEmailStatus('sending');
+                      try {
+                        await sendBirthdayEmail(user.id);
+                        setBdayEmailStatus('sent');
+                      } catch {
+                        setBdayEmailStatus('idle');
+                      }
+                    }}
+                    disabled={bdayEmailStatus !== 'idle'}
+                    style={{
+                      padding: '5px 14px', borderRadius: 8, cursor: bdayEmailStatus !== 'idle' ? 'default' : 'pointer',
+                      background: bdayEmailStatus === 'sent' ? c.greenDim : c.amberDim,
+                      border: `1px solid ${bdayEmailStatus === 'sent' ? 'rgba(34,197,94,0.25)' : c.amberBrd}`,
+                      color: bdayEmailStatus === 'sent' ? c.green : c.amber,
+                      fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                      opacity: bdayEmailStatus === 'sending' ? 0.55 : 1,
+                    }}
+                  >
+                    {bdayEmailStatus === 'sending' ? 'Sending...' : bdayEmailStatus === 'sent' ? 'Sent!' : 'Send Birthday Email'}
+                  </button>
+                </div>
+              )}
               {user.referralCode && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
                   <div style={lbl}>Referral Link</div>

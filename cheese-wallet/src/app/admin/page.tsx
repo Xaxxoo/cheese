@@ -7,7 +7,7 @@ import {
   IcoUsers, IcoShield, IcoWallet, IcoFile, IcoBank, IcoAlert,
   Dot, FeedLabel, greeting,
 } from './_shared';
-import { getAdminStats, getAdminVolumeChart, type AdminStats } from '@/lib/api/admin';
+import { getAdminStats, getAdminVolumeChart, getTodaysBirthdays, sendBirthdayEmail, type AdminStats, type BirthdayUser } from '@/lib/api/admin';
 
 // ─── SVG Components ───────────────────────────────────────────────────────────
 function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
@@ -114,9 +114,12 @@ export default function AdminDashboard() {
   const [alertOpen, setAlertOpen]   = useState(true);
   const [stats, setStats]           = useState<AdminStats | null>(null);
   const [volumeChart, setVolumeChart] = useState<number[]>([]);
+  const [birthdays, setBirthdays]   = useState<BirthdayUser[]>([]);
+  const [bdaySent, setBdaySent]     = useState<Record<string, 'sending' | 'sent'>>({});
 
   useEffect(() => {
     getAdminStats().then(setStats).catch(console.error);
+    getTodaysBirthdays().then((r) => setBirthdays(r.users)).catch(console.error);
     const id = setInterval(() => getAdminStats().then(setStats).catch(console.error), 60_000);
     return () => clearInterval(id);
   }, []);
@@ -233,6 +236,50 @@ export default function AdminDashboard() {
               <span style={{ fontSize: 11, color: c.textDim, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>Review <IcoChevron /></span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Birthday widget ─────────────────────────────────────────────── */}
+      {birthdays.length > 0 && (
+        <div style={{ ...card, padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 16 }}>&#127874;</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Birthdays Today</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: c.amber, background: c.amberDim, border: `1px solid ${c.amberBrd}`, padding: '1px 6px', borderRadius: 99 }}>{birthdays.length}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {birthdays.map((u) => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: `1px solid ${c.border}` }}>
+                <div>
+                  <span style={{ fontSize: 12.5, color: c.text, fontWeight: 600 }}>{u.name}</span>
+                  <span style={{ fontSize: 11.5, color: c.textDim, marginLeft: 6 }}>@{u.username}</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (bdaySent[u.id]) return;
+                    setBdaySent((s) => ({ ...s, [u.id]: 'sending' }));
+                    try {
+                      await sendBirthdayEmail(u.id);
+                      setBdaySent((s) => ({ ...s, [u.id]: 'sent' }));
+                    } catch {
+                      setBdaySent((s) => { const next = { ...s }; delete next[u.id]; return next; });
+                    }
+                  }}
+                  disabled={!!bdaySent[u.id]}
+                  style={{
+                    padding: '5px 14px', borderRadius: 8, cursor: bdaySent[u.id] ? 'default' : 'pointer',
+                    background: bdaySent[u.id] === 'sent' ? c.greenDim : c.amberDim,
+                    border: `1px solid ${bdaySent[u.id] === 'sent' ? 'rgba(34,197,94,0.25)' : c.amberBrd}`,
+                    color: bdaySent[u.id] === 'sent' ? c.green : c.amber,
+                    fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                    opacity: bdaySent[u.id] === 'sending' ? 0.55 : 1,
+                  }}
+                >
+                  {bdaySent[u.id] === 'sending' ? 'Sending...' : bdaySent[u.id] === 'sent' ? 'Sent!' : 'Send Birthday Email'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

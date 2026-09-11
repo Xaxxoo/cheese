@@ -186,6 +186,34 @@ export class AdminDashboardController {
     return this.adminAuthService.flagUser(id, flag);
   }
 
+  // ── GET /admin/birthdays ──────────────────────────────────────────────────
+  @Get('birthdays')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List users with birthdays today' })
+  getTodaysBirthdays() {
+    return this.adminAuthService.getTodaysBirthdays();
+  }
+
+  // ── POST /admin/users/:id/birthday-email ────────────────────────────────
+  @Post('users/:id/birthday-email')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a happy birthday email to a user' })
+  sendBirthdayEmail(@Param('id') id: string) {
+    return this.adminAuthService.sendBirthdayEmail(id);
+  }
+
+  // ── PATCH /admin/users/:id/dob ──────────────────────────────────────────
+  @Patch('users/:id/dob')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Set or update a user date of birth' })
+  setUserDob(@Param('id') id: string, @Body('dateOfBirth') dateOfBirth: string) {
+    return this.adminAuthService.setUserDateOfBirth(id, dateOfBirth);
+  }
+
   // ── GET /admin/referrals ───────────────────────────────────────────────────
   @Get('referrals')
   @UseGuards(AdminJwtGuard)
