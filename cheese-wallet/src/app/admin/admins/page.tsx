@@ -107,7 +107,7 @@ export default function AdminsPage() {
   const COLS = ['Name', 'Email', 'Role', 'Joined', ''];
 
   return (
-    <div style={{ padding: '28px 28px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
+    <div className="admin-content" style={{ padding: '28px 28px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
 
       {/* ── Header ────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>

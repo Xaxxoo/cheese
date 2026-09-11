@@ -8,7 +8,7 @@ import {
   c,
   IcoHome, IcoUsers, IcoShield, IcoFile, IcoSend, IcoBank, IcoCard,
   IcoLink, IcoWallet, IcoChain, IcoAlert, IcoList, IcoStar, IcoBell,
-  IcoChevron, IcoSettings, IcoSearch,
+  IcoChevron, IcoSettings, IcoSearch, IcoX,
 } from './_shared';
 import { useAdminAuthStore, ROLE_LABELS, ROLE_COLORS } from '@/store/adminAuthStore';
 
@@ -65,6 +65,47 @@ const STYLES = `
   .user-search-input { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.065); border-radius:8px; padding:7px 12px 7px 34px; font-size:12.5px; color:#f4f4f5; font-family:inherit; outline:none; width:100%; box-sizing:border-box; transition:border-color .15s; }
   .user-search-input::placeholder { color:rgba(244,244,245,.3); }
   .user-search-input:focus { border-color: rgba(245,158,11,.35); }
+
+  .mobile-menu-btn { display:none; }
+  .sidebar-overlay { display:none; }
+
+  .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .table-wrap > div { min-width:600px; }
+
+  @media (max-width: 768px) {
+    .admin-sidebar {
+      position:fixed !important; z-index:100; top:0; left:0; bottom:0;
+      transform:translateX(-100%); transition:transform .2s ease;
+    }
+    .admin-sidebar.open { transform:translateX(0); }
+    .sidebar-overlay.open {
+      display:block !important; position:fixed; inset:0;
+      background:rgba(0,0,0,.55); z-index:99;
+    }
+    .mobile-menu-btn { display:flex !important; }
+    .topbar-search { display:none !important; }
+    .topbar-rate { display:none !important; }
+    .topbar-clock { display:none !important; }
+    .topbar-status { display:none !important; }
+    .topbar-export { display:none !important; }
+    .admin-topbar { padding:0 12px !important; gap:8px !important; }
+    .admin-content { padding:16px 12px !important; }
+    .kpi-grid { grid-template-columns:repeat(2,1fr) !important; }
+    .flow-grid { grid-template-columns:1fr !important; }
+    .chart-grid { grid-template-columns:1fr !important; }
+    .modules-grid { grid-template-columns:repeat(2,1fr) !important; }
+    .stat-grid-3 { grid-template-columns:repeat(2,1fr) !important; }
+    .stat-grid-4 { grid-template-columns:repeat(2,1fr) !important; }
+    .stat-grid-5 { grid-template-columns:repeat(2,1fr) !important; }
+    .aside-layout { grid-template-columns:1fr !important; }
+  }
+  @media (max-width: 480px) {
+    .kpi-grid { grid-template-columns:1fr !important; }
+    .modules-grid { grid-template-columns:1fr !important; }
+    .stat-grid-3 { grid-template-columns:1fr !important; }
+    .stat-grid-4 { grid-template-columns:1fr !important; }
+    .stat-grid-5 { grid-template-columns:1fr !important; }
+  }
 `;
 
 // ─── Nav groups with route hrefs ──────────────────────────────────────────────
@@ -105,6 +146,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [clock,       setClock]       = useState('');
   const [liveRate,    setLiveRate]    = useState<string | null>(null);
   const [health,      setHealth]      = useState<AdminHealth | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Auth-expired listener — always registered so token expiry is handled ────
   useEffect(() => {
@@ -132,6 +174,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/admin/change-password');
     }
   }, [isAuthenticated, admin, pathname, router]);
+
+  // Close sidebar on navigation
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   useEffect(() => {
     const fmt = () => new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
@@ -198,8 +243,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         overflow: 'hidden', color: c.text,
       }}>
 
+        {/* ── Mobile overlay ─────────────────────────────────────── */}
+        <div
+          className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`}
+          onClick={() => setSidebarOpen(false)}
+        />
+
         {/* ── Sidebar ───────────────────────────────────────────────── */}
-        <aside style={{
+        <aside className={`admin-sidebar${sidebarOpen ? ' open' : ''}`} style={{
           width: 216, background: c.sidebar,
           borderRight: `1px solid ${c.border}`,
           display: 'flex', flexDirection: 'column', flexShrink: 0,
@@ -210,10 +261,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div style={{ padding: '18px 16px 14px', borderBottom: `1px solid ${c.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <img src="/logo.png" alt="Cheese Pay" style={{ width: 32, height: 32, borderRadius: 10, objectFit: 'contain', display: 'block' }} />
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "var(--font-brand), sans-serif", fontWeight: 900, fontSize: 13.5, color: c.text, lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.05em' }}>CheesePay</div>
                 <div style={{ fontSize: 10, color: c.textDim, marginTop: 3 }}>Admin Console</div>
               </div>
+              <button
+                className="mobile-menu-btn"
+                onClick={() => setSidebarOpen(false)}
+                style={{ alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: c.textMid, cursor: 'pointer', padding: 4 }}
+              ><IcoX /></button>
             </div>
           </div>
 
@@ -315,16 +371,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Topbar */}
-          <div style={{
+          <div className="admin-topbar" style={{
             height: 54, borderBottom: `1px solid ${c.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 24px', flexShrink: 0, gap: 16,
           }}>
-            {/* Breadcrumb */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: c.textDim, flexShrink: 0 }}>
-              <span>Dashboard</span>
-              <span style={{ opacity: 0.4 }}><IcoChevron /></span>
-              <span style={{ color: c.text, fontWeight: 500 }}>{activeLabel}</span>
+            {/* Hamburger (mobile only) + Breadcrumb */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <button
+                className="mobile-menu-btn"
+                onClick={() => setSidebarOpen(true)}
+                style={{ alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: c.textMid, cursor: 'pointer', padding: 4 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: c.textDim }}>
+                <span>Dashboard</span>
+                <span style={{ opacity: 0.4 }}><IcoChevron /></span>
+                <span style={{ color: c.text, fontWeight: 500 }}>{activeLabel}</span>
+              </div>
             </div>
 
             {/* Search */}
@@ -343,12 +408,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Right cluster */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
               {liveRate && (
-                <div style={{ fontSize: 11, color: c.textMid, background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`, padding: '4px 11px', borderRadius: 99, fontWeight: 500 }}>
+                <div className="topbar-rate" style={{ fontSize: 11, color: c.textMid, background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`, padding: '4px 11px', borderRadius: 99, fontWeight: 500 }}>
                   ₦{liveRate} <span style={{ opacity: 0.4 }}>/</span> USD
                 </div>
               )}
               {clock && (
-                <div style={{ fontSize: 11.5, color: c.textDim, fontVariantNumeric: 'tabular-nums', minWidth: 34, textAlign: 'right' }}>{clock}</div>
+                <div className="topbar-clock" style={{ fontSize: 11.5, color: c.textDim, fontVariantNumeric: 'tabular-nums', minWidth: 34, textAlign: 'right' }}>{clock}</div>
               )}
               <button className="topbar-icon" style={{ position: 'relative', color: c.textMid }}>
                 <IcoBell />
@@ -364,17 +429,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 )}
               </button>
               {servicesDegraded > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: c.amberDim, border: `1px solid ${c.amberBrd}`, borderRadius: 99, padding: '4px 11px' }}>
+                <div className="topbar-status" style={{ display: 'flex', alignItems: 'center', gap: 6, background: c.amberDim, border: `1px solid ${c.amberBrd}`, borderRadius: 99, padding: '4px 11px' }}>
                   <span className="pulse-amber" style={{ width: 5, height: 5, borderRadius: '50%', background: c.amber, display: 'inline-block' }} />
                   <span style={{ fontSize: 11, fontWeight: 600, color: c.amber }}>{servicesDegraded} service{servicesDegraded !== 1 ? 's' : ''} degraded</span>
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: c.greenDim, border: `1px solid rgba(34,197,94,0.18)`, borderRadius: 99, padding: '4px 11px' }}>
+                <div className="topbar-status" style={{ display: 'flex', alignItems: 'center', gap: 6, background: c.greenDim, border: `1px solid rgba(34,197,94,0.18)`, borderRadius: 99, padding: '4px 11px' }}>
                   <span className="pulse-green" style={{ width: 5, height: 5, borderRadius: '50%', background: c.green, display: 'inline-block' }} />
                   <span style={{ fontSize: 11, fontWeight: 600, color: c.green }}>All systems live</span>
                 </div>
               )}
-              <button className="export-btn" style={{
+              <button className="export-btn topbar-export" style={{
                 fontSize: 12, fontWeight: 600, color: '#09090b',
                 background: c.amber, border: 'none',
                 padding: '6px 16px', borderRadius: 8, cursor: 'pointer',

@@ -277,7 +277,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   ];
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Back + Header ────────────────────────────────────────────────── */}
       <div>
@@ -319,7 +319,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* ── KPI cards ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+      <div className="stat-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         {[
           { label: 'Total Transactions', value: user.txCount.toLocaleString(),             color: c.blue,  icon: <IcoRefresh />, dir: 'all' as const },
           { label: 'Failed Transfers',   value: user.failedTransferCount.toLocaleString(), color: user.failedTransferCount > 0 ? c.red : c.green, icon: <IcoBank />, dir: null },

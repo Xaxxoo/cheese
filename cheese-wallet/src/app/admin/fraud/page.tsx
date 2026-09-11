@@ -41,7 +41,7 @@ function StatBanner({ stats }: { stats: AdminStats | null }) {
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+    <div className="flow-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
       {items.map(({ label, value, color, bg, brd, icon }) => (
         <div
           key={label}
@@ -199,7 +199,7 @@ export default function FraudPage() {
   const card = { background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14 };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Header */}
       <div>

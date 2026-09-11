@@ -74,7 +74,7 @@ export default function AdminRatesPage() {
   })();
 
   return (
-    <div style={{ padding: 28, overflowY: 'auto', height: '100%', boxSizing: 'border-box' }}>
+    <div className="admin-content" style={{ padding: 28, overflowY: 'auto', height: '100%', boxSizing: 'border-box' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>

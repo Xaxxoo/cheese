@@ -77,7 +77,7 @@ export default function TransfersPage() {
   };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div>

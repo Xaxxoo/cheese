@@ -150,7 +150,7 @@ function WalletStats({ stats }: { stats: AdminStats | null }) {
         <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
           Stellar (USDC)
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        <div className="stat-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {stellar.map(({ label, value, color }) => (
             <div key={label} style={{
               background: 'rgba(255,255,255,0.03)', border: `1px solid ${c.border}`,
@@ -170,7 +170,7 @@ function WalletStats({ stats }: { stats: AdminStats | null }) {
         <div style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
           EVM
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        <div className="stat-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {evm.map(({ label, value, color }) => (
             <div key={`evm-${label}`} style={{
               background: 'rgba(255,255,255,0.03)', border: `1px solid ${c.border}`,
@@ -311,7 +311,7 @@ export default function BlockchainPage() {
   const totalPages = Math.ceil(txTotal / TX_LIMIT);
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div>
@@ -324,7 +324,7 @@ export default function BlockchainPage() {
       </div>
 
       {/* ── Top row: treasury + health ─────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="aside-layout" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
         <TreasuryCard treasury={treasury} loading={tLoading} onRefresh={loadTreasury} />
         <HealthPanel  health={health}     loading={hLoading} onRefresh={loadHealth}   />
       </div>

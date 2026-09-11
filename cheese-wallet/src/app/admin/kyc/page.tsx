@@ -148,7 +148,7 @@ export default function KycPage() {
   const COL_GRID = '2.2fr 80px 90px 90px 1.4fr 100px 36px';
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div>

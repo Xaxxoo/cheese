@@ -187,7 +187,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div>
@@ -237,7 +237,7 @@ export default function AdminDashboard() {
       )}
 
       {/* ── KPI cards ───────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
         {kpi.map((k) => (
           <div key={k.label} className={`kpi-card ${k.cls}`} style={{ ...card, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Inward / Outward totals ─────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="flow-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ ...card, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{
             width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -299,7 +299,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── Chart + Feed ────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12 }}>
+      <div className="chart-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12 }}>
 
         {/* Area chart */}
         <div style={{ ...card, padding: '22px 24px 18px' }}>
@@ -374,7 +374,7 @@ export default function AdminDashboard() {
             <span style={{ fontSize: 11, color: c.textDim }}>{modules.filter((m) => m.alert).length} need attention</span>
           )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        <div className="modules-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {modules.map((m) => (
             <div key={m.label}
               className={m.alert ? 'mod-card mod-alert' : 'mod-card'}

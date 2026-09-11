@@ -138,7 +138,7 @@ export default function BankPayoutsPage() {
   ] as const;
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div>
@@ -151,7 +151,7 @@ export default function BankPayoutsPage() {
       </div>
 
       {/* ── Stats row ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+      <div className="stat-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {STAT_ITEMS.map(({ label, value, color, icon }) => (
           <div key={label} style={{ ...card, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{

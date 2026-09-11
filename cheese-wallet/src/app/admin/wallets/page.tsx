@@ -56,7 +56,7 @@ function StatCard({
         <div style={{ fontSize: 12.5, fontWeight: 600, color: c.text }}>{label}</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+      <div className="stat-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
         {[
           { label: 'Active',  value: active,  col: c.green },
           { label: 'Pending', value: pending, col: c.amber },
@@ -139,7 +139,7 @@ export default function WalletsPage() {
   ];
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Header */}
       <div>

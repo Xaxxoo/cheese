@@ -260,7 +260,7 @@ function EvmVaultSection({
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
+    <div className="aside-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
       <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
           <div>
@@ -323,7 +323,7 @@ function EvmVaultSection({
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
+                <div className="stat-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
                   <div>
                     <div style={{ fontSize: 10, color: c.textDim, marginBottom: 4 }}>Backend signer</div>
                     {monoButton(vault.backendSigner, `${vault.chainId}:signer`)}
@@ -682,7 +682,7 @@ export default function TreasuryPage() {
   });
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="admin-content" style={{ height: '100%', overflowY: 'auto', padding: '26px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Header */}
       <div>
@@ -697,7 +697,7 @@ export default function TreasuryPage() {
       {/* Stellar Treasury section */}
       <div>
         <div style={sectionLabel('Stellar Treasury', c.amber)}>Stellar Treasury</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
+        <div className="aside-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
           <BalanceCard treasury={treasury} loading={balLoading} onRefresh={loadBalance} />
           <TransferPanel onSent={loadBalance} />
         </div>
