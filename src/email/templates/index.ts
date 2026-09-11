@@ -939,3 +939,63 @@ export function deviceRegistrationLink(params: {
   });
   return { subject, html };
 }
+
+// ─────────────────────────────────────────────────────────
+// HAPPY BIRTHDAY
+// ─────────────────────────────────────────────────────────
+export function happyBirthday(params: {
+  fullName: string;
+  username: string;
+  appUrl?: string;
+}): { subject: string; html: string } {
+  const appUrl = params.appUrl || 'https://cheesepay.xyz';
+  const firstName = params.fullName.split(' ')[0];
+  const subject = `Happy Birthday, ${firstName}! 🎂 — From the Cheese Pay team`;
+  const html = baseLayout({
+    preheader: `It's your special day, ${firstName}! The Cheese Pay family is celebrating with you.`,
+    body: `
+      <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
+      <div style="padding:48px 40px 40px;">
+
+        <!-- Birthday icon -->
+        <div style="text-align:center;margin-bottom:28px;">
+          ${ICONS.gift(BRAND.gold, 56)}
+        </div>
+
+        <h1 style="font-size:32px;font-weight:700;color:${BRAND.textPrimary};
+                   font-family:'Inter',sans-serif;line-height:1.2;letter-spacing:-0.5px;
+                   margin:0 0 8px;text-align:center;">
+          Happy Birthday, ${firstName}!
+        </h1>
+
+        <p style="font-size:16px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                  line-height:1.7;margin:0 0 32px;text-align:center;">
+          Everyone at Cheese Pay wants to wish you the most
+          <span style="color:${BRAND.gold};font-weight:600;">golden</span>
+          birthday yet. Thank you for being part of our community &mdash;
+          we're glad to have you here, <strong style="color:${BRAND.textLight};">@${params.username}</strong>.
+        </p>
+
+        ${goldDivider()}
+
+        <div style="padding:28px 0 0;text-align:center;">
+          <p style="font-size:15px;color:${BRAND.textLight};font-family:'Inter',sans-serif;
+                    line-height:1.7;margin:0 0 28px;">
+            Here's to another year of smart moves and stacking wins.
+            Enjoy your day &mdash; you deserve it! 🥂
+          </p>
+          ${primaryButton('Open Cheese Pay', appUrl)}
+        </div>
+
+        <div style="padding:32px 0 0;text-align:center;">
+          <p style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">
+            With love,<br/>
+            <span style="color:${BRAND.gold};font-weight:600;">The Cheese Pay Team</span>
+          </p>
+        </div>
+
+      </div>
+    `,
+  });
+  return { subject, html };
+}

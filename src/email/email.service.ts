@@ -15,6 +15,7 @@ import {
   tierUpgrade,
   triviaWinner,
   deviceRegistrationLink,
+  happyBirthday,
 } from './templates';
 import { tierEligible } from './templates/tier-eligible';
 
@@ -494,6 +495,26 @@ export class EmailService {
       `$${params.amountUsdc} USDC has been credited to your wallet.\n\n` +
       `Keep playing daily to defend your crown!\n\n` +
       `– The Cheese Team`;
+    await this.send({ to: params.to, subject, html, text });
+  }
+
+  async sendHappyBirthday(params: {
+    to: string;
+    fullName: string;
+    username: string;
+    appUrl?: string;
+  }): Promise<void> {
+    const { subject, html } = happyBirthday({
+      fullName: params.fullName,
+      username: params.username,
+      appUrl: params.appUrl,
+    });
+    const text =
+      `Happy Birthday, ${params.fullName.split(' ')[0]}!\n\n` +
+      `Everyone at Cheese Pay wants to wish you the most golden birthday yet. ` +
+      `Thank you for being part of our community, @${params.username}.\n\n` +
+      `Here's to another year of smart moves and stacking wins. Enjoy your day!\n\n` +
+      `With love,\nThe Cheese Pay Team`;
     await this.send({ to: params.to, subject, html, text });
   }
 
