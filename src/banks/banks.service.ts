@@ -102,7 +102,7 @@ function getTransferFeeUsdc(amountNgn: number, effectiveRate: number): number {
   if (amountNgn < 50_000) return 800 / effectiveRate
   if (amountNgn < 100_000) return 1                // $1 flat
   if (amountNgn < 200_000) return 1.5           // $1.50 flat
-  if (amountNgn <= 500_000) return 2            // $2 flat
+  if (amountNgn <= 500_000) return 2.5           // $2.50 flat
   return 3                                      // $3 flat
 }
 const MIN_TRANSFER_NGN = 500;
