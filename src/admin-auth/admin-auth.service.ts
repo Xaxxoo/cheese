@@ -996,6 +996,24 @@ export class AdminAuthService {
     };
   }
 
+  async setupUsdcTrustline(id: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.stellarPublicKey) {
+      throw new BadRequestException('User has no Stellar public key');
+    }
+    if (!user.stellarSecretEnc) {
+      throw new BadRequestException('User has no encrypted Stellar secret');
+    }
+    if (!this.blockchainService.isStellarReady) {
+      throw new ServiceUnavailableException(
+        'Stellar not ready — check backend Stellar configuration',
+      );
+    }
+    await this.blockchainService.ensureTrustline(user.stellarSecretEnc);
+    return { publicKey: user.stellarPublicKey };
+  }
+
   // ── User actions ──────────────────────────────────────────────────────────
 
   async flagUser(id: string, flag: boolean) {

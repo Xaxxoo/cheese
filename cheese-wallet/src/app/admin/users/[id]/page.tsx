@@ -6,7 +6,7 @@ import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
   setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
-  provisionAdminUserWallet, listAdminTransactions, setAdminUserDob, sendBirthdayEmail,
+  provisionAdminUserWallet, setupUsdcTrustline, listAdminTransactions, setAdminUserDob, sendBirthdayEmail,
   type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
@@ -38,6 +38,8 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [recoverError,  setRecoverError]  = useState('');
   const [partialSweepAmount, setPartialSweepAmount] = useState('');
   const [provisionError, setProvisionError] = useState('');
+  const [trustlineError, setTrustlineError] = useState('');
+  const [trustlineSuccess, setTrustlineSuccess] = useState('');
   const [editingDob, setEditingDob] = useState(false);
   const [dobValue, setDobValue] = useState('');
   const [dobSaving, setDobSaving] = useState(false);
@@ -141,6 +143,24 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
         ?? (err as Error)?.message
         ?? 'Wallet provisioning failed';
       setProvisionError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSetupTrustline = async () => {
+    if (!user || saving) return;
+    setSaving(true);
+    setTrustlineError('');
+    setTrustlineSuccess('');
+    try {
+      const result = await setupUsdcTrustline(user.id);
+      setTrustlineSuccess(`USDC trustline set up for ${result.publicKey}`);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (err as Error)?.message
+        ?? 'Trustline setup failed';
+      setTrustlineError(msg);
     } finally {
       setSaving(false);
     }
@@ -624,6 +644,29 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 <div style={{ fontSize: 10.5, color: c.textMid, fontFamily: 'monospace', wordBreak: 'break-all', background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.border}` }}>
                   {user.stellarPublicKey ?? 'Not provisioned'}
                 </div>
+                {user.stellarPublicKey && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                    <button
+                      onClick={handleSetupTrustline}
+                      disabled={saving}
+                      style={{
+                        alignSelf: 'flex-start', padding: '7px 12px', borderRadius: 8,
+                        cursor: saving ? 'default' : 'pointer',
+                        background: c.greenDim, border: '1px solid rgba(34,197,94,0.25)',
+                        color: c.green, fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                        opacity: saving ? 0.55 : 1,
+                      }}
+                    >
+                      {saving ? 'Setting up…' : 'Setup USDC Trustline'}
+                    </button>
+                    {trustlineError && (
+                      <div style={{ fontSize: 11, color: c.red }}>{trustlineError}</div>
+                    )}
+                    {trustlineSuccess && (
+                      <div style={{ fontSize: 11, color: c.green }}>{trustlineSuccess}</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Celo */}

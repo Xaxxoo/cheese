@@ -131,6 +131,16 @@ export class AdminDashboardController {
     return this.adminAuthService.provisionUserWallet(id);
   }
 
+  // ── POST /admin/users/:id/setup-usdc-trustline ──────────────────────────
+  @Post('users/:id/setup-usdc-trustline')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Setup USDC trustline on a user Stellar account' })
+  setupUsdcTrustline(@Param('id') id: string) {
+    return this.adminAuthService.setupUsdcTrustline(id);
+  }
+
   // ── PATCH /admin/transfers/:id/complete ───────────────────────────────────
   @Patch('transfers/:id/complete')
   @UseGuards(AdminJwtGuard)

@@ -342,6 +342,13 @@ export async function provisionAdminUserWallet(id: string): Promise<{
   return data.data
 }
 
+export async function setupUsdcTrustline(userId: string): Promise<{ publicKey: string }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ publicKey: string }>>(
+    `/admin/users/${userId}/setup-usdc-trustline`,
+  )
+  return data.data
+}
+
 export async function flagAdminUser(id: string, flag: boolean): Promise<{ id: string; isFlagged: boolean }> {
   const { data } = await adminApiClient.patch<ApiResponse<{ id: string; isFlagged: boolean }>>(
     `/admin/users/${id}/flag`, { flag },
