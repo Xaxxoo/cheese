@@ -147,7 +147,7 @@ export default function FeesPage() {
             { range: '₦50,000 – ₦99,999',         fee: '$1' },
             { range: '₦100,000 – ₦199,999',       fee: '$1.50' },
             { range: '₦200,000 – ₦500,000',       fee: '$2.50' },
-            { range: '₦500,000+',                  fee: '$3' },
+            { range: '₦500,000+',                  fee: '$3.50' },
           ].map(({ range, fee }) => (
             <div key={range} style={{
               display: 'flex', alignItems: 'center', gap: 8,

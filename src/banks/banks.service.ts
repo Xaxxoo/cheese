@@ -103,7 +103,7 @@ function getTransferFeeUsdc(amountNgn: number, effectiveRate: number): number {
   if (amountNgn < 100_000) return 1                // $1 flat
   if (amountNgn < 200_000) return 1.5           // $1.50 flat
   if (amountNgn <= 500_000) return 2.5           // $2.50 flat
-  return 3                                      // $3 flat
+  return 3.5                                    // $3.50 flat
 }
 const MIN_TRANSFER_NGN = 500;
 const MAX_TRANSFER_NGN = 10_000_000; // Black tier ceiling — daily limit enforced per-tier above
