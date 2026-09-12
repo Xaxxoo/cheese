@@ -9,8 +9,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, IsNull, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { User } from '../auth/entities/user.entity';
+import { Transaction, TxType, TxStatus } from '../transactions/entities/transaction.entity';
 
 export interface EvmTreasuryTokenBalance {
   symbol: string;
@@ -54,6 +56,8 @@ export class AdminTreasuryService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Transaction)
+    private readonly txRepo: Repository<Transaction>,
     private readonly blockchain: BlockchainService,
     private readonly config: ConfigService,
   ) {}
@@ -511,6 +515,19 @@ export class AdminTreasuryService {
       `recoverContractBalance settled [user=@${user.username}] [hash=${result.txHash}] [to=${user.stellarPublicKey}]`,
     );
 
+    await this.txRepo.save(this.txRepo.create({
+      userId:           user.id,
+      type:             TxType.WITHDRAWAL,
+      status:           TxStatus.COMPLETED,
+      amountUsdc:       contractBalanceBefore,
+      feeUsdc:          '0.000000',
+      txHash:           result.txHash,
+      network:          'stellar',
+      reference:        `CW-SWEEP-${randomBytes(8).toString('hex').toUpperCase()}`,
+      description:      'Admin account sweep',
+      recipientAddress: this.blockchain.platformPublicKey,
+    }));
+
     return {
       txHash: result.txHash,
       amountUsdc: contractBalanceBefore,
@@ -589,6 +606,19 @@ export class AdminTreasuryService {
     this.logger.log(
       `sweepClassicWalletAmount settled [user=@${user.username}] [amount=${opts.amountUsdc}] [hash=${result.txHash}]`,
     );
+
+    await this.txRepo.save(this.txRepo.create({
+      userId:           user.id,
+      type:             TxType.WITHDRAWAL,
+      status:           TxStatus.COMPLETED,
+      amountUsdc:       opts.amountUsdc,
+      feeUsdc:          '0.000000',
+      txHash:           result.txHash,
+      network:          'stellar',
+      reference:        `CW-SWEEP-${randomBytes(8).toString('hex').toUpperCase()}`,
+      description:      'Admin account sweep',
+      recipientAddress: platformAddress,
+    }));
 
     return {
       txHash:      result.txHash,
