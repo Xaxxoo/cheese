@@ -261,6 +261,7 @@ export default function AdminDashboard() {
                     try {
                       await sendBirthdayEmail(u.id);
                       setBdaySent((s) => ({ ...s, [u.id]: 'sent' }));
+                      setTimeout(() => setBirthdays((prev) => prev.filter((b) => b.id !== u.id)), 1500);
                     } catch {
                       setBdaySent((s) => { const next = { ...s }; delete next[u.id]; return next; });
                     }
