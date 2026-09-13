@@ -644,7 +644,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                 <div style={{ fontSize: 10.5, color: c.textMid, fontFamily: 'monospace', wordBreak: 'break-all', background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.border}` }}>
                   {user.stellarPublicKey ?? 'Not provisioned'}
                 </div>
-                {user.stellarPublicKey && (
+                {user.stellarPublicKey && user.usdcBalance === null && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                     <button
                       onClick={handleSetupTrustline}
