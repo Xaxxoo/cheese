@@ -76,6 +76,9 @@ export class User {
   @Column({ name: 'date_of_birth', type: 'date', nullable: true })
   dateOfBirth: string | null;
 
+  @Column({ name: 'birthday_email_sent_at', type: 'date', nullable: true })
+  birthdayEmailSentAt: string | null;
+
   @Exclude()
   @Column({ name: 'password_hash', type: 'varchar', nullable: true })
   passwordHash: string | null;

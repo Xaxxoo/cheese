@@ -1031,6 +1031,8 @@ export class AdminAuthService {
     const month = now.getMonth() + 1;
     const day = now.getDate();
 
+    const today = now.toISOString().slice(0, 10);
+
     const users = await this.userRepo
       .createQueryBuilder('u')
       .where('u.isAdmin = false')
@@ -1038,6 +1040,7 @@ export class AdminAuthService {
       .andWhere('u.date_of_birth IS NOT NULL')
       .andWhere('EXTRACT(MONTH FROM u.date_of_birth) = :month', { month })
       .andWhere('EXTRACT(DAY FROM u.date_of_birth) = :day', { day })
+      .andWhere('(u.birthday_email_sent_at IS NULL OR u.birthday_email_sent_at != :today)', { today })
       .getMany();
 
     return {
@@ -1061,6 +1064,9 @@ export class AdminAuthService {
       fullName: user.fullName || user.username,
       username: user.username,
     });
+
+    user.birthdayEmailSentAt = new Date().toISOString().slice(0, 10);
+    await this.userRepo.save(user);
 
     return { id: user.id, sent: true };
   }
