@@ -117,9 +117,21 @@ export default function AdminDashboard() {
   const [birthdays, setBirthdays]   = useState<BirthdayUser[]>([]);
   const [bdaySent, setBdaySent]     = useState<Record<string, 'sending' | 'sent'>>({});
 
+  const bdayKey = `bday-sent-${new Date().toISOString().slice(0, 10)}`;
+  const getSentIds = (): string[] => {
+    try { return JSON.parse(localStorage.getItem(bdayKey) || '[]'); } catch { return []; }
+  };
+  const markSentId = (id: string) => {
+    const ids = Array.from(new Set([...getSentIds(), id]));
+    localStorage.setItem(bdayKey, JSON.stringify(ids));
+  };
+
   useEffect(() => {
     getAdminStats().then(setStats).catch(console.error);
-    getTodaysBirthdays().then((r) => setBirthdays(r.users)).catch(console.error);
+    getTodaysBirthdays().then((r) => {
+      const sent = getSentIds();
+      setBirthdays(r.users.filter((u) => !sent.includes(u.id)));
+    }).catch(console.error);
     const id = setInterval(() => getAdminStats().then(setStats).catch(console.error), 60_000);
     return () => clearInterval(id);
   }, []);
@@ -260,6 +272,7 @@ export default function AdminDashboard() {
                     setBdaySent((s) => ({ ...s, [u.id]: 'sending' }));
                     try {
                       await sendBirthdayEmail(u.id);
+                      markSentId(u.id);
                       setBdaySent((s) => ({ ...s, [u.id]: 'sent' }));
                       setTimeout(() => setBirthdays((prev) => prev.filter((b) => b.id !== u.id)), 1500);
                     } catch {
