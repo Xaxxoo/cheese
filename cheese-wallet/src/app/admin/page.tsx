@@ -266,31 +266,48 @@ export default function AdminDashboard() {
                   <span style={{ fontSize: 12.5, color: c.text, fontWeight: 600 }}>{u.name}</span>
                   <span style={{ fontSize: 11.5, color: c.textDim, marginLeft: 6 }}>@{u.username}</span>
                 </div>
-                <button
-                  onClick={async () => {
-                    if (bdaySent[u.id]) return;
-                    setBdaySent((s) => ({ ...s, [u.id]: 'sending' }));
-                    try {
-                      await sendBirthdayEmail(u.id);
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={async () => {
+                      if (bdaySent[u.id]) return;
+                      setBdaySent((s) => ({ ...s, [u.id]: 'sending' }));
+                      try {
+                        await sendBirthdayEmail(u.id);
+                        markSentId(u.id);
+                        setBdaySent((s) => ({ ...s, [u.id]: 'sent' }));
+                        setTimeout(() => setBirthdays((prev) => prev.filter((b) => b.id !== u.id)), 1500);
+                      } catch {
+                        setBdaySent((s) => { const next = { ...s }; delete next[u.id]; return next; });
+                      }
+                    }}
+                    disabled={!!bdaySent[u.id]}
+                    style={{
+                      padding: '5px 14px', borderRadius: 8, cursor: bdaySent[u.id] ? 'default' : 'pointer',
+                      background: bdaySent[u.id] === 'sent' ? c.greenDim : c.amberDim,
+                      border: `1px solid ${bdaySent[u.id] === 'sent' ? 'rgba(34,197,94,0.25)' : c.amberBrd}`,
+                      color: bdaySent[u.id] === 'sent' ? c.green : c.amber,
+                      fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                      opacity: bdaySent[u.id] === 'sending' ? 0.55 : 1,
+                    }}
+                  >
+                    {bdaySent[u.id] === 'sending' ? 'Sending...' : bdaySent[u.id] === 'sent' ? 'Sent!' : 'Send Birthday Email'}
+                  </button>
+                  <button
+                    onClick={() => {
                       markSentId(u.id);
-                      setBdaySent((s) => ({ ...s, [u.id]: 'sent' }));
-                      setTimeout(() => setBirthdays((prev) => prev.filter((b) => b.id !== u.id)), 1500);
-                    } catch {
-                      setBdaySent((s) => { const next = { ...s }; delete next[u.id]; return next; });
-                    }
-                  }}
-                  disabled={!!bdaySent[u.id]}
-                  style={{
-                    padding: '5px 14px', borderRadius: 8, cursor: bdaySent[u.id] ? 'default' : 'pointer',
-                    background: bdaySent[u.id] === 'sent' ? c.greenDim : c.amberDim,
-                    border: `1px solid ${bdaySent[u.id] === 'sent' ? 'rgba(34,197,94,0.25)' : c.amberBrd}`,
-                    color: bdaySent[u.id] === 'sent' ? c.green : c.amber,
-                    fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-                    opacity: bdaySent[u.id] === 'sending' ? 0.55 : 1,
-                  }}
-                >
-                  {bdaySent[u.id] === 'sending' ? 'Sending...' : bdaySent[u.id] === 'sent' ? 'Sent!' : 'Send Birthday Email'}
-                </button>
+                      setBirthdays((prev) => prev.filter((b) => b.id !== u.id));
+                    }}
+                    disabled={!!bdaySent[u.id]}
+                    style={{
+                      padding: '5px 14px', borderRadius: 8, cursor: bdaySent[u.id] ? 'default' : 'pointer',
+                      background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`,
+                      color: c.textDim, fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                      opacity: bdaySent[u.id] ? 0.55 : 1,
+                    }}
+                  >
+                    Mark Done
+                  </button>
+                </div>
               </div>
             ))}
           </div>
