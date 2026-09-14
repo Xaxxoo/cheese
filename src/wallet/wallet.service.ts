@@ -22,6 +22,17 @@ import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { v4 as uuidv4 } from 'uuid';
 
+/** Mirror of getTransferFeeUsdc from banks.service — kept in sync manually. */
+function getWithdrawFeeUsdc(amountNgn: number, effectiveRate: number): number {
+  if (effectiveRate <= 0) return 0;
+  if (amountNgn < 10_000) return 200 / effectiveRate;
+  if (amountNgn < 50_000) return 800 / effectiveRate;
+  if (amountNgn < 100_000) return 1;
+  if (amountNgn < 200_000) return 1.5;
+  if (amountNgn <= 500_000) return 2.5;
+  return 3.5;
+}
+
 export interface WalletBalance {
   stellarUsdc: string;
   stellarUsdcDisplay: string;
@@ -181,7 +192,14 @@ export class WalletService {
     const evmAmount    = parseFloat(evmRaw);
     const totalAmount  = stellarAmount + evmAmount;
     const ngnRate      = rate ? parseFloat(rate.effectiveRate) : 0;
-    const ngnTotal     = totalAmount * ngnRate;
+
+    // Show withdrawable NGN: deduct the transfer fee that would apply if the
+    // user converted their entire USDC balance to NGN via bank transfer.
+    // The fee is tiered by the gross NGN amount, so we compute the gross first,
+    // look up the fee, then subtract it.
+    const grossNgn     = totalAmount * ngnRate;
+    const feeUsdc      = ngnRate > 0 ? getWithdrawFeeUsdc(grossNgn, ngnRate) : 0;
+    const ngnTotal     = Math.max(0, totalAmount - feeUsdc) * ngnRate;
 
     // Cache the real on-chain balance for admin dashboard queries
     void this.userRepo.update(
