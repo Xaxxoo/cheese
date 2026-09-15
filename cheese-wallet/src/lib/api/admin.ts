@@ -395,6 +395,13 @@ export async function setAdminUserKycVerified(id: string): Promise<{ id: string;
   return data.data
 }
 
+export async function verifyAdminUserEmail(id: string): Promise<{ id: string; emailVerified: boolean }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; emailVerified: boolean }>>(
+    `/admin/users/${id}/verify-email`,
+  )
+  return data.data
+}
+
 export async function deleteAdminUser(id: string): Promise<void> {
   await adminApiClient.delete(`/admin/users/${id}`)
 }

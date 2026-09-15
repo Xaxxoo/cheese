@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar, IcoArrowDn, IcoArrowUp, IcoChevron, IcoChevLeft } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  setAdminUserKycVerified, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
+  setAdminUserKycVerified, verifyAdminUserEmail, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
   provisionAdminUserWallet, setupUsdcTrustline, listAdminTransactions, setAdminUserDob, sendBirthdayEmail,
   type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
@@ -604,12 +604,29 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={lbl}>Email Verified</div>
-                <Pill
-                  label={user.emailVerified ? 'Verified' : 'Unverified'}
-                  color={user.emailVerified ? c.green : c.amber}
-                  bg={user.emailVerified ? c.greenDim : c.amberDim}
-                  brd={user.emailVerified ? 'rgba(34,197,94,0.2)' : c.amberBrd}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Pill
+                    label={user.emailVerified ? 'Verified' : 'Unverified'}
+                    color={user.emailVerified ? c.green : c.amber}
+                    bg={user.emailVerified ? c.greenDim : c.amberDim}
+                    brd={user.emailVerified ? 'rgba(34,197,94,0.2)' : c.amberBrd}
+                  />
+                  {!user.emailVerified && (
+                    <button
+                      onClick={async () => {
+                        await verifyAdminUserEmail(user.id);
+                        setUser((u) => u ? { ...u, emailVerified: true } : u);
+                      }}
+                      style={{
+                        background: 'none', border: `1px solid ${c.green}`, borderRadius: 6,
+                        padding: '2px 8px', cursor: 'pointer',
+                        color: c.green, fontFamily: 'inherit', fontSize: 11, fontWeight: 600,
+                      }}
+                    >
+                      Verify
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

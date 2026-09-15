@@ -1128,6 +1128,14 @@ export class AdminAuthService {
     return { id: user.id, kycStatus: user.kycStatus };
   }
 
+  async setUserEmailVerified(id: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+    user.emailVerified = true;
+    await this.userRepo.save(user);
+    return { id: user.id, emailVerified: true };
+  }
+
   /**
    * Permanently delete a user and all associated data.
    * Restricted to super_admin only.

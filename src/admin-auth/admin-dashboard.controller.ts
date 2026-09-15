@@ -187,6 +187,15 @@ export class AdminDashboardController {
     return this.adminAuthService.setUserKycVerified(id);
   }
 
+  // ── PATCH /admin/users/:id/verify-email ──────────────────────────────────
+  @Patch('users/:id/verify-email')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Manually mark a user email as verified' })
+  setUserEmailVerified(@Param('id') id: string) {
+    return this.adminAuthService.setUserEmailVerified(id);
+  }
+
   // ── PATCH /admin/users/:id/flag ────────────────────────────────────────────
   @Patch('users/:id/flag')
   @UseGuards(AdminJwtGuard)
