@@ -11,6 +11,7 @@ import { getAdminStats, getAdminVolumeChart, getTodaysBirthdays, sendBirthdayEma
 
 // ─── SVG Components ───────────────────────────────────────────────────────────
 function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
+  const [hovered, setHovered] = useState<number | null>(null);
   const W = 600, H = 100;
   const p = { t: 6, r: 2, b: 2, l: 2 };
   const iW = W - p.l - p.r, iH = H - p.t - p.b;
@@ -30,6 +31,9 @@ function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
   const labels = range === '7D'
     ? data.map((_, i) => ({ x: xForIndex(i), label: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i] }))
     : [0, 7, 14, 21, 29].map((i) => ({ x: xForIndex(i), label: `W${Math.floor(i / 7) + 1}` }));
+
+  const fmtVal = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sliceW = iW / data.length;
 
   if (!hasData) {
     return (
@@ -51,8 +55,15 @@ function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
     line += ` C${cx},${prev.y} ${cx},${cur.y} ${cur.x},${cur.y}`;
   }
   const area = `${line} L${p.l + iW},${p.t + iH} L${p.l},${p.t + iH} Z`;
+
+  // Clamp tooltip so it doesn't overflow the SVG edges
+  const tooltipX = hovered !== null
+    ? Math.min(Math.max(pts[hovered].x, 40), W - 40)
+    : 0;
+
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H + 16}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+    <svg width="100%" viewBox={`0 0 ${W} ${H + 16}`} preserveAspectRatio="none" style={{ display: 'block' }}
+      onMouseLeave={() => setHovered(null)}>
       <defs>
         <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor={c.amber} stopOpacity="0.2" />
@@ -62,6 +73,28 @@ function AreaChart({ data, range }: { data: number[]; range: '7D' | '30D' }) {
       <path d={area} fill="url(#ag)" />
       <path d={line} fill="none" stroke={c.amber} strokeWidth="1.6" />
       <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" fill={c.amber} />
+
+      {/* Hover hit areas */}
+      {pts.map((pt, i) => (
+        <rect key={i} x={pt.x - sliceW / 2} y={0} width={sliceW} height={H + 16}
+          fill="transparent" onMouseEnter={() => setHovered(i)} style={{ cursor: 'crosshair' }} />
+      ))}
+
+      {/* Tooltip */}
+      {hovered !== null && (
+        <>
+          <line x1={pts[hovered].x} y1={p.t} x2={pts[hovered].x} y2={p.t + iH}
+            stroke="rgba(244,244,245,0.15)" strokeWidth="0.8" strokeDasharray="3,2" />
+          <circle cx={pts[hovered].x} cy={pts[hovered].y} r="3.5" fill={c.amber} />
+          <rect x={tooltipX - 36} y={Math.max(pts[hovered].y - 22, 0)} width="72" height="16"
+            rx="4" fill="rgba(24,24,27,0.92)" stroke="rgba(244,244,245,0.12)" strokeWidth="0.5" />
+          <text x={tooltipX} y={Math.max(pts[hovered].y - 22, 0) + 11.5}
+            fill={c.amber} fontSize="7.5" fontWeight="700" textAnchor="middle" fontFamily="system-ui">
+            {fmtVal(data[hovered])}
+          </text>
+        </>
+      )}
+
       {labels.map((l) => (
         <text key={l.label} x={l.x} y={H + 14} fill="rgba(244,244,245,0.22)"
           fontSize="7" textAnchor="middle" fontFamily="system-ui">{l.label}</text>
