@@ -196,6 +196,15 @@ export class AdminDashboardController {
     return this.adminAuthService.setUserEmailVerified(id);
   }
 
+  // ── PATCH /admin/users/:id/username ──────────────────────────────────────
+  @Patch('users/:id/username')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update a user username' })
+  setUserUsername(@Param('id') id: string, @Body('username') username: string) {
+    return this.adminAuthService.setUserUsername(id, username);
+  }
+
   // ── PATCH /admin/users/:id/flag ────────────────────────────────────────────
   @Patch('users/:id/flag')
   @UseGuards(AdminJwtGuard)

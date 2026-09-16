@@ -1136,6 +1136,29 @@ export class AdminAuthService {
     return { id: user.id, emailVerified: true };
   }
 
+  async setUserUsername(id: string, username: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const trimmed = username.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,30}$/.test(trimmed)) {
+      throw new BadRequestException(
+        'Username must be 3-30 characters: lowercase letters, numbers, or underscores',
+      );
+    }
+
+    user.username = trimmed;
+    try {
+      await this.userRepo.save(user);
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        throw new ConflictException('Username already taken');
+      }
+      throw err;
+    }
+    return { id: user.id, username: user.username };
+  }
+
   /**
    * Permanently delete a user and all associated data.
    * Restricted to super_admin only.

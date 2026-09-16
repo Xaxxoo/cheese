@@ -402,6 +402,14 @@ export async function verifyAdminUserEmail(id: string): Promise<{ id: string; em
   return data.data
 }
 
+export async function setAdminUserUsername(id: string, username: string): Promise<{ id: string; username: string }> {
+  const { data } = await adminApiClient.patch<ApiResponse<{ id: string; username: string }>>(
+    `/admin/users/${id}/username`,
+    { username },
+  )
+  return data.data
+}
+
 export async function deleteAdminUser(id: string): Promise<void> {
   await adminApiClient.delete(`/admin/users/${id}`)
 }

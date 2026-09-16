@@ -6,7 +6,7 @@ import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
   setAdminUserKycVerified, verifyAdminUserEmail, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
-  provisionAdminUserWallet, setupUsdcTrustline, listAdminTransactions, setAdminUserDob, sendBirthdayEmail,
+  provisionAdminUserWallet, setupUsdcTrustline, listAdminTransactions, setAdminUserDob, sendBirthdayEmail, setAdminUserUsername,
   type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
@@ -44,6 +44,10 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [dobValue, setDobValue] = useState('');
   const [dobSaving, setDobSaving] = useState(false);
   const [bdayEmailStatus, setBdayEmailStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameValue, setUsernameValue] = useState('');
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
 
   // ── Tx history slide-over ─────────────────────────────────────────────────
   const [txFilter,   setTxFilter]   = useState<'in' | 'out' | 'all' | null>(null);
@@ -293,7 +297,6 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
 
   const profileRows = [
     { l: 'Full Name',     v: user.name                     },
-    { l: 'Username',      v: `@${user.username}`           },
     { l: 'Email',         v: user.email                    },
     { l: 'Phone',         v: user.phone ?? '—'             },
     { l: 'Referral Code', v: user.referralCode ?? '—'      },
@@ -521,6 +524,62 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   <div style={{ fontSize: 12.5, color: c.text, textAlign: 'right', maxWidth: '65%', wordBreak: 'break-all' }}>{v}</div>
                 </div>
               ))}
+              {/* Username */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                <div style={lbl}>Username</div>
+                {editingUsername ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="text"
+                        value={usernameValue}
+                        onChange={(e) => { setUsernameValue(e.target.value); setUsernameError(''); }}
+                        placeholder="username"
+                        style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.border}`, background: 'rgba(255,255,255,0.05)', color: c.text, fontFamily: 'inherit', fontSize: 12, width: 160 }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!usernameValue.trim() || usernameSaving) return;
+                          setUsernameSaving(true);
+                          setUsernameError('');
+                          try {
+                            const res = await setAdminUserUsername(user.id, usernameValue.trim());
+                            setUser((u) => u ? { ...u, username: res.username } : u);
+                            setEditingUsername(false);
+                          } catch (err: unknown) {
+                            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+                              ?? (err as Error)?.message ?? 'Failed to update username';
+                            setUsernameError(msg);
+                          } finally { setUsernameSaving(false); }
+                        }}
+                        disabled={usernameSaving || !usernameValue.trim()}
+                        style={{ padding: '4px 10px', borderRadius: 6, background: c.greenDim, border: '1px solid rgba(34,197,94,0.25)', color: c.green, fontFamily: 'inherit', fontSize: 11, fontWeight: 600, cursor: usernameSaving ? 'default' : 'pointer', opacity: usernameSaving ? 0.55 : 1 }}
+                      >
+                        {usernameSaving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => { setEditingUsername(false); setUsernameError(''); }}
+                        style={{ padding: '4px 10px', borderRadius: 6, background: 'transparent', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {usernameError && (
+                      <div style={{ fontSize: 11, color: c.red }}>{usernameError}</div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12.5, color: c.text }}>@{user.username}</span>
+                    <button
+                      onClick={() => { setUsernameValue(user.username); setUsernameError(''); setEditingUsername(true); }}
+                      style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </div>
               {/* Date of Birth */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
                 <div style={lbl}>Date of Birth</div>
