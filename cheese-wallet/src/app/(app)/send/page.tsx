@@ -92,11 +92,11 @@ function formatNgn(usdc: number, rate: number) {
 function getBankTransferFeeUsdc(amountNgn: number, effectiveRate: number): number {
   if (effectiveRate <= 0) return 0
   if (amountNgn < 10_000) return 200 / effectiveRate
-  if (amountNgn < 50_000) return 500 / effectiveRate
-  if (amountNgn < 100_000) return 0.8             // $0.80 flat
-  if (amountNgn < 200_000) return 1            // $1 flat
-  if (amountNgn <= 500_000) return 2            // $2 flat
-  return 3                                      // $3 flat
+  if (amountNgn < 50_000) return 800 / effectiveRate
+  if (amountNgn < 100_000) return 1
+  if (amountNgn < 200_000) return 1.5
+  if (amountNgn <= 500_000) return 2.5
+  return 3.5
 }
 
 function getMaxBankTransferNgn(usdcBalance: number, effectiveRate: number): number {
