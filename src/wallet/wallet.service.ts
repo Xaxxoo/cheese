@@ -33,6 +33,21 @@ function getWithdrawFeeUsdc(amountNgn: number, effectiveRate: number): number {
   return 3.5;
 }
 
+/** Binary search for the largest whole-NGN amount withdrawable given a USDC balance.
+ *  Mirrors getMaxBankTransferNgn on the frontend. */
+function getMaxWithdrawNgn(usdcBalance: number, effectiveRate: number): number {
+  if (usdcBalance <= 0 || effectiveRate <= 0) return 0;
+  let low = 0;
+  let high = 10_000_000;
+  while (low < high) {
+    const candidate = Math.ceil((low + high) / 2);
+    const total = candidate / effectiveRate + getWithdrawFeeUsdc(candidate, effectiveRate);
+    if (total <= usdcBalance) low = candidate;
+    else high = candidate - 1;
+  }
+  return low;
+}
+
 export interface WalletBalance {
   stellarUsdc: string;
   stellarUsdcDisplay: string;
@@ -193,13 +208,9 @@ export class WalletService {
     const totalAmount  = stellarAmount + evmAmount;
     const ngnRate      = rate ? parseFloat(rate.effectiveRate) : 0;
 
-    // Show withdrawable NGN: deduct the transfer fee that would apply if the
-    // user converted their entire USDC balance to NGN via bank transfer.
-    // The fee is tiered by the gross NGN amount, so we compute the gross first,
-    // look up the fee, then subtract it.
-    const grossNgn     = totalAmount * ngnRate;
-    const feeUsdc      = ngnRate > 0 ? getWithdrawFeeUsdc(grossNgn, ngnRate) : 0;
-    const ngnTotal     = Math.max(0, totalAmount - feeUsdc) * ngnRate;
+    // Max withdrawable NGN via binary search — accounts for tiered fees that
+    // shift at amount boundaries (same algorithm as the frontend max button).
+    const ngnTotal     = ngnRate > 0 ? getMaxWithdrawNgn(totalAmount, ngnRate) : 0;
 
     // Cache the real on-chain balance for admin dashboard queries
     void this.userRepo.update(
