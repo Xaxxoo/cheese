@@ -6,6 +6,7 @@ import { RatesModule } from '../rates/rates.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AlertsModule } from '../alerts/alerts.module';
 import { User } from '../auth/entities/user.entity';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
@@ -19,6 +20,7 @@ import { WalletDepositScheduler } from './wallet.scheduler';
     TransactionsModule,
     EmailModule,
     NotificationsModule,
+    AlertsModule,
   ],
   controllers: [WalletController],
   providers: [WalletService, WalletDepositScheduler],

@@ -11,6 +11,7 @@ import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AlertsService } from '../alerts/alerts.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
 import {
   BlockchainWallet,
@@ -35,6 +36,7 @@ export class WalletDepositScheduler {
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly alertsService: AlertsService,
   ) {}
 
   // ── Auto-provision missing Stellar wallets ────────────────────────────────
@@ -257,6 +259,19 @@ export class WalletDepositScheduler {
           );
       }
 
+      // Admin alert (fire-and-forget)
+      void this.alertsService
+        .notifyDepositReceived({
+          username: user.username,
+          amountUsdc: payment.amount,
+          network: 'stellar',
+          txHash: payment.txHash,
+          senderName: payment.from,
+        })
+        .catch((e: Error) =>
+          this.logger.warn(`Admin deposit alert failed [user=${user.id}]: ${e.message}`),
+        );
+
     }
 
     // Always advance the cursor to the last raw Horizon record seen, not just
@@ -410,6 +425,18 @@ export class WalletDepositScheduler {
                         this.logger.error(`EVM deposit email failed [user=${userId}]: ${e.message}`),
                       );
                   }
+                  // Admin alert (fire-and-forget)
+                  void this.alertsService
+                    .notifyDepositReceived({
+                      username: depositUser.username,
+                      amountUsdc: event.amount,
+                      network: chainName,
+                      txHash: event.txHash,
+                      senderName: event.from,
+                    })
+                    .catch((e: Error) =>
+                      this.logger.warn(`Admin EVM deposit alert failed [user=${userId}]: ${e.message}`),
+                    );
                 })
                 .catch((e: Error) =>
                   this.logger.warn(`EVM deposit user lookup failed [user=${userId}]: ${e.message}`),

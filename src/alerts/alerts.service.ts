@@ -104,6 +104,85 @@ export class AlertsService {
     }
   }
 
+  /**
+   * Fire-and-forget: send admin email when any user receives a USDC credit.
+   * Call as: void this.alertsService.notifyDepositReceived({...}).catch(...)
+   */
+  async notifyDepositReceived(alert: {
+    username: string;
+    amountUsdc: string;
+    network: string;
+    txHash?: string;
+    senderName?: string;
+  }): Promise<void> {
+    const adminEmail = this.config.get<string>('alerts.adminAlertEmail');
+    if (!adminEmail) return;
+
+    const now = new Date().toLocaleString('en-NG', {
+      timeZone: 'Africa/Lagos',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const row = (label: string, value: string) => `
+      <tr>
+        <td style="padding:8px 0;font-size:12px;color:#888;width:140px;vertical-align:top;">${label}</td>
+        <td style="padding:8px 0;font-size:13px;color:#fff;vertical-align:top;">${value}</td>
+      </tr>`;
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+
+      <!-- Header -->
+      <tr>
+        <td style="background:#1a1a1a;border-radius:14px 14px 0 0;padding:28px 32px;border-bottom:1px solid #2a2a2a;">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Cheese Pay Admin Alert</p>
+          <h1 style="margin:0;font-size:20px;font-weight:700;color:#51cf66;">💰 USDC Credit</h1>
+        </td>
+      </tr>
+
+      <!-- Body -->
+      <tr>
+        <td style="background:#111111;padding:28px 32px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            ${row('User', `@${alert.username}`)}
+            ${row('Amount', `$${alert.amountUsdc} USDC`)}
+            ${row('Network', alert.network)}
+            ${alert.txHash ? row('Tx Hash', `<code style="font-family:monospace;background:#1e1e1e;padding:2px 6px;border-radius:4px;font-size:12px;">${alert.txHash}</code>`) : ''}
+            ${alert.senderName ? row('Sender', alert.senderName) : ''}
+            ${row('Time', `${now} WAT`)}
+          </table>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="background:#0d0d0d;border-radius:0 0 14px 14px;padding:18px 32px;border-top:1px solid #1f1f1f;">
+          <p style="margin:0;font-size:11px;color:#444;">This is an automated admin alert from Cheese Pay. Do not reply to this email.</p>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+    await this.emailService.sendAdminAlert({
+      to: adminEmail,
+      subject: `💰 USDC Credit — @${alert.username} — $${alert.amountUsdc}`,
+      html,
+    });
+  }
+
   // ── Telegram ──────────────────────────────────────────────────────────────
 
   private async sendTelegram(alert: FailedTransferAlert): Promise<void> {

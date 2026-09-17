@@ -12,6 +12,7 @@ import { KycModule } from '../kyc/kyc.module';
 import { ReferralModule } from '../referral/referral.module';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AlertsModule } from '../alerts/alerts.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ReferralModule,
     EmailModule,
     NotificationsModule,
+    AlertsModule,
   ],
   controllers: [SendController],
   providers: [SendService],

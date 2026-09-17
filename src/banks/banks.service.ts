@@ -1495,6 +1495,18 @@ export class BanksService {
         );
     }
 
+    // Admin alert (fire-and-forget)
+    void this.alertsService
+      .notifyDepositReceived({
+        username: user.username,
+        amountUsdc,
+        network: 'bank',
+        senderName: senderName || undefined,
+      })
+      .catch((e: Error) =>
+        this.logger.warn(`Admin deposit alert failed [ref=${reference}]: ${e.message}`),
+      );
+
     return { processed: true };
   }
 

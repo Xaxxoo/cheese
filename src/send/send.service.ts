@@ -27,6 +27,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { isInsecureDeviceSignatureBypassEnabled } from '../common/utils/device-signature.util';
 import { withUserTransactionLock } from '../common/utils/user-transaction-lock.util';
+import { AlertsService } from '../alerts/alerts.service';
 
 const FALLBACK_FEE_RATE = 0.001; // 0.1% — used when Soroban contract is unavailable
 const MIN_USDC = 0.01;
@@ -48,6 +49,7 @@ export class SendService {
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
     private readonly eventEmitter: EventEmitter2,
+    private readonly alertsService: AlertsService,
   ) {}
 
   // ── GET /send/recent-recipients ──────────────────────────
@@ -363,6 +365,19 @@ export class SendService {
                   ),
                 );
             }
+
+            // Admin alert (fire-and-forget)
+            void this.alertsService
+              .notifyDepositReceived({
+                username: recipientUser.username,
+                amountUsdc: params.amountUsdc,
+                network: 'p2p',
+                txHash,
+                senderName: `@${sender.username}`,
+              })
+              .catch((err: Error) =>
+                this.logger.warn(`Admin P2P deposit alert failed [tx=${tx.id}]: ${err.message}`),
+              );
           }
         }
 
@@ -600,6 +615,19 @@ export class SendService {
                 ),
               );
           }
+
+          // Admin alert (fire-and-forget)
+          void this.alertsService
+            .notifyDepositReceived({
+              username: recipientUser.username,
+              amountUsdc: params.amountUsdc,
+              network: 'p2p',
+              txHash,
+              senderName: `@${sender.username}`,
+            })
+            .catch((err: Error) =>
+              this.logger.warn(`Admin P2P deposit alert failed [tx=${tx.id}]: ${err.message}`),
+            );
         }
       }
 
