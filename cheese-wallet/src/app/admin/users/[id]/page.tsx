@@ -6,7 +6,7 @@ import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
   setAdminUserKycVerified, verifyAdminUserEmail, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
-  provisionAdminUserWallet, setupUsdcTrustline, listAdminTransactions, setAdminUserDob, sendBirthdayEmail, setAdminUserUsername,
+  provisionAdminUserWallet, setupUsdcTrustline, listAdminTransactions, setAdminUserDob, sendBirthdayEmail, setAdminUserUsername, setAdminUserEmail,
   type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
 
@@ -48,6 +48,10 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [usernameValue, setUsernameValue] = useState('');
   const [usernameSaving, setUsernameSaving] = useState(false);
   const [usernameError, setUsernameError] = useState('');
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   // ── Tx history slide-over ─────────────────────────────────────────────────
   const [txFilter,   setTxFilter]   = useState<'in' | 'out' | 'all' | null>(null);
@@ -297,7 +301,6 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
 
   const profileRows = [
     { l: 'Full Name',     v: user.name                     },
-    { l: 'Email',         v: user.email                    },
     { l: 'Phone',         v: user.phone ?? '—'             },
     { l: 'Referral Code', v: user.referralCode ?? '—'      },
     { l: 'Points',        v: user.points.toLocaleString()  },
@@ -573,6 +576,62 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                     <span style={{ fontSize: 12.5, color: c.text }}>@{user.username}</span>
                     <button
                       onClick={() => { setUsernameValue(user.username); setUsernameError(''); setEditingUsername(true); }}
+                      style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Email */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                <div style={lbl}>Email</div>
+                {editingEmail ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="email"
+                        value={emailValue}
+                        onChange={(e) => { setEmailValue(e.target.value); setEmailError(''); }}
+                        placeholder="user@example.com"
+                        style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.border}`, background: 'rgba(255,255,255,0.05)', color: c.text, fontFamily: 'inherit', fontSize: 12, width: 200 }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!emailValue.trim() || emailSaving) return;
+                          setEmailSaving(true);
+                          setEmailError('');
+                          try {
+                            const res = await setAdminUserEmail(user.id, emailValue.trim());
+                            setUser((u) => u ? { ...u, email: res.email, emailVerified: res.emailVerified } : u);
+                            setEditingEmail(false);
+                          } catch (err: unknown) {
+                            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+                              ?? (err as Error)?.message ?? 'Failed to update email';
+                            setEmailError(msg);
+                          } finally { setEmailSaving(false); }
+                        }}
+                        disabled={emailSaving || !emailValue.trim()}
+                        style={{ padding: '4px 10px', borderRadius: 6, background: c.greenDim, border: '1px solid rgba(34,197,94,0.25)', color: c.green, fontFamily: 'inherit', fontSize: 11, fontWeight: 600, cursor: emailSaving ? 'default' : 'pointer', opacity: emailSaving ? 0.55 : 1 }}
+                      >
+                        {emailSaving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => { setEditingEmail(false); setEmailError(''); }}
+                        style={{ padding: '4px 10px', borderRadius: 6, background: 'transparent', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {emailError && (
+                      <div style={{ fontSize: 11, color: c.red }}>{emailError}</div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12.5, color: c.text, wordBreak: 'break-all' }}>{user.email}</span>
+                    <button
+                      onClick={() => { setEmailValue(user.email); setEmailError(''); setEditingEmail(true); }}
                       style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}
                     >
                       Edit

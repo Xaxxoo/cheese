@@ -1159,6 +1159,28 @@ export class AdminAuthService {
     return { id: user.id, username: user.username };
   }
 
+  async setUserEmail(id: string, email: string) {
+    const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      throw new BadRequestException('Invalid email address');
+    }
+
+    user.email = trimmed;
+    user.emailVerified = false;
+    try {
+      await this.userRepo.save(user);
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        throw new ConflictException('Email already in use');
+      }
+      throw err;
+    }
+    return { id: user.id, email: user.email, emailVerified: user.emailVerified };
+  }
+
   /**
    * Permanently delete a user and all associated data.
    * Restricted to super_admin only.

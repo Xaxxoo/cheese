@@ -205,6 +205,15 @@ export class AdminDashboardController {
     return this.adminAuthService.setUserUsername(id, username);
   }
 
+  // ── PATCH /admin/users/:id/email ──────────────────────────────────────────
+  @Patch('users/:id/email')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update a user email address' })
+  setUserEmail(@Param('id') id: string, @Body('email') email: string) {
+    return this.adminAuthService.setUserEmail(id, email);
+  }
+
   // ── PATCH /admin/users/:id/flag ────────────────────────────────────────────
   @Patch('users/:id/flag')
   @UseGuards(AdminJwtGuard)
