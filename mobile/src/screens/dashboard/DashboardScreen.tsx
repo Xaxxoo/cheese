@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import {
   ArrowDownLeft, ArrowUpRight, Building2, Zap, CreditCard, Gift,
-  Link as LinkIcon, Circle, Bell, Plus,
+  Link as LinkIcon, Circle, Bell, Plus, Landmark,
 } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
@@ -159,7 +159,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
   type NoParamScreen = 'Send' | 'Receive' | 'AddMoney' | 'BankTransfer' | 'Card' | 'Paylink' | 'Bills'
   type IconComp = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
-  const actions: { label: string; Icon: IconComp; screen: NoParamScreen }[] = [
+  const actions: { label: string; Icon: IconComp; screen?: NoParamScreen; disabled?: boolean }[] = [
     { label: 'Send',          Icon: ArrowUpRight,  screen: 'Send'         },
     { label: 'Receive',       Icon: ArrowDownLeft, screen: 'Receive'      },
     { label: 'Add Money',     Icon: Plus,          screen: 'AddMoney'     },
@@ -167,6 +167,7 @@ export default function DashboardScreen({ navigation }: Props) {
     { label: 'My Card',       Icon: CreditCard,    screen: 'Card'         },
     { label: 'Pay Link',      Icon: LinkIcon,      screen: 'Paylink'      },
     { label: 'Pay Bills',     Icon: Zap,           screen: 'Bills'        },
+    { label: 'Send to China', Icon: Landmark,      disabled: true         },
   ]
 
   const firstName = user?.fullName?.split(' ')[0] ?? user?.username ?? ''
@@ -226,14 +227,16 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* Quick actions */}
       <Text style={s.sectionLabel}>Quick Actions</Text>
       <View style={s.actions}>
-        {actions.map(({ label, Icon, screen }) => (
+        {actions.map(({ label, Icon, screen, disabled }) => (
           <TouchableOpacity
             key={label}
-            style={s.actionBtn}
-            onPress={() => navigation.navigate(screen)}
+            style={[s.actionBtn, disabled && s.actionBtnDisabled]}
+            onPress={disabled ? undefined : () => navigation.navigate(screen!)}
+            activeOpacity={disabled ? 1 : 0.7}
           >
-            <Icon size={24} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
-            <Text style={s.actionLabel}>{label}</Text>
+            <Icon size={24} color={disabled ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.7)'} strokeWidth={1.5} />
+            <Text style={[s.actionLabel, disabled && s.actionLabelDisabled]}>{label}</Text>
+            {disabled && <Text style={s.comingSoon}>Coming Soon</Text>}
           </TouchableOpacity>
         ))}
       </View>
@@ -341,7 +344,10 @@ const s = StyleSheet.create({
     padding: 16, alignItems: 'center', width: '30%', gap: 6,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
+  actionBtnDisabled: { opacity: 0.5 },
   actionLabel:   { fontSize: 11, color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontWeight: '500' },
+  actionLabelDisabled: { color: 'rgba(255,255,255,0.25)' },
+  comingSoon:    { fontSize: 8, color: '#d4a843', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   txHeader:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   txCount:       { fontSize: 12, color: 'rgba(255,255,255,0.25)' },
