@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, KeyboardAvoidingView,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, Image,
 } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AuthStackParamList } from '../../navigation/types'
@@ -53,7 +53,7 @@ export default function LoginScreen({ navigation }: Props) {
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.kav}>
         <View style={s.container}>
-          <Text style={s.logo}>🧀</Text>
+          <Image source={require('../../../assets/logo.png')} style={s.logo} />
           <Text style={s.title}>Welcome back</Text>
           <Text style={s.sub}>Sign in to CheesePay</Text>
 
@@ -105,7 +105,7 @@ const s = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: '#0a0a0a' },
   kav:         { flex: 1 },
   container:   { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  logo:        { fontSize: 48, textAlign: 'center', marginBottom: 16 },
+  logo:        { width: 72, height: 72, alignSelf: 'center', marginBottom: 16 },
   title:       { fontSize: 26, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 6 },
   sub:         { fontSize: 14, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 36 },
   error:       { backgroundColor: 'rgba(255,80,80,0.1)', borderRadius: 10, padding: 12, marginBottom: 16,
