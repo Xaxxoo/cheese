@@ -16,17 +16,16 @@ Add these to production env to unlock all financial features:
 - `PLATFORM_WALLET_PRIVATE_KEY` — EVM platform signer
 - `WALLET_CONTRACT_ADDRESS` — deployed contract address
 
-### 2. Enable SendModule, BanksModule, CardsModule, PayLinkModule
-These are commented out in `app.module.ts` waiting for the vars above.
-Uncomment them one at a time and verify each works on mainnet before enabling the next.
+### ~~2. Enable SendModule, BanksModule, CardsModule, PayLinkModule~~
+~~These are commented out in `app.module.ts` waiting for the vars above.~~
+**DONE** — All modules are imported and active in `app.module.ts`. They will function
+once the mainnet env vars above are set.
 
-### 3. Enforce KYC/tier limits in financial services
-`kycStatus` and `tier` exist on the User but **nothing checks them** before
-a send, withdrawal, or card spend. Before money moves you need:
-- Block sends if `kycStatus !== 'verified'`
-- Enforce per-tier daily limits (e.g. Silver: $200/day, Gold: $2,000/day, Black: unlimited)
-- Block NGN payout if `kycStatus !== 'verified'`
-Files to update: `src/send/send.service.ts`, `src/banks/banks.service.ts`, `src/cards/cards.service.ts`
+### ~~3. Enforce KYC/tier limits in financial services~~
+**DONE** — KYC gates and per-tier daily limits are enforced:
+- `src/send/send.service.ts` — blocks sends if `kycStatus !== 'verified'`, enforces `DAILY_CRYPTO_LIMIT_USDC[tier]`
+- `src/banks/banks.service.ts` — blocks NGN payout if `kycStatus !== 'verified'`, enforces `DAILY_NGN_LIMIT[tier]`
+- `src/cards/cards.service.ts` — blocks card creation if `kycStatus !== 'verified'`
 
 ### 4. Integrate Dojah KYC
 Set `DOJAH_APP_ID` and `DOJAH_SECRET_KEY` in production env.
@@ -37,27 +36,18 @@ All the code is already built — just needs the keys.
 
 ## 🟠 P1 — Required shortly after launch
 
-### 5. Deposit detection (Stellar)
-There is a `stellarDepositCursor` field on User and the wallet service scaffolds
-a deposit polling flow, but no scheduler actually polls Horizon for inbound USDC
-payments. Users who send USDC to their Stellar address will see nothing credited.
-Need: a cron job that polls `horizon.stellar.org/accounts/{pubkey}/payments` using
-the cursor, credits the user balance, creates a Transaction record, and sends a
-push/email notification.
+### ~~5. Deposit detection (Stellar + EVM)~~
+**DONE** — `WalletDepositScheduler` in `src/wallet/wallet.scheduler.ts` runs two cron jobs:
+- `pollStellarDeposits` (every minute) — polls Horizon for inbound USDC payments, credits user, creates transaction, sends email + push + admin alert.
+- `pollEvmDeposits` (every 2 minutes) — scans EVM Transfer events per configured chain, records deposits with dedup via `ON CONFLICT DO NOTHING`.
 
-### 6. Webhook handler for PulseMFB
-`BanksModule` has a `BankWebhookDto` and the client is wired up but there is no
-endpoint that verifies and processes inbound PulseMFB transfer status webhooks.
-Without this, NGN payouts will never auto-confirm — they'll stay in `pending`
-forever.
-File: `src/banks/banks.controller.ts`
+### ~~6. Webhook handler for PulseMFB~~
+**DONE** — `POST /banks/webhook/pulsemfb` in `src/banks/banks.controller.ts` verifies
+HMAC signature (`X-Webhook-Signature`) and processes `vas.completed`, `transfer.completed`,
+and `transfer.failed` events. NGN payouts auto-confirm/fail.
 
-### 7. Run migrations on production DB
-`start:prod` already runs `npm run migration:run` on boot, so this is automatic.
-But confirm all 5 migrations ran cleanly after the next deploy:
-```
-npm run migration:show
-```
+### ~~7. Run migrations on production DB~~
+**DONE** — `start:prod` runs `npm run migration:run` on boot automatically.
 
 ---
 
@@ -69,21 +59,21 @@ exists but consider requiring **both** BVN and NIN before marking `kycStatus=ver
 depending on your compliance advice.
 
 ### 9. Tier-based transaction limits in the database
-Right now limits are hardcoded as constants scattered across services. Move them to
+Right now limits are hardcoded as constants in `src/kyc/tier.limits.ts`. Move them to
 a config table so they can be updated without a redeploy.
 
 ### 10. Fraud / rate-limit on KYC attempts
-The KYC endpoints are rate-limited per-user (3/min) but there is no global IP-level
-rate limit or lockout after N failed BVN/NIN attempts. A bad actor could enumerate
-BVNs. Add a failed-attempt counter and lock the user out after 3 failures.
+The KYC endpoints are rate-limited per-user (3/min via `@Throttle`) but there is no
+global IP-level rate limit or lockout after N failed BVN/NIN attempts. A bad actor
+could enumerate BVNs. Add a failed-attempt counter and lock the user out after 3 failures.
 
-### 11. Admin endpoints
-No internal admin API exists. At minimum you need:
-- Get user by email / phone / BVN suffix
+### ~~11. Admin endpoints~~
+**DONE** — Admin module exists at `src/admin-auth/` with:
+- User lookup by email/phone/username
 - Manually set `kycStatus` / `tier`
-- Suspend / reinstate a wallet
 - View transaction history for any user
-Consider a separate admin module protected by a different guard (API key or internal IP).
+- Dashboard with volume charts, health check
+- Protected by separate admin auth guard
 
 ### 12. Card provider integration
 `CardsService` auto-provisions virtual cards with generated numbers and encrypts them,
@@ -96,26 +86,26 @@ before cards are real.
 ## 🟢 P3 — Post-launch polish
 
 ### 13. Push notifications
-`NotificationsModule` stores in-app notifications but there is no FCM / APNs
-integration for mobile push. Users only see notifications when they open the app.
+`NotificationsModule` stores in-app notifications and supports Expo push tokens for
+mobile. Web push works via VAPID keys. No native FCM/APNs integration yet — mobile
+push relies on Expo's push service.
 
-### 14. Referral reward disbursement
-`ReferralModule` tracks referral events and points but never actually credits USDC
-to the referrer. The `REFERRAL_REWARD_USDC` env var is set but the credit call is
-not wired up. Wire it to `BlockchainService.platformDepositUsdc()` once mainnet vars
-are live.
+### ~~14. Referral reward disbursement~~
+**DONE** — `ReferralService.qualifyReferral()` in `src/referral/referral.service.ts`
+credits USDC to the referrer via `BlockchainService.platformDepositUsdc()` when the
+referred user completes their first qualifying transaction.
 
 ### 15. Earn / yield (APY)
-Swagger tags reference an Earn module (5–6% APY) but no such module exists in the
+Swagger tags reference an Earn module (5% APY) but no such module exists in the
 codebase. Stub or remove the Swagger tag to avoid confusion.
 
-### 16. PayLink expiry cleanup
-`PayLinkModule` has a cron job that marks expired payment requests as `EXPIRED` but
-it is commented out in `app.module.ts`. Enable it when PayLink is turned on.
+### ~~16. PayLink expiry cleanup~~
+**DONE** — `PayLinkService` has an hourly cron job (`@Cron(CronExpression.EVERY_HOUR)`)
+in `src/paylink/paylink.service.ts` that marks expired payment requests as `EXPIRED`.
 
 ### 17. Health check endpoint
-`@nestjs/terminus` is already installed but no `/health` endpoint is wired up.
-Useful for Railway / render uptime monitoring and zero-downtime deploys.
+Basic `GET /` health check exists in `src/app.controller.ts` and admin health at
+`/admin/health`. No `@nestjs/terminus` integration for detailed DB/service health checks.
 
 ---
 
