@@ -16,6 +16,7 @@ import {
   triviaWinner,
   deviceRegistrationLink,
   happyBirthday,
+  yieldCredited,
 } from './templates';
 import { tierEligible } from './templates/tier-eligible';
 
@@ -515,6 +516,30 @@ export class EmailService {
       `Thank you for being part of our community, @${params.username}.\n\n` +
       `Here's to another year of smart moves and stacking wins. Enjoy your day!\n\n` +
       `With love,\nThe Cheese Pay Team`;
+    await this.send({ to: params.to, subject, html, text });
+  }
+
+  async sendYieldCredited(params: {
+    to: string;
+    fullName: string | null;
+    amountUsdc: string;
+    totalEarned: string;
+    apyRate: string;
+    balanceUsdc: string;
+  }): Promise<void> {
+    const { subject, html } = yieldCredited({
+      fullName: params.fullName || 'User',
+      amountUsdc: params.amountUsdc,
+      totalEarned: params.totalEarned,
+      apyRate: params.apyRate,
+      balanceUsdc: params.balanceUsdc,
+    });
+    const text =
+      `Hi ${params.fullName || 'User'},\n\n` +
+      `You earned $${params.amountUsdc} USDC today at ${params.apyRate}% APY.\n` +
+      `Total earned to date: $${params.totalEarned} USDC.\n` +
+      `Current balance: $${params.balanceUsdc} USDC.\n\n` +
+      `– The Cheese Team`;
     await this.send({ to: params.to, subject, html, text });
   }
 

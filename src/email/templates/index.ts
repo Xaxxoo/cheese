@@ -999,3 +999,59 @@ export function happyBirthday(params: {
   });
   return { subject, html };
 }
+
+// ─────────────────────────────────────────────────────────
+// YIELD CREDITED
+// ─────────────────────────────────────────────────────────
+export function yieldCredited(params: {
+  fullName: string;
+  amountUsdc: string;
+  totalEarned: string;
+  apyRate: string;
+  balanceUsdc: string;
+}): { subject: string; html: string } {
+  const amount = parseFloat(params.amountUsdc).toFixed(2);
+  const total = parseFloat(params.totalEarned).toFixed(2);
+  const subject = `You earned $${amount} USDC today`;
+  const html = baseLayout({
+    preheader: `You earned $${amount} USDC at ${params.apyRate}% APY. Total earned: $${total}.`,
+    body: `
+      <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
+      <div style="padding:48px 40px 40px;">
+
+        ${sectionLabel('Yield Earned', ICONS.trendingUp(BRAND.gold, 14))}
+
+        <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
+                   font-family:'Inter',sans-serif;line-height:1.2;letter-spacing:-1px;margin-bottom:12px;">
+          Your money is<br/>
+          <span style="background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.goldLight});
+                       -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+            working for you.
+          </span>
+        </h1>
+        <p style="font-size:16px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                  line-height:1.7;margin-bottom:32px;">
+          Hi ${params.fullName.split(' ')[0]}, your daily yield has been credited to your wallet.
+        </p>
+
+        ${amountDisplay(amount)}
+
+        <div style="margin-top:32px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+            style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;overflow:hidden;">
+            ${detailRow('APY Rate', `${params.apyRate}%`, true)}
+            ${detailRow("Today's Yield", `$${amount} USDC`)}
+            ${detailRow('Total Earned', `$${total} USDC`, true)}
+            ${detailRow('Current Balance', `$${parseFloat(params.balanceUsdc).toFixed(2)} USDC`)}
+          </table>
+        </div>
+
+        <div style="margin-top:28px;">
+          ${infoBox('Your yield is automatically credited daily. Keep your balance above $1 to continue earning.', 'success')}
+        </div>
+
+      </div>
+    `,
+  });
+  return { subject, html };
+}

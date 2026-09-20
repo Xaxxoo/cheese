@@ -114,3 +114,14 @@ export const bridgeConfig = registerAs('bridge', () => ({
   baseUrl: process.env.BRIDGE_BASE_URL || 'https://api.bridge.xyz',
   webhookSecret: process.env.BRIDGE_WEBHOOK_SECRET || '',
 }));
+
+export const yieldConfig = registerAs('yield', () => ({
+  blendPoolId: process.env.BLEND_POOL_ID || '',
+  blendUsdcContract: process.env.BLEND_USDC_CONTRACT || '',
+  apySilver: parseFloat(process.env.YIELD_APY_SILVER || '0.05'),
+  apyGold: parseFloat(process.env.YIELD_APY_GOLD || '0.055'),
+  apyBlack: parseFloat(process.env.YIELD_APY_BLACK || '0.06'),
+  bufferPercent: parseFloat(process.env.YIELD_BUFFER_PERCENT || '0.10'),
+  minBalanceUsdc: parseFloat(process.env.YIELD_MIN_BALANCE || '1'),
+  enabled: process.env.YIELD_ENABLED === 'true',
+}));

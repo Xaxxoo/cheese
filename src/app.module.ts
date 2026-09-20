@@ -24,6 +24,7 @@ import {
   alertsConfig,
   flutterwaveBillsConfig,
   bridgeConfig,
+  yieldConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -62,6 +63,7 @@ import { PayLinkModule } from './paylink/paylink.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { BillsModule } from './bills/bills.module';
 import { BridgeModule } from './bridge/bridge.module';
+import { YieldModule } from './yield/yield.module';
 
 // Active entities
 import { User } from './auth/entities/user.entity';
@@ -113,6 +115,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
         alertsConfig,
         flutterwaveBillsConfig,
         bridgeConfig,
+        yieldConfig,
       ],
       envFilePath: ['.env'],
     }),
@@ -315,6 +318,7 @@ import { MerchantPayoutAccount } from './merchant/entities/merchant-payout-accou
     AlertsModule,
     BillsModule,
     BridgeModule,
+    YieldModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },

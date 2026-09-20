@@ -336,4 +336,18 @@ export class NotificationsService implements OnModuleInit {
       deepLink: '/waitlist/points',
     });
   }
+
+  async notifyYieldCredited(
+    userId: string,
+    amountUsdc: string,
+    totalEarned: string,
+  ) {
+    return this.create({
+      userId,
+      type: NotificationType.MONEY,
+      title: 'Yield Earned',
+      body: `You earned $${parseFloat(amountUsdc).toFixed(2)} USDC today. Total: $${parseFloat(totalEarned).toFixed(2)}`,
+      deepLink: '/history',
+    });
+  }
 }
