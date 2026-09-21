@@ -6,7 +6,7 @@ import type {
   NigerianBank, AccountResolvePayload, AccountResolveResponse,
   BankTransferPayload, BankTransferResponse,
   SendToUsernamePayload, SendToAddressPayload, RecentRecipient,
-  ExchangeRate, EarnBalance, ReferralInfo,
+  ExchangeRate, EarnBalance, YieldStatus, ReferralInfo,
   VirtualCard,
   VirtualAccount, OnRampAvailability,
   DeviceSummary,
@@ -136,6 +136,25 @@ export async function getExchangeRate(): Promise<ExchangeRate> {
 // ── Earn ──────────────────────────────────────────────────
 export async function getEarnBalance(): Promise<EarnBalance> {
   const { data } = await client.get<ApiResponse<EarnBalance>>('/earn/balance')
+  return data.data
+}
+
+// ── Yield ─────────────────────────────────────────────────
+export async function getYieldStatus(): Promise<YieldStatus> {
+  const { data } = await client.get<ApiResponse<YieldStatus>>('/yield/status')
+  return data.data
+}
+
+export async function enrollYield(): Promise<void> {
+  await client.post('/yield/enroll')
+}
+
+export async function unenrollYield(): Promise<void> {
+  await client.post('/yield/unenroll')
+}
+
+export async function getYieldHistory(): Promise<TransactionListResponse> {
+  const { data } = await client.get<ApiResponse<TransactionListResponse>>('/yield/history')
   return data.data
 }
 

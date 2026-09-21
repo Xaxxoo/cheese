@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import {
   ArrowDownLeft, ArrowUpRight, Building2, Zap, CreditCard, Gift,
-  Link as LinkIcon, Circle, Bell, Plus, Landmark,
+  Link as LinkIcon, Circle, Bell, Plus, Landmark, TrendingUp,
 } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
@@ -167,7 +167,7 @@ export default function DashboardScreen({ navigation }: Props) {
     { label: 'My Card',       Icon: CreditCard,    screen: 'Card'         },
     { label: 'Pay Link',      Icon: LinkIcon,      screen: 'Paylink'      },
     { label: 'Pay Bills',     Icon: Zap,           screen: 'Bills'        },
-    { label: 'Send to China', Icon: Landmark,      disabled: true         },
+    { label: 'Earn',          Icon: TrendingUp,    screen: 'Earn'         },
   ]
 
   const firstName = user?.fullName?.split(' ')[0] ?? user?.username ?? ''

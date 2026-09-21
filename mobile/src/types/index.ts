@@ -299,6 +299,17 @@ export interface EarnBalance {
   compounding: string
 }
 
+export interface YieldStatus {
+  enrolled: boolean
+  enrolledAt: string | null
+  tier: 'silver' | 'gold' | 'black'
+  apyRate: string
+  totalEarned: string
+  lastDistributionAt: string | null
+  balanceUsdc: string
+  minBalanceUsdc: number
+}
+
 // ── Referral ──────────────────────────────────────────────
 export interface ReferralInfo {
   code: string

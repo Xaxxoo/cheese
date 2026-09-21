@@ -60,6 +60,12 @@ export const ENDPOINTS = {
   EARN: {
     BALANCE: '/earn/balance',
   },
+  YIELD: {
+    STATUS:   '/yield/status',
+    ENROLL:   '/yield/enroll',
+    UNENROLL: '/yield/unenroll',
+    HISTORY:  '/yield/history',
+  },
   REFERRAL: {
     INFO: '/referral/info',
   },
