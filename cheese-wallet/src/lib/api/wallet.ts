@@ -18,6 +18,7 @@ import type {
   VirtualCard,
   WalletAddress,
   WalletBalance,
+  YieldStatus,
 } from '@/types'
 
 // ── Wallet ────────────────────────────────────────────────
@@ -259,6 +260,29 @@ export async function subscribePush(sub: {
 
 export async function unsubscribePush(endpoint: string): Promise<void> {
   await apiClient.delete(ENDPOINTS.NOTIFICATIONS.SUBSCRIBE, { data: { endpoint } })
+}
+
+// ── Yield (Opt-in) ───────────────────────────────────────
+export async function getYieldStatus(): Promise<YieldStatus> {
+  const { data } = await apiClient.get<ApiResponse<YieldStatus>>(
+    ENDPOINTS.YIELD.STATUS,
+  )
+  return data.data
+}
+
+export async function enrollYield(): Promise<void> {
+  await apiClient.post(ENDPOINTS.YIELD.ENROLL)
+}
+
+export async function unenrollYield(): Promise<void> {
+  await apiClient.post(ENDPOINTS.YIELD.UNENROLL)
+}
+
+export async function getYieldHistory(): Promise<TransactionListResponse> {
+  const { data } = await apiClient.get<ApiResponse<TransactionListResponse>>(
+    ENDPOINTS.YIELD.HISTORY,
+  )
+  return data.data
 }
 
 // ── Earn / Yield ──────────────────────────────────────────

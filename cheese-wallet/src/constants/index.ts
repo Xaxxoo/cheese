@@ -123,6 +123,12 @@ export const ENDPOINTS = {
     BALANCE:          '/earn/balance',
     HISTORY:          '/earn/history',
   },
+  YIELD: {
+    STATUS:           '/yield/status',
+    ENROLL:           '/yield/enroll',
+    UNENROLL:         '/yield/unenroll',
+    HISTORY:          '/yield/history',
+  },
 
   // ── Referral ─────────────────────────────────────────
   REFERRAL: {
@@ -218,6 +224,10 @@ export const QUERY_KEYS = {
   EARN_BALANCE:         ['earn', 'balance'] as const,
   EARN_HISTORY:         ['earn', 'history'] as const,
 
+  // Yield
+  YIELD_STATUS:         ['yield', 'status'] as const,
+  YIELD_HISTORY:        ['yield', 'history'] as const,
+
   // Notifications
   NOTIFICATIONS:        ['notifications'] as const,
 
@@ -252,4 +262,5 @@ export const STALE_TIMES = {
   CARD:             60_000,    // 1min
   NOTIFICATIONS:    30_000,    // 30s
   EARN:             60_000,    // 1min
+  YIELD:            60_000,    // 1min
 } as const

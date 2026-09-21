@@ -244,6 +244,18 @@ export interface ApiError {
   [key: string]: unknown;
 }
 
+// ── Yield / Earn ─────────────────────────────────────────
+export interface YieldStatus {
+  enrolled: boolean;
+  enrolledAt: string | null;
+  tier: 'silver' | 'gold' | 'black';
+  apyRate: string;
+  totalEarned: string;
+  lastDistributionAt: string | null;
+  balanceUsdc: string;
+  minBalanceUsdc: number;
+}
+
 // ── UI ────────────────────────────────────────────────────
 export type Theme = 'dark' | 'light';
 export type AppScreen =

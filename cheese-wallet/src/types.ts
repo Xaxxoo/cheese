@@ -270,6 +270,18 @@ export interface ExchangeRate {
   fetchedAt: string;
 }
 
+// ── Yield Status ─────────────────────────────────────────
+export interface YieldStatus {
+  enrolled: boolean;
+  enrolledAt: string | null;
+  tier: 'silver' | 'gold' | 'black';
+  apyRate: string;
+  totalEarned: string;
+  lastDistributionAt: string | null;
+  balanceUsdc: string;
+  minBalanceUsdc: number;
+}
+
 // ── Earn / Yield Types ────────────────────────────────────
 export interface EarnBalance {
   balance: number;

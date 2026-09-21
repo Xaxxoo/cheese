@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   ArrowUpRight, ArrowDownLeft, Eye, EyeOff,
   TrendingUp, RefreshCw, Copy, CheckCheck, Receipt, Plus,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuthStore } from '@/store/authStore'
@@ -337,6 +338,29 @@ export default function DashboardPage() {
 
       <BalanceCard />
       <RateTicker />
+
+      {/* Earn banner */}
+      <Link
+        href="/earn"
+        className="mx-4 mt-3 px-4 py-3.5 rounded-2xl flex items-center gap-3 hover:bg-white/5 transition-colors"
+        style={{
+          background: 'rgba(212,168,67,0.06)',
+          border: '1px solid rgba(212,168,67,0.12)',
+        }}
+      >
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(212,168,67,0.12)' }}
+        >
+          <TrendingUp size={16} className="text-[#d4a843]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-white font-medium">Earn up to 6% APY</p>
+          <p className="text-xs text-white/35 mt-0.5">Earn yield on your USDC balance</p>
+        </div>
+        <ChevronRight size={16} className="text-[#d4a843]/50 shrink-0" />
+      </Link>
+
       <RecentTransactions />
     </div>
   )
