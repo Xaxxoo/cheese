@@ -672,6 +672,24 @@ export class WalletService {
         status: TxStatus.FAILED,
         failureReason: (err as Error).message,
       });
+
+      // If the failure looks like an insufficient platform balance,
+      // signal the yield module to pull funds from Blend so the next
+      // attempt can succeed.
+      const errMsg = (err as Error).message ?? '';
+      if (
+        /op_underfunded|insufficient.*balance|tx_insufficient_balance/i.test(
+          errMsg,
+        )
+      ) {
+        this.logger.warn(
+          `Withdrawal failed due to insufficient balance — emitting yield.liquidity_needed [amount=${amountUsdc}]`,
+        );
+        this.eventEmitter.emit('yield.liquidity_needed', {
+          requiredUsdc: parseFloat(amountUsdc),
+        });
+      }
+
       throw err;
     }
   }
