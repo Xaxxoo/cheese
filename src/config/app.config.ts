@@ -118,6 +118,7 @@ export const bridgeConfig = registerAs('bridge', () => ({
 export const yieldConfig = registerAs('yield', () => ({
   blendPoolId: process.env.BLEND_POOL_ID || '',
   blendUsdcContract: process.env.BLEND_USDC_CONTRACT || '',
+  sorobanRpcUrl: process.env.STELLAR_SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org',
   apySilver: parseFloat(process.env.YIELD_APY_SILVER || '0.05'),
   apyGold: parseFloat(process.env.YIELD_APY_GOLD || '0.055'),
   apyBlack: parseFloat(process.env.YIELD_APY_BLACK || '0.06'),
