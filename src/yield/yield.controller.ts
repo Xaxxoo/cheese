@@ -1,5 +1,5 @@
 // src/yield/yield.controller.ts
-import { Controller, Post, Get } from '@nestjs/common';
+import { Controller, Post, Get, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -9,12 +9,17 @@ import {
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../auth/entities/user.entity';
 import { YieldService } from './yield.service';
+import { YieldPoolScheduler } from './yield-pool.scheduler';
+import { AdminJwtGuard } from '../admin-auth/guards/admin-jwt.guard';
 
 @ApiTags('Earn')
 @ApiBearerAuth('access-token')
 @Controller('yield')
 export class YieldController {
-  constructor(private readonly yieldService: YieldService) {}
+  constructor(
+    private readonly yieldService: YieldService,
+    private readonly yieldPoolScheduler: YieldPoolScheduler,
+  ) {}
 
   @Post('enroll')
   @ApiOperation({
@@ -64,5 +69,20 @@ export class YieldController {
   @ApiResponse({ status: 200, description: 'Paginated yield credit transactions' })
   getHistory(@CurrentUser() user: User) {
     return this.yieldService.getHistory(user.id);
+  }
+
+  @Post('admin/rebalance')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth('admin-token')
+  @ApiOperation({
+    summary: 'Manually trigger pool rebalance',
+    description:
+      'Admin-only endpoint that immediately triggers the yield pool rebalance cycle. Useful when liquidity issues are detected.',
+  })
+  @ApiResponse({ status: 201, description: 'Rebalance triggered' })
+  @ApiResponse({ status: 401, description: 'Admin authentication required' })
+  async adminRebalance() {
+    await this.yieldPoolScheduler.rebalancePool();
+    return { message: 'Pool rebalance triggered' };
   }
 }
