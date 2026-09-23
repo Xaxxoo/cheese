@@ -1101,6 +1101,8 @@ export class AdminAuthService {
     const user = await this.userRepo.findOne({ where: { id, isAdmin: false } });
     if (!user) throw new NotFoundException('User not found');
     user.kycStatus = KycStatus.VERIFIED;
+    user.yieldEnrolled = true;
+    user.yieldEnrolledAt = new Date();
     await this.userRepo.save(user);
     // Fire-and-forget — in-app notification
     void this.notificationsService

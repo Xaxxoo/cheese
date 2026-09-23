@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, RefreshControl, ActivityIndicator, Alert,
+  ScrollView, RefreshControl, ActivityIndicator, Alert, TextInput,
 } from 'react-native'
 import {
   ArrowLeft, TrendingUp, ChevronRight, Clock, Shield,
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { AppStackParamList } from '../../navigation/types'
+import { useAuthStore } from '../../store/auth.store'
 import { getYieldStatus, enrollYield, unenrollYield, getYieldHistory } from '../../api/wallet'
 import { fmtUsdc, fmtDate } from '../../utils/format'
 import type { YieldStatus, Transaction } from '../../types'
@@ -16,12 +17,16 @@ import type { YieldStatus, Transaction } from '../../types'
 type Props = NativeStackScreenProps<AppStackParamList, 'Earn'>
 
 export default function EarnScreen({ navigation }: Props) {
+  const user = useAuthStore((s) => s.user)
+  const isVerified = user?.kycStatus === 'verified'
   const [status, setStatus]       = useState<YieldStatus | null>(null)
   const [history, setHistory]     = useState<Transaction[]>([])
   const [loading, setLoading]     = useState(true)
   const [toggling, setToggling]   = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError]         = useState<string | null>(null)
+  const [calcAmount, setCalcAmount] = useState('')
+  const [calcTier, setCalcTier]     = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -97,6 +102,14 @@ export default function EarnScreen({ navigation }: Props) {
 
   const tierLabel = status ? status.tier.charAt(0).toUpperCase() + status.tier.slice(1) : ''
 
+  const TIER_APYS: Record<string, number> = { silver: 5, gold: 5.5, black: 6 }
+  const effectiveTier = calcTier ?? status?.tier ?? 'silver'
+  const calcApy = TIER_APYS[effectiveTier] / 100
+  const calcNum = parseFloat(calcAmount.replace(/,/g, '')) || 0
+  const projDaily = calcNum * calcApy / 365
+  const projMonthly = calcNum * calcApy / 12
+  const projYearly = calcNum * calcApy
+
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView
@@ -133,20 +146,30 @@ export default function EarnScreen({ navigation }: Props) {
             </View>
 
             {/* Enrollment toggle */}
-            <TouchableOpacity
-              style={[s.toggleBtn, status.enrolled && s.toggleBtnActive]}
-              onPress={handleToggle}
-              disabled={toggling}
-              activeOpacity={0.7}
-            >
-              {toggling ? (
-                <ActivityIndicator color={status.enrolled ? '#0a0a0a' : '#d4a843'} />
-              ) : (
-                <Text style={[s.toggleBtnText, status.enrolled && s.toggleBtnTextActive]}>
-                  {status.enrolled ? 'Earning Enabled' : 'Enable Earning'}
-                </Text>
-              )}
-            </TouchableOpacity>
+            {isVerified ? (
+              <TouchableOpacity
+                style={[s.toggleBtn, status.enrolled && s.toggleBtnActive]}
+                onPress={handleToggle}
+                disabled={toggling}
+                activeOpacity={0.7}
+              >
+                {toggling ? (
+                  <ActivityIndicator color={status.enrolled ? '#0a0a0a' : '#d4a843'} />
+                ) : (
+                  <Text style={[s.toggleBtnText, status.enrolled && s.toggleBtnTextActive]}>
+                    {status.enrolled ? 'Earning Enabled' : 'Re-enable Earning'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={s.toggleBtn}
+                onPress={() => navigation.navigate('Kyc')}
+                activeOpacity={0.7}
+              >
+                <Text style={s.toggleBtnText}>Verify Identity to Start Earning</Text>
+              </TouchableOpacity>
+            )}
 
             {/* Stats grid */}
             <View style={s.statsGrid}>
@@ -196,6 +219,53 @@ export default function EarnScreen({ navigation }: Props) {
                   <Text style={s.tierInfoLabel}>Black</Text>
                   <Text style={s.tierInfoValue}>6.0% APY</Text>
                 </View>
+              </View>
+            </View>
+
+            {/* Yield Calculator */}
+            <View style={s.calcCard}>
+              <Text style={s.calcTitle}>Yield Calculator</Text>
+              <TextInput
+                style={s.calcInput}
+                placeholder="Enter USDC amount"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                keyboardType="decimal-pad"
+                value={calcAmount}
+                onChangeText={(val: string) => setCalcAmount(val.replace(/[^0-9.,]/g, ''))}
+                onBlur={() => {
+                  const num = parseFloat(calcAmount.replace(/,/g, ''))
+                  if (!isNaN(num) && num > 0) setCalcAmount(num.toLocaleString('en-US'))
+                }}
+              />
+              <View style={s.calcTiers}>
+                {([
+                  { key: 'silver', label: 'Silver', apy: 5 },
+                  { key: 'gold', label: 'Gold', apy: 5.5 },
+                  { key: 'black', label: 'Black', apy: 6 },
+                ] as const).map(({ key, label, apy }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[s.calcTierBtn, effectiveTier === key && s.calcTierBtnActive]}
+                    onPress={() => setCalcTier(key)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.calcTierText, effectiveTier === key && s.calcTierTextActive]}>
+                      {label} ({apy}%)
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.calcResults}>
+                {([
+                  { label: 'Daily', value: projDaily },
+                  { label: 'Monthly', value: projMonthly },
+                  { label: 'Yearly', value: projYearly },
+                ]).map(({ label, value }) => (
+                  <View key={label} style={s.calcResultBox}>
+                    <Text style={s.calcResultLabel}>{label}</Text>
+                    <Text style={s.calcResultValue}>${value.toFixed(2)}</Text>
+                  </View>
+                ))}
               </View>
             </View>
 
@@ -316,4 +386,54 @@ const s = StyleSheet.create({
   txLabel:    { fontSize: 14, color: '#fff', fontWeight: '500', marginBottom: 2 },
   txDate:     { fontSize: 11, color: 'rgba(255,255,255,0.3)' },
   txAmount:   { fontSize: 14, fontWeight: '600', color: '#4ade80' },
+
+  // Yield calculator
+  calcCard: {
+    backgroundColor: '#141414', borderRadius: 16,
+    padding: 20, marginTop: 24,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  calcTitle: {
+    fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.6)',
+    textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 12,
+  },
+  calcInput: {
+    backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 16, paddingVertical: 12,
+    fontSize: 14, color: '#fff',
+  },
+  calcTiers: {
+    flexDirection: 'row' as const, gap: 8, marginTop: 12,
+  },
+  calcTierBtn: {
+    flex: 1, borderRadius: 12, paddingVertical: 8,
+    alignItems: 'center' as const, justifyContent: 'center' as const,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  calcTierBtnActive: {
+    backgroundColor: 'rgba(212,168,67,0.15)',
+    borderColor: 'rgba(212,168,67,0.4)',
+  },
+  calcTierText: {
+    fontSize: 11, fontWeight: '600' as const, color: 'rgba(255,255,255,0.4)',
+  },
+  calcTierTextActive: {
+    color: '#d4a843',
+  },
+  calcResults: {
+    flexDirection: 'row' as const, gap: 8, marginTop: 16,
+  },
+  calcResultBox: {
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 14, padding: 12, alignItems: 'center' as const,
+  },
+  calcResultLabel: {
+    fontSize: 10, fontWeight: '600' as const, color: 'rgba(255,255,255,0.35)',
+    textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 4,
+  },
+  calcResultValue: {
+    fontSize: 14, fontWeight: '700' as const, color: '#fff',
+  },
 })

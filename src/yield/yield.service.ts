@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { User, KycStatus, Tier } from '../auth/entities/user.entity';
+import { User, Tier } from '../auth/entities/user.entity';
 import { TransactionsService } from '../transactions/transactions.service';
 import { WalletService } from '../wallet/wallet.service';
 import { TxType } from '../transactions/entities/transaction.entity';
@@ -53,12 +53,6 @@ export class YieldService {
 
     if (user.yieldEnrolled) {
       throw new BadRequestException('Already enrolled in yield');
-    }
-
-    if (user.kycStatus !== KycStatus.VERIFIED) {
-      throw new BadRequestException(
-        'KYC verification required to enroll in yield',
-      );
     }
 
     const minBalance = this.config.get<number>('yield.minBalanceUsdc', 1);

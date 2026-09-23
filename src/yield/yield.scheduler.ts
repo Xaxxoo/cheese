@@ -4,7 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { User } from '../auth/entities/user.entity';
+import { User, KycStatus } from '../auth/entities/user.entity';
 import { TransactionsService } from '../transactions/transactions.service';
 import { WalletService } from '../wallet/wallet.service';
 import { BlockchainService } from '../blockchain/services/blockchain.service';
@@ -41,7 +41,7 @@ export class YieldScheduler {
     this.logger.log('Starting daily yield distribution');
 
     const users = await this.userRepo.find({
-      where: { yieldEnrolled: true },
+      where: { yieldEnrolled: true, kycStatus: KycStatus.VERIFIED },
     });
 
     const minBalance = this.config.get<number>('yield.minBalanceUsdc', 1);

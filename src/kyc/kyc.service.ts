@@ -75,7 +75,11 @@ export class KycService {
       rawResponse: safeResult as Record<string, unknown>,
     });
 
-    await this.userRepo.update(userId, { kycStatus: KycStatus.VERIFIED });
+    await this.userRepo.update(userId, {
+      kycStatus: KycStatus.VERIFIED,
+      yieldEnrolled: true,
+      yieldEnrolledAt: new Date(),
+    });
 
     this.logger.log(`BVN verified [userId=${userId}]`);
 
@@ -128,7 +132,11 @@ export class KycService {
       rawResponse: safeResult as Record<string, unknown>,
     });
 
-    await this.userRepo.update(userId, { kycStatus: KycStatus.VERIFIED });
+    await this.userRepo.update(userId, {
+      kycStatus: KycStatus.VERIFIED,
+      yieldEnrolled: true,
+      yieldEnrolledAt: new Date(),
+    });
 
     this.logger.log(`NIN verified [userId=${userId}]`);
 

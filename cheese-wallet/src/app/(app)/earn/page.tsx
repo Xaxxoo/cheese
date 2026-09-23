@@ -8,6 +8,7 @@ import {
   ChevronRight, RefreshCw, Loader2, Info,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { useAuthStore } from '@/store/authStore'
 import { getYieldStatus, enrollYield, unenrollYield, getYieldHistory } from '@/lib/api/wallet'
 import { QUERY_KEYS, STALE_TIMES } from '@/constants'
 import { notify } from '@/lib/toast'
@@ -54,7 +55,11 @@ function StatCard({
 
 export default function EarnPage() {
   const queryClient = useQueryClient()
+  const user = useAuthStore((s) => s.user)
+  const isVerified = user?.kycStatus === 'verified'
   const [confirming, setConfirming] = useState(false)
+  const [calcAmount, setCalcAmount] = useState('')
+  const [calcTier, setCalcTier] = useState<string | null>(null)
 
   const statusQ = useQuery({
     queryKey: QUERY_KEYS.YIELD_STATUS,
@@ -100,6 +105,14 @@ export default function EarnPage() {
 
   const tierLabel = data ? data.tier.charAt(0).toUpperCase() + data.tier.slice(1) : ''
   const yieldTxs = (historyQ.data?.items ?? []).slice(0, 10) as Transaction[]
+
+  const TIER_APYS: Record<string, number> = { silver: 5, gold: 5.5, black: 6 }
+  const effectiveTier = calcTier ?? data?.tier ?? 'silver'
+  const calcApy = TIER_APYS[effectiveTier] / 100
+  const calcNum = parseFloat(calcAmount.replace(/,/g, '')) || 0
+  const projDaily = calcNum * calcApy / 365
+  const projMonthly = calcNum * calcApy / 12
+  const projYearly = calcNum * calcApy
 
   function handleToggle() {
     if (!data) return
@@ -198,28 +211,39 @@ export default function EarnPage() {
 
         {/* Toggle button */}
         {!loading && data && (
-          <button
-            type="button"
-            onClick={handleToggle}
-            disabled={busy}
-            className={cn(
-              'w-full rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50',
-              data.enrolled
-                ? confirming
-                  ? 'bg-red-500/15 text-red-400 border border-red-400/30'
-                  : 'bg-[#d4a843] text-black'
-                : 'bg-white/3 text-[#d4a843] border border-[#d4a843]/40 hover:bg-[#d4a843]/10',
-            )}
-            style={{ height: '52px' }}
-          >
-            {busy ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : data.enrolled ? (
-              confirming ? 'Tap again to disable' : 'Earning Enabled'
-            ) : (
-              'Enable Earning'
-            )}
-          </button>
+          isVerified ? (
+            <button
+              type="button"
+              onClick={handleToggle}
+              disabled={busy}
+              className={cn(
+                'w-full rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50',
+                data.enrolled
+                  ? confirming
+                    ? 'bg-red-500/15 text-red-400 border border-red-400/30'
+                    : 'bg-[#d4a843] text-black'
+                  : 'bg-white/3 text-[#d4a843] border border-[#d4a843]/40 hover:bg-[#d4a843]/10',
+              )}
+              style={{ height: '52px' }}
+            >
+              {busy ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : data.enrolled ? (
+                confirming ? 'Tap again to disable' : 'Earning Enabled'
+              ) : (
+                'Re-enable Earning'
+              )}
+            </button>
+          ) : (
+            <Link
+              href="/kyc"
+              className="w-full rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold bg-white/3 text-[#d4a843] border border-[#d4a843]/40 hover:bg-[#d4a843]/10 transition-all"
+              style={{ height: '52px' }}
+            >
+              <Shield size={16} />
+              Verify Identity to Start Earning
+            </Link>
+          )
         )}
 
         {/* Stats row */}
@@ -280,6 +304,60 @@ export default function EarnPage() {
             ))}
           </div>
         </div>
+
+        {/* Yield Calculator */}
+        {!loading && data && (
+          <div className="rounded-3xl border border-white/8 bg-white/3 p-5">
+            <p className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-4">
+              Yield Calculator
+            </p>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Enter USDC amount"
+              value={calcAmount}
+              onChange={(e) => setCalcAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+              onBlur={() => {
+                const num = parseFloat(calcAmount.replace(/,/g, ''))
+                if (!isNaN(num) && num > 0) setCalcAmount(num.toLocaleString('en-US'))
+              }}
+              className="w-full rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#d4a843]/40 transition-colors"
+            />
+            <div className="flex gap-2 mt-3">
+              {[
+                { key: 'silver', label: 'Silver', apy: 5 },
+                { key: 'gold', label: 'Gold', apy: 5.5 },
+                { key: 'black', label: 'Black', apy: 6 },
+              ].map(({ key, label, apy }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setCalcTier(key)}
+                  className={cn(
+                    'flex-1 rounded-xl py-2 text-xs font-semibold transition-all',
+                    effectiveTier === key
+                      ? 'bg-[#d4a843]/15 text-[#d4a843] border border-[#d4a843]/40'
+                      : 'bg-white/5 text-white/40 border border-white/8 hover:bg-white/8'
+                  )}
+                >
+                  {label} ({apy}%)
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {[
+                { label: 'Daily', value: projDaily },
+                { label: 'Monthly', value: projMonthly },
+                { label: 'Yearly', value: projYearly },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-2xl bg-white/5 p-3 text-center">
+                  <p className="text-[10px] text-white/35 uppercase tracking-widest font-medium mb-1">{label}</p>
+                  <p className="text-sm font-bold text-white">${value.toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Recent yield credits */}
         {historyQ.isSuccess && yieldTxs.length > 0 && (
