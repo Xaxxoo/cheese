@@ -679,11 +679,12 @@ export class AdminTreasuryService {
   }
 
   // ── POST /admin/treasury/sweep-classic-wallet-xlm ────────────────────────
-  // Sweeps available XLM from a user's classic Stellar wallet to the platform
-  // treasury, keeping a 1.5 XLM reserve in the user account for base reserve,
-  // trustlines, and future transaction fees.
+  // Sweeps available XLM from a user's classic Stellar wallet, keeping a 1.5
+  // XLM reserve. Sends to the provided toAddress, or the platform treasury
+  // if no address is given.
   async sweepClassicWalletXlm(opts: {
     userId: string;
+    toAddress?: string;
   }): Promise<{ txHash: string; amountXlm: string; fromAddress: string; toAddress: string }> {
     const user = await this.userRepo.findOne({ where: { id: opts.userId } });
     if (!user) throw new NotFoundException('User not found');
@@ -693,6 +694,12 @@ export class AdminTreasuryService {
     const platformAddress = this.blockchain.platformPublicKey;
     if (!platformAddress) {
       throw new ServiceUnavailableException('Stellar not configured — check STELLAR_PLATFORM_SECRET_KEY');
+    }
+
+    const destination = opts.toAddress ?? platformAddress;
+
+    if (destination === user.stellarPublicKey) {
+      throw new BadRequestException('Destination cannot be the user\'s own wallet');
     }
 
     const xlmBalance = await this.blockchain.getStellarXlmBalance(user.stellarPublicKey);
@@ -713,12 +720,12 @@ export class AdminTreasuryService {
       .replace(/\.$/, '') || '0.0000001';
 
     this.logger.log(
-      `sweepClassicWalletXlm initiated [user=@${user.username}] [amount=${sweepAmount}] [to=${platformAddress}]`,
+      `sweepClassicWalletXlm initiated [user=@${user.username}] [amount=${sweepAmount}] [to=${destination}]`,
     );
 
     const result = await this.blockchain.sendStellarXlm({
       fromSecretEnc: user.stellarSecretEnc,
-      toPublicKey:   platformAddress,
+      toPublicKey:   destination,
       amountXlm:     sweepAmount,
       memo:          `XLM recovery ${opts.userId.slice(0, 8)}`,
     });
@@ -731,7 +738,7 @@ export class AdminTreasuryService {
       txHash:      result.txHash,
       amountXlm:   sweepAmount,
       fromAddress: user.stellarPublicKey,
-      toAddress:   platformAddress,
+      toAddress:   destination,
     };
   }
 

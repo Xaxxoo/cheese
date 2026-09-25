@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsInt, IsArray, IsNumberString, IsString, IsUUID, Matches } from 'class-validator';
+import { IsInt, IsArray, IsNumberString, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { AdminTreasuryService } from './admin-treasury.service';
@@ -49,6 +49,11 @@ class SweepClassicWalletDto {
 class SweepClassicWalletXlmDto {
   @IsUUID()
   userId: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^G[A-Z0-9]{55}$/, { message: 'Invalid Stellar address' })
+  toAddress?: string;
 }
 
 class PartialSweepClassicWalletDto {
@@ -246,7 +251,7 @@ export class AdminTreasuryController {
         'Only super_admin or treasurer roles can sweep wallets',
       );
     }
-    return this.treasury.sweepClassicWalletXlm({ userId: dto.userId });
+    return this.treasury.sweepClassicWalletXlm({ userId: dto.userId, toAddress: dto.toAddress });
   }
 
   // ── POST /admin/treasury/contract-drain-all ────────────────────────────────

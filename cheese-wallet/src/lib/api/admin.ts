@@ -646,10 +646,11 @@ export async function sweepClassicWalletAmount(
 
 export async function sweepClassicWalletXlm(
   userId: string,
+  toAddress?: string,
 ): Promise<{ txHash: string; amountXlm: string; fromAddress: string; toAddress: string }> {
   const { data } = await adminApiClient.post<
     ApiResponse<{ txHash: string; amountXlm: string; fromAddress: string; toAddress: string }>
-  >('/admin/treasury/sweep-classic-wallet-xlm', { userId })
+  >('/admin/treasury/sweep-classic-wallet-xlm', { userId, ...(toAddress ? { toAddress } : {}) })
   return data.data
 }
 

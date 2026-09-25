@@ -37,8 +37,9 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
   const [recoverError,  setRecoverError]  = useState('');
   const [partialSweepAmount, setPartialSweepAmount] = useState('');
-  const [xlmSweepResult, setXlmSweepResult] = useState<{ txHash: string; amountXlm: string } | null>(null);
+  const [xlmSweepResult, setXlmSweepResult] = useState<{ txHash: string; amountXlm: string; toAddress: string } | null>(null);
   const [xlmSweepError,  setXlmSweepError]  = useState('');
+  const [xlmSendAddress, setXlmSendAddress] = useState('');
   const [provisionError, setProvisionError] = useState('');
   const [trustlineError, setTrustlineError] = useState('');
   const [trustlineSuccess, setTrustlineSuccess] = useState('');
@@ -241,14 +242,19 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleSweepXlm = async () => {
+  const handleSweepXlm = async (toAddress?: string) => {
     if (!user || saving) return;
+    if (toAddress && !/^G[A-Z0-9]{55}$/.test(toAddress)) {
+      setXlmSweepError('Invalid Stellar address (must start with G and be 56 chars).');
+      return;
+    }
     setSaving(true);
     setXlmSweepError('');
     setXlmSweepResult(null);
     try {
-      const result = await sweepClassicWalletXlm(user.id);
+      const result = await sweepClassicWalletXlm(user.id, toAddress || undefined);
       setXlmSweepResult(result);
+      setXlmSendAddress('');
       // Refresh user data to update XLM balance
       const updated = await getAdminUserDetail(user.id);
       setUser(updated);
@@ -1007,11 +1013,16 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                     Recover XLM
                   </div>
                   <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
-                    Sweeps available XLM (above 1.5 XLM reserve) from the user&apos;s Stellar wallet back to the platform treasury.
+                    Sweeps available XLM (above 1.5 XLM reserve) from the user&apos;s Stellar wallet.
                     Current XLM: <span style={{ color: c.text, fontWeight: 600 }}>{parseFloat(user.xlmBalance ?? '0').toFixed(4)} XLM</span>
+                    {parseFloat(user.xlmBalance ?? '0') > 1.5 && (
+                      <span> · Recoverable: <span style={{ fontWeight: 600, color: c.text }}>{Math.max(0, parseFloat(user.xlmBalance ?? '0') - 1.5).toFixed(4)} XLM</span></span>
+                    )}
                   </div>
+
+                  {/* Option 1: Recover to treasury */}
                   <button
-                    onClick={handleSweepXlm}
+                    onClick={() => handleSweepXlm()}
                     disabled={saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5}
                     style={{
                       alignSelf: 'flex-start', padding: '6px 14px', borderRadius: 7,
@@ -1021,11 +1032,30 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                       opacity: (saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 0.5 : 1,
                     }}
                   >
-                    {saving ? 'Sweeping…' : `Recover ${Math.max(0, parseFloat(user.xlmBalance ?? '0') - 1.5).toFixed(4)} XLM`}
+                    {saving ? 'Sending…' : 'Recover to Treasury'}
                   </button>
+
+                  {/* Option 2: Send to custom address */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      value={xlmSendAddress}
+                      onChange={(e) => setXlmSendAddress(e.target.value)}
+                      placeholder="Stellar address (G…)"
+                      aria-label="Destination Stellar address for XLM"
+                      style={{ flex: 1, minWidth: 180, padding: '7px 9px', borderRadius: 7, border: `1px solid ${c.border}`, background: 'rgba(255,255,255,0.05)', color: c.text, fontFamily: 'inherit', fontSize: 12 }}
+                    />
+                    <button
+                      onClick={() => handleSweepXlm(xlmSendAddress.trim())}
+                      disabled={saving || !xlmSendAddress.trim() || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5}
+                      style={{ padding: '6px 14px', borderRadius: 7, cursor: (saving || !xlmSendAddress.trim() || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 'default' : 'pointer', background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, opacity: (saving || !xlmSendAddress.trim() || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 0.5 : 1 }}
+                    >
+                      {saving ? 'Sending…' : 'Send to Address'}
+                    </button>
+                  </div>
+
                   {xlmSweepResult && (
                     <div style={{ fontSize: 11, color: 'rgb(34,197,94)', wordBreak: 'break-all' }}>
-                      Recovered {xlmSweepResult.amountXlm} XLM — tx: {xlmSweepResult.txHash.slice(0, 20)}…
+                      Sent {xlmSweepResult.amountXlm} XLM to {xlmSweepResult.toAddress.slice(0, 8)}… — tx: {xlmSweepResult.txHash.slice(0, 20)}…
                     </div>
                   )}
                   {xlmSweepError && (
