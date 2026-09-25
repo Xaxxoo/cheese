@@ -820,10 +820,16 @@ export class AdminAuthService {
         user.stellarPublicKey
           ? (async () => {
               let sorobanFailed = false;
+              let xlm: string | null = null;
+              try {
+                xlm = await this.blockchainService.getStellarXlmBalance(user.stellarPublicKey!);
+              } catch (e: unknown) {
+                this.logger.warn(`getUserDetail: XLM balance failed for ${id}: ${(e as Error).message}`);
+              }
               if (this.blockchainService.isSorobanReady && user.username) {
                 try {
                   const sorobanRaw = await this.blockchainService.getSorobanBalance(user.username);
-                  if (parseFloat(sorobanRaw) > 0) return { usdc: sorobanRaw, balanceError: null };
+                  if (parseFloat(sorobanRaw) > 0) return { usdc: sorobanRaw, xlm, balanceError: null };
                 } catch (e: unknown) {
                   this.logger.warn(`getUserDetail: Soroban balance failed for ${id}: ${(e as Error).message}`);
                   sorobanFailed = true;
@@ -832,12 +838,12 @@ export class AdminAuthService {
               try {
                 const horizonRaw = await this.blockchainService.getStellarUsdcBalance(user.stellarPublicKey!);
                 if (sorobanFailed && parseFloat(horizonRaw) === 0) {
-                  return { usdc: null, balanceError: 'Soroban balance fetch failed — funds may be in the contract' };
+                  return { usdc: null, xlm, balanceError: 'Soroban balance fetch failed — funds may be in the contract' };
                 }
-                return { usdc: horizonRaw, balanceError: null };
+                return { usdc: horizonRaw, xlm, balanceError: null };
               } catch (e: unknown) {
                 this.logger.warn(`getUserDetail: Horizon balance failed for ${id}: ${(e as Error).message}`);
-                return { usdc: null, balanceError: sorobanFailed ? 'Both Soroban and Horizon balance fetches failed' : 'Horizon balance fetch failed' };
+                return { usdc: null, xlm, balanceError: sorobanFailed ? 'Both Soroban and Horizon balance fetches failed' : 'Horizon balance fetch failed' };
               }
             })()
           : Promise.resolve(null),
@@ -915,6 +921,7 @@ export class AdminAuthService {
       dateOfBirth:      user.dateOfBirth,
       createdAt:        user.createdAt,
       usdcBalance:      balances?.usdc ?? null,
+      xlmBalance:       balances?.xlm ?? null,
       evmBalance:       evmBalance ?? null,
       balanceError:     balances?.balanceError ?? null,
       txCount,

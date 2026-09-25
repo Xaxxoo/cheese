@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { c, Pill, tierStyle, kycStyle, walletStyle, IcoRefresh, IcoBank, IcoStar, IcoArrowDn, IcoArrowUp, IcoChevron, IcoChevLeft } from '../../_shared';
 import {
   getAdminUserDetail, flagAdminUser, setAdminUserStatus, completeAdminTransfer,
-  setAdminUserKycVerified, verifyAdminUserEmail, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount,
+  setAdminUserKycVerified, verifyAdminUserEmail, deleteAdminUser, recoverContractBalance, sweepClassicWallet, sweepClassicWalletAmount, sweepClassicWalletXlm,
   provisionAdminUserWallet, setupUsdcTrustline, listAdminTransactions, setAdminUserDob, sendBirthdayEmail, setAdminUserUsername, setAdminUserEmail,
   type AdminUserDetail, type AdminTransactionItem,
 } from '@/lib/api/admin';
@@ -37,6 +37,8 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
   const [recoverResult, setRecoverResult] = useState<{ txHash: string; amountUsdc: string } | null>(null);
   const [recoverError,  setRecoverError]  = useState('');
   const [partialSweepAmount, setPartialSweepAmount] = useState('');
+  const [xlmSweepResult, setXlmSweepResult] = useState<{ txHash: string; amountXlm: string } | null>(null);
+  const [xlmSweepError,  setXlmSweepError]  = useState('');
   const [provisionError, setProvisionError] = useState('');
   const [trustlineError, setTrustlineError] = useState('');
   const [trustlineSuccess, setTrustlineSuccess] = useState('');
@@ -234,6 +236,26 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
         ?? (err as Error)?.message ?? 'Partial sweep failed';
       setRecoverError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSweepXlm = async () => {
+    if (!user || saving) return;
+    setSaving(true);
+    setXlmSweepError('');
+    setXlmSweepResult(null);
+    try {
+      const result = await sweepClassicWalletXlm(user.id);
+      setXlmSweepResult(result);
+      // Refresh user data to update XLM balance
+      const updated = await getAdminUserDetail(user.id);
+      setUser(updated);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? (err as Error)?.message ?? 'XLM sweep failed';
+      setXlmSweepError(msg);
     } finally {
       setSaving(false);
     }
@@ -753,15 +775,22 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: c.textMid }}>Wallets</div>
-              {user.balanceError ? (
-                <div style={{ fontSize: 11, fontWeight: 600, color: c.amber }}>
-                  Balance unavailable
-                </div>
-              ) : user.usdcBalance !== null ? (
-                <div style={{ fontSize: 13, fontWeight: 700, color: c.green }}>
-                  ${parseFloat(user.usdcBalance).toFixed(4)} <span style={{ fontSize: 10, fontWeight: 500, color: c.textDim }}>USDC</span>
-                </div>
-              ) : null}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {user.balanceError ? (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: c.amber }}>
+                    Balance unavailable
+                  </div>
+                ) : user.usdcBalance !== null ? (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.green }}>
+                    ${parseFloat(user.usdcBalance).toFixed(4)} <span style={{ fontSize: 10, fontWeight: 500, color: c.textDim }}>USDC</span>
+                  </div>
+                ) : null}
+                {user.xlmBalance !== null && parseFloat(user.xlmBalance) > 0 && (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>
+                    {parseFloat(user.xlmBalance).toFixed(4)} <span style={{ fontSize: 10, fontWeight: 500, color: c.textDim }}>XLM</span>
+                  </div>
+                )}
+              </div>
             </div>
             {user.balanceError && (
               <div style={{ fontSize: 10.5, color: c.amber, marginTop: 6, lineHeight: 1.4 }}>
@@ -966,6 +995,44 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                   <div style={{ fontSize: 11, color: c.red }}>{recoverError}</div>
                 )}
               </div>
+
+              {/* Recover XLM */}
+              {user.stellarPublicKey && (
+                <div style={{
+                  borderRadius: 10, border: '1px solid rgba(96,165,250,0.25)',
+                  background: 'rgba(96,165,250,0.06)', padding: '12px 16px',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(96,165,250)' }}>
+                    Recover XLM
+                  </div>
+                  <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
+                    Sweeps available XLM (above 1.5 XLM reserve) from the user&apos;s Stellar wallet back to the platform treasury.
+                    Current XLM: <span style={{ color: c.text, fontWeight: 600 }}>{parseFloat(user.xlmBalance ?? '0').toFixed(4)} XLM</span>
+                  </div>
+                  <button
+                    onClick={handleSweepXlm}
+                    disabled={saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5}
+                    style={{
+                      alignSelf: 'flex-start', padding: '6px 14px', borderRadius: 7,
+                      cursor: (saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 'default' : 'pointer',
+                      background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.3)',
+                      color: 'rgb(96,165,250)', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                      opacity: (saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 0.5 : 1,
+                    }}
+                  >
+                    {saving ? 'Sweeping…' : `Recover ${Math.max(0, parseFloat(user.xlmBalance ?? '0') - 1.5).toFixed(4)} XLM`}
+                  </button>
+                  {xlmSweepResult && (
+                    <div style={{ fontSize: 11, color: 'rgb(34,197,94)', wordBreak: 'break-all' }}>
+                      Recovered {xlmSweepResult.amountXlm} XLM — tx: {xlmSweepResult.txHash.slice(0, 20)}…
+                    </div>
+                  )}
+                  {xlmSweepError && (
+                    <div style={{ fontSize: 11, color: c.red }}>{xlmSweepError}</div>
+                  )}
+                </div>
+              )}
 
               {/* Divider */}
               <div style={{ borderTop: `1px solid ${c.border}`, margin: '4px 0' }} />

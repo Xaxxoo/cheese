@@ -307,6 +307,7 @@ export interface AdminUserDetail {
   dateOfBirth:      string | null
   createdAt:        string
   usdcBalance:      string | null
+  xlmBalance:       string | null
   evmBalance:       string | null
   balanceError:     string | null
   txCount:          number
