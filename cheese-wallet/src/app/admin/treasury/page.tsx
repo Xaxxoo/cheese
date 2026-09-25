@@ -838,7 +838,7 @@ function RecoverXlmPanel({ onDone }: { onDone: () => void }) {
     <div style={card}>
       <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Recover XLM from User</div>
       <div style={{ fontSize: 12, color: c.textDim, background: 'rgba(251,191,36,0.08)', border: `1px solid rgba(251,191,36,0.2)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
-        Sweeps all available XLM (above 1.5 XLM reserve) from a user&apos;s Stellar wallet back to the platform treasury.
+        Sweeps all available XLM (above 2 XLM reserve) from a user&apos;s Stellar wallet back to the platform treasury.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

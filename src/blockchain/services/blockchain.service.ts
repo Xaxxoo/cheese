@@ -1178,8 +1178,10 @@ export class BlockchainService implements OnModuleInit {
         .replace(/0+$/, '')
         .replace(/\.$/, '') || '0.0000001';
 
-      // Keep at least 1.5 XLM for base reserve + trustlines + fees
-      const minReserve = 1.5;
+      // Keep enough for base reserve (0.5 * (2 + subentries)) + tx fees.
+      // Use 2 XLM as a safe floor that covers typical accounts with a
+      // trustline plus surge-pricing transaction fees.
+      const minReserve = 2;
       if (liveBalance - parseFloat(stellarAmount) < minReserve) {
         throw new ContractCallException(
           'sendStellarXlm',

@@ -1013,23 +1013,23 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                     Recover XLM
                   </div>
                   <div style={{ fontSize: 11, color: c.textDim, lineHeight: 1.5 }}>
-                    Sweeps available XLM (above 1.5 XLM reserve) from the user&apos;s Stellar wallet.
+                    Sweeps available XLM (above 2 XLM reserve) from the user&apos;s Stellar wallet.
                     Current XLM: <span style={{ color: c.text, fontWeight: 600 }}>{parseFloat(user.xlmBalance ?? '0').toFixed(4)} XLM</span>
                     {parseFloat(user.xlmBalance ?? '0') > 1.5 && (
-                      <span> · Recoverable: <span style={{ fontWeight: 600, color: c.text }}>{Math.max(0, parseFloat(user.xlmBalance ?? '0') - 1.5).toFixed(4)} XLM</span></span>
+                      <span> · Recoverable: <span style={{ fontWeight: 600, color: c.text }}>{Math.max(0, parseFloat(user.xlmBalance ?? '0') - 2).toFixed(4)} XLM</span></span>
                     )}
                   </div>
 
                   {/* Option 1: Recover to treasury */}
                   <button
                     onClick={() => handleSweepXlm()}
-                    disabled={saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5}
+                    disabled={saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 2}
                     style={{
                       alignSelf: 'flex-start', padding: '6px 14px', borderRadius: 7,
-                      cursor: (saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 'default' : 'pointer',
+                      cursor: (saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 2) ? 'default' : 'pointer',
                       background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.3)',
                       color: 'rgb(96,165,250)', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-                      opacity: (saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 0.5 : 1,
+                      opacity: (saving || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 2) ? 0.5 : 1,
                     }}
                   >
                     {saving ? 'Sending…' : 'Recover to Treasury'}
@@ -1046,8 +1046,8 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
                     />
                     <button
                       onClick={() => handleSweepXlm(xlmSendAddress.trim())}
-                      disabled={saving || !xlmSendAddress.trim() || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 1.5}
-                      style={{ padding: '6px 14px', borderRadius: 7, cursor: (saving || !xlmSendAddress.trim() || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 'default' : 'pointer', background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, opacity: (saving || !xlmSendAddress.trim() || parseFloat(user.xlmBalance ?? '0') <= 1.5) ? 0.5 : 1 }}
+                      disabled={saving || !xlmSendAddress.trim() || !user.xlmBalance || parseFloat(user.xlmBalance ?? '0') <= 2}
+                      style={{ padding: '6px 14px', borderRadius: 7, cursor: (saving || !xlmSendAddress.trim() || parseFloat(user.xlmBalance ?? '0') <= 2) ? 'default' : 'pointer', background: 'rgba(255,255,255,0.06)', border: `1px solid ${c.border}`, color: c.textMid, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, opacity: (saving || !xlmSendAddress.trim() || parseFloat(user.xlmBalance ?? '0') <= 2) ? 0.5 : 1 }}
                     >
                       {saving ? 'Sending…' : 'Send to Address'}
                     </button>

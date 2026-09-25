@@ -704,7 +704,7 @@ export class AdminTreasuryService {
 
     const xlmBalance = await this.blockchain.getStellarXlmBalance(user.stellarPublicKey);
     const available = parseFloat(xlmBalance);
-    const minReserve = 1.5;
+    const minReserve = 2;
 
     if (available <= minReserve) {
       throw new BadRequestException(
