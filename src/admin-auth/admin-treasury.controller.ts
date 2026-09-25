@@ -46,6 +46,11 @@ class SweepClassicWalletDto {
   userId: string;
 }
 
+class SweepClassicWalletXlmDto {
+  @IsUUID()
+  userId: string;
+}
+
 class PartialSweepClassicWalletDto {
   @IsUUID()
   userId: string;
@@ -224,6 +229,24 @@ export class AdminTreasuryController {
       );
     }
     return this.treasury.sweepClassicWalletAmount(dto);
+  }
+
+  // ── POST /admin/treasury/sweep-classic-wallet-xlm ────────────────────────
+  @Post('sweep-classic-wallet-xlm')
+  @ApiOperation({
+    summary: "Recover XLM from a user's classic Stellar wallet to the platform treasury",
+  })
+  sweepClassicWalletXlm(
+    @CurrentUser() admin: User,
+    @Body() dto: SweepClassicWalletXlmDto,
+  ) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException(
+        'Only super_admin or treasurer roles can sweep wallets',
+      );
+    }
+    return this.treasury.sweepClassicWalletXlm({ userId: dto.userId });
   }
 
   // ── POST /admin/treasury/contract-drain-all ────────────────────────────────

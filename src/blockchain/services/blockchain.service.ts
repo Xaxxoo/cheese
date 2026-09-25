@@ -1141,6 +1141,90 @@ export class BlockchainService implements OnModuleInit {
   // Stellar — USDC transfer
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Send native XLM from any account (using its encrypted secret) to a
+   * destination address. Keeps a minimum reserve in the source account.
+   */
+  async sendStellarXlm(opts: {
+    fromSecretEnc: string;
+    toPublicKey: string;
+    amountXlm: string;
+    memo?: string;
+  }): Promise<StellarTransferResult> {
+    this.requireStellar('sendStellarXlm');
+    this.requireEncryption('sendStellarXlm');
+
+    const { fromSecretEnc, toPublicKey, amountXlm, memo } = opts;
+    const senderKeypair = StellarSdk.Keypair.fromSecret(
+      this.decryptSecret(fromSecretEnc),
+    );
+    const senderPublicKey = senderKeypair.publicKey();
+    this.logger.log(
+      `sendStellarXlm [from=${senderPublicKey}] [to=${toPublicKey}] [amount=${amountXlm}]`,
+    );
+
+    try {
+      const senderAccount =
+        await this.stellarServer.loadAccount(senderPublicKey);
+
+      const xlmEntry = senderAccount.balances.find(
+        (b) => b.asset_type === 'native',
+      );
+      const liveBalance = parseFloat(xlmEntry?.balance ?? '0');
+
+      // Floor to Stellar precision (7 decimal places)
+      const stellarAmount = (Math.floor(parseFloat(amountXlm) * 1e7) / 1e7)
+        .toFixed(7)
+        .replace(/0+$/, '')
+        .replace(/\.$/, '') || '0.0000001';
+
+      // Keep at least 1.5 XLM for base reserve + trustlines + fees
+      const minReserve = 1.5;
+      if (liveBalance - parseFloat(stellarAmount) < minReserve) {
+        throw new ContractCallException(
+          'sendStellarXlm',
+          `Insufficient XLM: account holds ${liveBalance.toFixed(7)} XLM, ` +
+          `sending ${stellarAmount} would leave less than the ${minReserve} XLM reserve`,
+        );
+      }
+
+      const txBuilder = new StellarSdk.TransactionBuilder(senderAccount, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: this.stellarNetwork,
+      }).addOperation(
+        StellarSdk.Operation.payment({
+          destination: toPublicKey,
+          asset: StellarSdk.Asset.native(),
+          amount: stellarAmount,
+        }),
+      );
+
+      if (memo) txBuilder.addMemo(StellarSdk.Memo.text(memo.slice(0, 28)));
+
+      const tx = txBuilder.setTimeout(30).build();
+      tx.sign(senderKeypair);
+
+      const result = await this.stellarServer.submitTransaction(tx);
+      const balanceAfter = await this.getStellarXlmBalance(senderPublicKey);
+      this.logger.log(
+        `sendStellarXlm confirmed [hash=${result.hash}] [balanceAfter=${balanceAfter}]`,
+      );
+      return { txHash: result.hash, balanceAfter };
+    } catch (err) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response?.data
+      ) {
+        const ops = err.response.data?.extras?.result_codes?.operations;
+        const msg = ops ? `Stellar op error: ${ops.join(', ')}` : String(err);
+        throw new ContractCallException('sendStellarXlm', msg);
+      }
+      throw this.wrapError('sendStellarXlm', err);
+    }
+  }
+
   async sendStellarUsdc(opts: {
     fromSecretEnc: string;
     toPublicKey: string;

@@ -678,6 +678,63 @@ export class AdminTreasuryService {
     };
   }
 
+  // ── POST /admin/treasury/sweep-classic-wallet-xlm ────────────────────────
+  // Sweeps available XLM from a user's classic Stellar wallet to the platform
+  // treasury, keeping a 1.5 XLM reserve in the user account for base reserve,
+  // trustlines, and future transaction fees.
+  async sweepClassicWalletXlm(opts: {
+    userId: string;
+  }): Promise<{ txHash: string; amountXlm: string; fromAddress: string; toAddress: string }> {
+    const user = await this.userRepo.findOne({ where: { id: opts.userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.stellarPublicKey) throw new BadRequestException('User has no Stellar wallet');
+    if (!user.stellarSecretEnc) throw new BadRequestException('User has no encrypted Stellar secret on record');
+
+    const platformAddress = this.blockchain.platformPublicKey;
+    if (!platformAddress) {
+      throw new ServiceUnavailableException('Stellar not configured — check STELLAR_PLATFORM_SECRET_KEY');
+    }
+
+    const xlmBalance = await this.blockchain.getStellarXlmBalance(user.stellarPublicKey);
+    const available = parseFloat(xlmBalance);
+    const minReserve = 1.5;
+
+    if (available <= minReserve) {
+      throw new BadRequestException(
+        `@${user.username ?? opts.userId} has only ${available.toFixed(7)} XLM ` +
+        `(${minReserve} XLM reserve required). Nothing to sweep.`,
+      );
+    }
+
+    // Sweep everything above the reserve
+    const sweepAmount = (Math.floor((available - minReserve) * 1e7) / 1e7)
+      .toFixed(7)
+      .replace(/0+$/, '')
+      .replace(/\.$/, '') || '0.0000001';
+
+    this.logger.log(
+      `sweepClassicWalletXlm initiated [user=@${user.username}] [amount=${sweepAmount}] [to=${platformAddress}]`,
+    );
+
+    const result = await this.blockchain.sendStellarXlm({
+      fromSecretEnc: user.stellarSecretEnc,
+      toPublicKey:   platformAddress,
+      amountXlm:     sweepAmount,
+      memo:          `XLM recovery ${opts.userId.slice(0, 8)}`,
+    });
+
+    this.logger.log(
+      `sweepClassicWalletXlm settled [user=@${user.username}] [amount=${sweepAmount}] [hash=${result.txHash}]`,
+    );
+
+    return {
+      txHash:      result.txHash,
+      amountXlm:   sweepAmount,
+      fromAddress: user.stellarPublicKey,
+      toAddress:   platformAddress,
+    };
+  }
+
   // ── POST /admin/treasury/restore-contract-balances ───────────────────────
   // Restores expired persistent Balance(username) ledger entries so that the
   // drain can withdraw them.  Pass the usernames whose entries have expired

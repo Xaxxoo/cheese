@@ -6,6 +6,7 @@ import {
   getTreasuryBalance,
   treasuryTransfer,
   treasuryTransferXlm,
+  sweepClassicWalletXlm,
   evmTreasuryWithdraw,
   evmTreasurySweepSigner,
   type TreasuryBalance,
@@ -783,6 +784,110 @@ function XlmTransferPanel({ onSent }: { onSent: () => void }) {
   );
 }
 
+// ── Recover XLM from user panel ────────────────────────────────────────────
+function RecoverXlmPanel({ onDone }: { onDone: () => void }) {
+  const { admin } = useAdminAuthStore();
+  const canSweep = admin?.adminRole === 'super_admin' || admin?.adminRole === 'treasurer';
+
+  const [userId,     setUserId]     = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [result,     setResult]     = useState<{ txHash: string; amountXlm: string; fromAddress: string } | null>(null);
+  const [error,      setError]      = useState('');
+
+  async function handleSweep() {
+    setError('');
+    setResult(null);
+    if (!userId.trim()) { setError('User ID is required.'); return; }
+    setSubmitting(true);
+    try {
+      const res = await sweepClassicWalletXlm(userId.trim());
+      setResult(res);
+      setUserId('');
+      onDone();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'XLM recovery failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`,
+    borderRadius: 14, padding: '20px 24px',
+    display: 'flex', flexDirection: 'column', gap: 14,
+  };
+
+  const inp: CSSProperties = {
+    background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`,
+    borderRadius: 9, padding: '10px 14px', color: c.text, fontSize: 13,
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  };
+
+  if (!canSweep) {
+    return (
+      <div style={{ ...card, alignItems: 'center', padding: '24px', textAlign: 'center' }}>
+        <div style={{ color: c.textDim, fontSize: 13 }}>
+          Only <span style={{ color: c.amber }}>super_admin</span> and <span style={{ color: c.amber }}>treasurer</span> roles can recover XLM.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Recover XLM from User</div>
+      <div style={{ fontSize: 12, color: c.textDim, background: 'rgba(251,191,36,0.08)', border: `1px solid rgba(251,191,36,0.2)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
+        Sweeps all available XLM (above 1.5 XLM reserve) from a user&apos;s Stellar wallet back to the platform treasury.
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          User ID
+        </label>
+        <input
+          style={inp}
+          placeholder="UUID"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+        />
+      </div>
+
+      {error && (
+        <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '8px 12px', lineHeight: 1.6 }}>
+          Recovered {result.amountXlm} XLM from {result.fromAddress.slice(0, 8)}… · TX{' '}
+          <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
+            {result.txHash.slice(0, 20)}…
+          </span>
+        </div>
+      )}
+
+      <button
+        onClick={handleSweep}
+        disabled={submitting}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          background: submitting ? c.amberDim : c.amber,
+          color: submitting ? c.amber : '#000',
+          border: `1px solid ${c.amberBrd}`, borderRadius: 9,
+          padding: '10px 18px', fontSize: 13, fontWeight: 600,
+          cursor: submitting ? 'default' : 'pointer', transition: 'all 0.15s',
+          opacity: submitting ? 0.7 : 1,
+        }}
+      >
+        <IcoWallet />
+        {submitting ? 'Recovering…' : 'Recover XLM'}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
   const [treasury,   setTreasury]  = useState<TreasuryBalance | null>(null);
@@ -827,6 +932,7 @@ export default function TreasuryPage() {
         <div className="aside-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <BalanceCard treasury={treasury} loading={balLoading} onRefresh={loadBalance} />
+            <RecoverXlmPanel onDone={loadBalance} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <TransferPanel onSent={loadBalance} />
