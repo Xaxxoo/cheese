@@ -1262,6 +1262,82 @@ export class BlockchainService implements OnModuleInit {
     return result.txHash;
   }
 
+  /**
+   * Send native XLM from the platform wallet to any Stellar address.
+   * The destination account must already exist on the network.
+   */
+  async platformSendXlm(
+    toPublicKey: string,
+    amountXlm: string,
+    memo = 'Cheese XLM',
+  ): Promise<string> {
+    this.requireStellar('platformSendXlm');
+    this.logger.log(
+      `platformSendXlm [to=${toPublicKey}] [amount=${amountXlm}]`,
+    );
+
+    const platformPublicKey = this.stellarPlatformKeypair.publicKey();
+    const platformAccount = await this.stellarServer.loadAccount(platformPublicKey);
+
+    // Verify live XLM balance
+    const xlmEntry = platformAccount.balances.find(
+      (b) => b.asset_type === 'native',
+    );
+    const liveBalance = parseFloat(xlmEntry?.balance ?? '0');
+
+    // Floor to Stellar precision (7 decimal places)
+    const stellarAmount = (Math.floor(parseFloat(amountXlm) * 1e7) / 1e7)
+      .toFixed(7)
+      .replace(/0+$/, '')
+      .replace(/\.$/, '') || '0.0000001';
+
+    // Reserve at least 2 XLM for base reserve + sub-entries
+    const minReserve = 2;
+    if (liveBalance - parseFloat(stellarAmount) < minReserve) {
+      throw new ContractCallException(
+        'platformSendXlm',
+        `Insufficient XLM: platform holds ${liveBalance.toFixed(7)} XLM, ` +
+        `sending ${stellarAmount} would leave less than the ${minReserve} XLM reserve`,
+      );
+    }
+
+    try {
+      const txBuilder = new StellarSdk.TransactionBuilder(platformAccount, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: this.stellarNetwork,
+      }).addOperation(
+        StellarSdk.Operation.payment({
+          destination: toPublicKey,
+          asset: StellarSdk.Asset.native(),
+          amount: stellarAmount,
+        }),
+      );
+
+      if (memo) txBuilder.addMemo(StellarSdk.Memo.text(memo.slice(0, 28)));
+
+      const tx = txBuilder.setTimeout(30).build();
+      tx.sign(this.stellarPlatformKeypair);
+
+      const result = await this.stellarServer.submitTransaction(tx);
+      this.logger.log(
+        `platformSendXlm confirmed [hash=${result.hash}] [to=${toPublicKey}] [amount=${stellarAmount}]`,
+      );
+      return result.hash;
+    } catch (err) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response?.data
+      ) {
+        const ops = err.response.data?.extras?.result_codes?.operations;
+        const msg = ops ? `Stellar op error: ${ops.join(', ')}` : String(err);
+        throw new ContractCallException('platformSendXlm', msg);
+      }
+      throw this.wrapError('platformSendXlm', err);
+    }
+  }
+
   async findPlatformUsdcPaymentByMemo(
     toPublicKey: string,
     amountUsdc: string,

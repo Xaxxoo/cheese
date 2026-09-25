@@ -105,6 +105,7 @@ export class AdminTreasuryService {
   async getBalance(): Promise<{
     address:        string;
     balanceUsdc:    string;
+    balanceXlm:     string;
     contractUsdc?:  string;
     contractAdmin?: string;
     evmVault?:      {
@@ -122,7 +123,10 @@ export class AdminTreasuryService {
         'Platform wallet not initialised — check STELLAR_PLATFORM_SECRET_KEY',
       );
     }
-    const balanceUsdc = await this.blockchain.getStellarUsdcBalance(address);
+    const [balanceUsdc, balanceXlm] = await Promise.all([
+      this.blockchain.getStellarUsdcBalance(address),
+      this.blockchain.getStellarXlmBalance(address),
+    ]);
 
     let contractUsdc: string | undefined;
     let contractAdmin: string | undefined;
@@ -155,6 +159,7 @@ export class AdminTreasuryService {
     return {
       address,
       balanceUsdc,
+      balanceXlm,
       ...(contractUsdc  !== undefined ? { contractUsdc  } : {}),
       ...(contractAdmin !== undefined ? { contractAdmin } : {}),
       ...(legacyVault ? { evmVault: legacyVault } : {}),
@@ -345,6 +350,51 @@ export class AdminTreasuryService {
     );
 
     return { txHash, toAddress, amountUsdc };
+  }
+
+  // ── POST /admin/treasury/transfer-xlm ────────────────────────────────────
+  async transferXlm(
+    toAddress: string,
+    amountXlm: string,
+  ): Promise<{ txHash: string; toAddress: string; amountXlm: string }> {
+    const platformAddress = this.blockchain.platformPublicKey;
+    if (!platformAddress) {
+      throw new ServiceUnavailableException(
+        'Platform wallet not initialised — check STELLAR_PLATFORM_SECRET_KEY',
+      );
+    }
+
+    const amount = parseFloat(amountXlm);
+    if (isNaN(amount) || amount <= 0) {
+      throw new BadRequestException('Invalid amount');
+    }
+
+    if (toAddress === platformAddress) {
+      throw new BadRequestException(
+        'Destination address cannot be the platform wallet itself',
+      );
+    }
+
+    const balance = parseFloat(
+      await this.blockchain.getStellarXlmBalance(platformAddress),
+    );
+    if (amount > balance - 2) {
+      throw new BadRequestException(
+        `Insufficient platform XLM balance. Available: ${balance.toFixed(7)} XLM (2 XLM reserved)`,
+      );
+    }
+
+    this.logger.log(
+      `Treasury XLM transfer initiated: ${amountXlm} XLM → ${toAddress}`,
+    );
+
+    const txHash = await this.blockchain.platformSendXlm(toAddress, amountXlm);
+
+    this.logger.log(
+      `Treasury XLM transfer settled [hash=${txHash}] [to=${toAddress}] [amount=${amountXlm}]`,
+    );
+
+    return { txHash, toAddress, amountXlm };
   }
 
   // ── POST /admin/treasury/evm-withdraw ────────────────────────────────────

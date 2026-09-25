@@ -24,6 +24,15 @@ class TreasuryTransferDto {
   amountUsdc: string;
 }
 
+class TreasuryTransferXlmDto {
+  @IsString()
+  @Matches(/^G[A-Z0-9]{55}$/, { message: 'Invalid Stellar address' })
+  toAddress: string;
+
+  @IsNumberString({}, { message: 'amountXlm must be a numeric string' })
+  amountXlm: string;
+}
+
 class RecoverContractBalanceDto {
   @IsUUID()
   userId: string;
@@ -85,6 +94,22 @@ export class AdminTreasuryController {
       );
     }
     return this.treasury.transfer(dto.toAddress, dto.amountUsdc);
+  }
+
+  // ── POST /admin/treasury/transfer-xlm ────────────────────────────────────
+  @Post('transfer-xlm')
+  @ApiOperation({ summary: 'Send native XLM from the platform treasury wallet' })
+  transferXlm(
+    @CurrentUser() admin: User,
+    @Body() dto: TreasuryTransferXlmDto,
+  ) {
+    const allowed: AdminRole[] = [AdminRole.SUPER_ADMIN, AdminRole.TREASURER];
+    if (!admin.adminRole || !allowed.includes(admin.adminRole)) {
+      throw new ForbiddenException(
+        'Only super_admin or treasurer roles can initiate treasury transfers',
+      );
+    }
+    return this.treasury.transferXlm(dto.toAddress, dto.amountXlm);
   }
 
   // ── POST /admin/treasury/evm-withdraw ────────────────────────────────────

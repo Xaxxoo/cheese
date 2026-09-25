@@ -491,6 +491,7 @@ export interface EvmVaultChainBalance {
 export interface TreasuryBalance {
   address:        string
   balanceUsdc:    string
+  balanceXlm:     string
   contractUsdc?:  string         // USDC held by the Soroban contract (absent if Soroban not configured)
   evmVault?:      EvmVaultBalance
   evmVaults?:     EvmVaultChainBalance[]
@@ -508,6 +509,17 @@ export async function treasuryTransfer(
   const { data } = await adminApiClient.post<ApiResponse<{ txHash: string; toAddress: string; amountUsdc: string }>>(
     '/admin/treasury/transfer',
     { toAddress, amountUsdc },
+  )
+  return data.data
+}
+
+export async function treasuryTransferXlm(
+  toAddress: string,
+  amountXlm: string,
+): Promise<{ txHash: string; toAddress: string; amountXlm: string }> {
+  const { data } = await adminApiClient.post<ApiResponse<{ txHash: string; toAddress: string; amountXlm: string }>>(
+    '/admin/treasury/transfer-xlm',
+    { toAddress, amountXlm },
   )
   return data.data
 }

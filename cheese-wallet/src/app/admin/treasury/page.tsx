@@ -5,6 +5,7 @@ import { c, IcoSend, IcoWallet, IcoChain } from '../_shared';
 import {
   getTreasuryBalance,
   treasuryTransfer,
+  treasuryTransferXlm,
   evmTreasuryWithdraw,
   evmTreasurySweepSigner,
   type TreasuryBalance,
@@ -68,9 +69,15 @@ function BalanceCard({
           {loading && !treasury ? (
             <div style={{ fontSize: 26, fontWeight: 700, color: c.textDim, letterSpacing: '-0.02em' }}>—</div>
           ) : (
-            <div style={{ fontSize: 26, fontWeight: 700, color: c.text, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-              ${fmtUsd(treasury?.balanceUsdc ?? '0')}
-              <span style={{ fontSize: 13, color: c.textDim, fontWeight: 500, marginLeft: 6 }}>USDC</span>
+            <div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: c.text, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                ${fmtUsd(treasury?.balanceUsdc ?? '0')}
+                <span style={{ fontSize: 13, color: c.textDim, fontWeight: 500, marginLeft: 6 }}>USDC</span>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: c.text, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>
+                {fmtNative(treasury?.balanceXlm)}
+                <span style={{ fontSize: 12, color: c.textDim, fontWeight: 500, marginLeft: 6 }}>XLM</span>
+              </div>
             </div>
           )}
         </div>
@@ -656,6 +663,126 @@ function TransferPanel({ onSent }: { onSent: () => void }) {
   );
 }
 
+// ── XLM Transfer panel ─────────────────────────────────────────────────────
+function XlmTransferPanel({ onSent }: { onSent: () => void }) {
+  const { admin } = useAdminAuthStore();
+  const canTransfer = admin?.adminRole === 'super_admin' || admin?.adminRole === 'treasurer';
+
+  const [toAddress,  setToAddress]  = useState('');
+  const [amount,     setAmount]     = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [result,     setResult]     = useState<{ txHash: string } | null>(null);
+  const [error,      setError]      = useState('');
+
+  async function handleSend() {
+    setError('');
+    setResult(null);
+    if (!toAddress.trim() || !amount.trim()) { setError('Both fields are required.'); return; }
+    if (!/^G[A-Z0-9]{55}$/.test(toAddress.trim())) { setError('Invalid Stellar address (must start with G and be 56 chars).'); return; }
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) { setError('Enter a valid amount.'); return; }
+    setSubmitting(true);
+    try {
+      const res = await treasuryTransferXlm(toAddress.trim(), amount.trim());
+      setResult(res);
+      setToAddress('');
+      setAmount('');
+      onSent();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Transfer failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const card: CSSProperties = {
+    background: c.surface, border: `1px solid ${c.border}`,
+    borderRadius: 14, padding: '20px 24px',
+    display: 'flex', flexDirection: 'column', gap: 14,
+  };
+
+  const inp: CSSProperties = {
+    background: 'rgba(255,255,255,0.04)', border: `1px solid ${c.border}`,
+    borderRadius: 9, padding: '10px 14px', color: c.text, fontSize: 13,
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  };
+
+  if (!canTransfer) {
+    return (
+      <div style={{ ...card, alignItems: 'center', padding: '24px', textAlign: 'center' }}>
+        <div style={{ color: c.textDim, fontSize: 13 }}>
+          Only <span style={{ color: c.amber }}>super_admin</span> and <span style={{ color: c.amber }}>treasurer</span> roles can initiate transfers.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Send XLM from Treasury</div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          Destination Stellar Address
+        </label>
+        <input
+          style={inp}
+          placeholder="G…"
+          value={toAddress}
+          onChange={(e) => setToAddress(e.target.value)}
+        />
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label style={{ fontSize: 11, color: c.textDim, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          Amount (XLM)
+        </label>
+        <input
+          style={inp}
+          type="number"
+          min="0.0000001"
+          step="0.1"
+          placeholder="0.00"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </div>
+
+      {error && (
+        <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ fontSize: 12, color: c.green, background: c.greenDim, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+          Sent! TX hash:{' '}
+          <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
+            {result.txHash.slice(0, 20)}…
+          </span>
+        </div>
+      )}
+
+      <button
+        onClick={handleSend}
+        disabled={submitting}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          background: submitting ? 'rgba(96,165,250,0.15)' : c.blue,
+          color: submitting ? c.blue : '#000',
+          border: `1px solid rgba(96,165,250,0.4)`, borderRadius: 9,
+          padding: '10px 18px', fontSize: 13, fontWeight: 600,
+          cursor: submitting ? 'default' : 'pointer', transition: 'all 0.15s',
+          opacity: submitting ? 0.7 : 1,
+        }}
+      >
+        <IcoSend />
+        {submitting ? 'Sending…' : 'Send XLM'}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function TreasuryPage() {
   const [treasury,   setTreasury]  = useState<TreasuryBalance | null>(null);
@@ -698,8 +825,13 @@ export default function TreasuryPage() {
       <div>
         <div style={sectionLabel('Stellar Treasury', c.amber)}>Stellar Treasury</div>
         <div className="aside-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
-          <BalanceCard treasury={treasury} loading={balLoading} onRefresh={loadBalance} />
-          <TransferPanel onSent={loadBalance} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <BalanceCard treasury={treasury} loading={balLoading} onRefresh={loadBalance} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <TransferPanel onSent={loadBalance} />
+            <XlmTransferPanel onSent={loadBalance} />
+          </div>
         </div>
       </div>
 
