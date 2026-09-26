@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, type CSSProperties } from 'react';
 import { c, IcoSend, IcoWallet, IcoChain } from '../_shared';
 import {
   getTreasuryBalance,
+  getTreasuryXlmBalances,
   treasuryTransfer,
   treasuryTransferXlm,
   evmTreasuryWithdraw,
@@ -11,6 +12,7 @@ import {
   type TreasuryBalance,
   type EvmVaultChainBalance,
   type EvmVaultTokenBalance,
+  type XlmBalanceEntry,
 } from '@/lib/api/admin';
 import { useAdminAuthStore } from '@/store/adminAuthStore';
 
@@ -788,6 +790,11 @@ export default function TreasuryPage() {
   const [treasury,   setTreasury]  = useState<TreasuryBalance | null>(null);
   const [balLoading, setBalLoading] = useState(true);
 
+  const [xlmEntries,      setXlmEntries]      = useState<XlmBalanceEntry[] | null>(null);
+  const [xlmTotal,        setXlmTotal]        = useState('0');
+  const [xlmScanning,     setXlmScanning]     = useState(false);
+  const [xlmScanError,    setXlmScanError]    = useState('');
+
   const loadBalance = useCallback(async () => {
     setBalLoading(true);
     try {
@@ -798,6 +805,20 @@ export default function TreasuryPage() {
   }, []);
 
   useEffect(() => { void loadBalance(); }, [loadBalance]);
+
+  async function handleScanXlm() {
+    setXlmScanning(true);
+    setXlmScanError('');
+    try {
+      const data = await getTreasuryXlmBalances();
+      setXlmEntries(data.users);
+      setXlmTotal(data.totalRecoverable);
+    } catch (err: unknown) {
+      setXlmScanError(err instanceof Error ? err.message : 'Scan failed');
+    } finally {
+      setXlmScanning(false);
+    }
+  }
 
   const card: CSSProperties = {
     background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14,
@@ -832,6 +853,97 @@ export default function TreasuryPage() {
             <TransferPanel onSent={loadBalance} />
             <XlmTransferPanel onSent={loadBalance} />
           </div>
+        </div>
+      </div>
+
+      {/* XLM Balances scan */}
+      <div>
+        <div style={sectionLabel('User XLM Balances', 'rgb(96,165,250)')}>User XLM Balances</div>
+        <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Scan for Recoverable XLM</div>
+              <div style={{ fontSize: 11.5, color: c.textDim, marginTop: 3 }}>
+                Queries all user Stellar wallets to find accounts with XLM above the 2 XLM reserve.
+              </div>
+            </div>
+            <button
+              onClick={handleScanXlm}
+              disabled={xlmScanning}
+              style={{
+                fontSize: 12, fontWeight: 600, padding: '8px 16px', borderRadius: 8,
+                background: xlmScanning ? 'rgba(96,165,250,0.15)' : 'rgb(96,165,250)',
+                color: xlmScanning ? 'rgb(96,165,250)' : '#000',
+                border: '1px solid rgba(96,165,250,0.4)',
+                cursor: xlmScanning ? 'default' : 'pointer',
+                opacity: xlmScanning ? 0.7 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              {xlmScanning ? 'Scanning…' : xlmEntries ? 'Rescan' : 'Scan Wallets'}
+            </button>
+          </div>
+
+          {xlmScanError && (
+            <div style={{ fontSize: 12, color: c.red, background: c.redDim, border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 8, padding: '8px 12px' }}>
+              {xlmScanError}
+            </div>
+          )}
+
+          {xlmEntries !== null && (
+            <>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div style={{ fontSize: 12, color: c.textDim }}>
+                  Found <span style={{ color: c.text, fontWeight: 600 }}>{xlmEntries.length}</span> account{xlmEntries.length !== 1 ? 's' : ''} with excess XLM
+                </div>
+                <div style={{ fontSize: 12, color: c.textDim }}>
+                  Total recoverable: <span style={{ color: c.text, fontWeight: 700 }}>{parseFloat(xlmTotal).toFixed(4)} XLM</span>
+                </div>
+              </div>
+
+              {xlmEntries.length > 0 && (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', color: c.textDim, fontWeight: 500, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>User</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', color: c.textDim, fontWeight: 500, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Address</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', color: c.textDim, fontWeight: 500, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Balance</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', color: c.textDim, fontWeight: 500, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recoverable</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', color: c.textDim, fontWeight: 500, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {xlmEntries.map((entry) => (
+                        <tr key={entry.id} style={{ borderBottom: `1px solid ${c.border}` }}>
+                          <td style={{ padding: '10px 10px', color: c.text, fontWeight: 600 }}>
+                            {entry.username ? `@${entry.username}` : entry.id.slice(0, 8) + '…'}
+                          </td>
+                          <td style={{ padding: '10px 10px', fontFamily: 'monospace', color: c.textDim, fontSize: 11 }}>
+                            {entry.stellarPublicKey.slice(0, 8)}…{entry.stellarPublicKey.slice(-6)}
+                          </td>
+                          <td style={{ padding: '10px 10px', textAlign: 'right', color: c.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                            {parseFloat(entry.xlmBalance).toFixed(4)}
+                          </td>
+                          <td style={{ padding: '10px 10px', textAlign: 'right', color: 'rgb(96,165,250)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                            {parseFloat(entry.recoverable).toFixed(4)}
+                          </td>
+                          <td style={{ padding: '10px 10px', textAlign: 'right' }}>
+                            <a
+                              href={`/admin/users/${entry.id}`}
+                              style={{ fontSize: 11, color: 'rgb(96,165,250)', textDecoration: 'none' }}
+                            >
+                              View
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

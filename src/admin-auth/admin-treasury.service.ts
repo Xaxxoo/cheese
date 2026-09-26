@@ -101,6 +101,70 @@ export class AdminTreasuryService {
     return addr;
   }
 
+  // ── GET /admin/treasury/xlm-balances ─────────────────────────────────────
+  async getXlmBalances(): Promise<{
+    users: {
+      id: string;
+      username: string | null;
+      stellarPublicKey: string;
+      xlmBalance: string;
+      recoverable: string;
+    }[];
+    totalRecoverable: string;
+  }> {
+    const allUsers = await this.userRepo.find({
+      where: { stellarPublicKey: Not(IsNull()) },
+      select: ['id', 'username', 'stellarPublicKey'],
+    });
+
+    const minReserve = 2;
+    const results: {
+      id: string;
+      username: string | null;
+      stellarPublicKey: string;
+      xlmBalance: string;
+      recoverable: string;
+    }[] = [];
+    let totalRecoverable = 0;
+
+    // Query in parallel batches of 10 to avoid hammering Horizon
+    const batchSize = 10;
+    for (let i = 0; i < allUsers.length; i += batchSize) {
+      const batch = allUsers.slice(i, i + batchSize);
+      const settled = await Promise.allSettled(
+        batch.map(async (user) => {
+          const xlm = await this.blockchain.getStellarXlmBalance(user.stellarPublicKey!);
+          const balance = parseFloat(xlm);
+          if (balance > minReserve) {
+            const recoverable = Math.floor((balance - minReserve) * 1e7) / 1e7;
+            return {
+              id: user.id,
+              username: user.username,
+              stellarPublicKey: user.stellarPublicKey!,
+              xlmBalance: balance.toFixed(7),
+              recoverable: recoverable.toFixed(7),
+            };
+          }
+          return null;
+        }),
+      );
+      for (const item of settled) {
+        if (item.status === 'fulfilled' && item.value) {
+          results.push(item.value);
+          totalRecoverable += parseFloat(item.value.recoverable);
+        }
+      }
+    }
+
+    // Sort by recoverable descending
+    results.sort((a, b) => parseFloat(b.recoverable) - parseFloat(a.recoverable));
+
+    return {
+      users: results,
+      totalRecoverable: totalRecoverable.toFixed(7),
+    };
+  }
+
   // ── GET /admin/treasury ──────────────────────────────────────────────────
   async getBalance(): Promise<{
     address:        string;

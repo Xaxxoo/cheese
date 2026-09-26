@@ -90,6 +90,13 @@ export class AdminTreasuryController {
     return this.treasury.getBalance();
   }
 
+  // ── GET /admin/treasury/xlm-balances ─────────────────────────────────────
+  @Get('xlm-balances')
+  @ApiOperation({ summary: 'Scan all user wallets and return those with recoverable XLM (above 2 XLM reserve)' })
+  getXlmBalances() {
+    return this.treasury.getXlmBalances();
+  }
+
   // ── POST /admin/treasury/transfer ────────────────────────────────────────
   @Post('transfer')
   @ApiOperation({ summary: 'Transfer USDC out of the platform treasury wallet' })

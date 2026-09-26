@@ -503,6 +503,25 @@ export async function getTreasuryBalance(): Promise<TreasuryBalance> {
   return data.data
 }
 
+export interface XlmBalanceEntry {
+  id:               string
+  username:         string | null
+  stellarPublicKey: string
+  xlmBalance:       string
+  recoverable:      string
+}
+
+export async function getTreasuryXlmBalances(): Promise<{
+  users: XlmBalanceEntry[]
+  totalRecoverable: string
+}> {
+  const { data } = await adminApiClient.get<ApiResponse<{
+    users: XlmBalanceEntry[]
+    totalRecoverable: string
+  }>>('/admin/treasury/xlm-balances', { timeout: 300_000 })
+  return data.data
+}
+
 export async function treasuryTransfer(
   toAddress: string,
   amountUsdc: string,
