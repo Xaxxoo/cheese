@@ -6,6 +6,7 @@ import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { KycAttempt } from './entities/kyc-attempt.entity';
 import { DojahClient } from './dojah.client';
+import { PulseMfbClient } from '../banks/pulsemfb.client';
 import { KycService } from './kyc.service';
 import { KycController } from './kyc.controller';
 import { TierMilestoneService } from './tier-milestone.service';
@@ -19,7 +20,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
     NotificationsModule,
   ],
   controllers: [KycController],
-  providers: [KycService, DojahClient, TierMilestoneService],
+  providers: [KycService, DojahClient, PulseMfbClient, TierMilestoneService],
   exports: [KycService, TierMilestoneService],
 })
 export class KycModule {}

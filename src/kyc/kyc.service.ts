@@ -12,6 +12,7 @@ import { User, KycStatus, Tier } from '../auth/entities/user.entity';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DojahClient } from './dojah.client';
+import { PulseMfbClient } from '../banks/pulsemfb.client';
 import {
   KycAttempt,
   KycAttemptType,
@@ -30,31 +31,57 @@ export class KycService {
     @InjectRepository(KycAttempt)
     private readonly attemptRepo: Repository<KycAttempt>,
     private readonly dojah: DojahClient,
+    private readonly pulseMfb: PulseMfbClient,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  // ── BVN verification ────────────────────────────────────────────────────────
+  // ── BVN verification (two-step OTP flow via Pulse MFB) ─────────────────────
 
-  async verifyBvn(
+  async initiateBvn(
     userId: string,
     bvn: string,
-  ): Promise<{ status: string; message: string }> {
-    this.requireDojah();
+  ): Promise<{ sessionId: string; maskedPhone: string }> {
+    this.requirePulseMfb();
 
     const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
     this.guardAlreadyVerified(user);
     await this.guardDuplicateAttempt(userId, KycAttemptType.BVN);
 
-    let result: Awaited<ReturnType<DojahClient['lookupBvn']>>;
     try {
-      result = await this.dojah.lookupBvn(bvn);
+      const result = await this.pulseMfb.initiateBvn(bvn);
+      this.logger.log(`BVN OTP initiated [userId=${userId}]`);
+      return {
+        sessionId: result.session_id,
+        maskedPhone: result.masked_phone_number,
+      };
+    } catch (err) {
+      throw new BadRequestException(
+        `BVN verification initiation failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  async completeBvn(
+    userId: string,
+    sessionId: string,
+    otp: string,
+  ): Promise<{ status: string; message: string }> {
+    this.requirePulseMfb();
+
+    const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    this.guardAlreadyVerified(user);
+
+    let result: Awaited<ReturnType<PulseMfbClient['verifyBvnOtp']>>;
+    try {
+      result = await this.pulseMfb.verifyBvnOtp(sessionId, otp);
     } catch (err) {
       await this.recordAttempt({
         userId,
         type: KycAttemptType.BVN,
         status: KycAttemptStatus.FAILED,
-        documentSuffix: bvn.slice(-4),
+        provider: 'pulsemfb',
+        documentSuffix: null,
         errorMessage: (err as Error).message,
         rawResponse: null,
       });
@@ -63,16 +90,14 @@ export class KycService {
       );
     }
 
-    // Store attempt — strip the photo before saving
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { image: _image, ...safeResult } = result;
     await this.recordAttempt({
       userId,
       type: KycAttemptType.BVN,
       status: KycAttemptStatus.VERIFIED,
-      documentSuffix: bvn.slice(-4),
+      provider: 'pulsemfb',
+      documentSuffix: null,
       errorMessage: null,
-      rawResponse: safeResult as Record<string, unknown>,
+      rawResponse: result as Record<string, unknown>,
     });
 
     await this.userRepo.update(userId, {
@@ -81,7 +106,7 @@ export class KycService {
       yieldEnrolledAt: new Date(),
     });
 
-    this.logger.log(`BVN verified [userId=${userId}]`);
+    this.logger.log(`BVN verified via Pulse MFB [userId=${userId}]`);
 
     await this.sendApprovedEmail(user).catch((e) =>
       this.logger.warn(
@@ -92,27 +117,52 @@ export class KycService {
     return { status: 'verified', message: 'BVN verified successfully.' };
   }
 
-  // ── NIN verification ────────────────────────────────────────────────────────
+  // ── NIN verification (two-step OTP flow via Pulse MFB) ─────────────────────
 
-  async verifyNin(
+  async initiateNin(
     userId: string,
     nin: string,
-  ): Promise<{ status: string; message: string }> {
-    this.requireDojah();
+  ): Promise<{ sessionId: string; maskedPhone: string }> {
+    this.requirePulseMfb();
 
     const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
     this.guardAlreadyVerified(user);
     await this.guardDuplicateAttempt(userId, KycAttemptType.NIN);
 
-    let result: Awaited<ReturnType<DojahClient['lookupNin']>>;
     try {
-      result = await this.dojah.lookupNin(nin);
+      const result = await this.pulseMfb.initiateNin(nin);
+      this.logger.log(`NIN OTP initiated [userId=${userId}]`);
+      return {
+        sessionId: result.session_id,
+        maskedPhone: result.masked_phone_number,
+      };
+    } catch (err) {
+      throw new BadRequestException(
+        `NIN verification initiation failed: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  async completeNin(
+    userId: string,
+    sessionId: string,
+    otp: string,
+  ): Promise<{ status: string; message: string }> {
+    this.requirePulseMfb();
+
+    const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    this.guardAlreadyVerified(user);
+
+    let result: Awaited<ReturnType<PulseMfbClient['verifyNinOtp']>>;
+    try {
+      result = await this.pulseMfb.verifyNinOtp(sessionId, otp);
     } catch (err) {
       await this.recordAttempt({
         userId,
         type: KycAttemptType.NIN,
         status: KycAttemptStatus.FAILED,
-        documentSuffix: nin.slice(-4),
+        provider: 'pulsemfb',
+        documentSuffix: null,
         errorMessage: (err as Error).message,
         rawResponse: null,
       });
@@ -121,15 +171,14 @@ export class KycService {
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { photo: _photo, ...safeResult } = result;
     await this.recordAttempt({
       userId,
       type: KycAttemptType.NIN,
       status: KycAttemptStatus.VERIFIED,
-      documentSuffix: nin.slice(-4),
+      provider: 'pulsemfb',
+      documentSuffix: null,
       errorMessage: null,
-      rawResponse: safeResult as Record<string, unknown>,
+      rawResponse: result as Record<string, unknown>,
     });
 
     await this.userRepo.update(userId, {
@@ -138,7 +187,7 @@ export class KycService {
       yieldEnrolledAt: new Date(),
     });
 
-    this.logger.log(`NIN verified [userId=${userId}]`);
+    this.logger.log(`NIN verified via Pulse MFB [userId=${userId}]`);
 
     await this.sendApprovedEmail(user).catch((e) =>
       this.logger.warn(
@@ -407,6 +456,14 @@ export class KycService {
     }
   }
 
+  private requirePulseMfb(): void {
+    if (!this.pulseMfb.isReady) {
+      throw new ServiceUnavailableException(
+        'KYC service is temporarily unavailable. Please try again later.',
+      );
+    }
+  }
+
   private guardAlreadyVerified(user: User): void {
     if (user.kycStatus === KycStatus.VERIFIED) {
       throw new ConflictException('Your identity has already been verified.');
@@ -429,6 +486,7 @@ export class KycService {
     userId: string;
     type: KycAttemptType;
     status: KycAttemptStatus;
+    provider?: string;
     documentSuffix: string | null;
     errorMessage: string | null;
     rawResponse: Record<string, unknown> | null;

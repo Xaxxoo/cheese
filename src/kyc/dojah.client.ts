@@ -17,26 +17,6 @@ const BASE_URL = 'https://api.dojah.io';
 // Response shapes
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface DojahBvnResult {
-  bvn: string;
-  firstName: string;
-  lastName: string;
-  middleName: string;
-  dateOfBirth: string;
-  phoneNumber: string;
-  image: string; // base64 — stripped before storing
-}
-
-export interface DojahNinResult {
-  nin: string;
-  firstName: string;
-  lastName: string;
-  middleName: string;
-  dateOfBirth: string;
-  phone: string;
-  photo: string; // base64 — stripped before storing
-}
-
 export interface DojahSelfieResult {
   match: boolean;
   confidence: number;
@@ -80,38 +60,6 @@ export class DojahClient implements OnModuleInit {
 
   get isReady(): boolean {
     return this.ready;
-  }
-
-  // ── BVN lookup ─────────────────────────────────────────────────────────────
-
-  async lookupBvn(bvn: string): Promise<DojahBvnResult> {
-    const data = await this.get<any>(`/api/v1/kyc/bvn?bvn=${bvn}`);
-    const e = data.entity;
-    return {
-      bvn: e.bvn,
-      firstName: (e.first_name ?? '').trim(),
-      lastName: (e.last_name ?? '').trim(),
-      middleName: (e.middle_name ?? '').trim(),
-      dateOfBirth: e.date_of_birth ?? '',
-      phoneNumber: e.phone_number1 ?? '',
-      image: e.image ?? '',
-    };
-  }
-
-  // ── NIN lookup ─────────────────────────────────────────────────────────────
-
-  async lookupNin(nin: string): Promise<DojahNinResult> {
-    const data = await this.get<any>(`/api/v1/kyc/nin?nin=${nin}`);
-    const e = data.entity;
-    return {
-      nin: e.nin ?? nin,
-      firstName: (e.firstname ?? '').trim(),
-      lastName: (e.surname ?? '').trim(),
-      middleName: (e.middlename ?? '').trim(),
-      dateOfBirth: e.birthdate ?? '',
-      phone: e.mobile ?? '',
-      photo: e.photo ?? '',
-    };
   }
 
   // ── Document verification ───────────────────────────────────────────────────

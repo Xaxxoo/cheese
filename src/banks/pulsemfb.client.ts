@@ -49,6 +49,21 @@ export interface PulseMfbVirtualAccountResult {
   reference:     string;
 }
 
+export interface PulseMfbKycInitiateResult {
+  session_id: string;
+  masked_phone_number: string;
+}
+
+export interface PulseMfbKycVerifyResult {
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  dateOfBirth: string;
+  phoneNumber: string;
+  gender: string;
+  [key: string]: unknown;
+}
+
 @Injectable()
 export class PulseMfbClient implements OnModuleInit {
   private readonly logger = new Logger(PulseMfbClient.name);
@@ -187,6 +202,48 @@ export class PulseMfbClient implements OnModuleInit {
       accountName:   data.data.account_name,
       reference:     data.data.reference,
     };
+  }
+
+  // ── KYC: BVN ────────────────────────────────────────────────────────────────
+
+  async initiateBvn(bvn: string): Promise<PulseMfbKycInitiateResult> {
+    const data = await this.post<{ data: PulseMfbKycInitiateResult }>(
+      '/kyc/bvn/initiate',
+      { bvn },
+    );
+    return data.data;
+  }
+
+  async verifyBvnOtp(
+    sessionId: string,
+    otp: string,
+  ): Promise<PulseMfbKycVerifyResult> {
+    const data = await this.post<{ data: PulseMfbKycVerifyResult }>(
+      '/kyc/bvn/verify-otp',
+      { session_id: sessionId, otp },
+    );
+    return data.data;
+  }
+
+  // ── KYC: NIN ────────────────────────────────────────────────────────────────
+
+  async initiateNin(nin: string): Promise<PulseMfbKycInitiateResult> {
+    const data = await this.post<{ data: PulseMfbKycInitiateResult }>(
+      '/kyc/nin/initiate',
+      { nin },
+    );
+    return data.data;
+  }
+
+  async verifyNinOtp(
+    sessionId: string,
+    otp: string,
+  ): Promise<PulseMfbKycVerifyResult> {
+    const data = await this.post<{ data: PulseMfbKycVerifyResult }>(
+      '/kyc/nin/verify-otp',
+      { session_id: sessionId, otp },
+    );
+    return data.data;
   }
 
   async getTransferStatus(reference: string): Promise<PulseMfbTransferStatus> {

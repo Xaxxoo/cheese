@@ -22,8 +22,10 @@ import { Public } from '../common/decorators/public.decorator';
 import { User } from '../auth/entities/user.entity';
 import { KycService } from './kyc.service';
 import {
-  VerifyBvnDto,
-  VerifyNinDto,
+  InitiateBvnDto,
+  InitiateNinDto,
+  CompleteBvnDto,
+  CompleteNinDto,
   VerifySelfieDto,
   VerifyDocumentDto,
   AdminApproveDto,
@@ -59,44 +61,94 @@ export class KycController {
     return this.kycService.getStatus(user.id);
   }
 
-  // ── POST /kyc/verify/bvn ────────────────────────────────────────────────────
-  @Post('verify/bvn')
+  // ── POST /kyc/verify/bvn/initiate ───────────────────────────────────────────
+  @Post('verify/bvn/initiate')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @ApiOperation({
-    summary: 'Verify BVN',
+    summary: 'Initiate BVN verification',
     description:
-      'Submits a BVN to Dojah for verification. On success, sets kycStatus to "verified".',
+      'Sends an OTP to the phone number registered with the BVN. ' +
+      'Returns a session ID and masked phone number. Use /verify/bvn/complete to submit the OTP.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent — returns sessionId and maskedPhone',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid BVN or initiation failed',
+  })
+  @ApiResponse({ status: 409, description: 'Already verified' })
+  @ApiResponse({ status: 503, description: 'KYC service unavailable' })
+  initiateBvn(@CurrentUser() user: User, @Body() dto: InitiateBvnDto) {
+    return this.kycService.initiateBvn(user.id, dto.bvn);
+  }
+
+  // ── POST /kyc/verify/bvn/complete ─────────────────────────────────────────
+  @Post('verify/bvn/complete')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Complete BVN verification',
+    description:
+      'Submits the OTP received via SMS to verify the BVN. ' +
+      'On success, sets kycStatus to "verified".',
   })
   @ApiResponse({ status: 200, description: 'BVN verified' })
   @ApiResponse({
     status: 400,
-    description: 'Invalid BVN or verification failed',
+    description: 'Invalid OTP or verification failed',
   })
   @ApiResponse({ status: 409, description: 'Already verified' })
   @ApiResponse({ status: 503, description: 'KYC service unavailable' })
-  verifyBvn(@CurrentUser() user: User, @Body() dto: VerifyBvnDto) {
-    return this.kycService.verifyBvn(user.id, dto.bvn);
+  completeBvn(@CurrentUser() user: User, @Body() dto: CompleteBvnDto) {
+    return this.kycService.completeBvn(user.id, dto.sessionId, dto.otp);
   }
 
-  // ── POST /kyc/verify/nin ────────────────────────────────────────────────────
-  @Post('verify/nin')
+  // ── POST /kyc/verify/nin/initiate ─────────────────────────────────────────
+  @Post('verify/nin/initiate')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @ApiOperation({
-    summary: 'Verify NIN',
+    summary: 'Initiate NIN verification',
     description:
-      'Submits a NIN to Dojah for verification. On success, sets kycStatus to "verified".',
+      'Sends an OTP to the phone number registered with the NIN. ' +
+      'Returns a session ID and masked phone number. Use /verify/nin/complete to submit the OTP.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent — returns sessionId and maskedPhone',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid NIN or initiation failed',
+  })
+  @ApiResponse({ status: 409, description: 'Already verified' })
+  @ApiResponse({ status: 503, description: 'KYC service unavailable' })
+  initiateNin(@CurrentUser() user: User, @Body() dto: InitiateNinDto) {
+    return this.kycService.initiateNin(user.id, dto.nin);
+  }
+
+  // ── POST /kyc/verify/nin/complete ─────────────────────────────────────────
+  @Post('verify/nin/complete')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Complete NIN verification',
+    description:
+      'Submits the OTP received via SMS to verify the NIN. ' +
+      'On success, sets kycStatus to "verified".',
   })
   @ApiResponse({ status: 200, description: 'NIN verified' })
   @ApiResponse({
     status: 400,
-    description: 'Invalid NIN or verification failed',
+    description: 'Invalid OTP or verification failed',
   })
   @ApiResponse({ status: 409, description: 'Already verified' })
   @ApiResponse({ status: 503, description: 'KYC service unavailable' })
-  verifyNin(@CurrentUser() user: User, @Body() dto: VerifyNinDto) {
-    return this.kycService.verifyNin(user.id, dto.nin);
+  completeNin(@CurrentUser() user: User, @Body() dto: CompleteNinDto) {
+    return this.kycService.completeNin(user.id, dto.sessionId, dto.otp);
   }
 
   // ── POST /kyc/verify/selfie ─────────────────────────────────────────────────

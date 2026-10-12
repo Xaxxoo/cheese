@@ -2,7 +2,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, Length, Matches, IsNotEmpty, IsIn } from 'class-validator';
 
-export class VerifyBvnDto {
+export class InitiateBvnDto {
   @ApiProperty({ example: '12345678901', description: '11-digit BVN' })
   @IsString()
   @Length(11, 11, { message: 'BVN must be exactly 11 digits' })
@@ -10,12 +10,36 @@ export class VerifyBvnDto {
   bvn: string;
 }
 
-export class VerifyNinDto {
+export class InitiateNinDto {
   @ApiProperty({ example: '12345678901', description: '11-digit NIN' })
   @IsString()
   @Length(11, 11, { message: 'NIN must be exactly 11 digits' })
   @Matches(/^\d{11}$/, { message: 'NIN must contain only digits' })
   nin: string;
+}
+
+export class CompleteBvnDto {
+  @ApiProperty({ description: 'Session ID from the initiate step' })
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
+
+  @ApiProperty({ example: '123456', description: 'OTP sent to registered phone' })
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
+}
+
+export class CompleteNinDto {
+  @ApiProperty({ description: 'Session ID from the initiate step' })
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
+
+  @ApiProperty({ example: '123456', description: 'OTP sent to registered phone' })
+  @IsString()
+  @IsNotEmpty()
+  otp: string;
 }
 
 export class VerifySelfieDto {
