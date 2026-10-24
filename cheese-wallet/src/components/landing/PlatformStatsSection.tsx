@@ -148,11 +148,12 @@ export function PlatformStatsSection() {
   })
 
   const TX_LIMIT = 20
-  const { data: txData, isLoading: txLoading } = useQuery<PublicTransactionsResponse>({
+  const { data: txData, isLoading: txLoading, isError: txError } = useQuery<PublicTransactionsResponse>({
     queryKey: QUERY_KEYS.PUBLIC_TRANSACTIONS(txPage),
     queryFn: () => fetchPublicTransactions(txPage, TX_LIMIT),
     refetchInterval: 60_000,
     staleTime: 30_000,
+    retry: 1,
   })
   const txTotalPages = txData ? Math.ceil(txData.total / TX_LIMIT) : 0
 
@@ -301,7 +302,7 @@ export function PlatformStatsSection() {
         </motion.div>
 
         {/* Transaction Hashes */}
-        <motion.div
+        {!txError && <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ delay: 0.4, duration: 0.6 }}
@@ -406,7 +407,7 @@ export function PlatformStatsSection() {
           ) : (
             <div className="h-24 flex items-center justify-center text-[#333] text-sm">No transactions yet</div>
           )}
-        </motion.div>
+        </motion.div>}
       </div>
     </section>
   )
