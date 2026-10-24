@@ -340,25 +340,29 @@ export function PlatformStatsSection() {
               </div>
 
               {/* Data rows */}
-              {txData.transactions.map((tx) => (
+              {txData.transactions.map((tx, i) => (
                 <div
-                  key={tx.txHash}
+                  key={tx.txHash ?? `tx-${i}`}
                   className="grid gap-4 px-4 py-3 border-b transition-colors hover:bg-[#0B0B0B]"
                   style={{ gridTemplateColumns: '1.5fr 0.8fr 0.8fr 1fr', borderColor: 'rgba(255,255,255,0.04)' }}
                 >
                   <div className="min-w-0">
-                    <a
-                      href={`https://stellar.expert/explorer/public/tx/${tx.txHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-mono truncate block transition-colors"
-                      style={{ color: 'rgba(212,175,55,0.7)' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#D4AF37')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(212,175,55,0.7)')}
-                      title={tx.txHash}
-                    >
-                      {tx.txHash.slice(0, 8)}...{tx.txHash.slice(-8)}
-                    </a>
+                    {tx.txHash ? (
+                      <a
+                        href={`https://stellar.expert/explorer/public/tx/${tx.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono truncate block transition-colors"
+                        style={{ color: 'rgba(212,175,55,0.7)' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = '#D4AF37')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(212,175,55,0.7)')}
+                        title={tx.txHash}
+                      >
+                        {tx.txHash.slice(0, 8)}...{tx.txHash.slice(-8)}
+                      </a>
+                    ) : (
+                      <span className="text-xs font-mono text-[#333]">—</span>
+                    )}
                   </div>
                   <div className="text-xs text-[#888] capitalize">{tx.type.replace(/_/g, ' ')}</div>
                   <div className="text-xs text-white text-right font-medium">

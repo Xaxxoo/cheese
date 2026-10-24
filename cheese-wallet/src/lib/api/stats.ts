@@ -35,7 +35,7 @@ export async function fetchPublicChart(days: number = 30): Promise<ChartPoint[]>
 }
 
 export interface PublicTransaction {
-  txHash: string;
+  txHash: string | null;
   type: string;
   amountUsdc: string;
   status: string;

@@ -483,9 +483,6 @@ export class AdminAuthService {
 
   async getPublicTransactions(page: number, limit: number) {
     const [transactions, total] = await this.txRepo.findAndCount({
-      where: {
-        txHash: Not(IsNull()),
-      },
       select: ['txHash', 'type', 'amountUsdc', 'status', 'createdAt', 'network'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
