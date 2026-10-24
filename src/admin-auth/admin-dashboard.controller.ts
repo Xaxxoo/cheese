@@ -33,6 +33,20 @@ export class AdminDashboardController {
     return this.adminAuthService.getVolumeChart(days === '7' ? 7 : 30);
   }
 
+  // ── GET /admin/public-stats/transactions (no auth) ─────────────────────────
+  @Get('public-stats/transactions')
+  @Public()
+  @ApiOperation({ summary: 'Public paginated transaction hashes (no auth required)' })
+  getPublicTransactions(
+    @Query('page')  page?:  string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminAuthService.getPublicTransactions(
+      Math.max(1, parseInt(page ?? '1', 10)),
+      Math.min(100, parseInt(limit ?? '20', 10)),
+    );
+  }
+
   // ── GET /admin/stats ───────────────────────────────────────────────────────
   @Get('stats')
   @UseGuards(AdminJwtGuard)

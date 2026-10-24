@@ -33,3 +33,27 @@ export async function fetchPublicChart(days: number = 30): Promise<ChartPoint[]>
   );
   return data.data;
 }
+
+export interface PublicTransaction {
+  txHash: string;
+  type: string;
+  amountUsdc: string;
+  status: string;
+  createdAt: string;
+  network: string | null;
+}
+
+export interface PublicTransactionsResponse {
+  transactions: PublicTransaction[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function fetchPublicTransactions(page: number, limit: number = 20): Promise<PublicTransactionsResponse> {
+  const { data } = await axios.get<PublicTransactionsResponse>(
+    `${API_URL}${ENDPOINTS.PUBLIC_STATS.TRANSACTIONS}`,
+    { params: { page, limit } },
+  );
+  return data;
+}

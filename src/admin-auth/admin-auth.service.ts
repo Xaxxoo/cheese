@@ -11,7 +11,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, MoreThanOrEqual, Repository } from 'typeorm';
+import { In, IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { User, AdminRole, KycStatus, Tier, WalletStatus } from '../auth/entities/user.entity';
@@ -477,6 +477,23 @@ export class AdminAuthService {
         black: blackCount,
       },
     };
+  }
+
+  // ── Public transaction hashes (no auth) ─────────────────────────────────
+
+  async getPublicTransactions(page: number, limit: number) {
+    const [transactions, total] = await this.txRepo.findAndCount({
+      where: {
+        txHash: Not(IsNull()),
+        status: TxStatus.COMPLETED,
+      },
+      select: ['txHash', 'type', 'amountUsdc', 'status', 'createdAt', 'network'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { transactions, total, page, limit };
   }
 
   // ── User listing ──────────────────────────────────────────────────────────

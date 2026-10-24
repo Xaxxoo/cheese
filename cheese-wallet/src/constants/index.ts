@@ -172,8 +172,9 @@ export const ENDPOINTS = {
 
   // ── Public Stats ───────────────────────────────────
   PUBLIC_STATS: {
-    METRICS:     '/admin/public-stats',
-    CHART:       '/admin/public-stats/chart',
+    METRICS:      '/admin/public-stats',
+    CHART:        '/admin/public-stats/chart',
+    TRANSACTIONS: '/admin/public-stats/transactions',
   },
 
   // ── Bridge (non-Nigeria off-ramp) ─────────────────
@@ -247,6 +248,7 @@ export const QUERY_KEYS = {
   // Public Stats
   PUBLIC_STATS:         ['public', 'stats'] as const,
   PUBLIC_CHART:         (days: number) => ['public', 'chart', days] as const,
+  PUBLIC_TRANSACTIONS:  (page: number) => ['public', 'transactions', page] as const,
 
   // Bridge
   BRIDGE_COUNTRIES:     ['bridge', 'countries'] as const,

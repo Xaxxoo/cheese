@@ -4,8 +4,8 @@ import { useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { QUERY_KEYS } from '@/constants'
-import { fetchPublicStats, fetchPublicChart } from '@/lib/api/stats'
-import type { PublicStats, ChartPoint } from '@/lib/api/stats'
+import { fetchPublicStats, fetchPublicChart, fetchPublicTransactions } from '@/lib/api/stats'
+import type { PublicStats, ChartPoint, PublicTransactionsResponse } from '@/lib/api/stats'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,6 +131,7 @@ export function PlatformStatsSection() {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-100px' })
   const [chartDays, setChartDays] = useState<7 | 30>(30)
+  const [txPage, setTxPage] = useState(1)
 
   const { data: stats, isLoading: statsLoading } = useQuery<PublicStats>({
     queryKey: QUERY_KEYS.PUBLIC_STATS,
@@ -145,6 +146,15 @@ export function PlatformStatsSection() {
     refetchInterval: 60_000,
     staleTime: 30_000,
   })
+
+  const TX_LIMIT = 20
+  const { data: txData, isLoading: txLoading } = useQuery<PublicTransactionsResponse>({
+    queryKey: QUERY_KEYS.PUBLIC_TRANSACTIONS(txPage),
+    queryFn: () => fetchPublicTransactions(txPage, TX_LIMIT),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
+  const txTotalPages = txData ? Math.ceil(txData.total / TX_LIMIT) : 0
 
   return (
     <section ref={ref} id="stats" className="py-32 px-6" style={{ background: '#080808' }}>
@@ -288,6 +298,110 @@ export function PlatformStatsSection() {
               <TierBadge tier="Black" count={stats.tierDistribution.black} color="#F5EED8" />
             </div>
           ) : null}
+        </motion.div>
+
+        {/* Transaction Hashes */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.4, duration: 0.6 }}
+          className="rounded-xl p-6 border mt-6"
+          style={{ background: '#050505', borderColor: 'rgba(255,255,255,0.06)' }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="text-white text-sm font-semibold">Transaction Hashes</div>
+              <div className="text-[10px] text-[#444] mt-0.5">
+                On-chain transactions &mdash; publicly verifiable on Stellar
+              </div>
+            </div>
+            {txData && (
+              <div className="text-[10px] text-[#444]">{txData.total.toLocaleString()} transactions</div>
+            )}
+          </div>
+
+          {txLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10" />
+              ))}
+            </div>
+          ) : txData && txData.transactions.length > 0 ? (
+            <>
+              {/* Header row */}
+              <div
+                className="grid gap-4 px-4 py-2 text-[10px] uppercase tracking-[0.15em] text-[#555] font-medium border-b"
+                style={{ gridTemplateColumns: '1.5fr 0.8fr 0.8fr 1fr', borderColor: 'rgba(255,255,255,0.06)' }}
+              >
+                <div>Hash</div>
+                <div>Type</div>
+                <div className="text-right">Amount</div>
+                <div className="text-right">Date</div>
+              </div>
+
+              {/* Data rows */}
+              {txData.transactions.map((tx) => (
+                <div
+                  key={tx.txHash}
+                  className="grid gap-4 px-4 py-3 border-b transition-colors hover:bg-[#0B0B0B]"
+                  style={{ gridTemplateColumns: '1.5fr 0.8fr 0.8fr 1fr', borderColor: 'rgba(255,255,255,0.04)' }}
+                >
+                  <div className="min-w-0">
+                    <a
+                      href={`https://stellar.expert/explorer/public/tx/${tx.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-mono truncate block transition-colors"
+                      style={{ color: 'rgba(212,175,55,0.7)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#D4AF37')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(212,175,55,0.7)')}
+                      title={tx.txHash}
+                    >
+                      {tx.txHash.slice(0, 8)}...{tx.txHash.slice(-8)}
+                    </a>
+                  </div>
+                  <div className="text-xs text-[#888] capitalize">{tx.type.replace(/_/g, ' ')}</div>
+                  <div className="text-xs text-white text-right font-medium">
+                    ${parseFloat(tx.amountUsdc).toFixed(2)}
+                  </div>
+                  <div className="text-xs text-[#555] text-right">
+                    {new Date(tx.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Pagination */}
+              {txTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <button
+                    onClick={() => setTxPage((p) => Math.max(1, p - 1))}
+                    disabled={txPage <= 1}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-md border transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ borderColor: 'rgba(255,255,255,0.06)', color: '#888', background: '#080808' }}
+                  >
+                    Prev
+                  </button>
+                  <span className="text-[10px] text-[#555]">
+                    Page {txPage} of {txTotalPages}
+                  </span>
+                  <button
+                    onClick={() => setTxPage((p) => Math.min(txTotalPages, p + 1))}
+                    disabled={txPage >= txTotalPages}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-md border transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ borderColor: 'rgba(255,255,255,0.06)', color: '#888', background: '#080808' }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="h-24 flex items-center justify-center text-[#333] text-sm">No transactions yet</div>
+          )}
         </motion.div>
       </div>
     </section>
