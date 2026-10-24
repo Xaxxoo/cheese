@@ -485,7 +485,6 @@ export class AdminAuthService {
     const [transactions, total] = await this.txRepo.findAndCount({
       where: {
         txHash: Not(IsNull()),
-        status: TxStatus.COMPLETED,
       },
       select: ['txHash', 'type', 'amountUsdc', 'status', 'createdAt', 'network'],
       order: { createdAt: 'DESC' },
