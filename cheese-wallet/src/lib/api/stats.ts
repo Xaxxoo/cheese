@@ -51,9 +51,9 @@ export interface PublicTransactionsResponse {
 }
 
 export async function fetchPublicTransactions(page: number, limit: number = 20): Promise<PublicTransactionsResponse> {
-  const { data } = await axios.get<PublicTransactionsResponse>(
+  const { data } = await axios.get<{ data: PublicTransactionsResponse }>(
     `${API_URL}${ENDPOINTS.PUBLIC_STATS.TRANSACTIONS}`,
     { params: { page, limit } },
   );
-  return data;
+  return data.data;
 }
