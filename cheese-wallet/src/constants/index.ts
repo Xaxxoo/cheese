@@ -137,9 +137,11 @@ export const ENDPOINTS = {
 
   // ── KYC ───────────────────────────────────────────────
   KYC: {
-    STATUS:           '/kyc/status',
-    VERIFY_BVN:       '/kyc/verify/bvn',
-    VERIFY_NIN:       '/kyc/verify/nin',
+    STATUS:               '/kyc/status',
+    BVN_INITIATE:         '/kyc/verify/bvn/initiate',
+    BVN_COMPLETE:         '/kyc/verify/bvn/complete',
+    NIN_INITIATE:         '/kyc/verify/nin/initiate',
+    NIN_COMPLETE:         '/kyc/verify/nin/complete',
   },
 
   // ── Profile / KYC ────────────────────────────────────
@@ -231,6 +233,9 @@ export const QUERY_KEYS = {
 
   // Notifications
   NOTIFICATIONS:        ['notifications'] as const,
+
+  // KYC
+  KYC_STATUS:           ['kyc', 'status'] as const,
 
   // Referral
   REFERRAL:             ['referral'] as const,
