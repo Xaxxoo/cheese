@@ -7,6 +7,7 @@ export interface PublicStats {
   totalTransactions: number;
   activeWallets: number;
   totalVolumeUsdc: number;
+  avgMonthlyTransactions: number;
   tierDistribution: {
     silver: number;
     gold: number;

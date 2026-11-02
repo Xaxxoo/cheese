@@ -225,17 +225,18 @@ export function PlatformStatsSection() {
 
         {/* KPI Cards */}
         {statsLoading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-10">
+            {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-28" />
             ))}
           </div>
         ) : stats ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-10">
             <KpiCard label="Total Users" value={fmt(stats.totalUsers)} sub={`${fmt(stats.verifiedUsers)} verified`} delay={0} inView={inView} />
             <KpiCard label="Total Volume" value={fmtUsd(stats.totalVolumeUsdc)} sub="USDC settled" delay={0.1} inView={inView} />
             <KpiCard label="Transactions" value={fmt(stats.totalTransactions)} delay={0.2} inView={inView} />
-            <KpiCard label="Stellar Wallets" value={fmt(stats.activeWallets)} sub="Active on network" delay={0.3} inView={inView} />
+            <KpiCard label="Avg Monthly Txns" value={fmt(stats.avgMonthlyTransactions ?? 0)} sub="Per month" delay={0.3} inView={inView} />
+            <KpiCard label="Stellar Wallets" value={fmt(stats.activeWallets)} sub="Active on network" delay={0.4} inView={inView} />
           </div>
         ) : null}
 
