@@ -319,18 +319,55 @@ export async function getReferralInfo(): Promise<ReferralInfo> {
 }
 
 // ── KYC ───────────────────────────────────────────────────
-export async function verifyBvn(bvn: string): Promise<{ kycStatus: string; tier: string }> {
-  const { data } = await apiClient.post<ApiResponse<{ kycStatus: string; tier: string }>>(
-    ENDPOINTS.KYC.VERIFY_BVN,
+export interface KycInitiateResult {
+  sessionId: string
+  maskedPhone: string
+}
+
+export interface KycCompleteResult {
+  status: string
+  message: string
+}
+
+export interface KycStatusResult {
+  kycStatus: string
+  tier: string
+  attempts: { type: string; status: string; createdAt: string }[]
+}
+
+export async function getKycStatus(): Promise<KycStatusResult> {
+  const { data } = await apiClient.get<ApiResponse<KycStatusResult>>(ENDPOINTS.KYC.STATUS)
+  return data.data
+}
+
+export async function initiateBvn(bvn: string): Promise<KycInitiateResult> {
+  const { data } = await apiClient.post<ApiResponse<KycInitiateResult>>(
+    ENDPOINTS.KYC.BVN_INITIATE,
     { bvn },
   )
   return data.data
 }
 
-export async function verifyNin(nin: string): Promise<{ kycStatus: string; tier: string }> {
-  const { data } = await apiClient.post<ApiResponse<{ kycStatus: string; tier: string }>>(
-    ENDPOINTS.KYC.VERIFY_NIN,
+export async function completeBvn(sessionId: string, otp: string): Promise<KycCompleteResult> {
+  const { data } = await apiClient.post<ApiResponse<KycCompleteResult>>(
+    ENDPOINTS.KYC.BVN_COMPLETE,
+    { sessionId, otp },
+  )
+  return data.data
+}
+
+export async function initiateNin(nin: string): Promise<KycInitiateResult> {
+  const { data } = await apiClient.post<ApiResponse<KycInitiateResult>>(
+    ENDPOINTS.KYC.NIN_INITIATE,
     { nin },
+  )
+  return data.data
+}
+
+export async function completeNin(sessionId: string, otp: string): Promise<KycCompleteResult> {
+  const { data } = await apiClient.post<ApiResponse<KycCompleteResult>>(
+    ENDPOINTS.KYC.NIN_COMPLETE,
+    { sessionId, otp },
   )
   return data.data
 }
