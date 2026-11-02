@@ -450,6 +450,7 @@ export class AdminAuthService {
       goldCount,
       blackCount,
       volumeResult,
+      earliestTx,
     ] = await Promise.all([
       this.userRepo.count({ where: { isAdmin: false } }),
       this.userRepo.count({ where: { isAdmin: false, kycStatus: KycStatus.VERIFIED } }),
@@ -463,7 +464,21 @@ export class AdminAuthService {
         .select('SUM(CAST(t.amount_usdc AS DECIMAL(20,6)))', 'total')
         .where('t.status = :s', { s: TxStatus.COMPLETED })
         .getRawOne<{ total: string }>(),
+      this.txRepo
+        .createQueryBuilder('t')
+        .select('MIN(t.createdAt)', 'earliest')
+        .getRawOne<{ earliest: string | null }>(),
     ]);
+
+    let avgMonthlyTransactions = 0;
+    if (earliestTx?.earliest && totalTransactions > 0) {
+      const firstDate = new Date(earliestTx.earliest);
+      const now = new Date();
+      const monthsElapsed =
+        (now.getFullYear() - firstDate.getFullYear()) * 12 +
+        (now.getMonth() - firstDate.getMonth()) || 1;
+      avgMonthlyTransactions = Math.round(totalTransactions / monthsElapsed);
+    }
 
     return {
       totalUsers,
@@ -471,6 +486,7 @@ export class AdminAuthService {
       totalTransactions,
       activeWallets,
       totalVolumeUsdc: parseFloat(volumeResult?.total ?? '0') || 0,
+      avgMonthlyTransactions,
       tierDistribution: {
         silver: silverCount,
         gold: goldCount,
