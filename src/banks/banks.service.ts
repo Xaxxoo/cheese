@@ -1103,6 +1103,44 @@ export class BanksService {
             ? BankTransferStatus.REVERSED
             : BankTransferStatus.FAILED;
 
+        // Atomically claim the failure — the webhook and the status poller can
+        // fire at nearly the same time. Only the handler that flips
+        // pending/processing → failed/reversed may issue the refund.
+        const claim = await this.transferRepo.update(
+          {
+            id: transfer.id,
+            status: In([
+              BankTransferStatus.PENDING,
+              BankTransferStatus.PROCESSING,
+            ]),
+          },
+          {
+            status: newStatus,
+            failureReason: dto.failureReason ?? dto.event,
+          },
+        );
+
+        if (claim.affected !== 1) {
+          this.logger.warn(
+            `Webhook received for already-settled transfer [ref=${dto.reference}] ` +
+              `[status=${transfer.status}]`,
+          );
+          return {
+            alreadyProcessed: true,
+            reference: transfer.reference,
+            providerReference: transfer.providerReference,
+            status: transfer.status,
+          };
+        }
+
+        await this.txService.updateByReference(transfer.reference, {
+          status:
+            newStatus === BankTransferStatus.REVERSED
+              ? TxStatus.REVERSED
+              : TxStatus.FAILED,
+          failureReason: dto.failureReason ?? dto.event,
+        });
+
         const user = await this.userRepo.findOne({
           where: { id: transfer.userId },
         });
@@ -1125,21 +1163,6 @@ export class BanksService {
             `Cannot refund — user ${transfer.userId} has no wallet [ref=${transfer.reference}]`,
           );
         }
-
-        await this.transferRepo.update(
-          { id: transfer.id },
-          {
-            status: newStatus,
-            failureReason: dto.failureReason ?? dto.event,
-          },
-        );
-        await this.txService.updateByReference(transfer.reference, {
-          status:
-            newStatus === BankTransferStatus.REVERSED
-              ? TxStatus.REVERSED
-              : TxStatus.FAILED,
-          failureReason: dto.failureReason ?? dto.event,
-        });
 
         this.logger.log(
           `Bank transfer ${dto.event} [ref=${transfer.reference}] ` +
