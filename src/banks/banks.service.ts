@@ -1726,8 +1726,17 @@ export class BanksService {
     evmChainId?: number | null;
     stellarAmount?: string | null;
   }): Promise<void> {
-    // Determine what to refund per chain
-    const stellarRefund = opts.stellarAmount ?? opts.amountUsdc;
+    // Determine what to refund per chain.
+    // When explicit per-chain amounts exist (split-debit), use them directly.
+    // Fall back to amountUsdc only for legacy transfers with no split data
+    // (which were always Stellar-only).  Without this guard, EVM-only
+    // transfers (stellarAmount=null, evmAmount=amountUsdc) would incorrectly
+    // refund the full amount to Stellar AND EVM — a double refund that
+    // drains the platform wallet and eventually causes all refunds to fail.
+    const hasSplitData = opts.stellarAmount != null || opts.evmAmount != null;
+    const stellarRefund = hasSplitData
+      ? (opts.stellarAmount ?? '0')
+      : opts.amountUsdc;
     const shouldRefundStellar = parseFloat(stellarRefund) > 0;
     const shouldRefundEvm =
       opts.evmWalletAddress && opts.evmAmount && parseFloat(opts.evmAmount) > 0;
