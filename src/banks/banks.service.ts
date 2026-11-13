@@ -25,7 +25,7 @@ import {
   BankTransferStatus,
 } from './entities/bank-transfer.entity';
 import { BankDeposit, BankDepositStatus } from './entities/bank-deposit.entity';
-import { BankTransferDto, BankWebhookDto, ResolveAccountDto } from './dto';
+import { BankTransferDto, BankWebhookDto, ResolveAccountDto, WebhookEvent } from './dto';
 import { PulseMfbClient } from './pulsemfb.client';
 import { KycStatus } from '../auth/entities/user.entity';
 import { DAILY_NGN_LIMIT, formatNgnLimit } from '../kyc/tier.limits';
@@ -1571,11 +1571,13 @@ export class BanksService {
       return { processed: false, reason: 'missing reference' };
     }
 
-    let internalEvent: 'transfer.success' | 'transfer.failed';
+    let internalEvent: WebhookEvent;
     if (event === 'transfer.completed') {
       internalEvent = 'transfer.success';
     } else if (event === 'transfer.failed') {
       internalEvent = 'transfer.failed';
+    } else if (event === 'transfer.reversed') {
+      internalEvent = 'transfer.reversed';
     } else {
       this.logger.log(
         `PulseMFB webhook [event=${event}] [ref=${reference}] — ignored (unsupported transfer event)`,
