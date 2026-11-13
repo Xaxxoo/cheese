@@ -162,15 +162,15 @@ export class BanksScheduler {
       return;
     }
 
-    if (remoteStatus === 'failed') {
+    if (remoteStatus === 'failed' || remoteStatus === 'reversed') {
       try {
         await this.banksService.processWebhook({
           reference: transfer.reference,
           event: 'transfer.failed',
-          failureReason: 'Failed — detected via scheduled status poll',
+          failureReason: `${remoteStatus === 'reversed' ? 'Reversed' : 'Failed'} — detected via scheduled status poll`,
         });
         this.logger.log(
-          `Stuck transfer resolved FAILED [ref=${transfer.reference}] [age=${ageMin}m] [queryRef=${queryRef}]`,
+          `Stuck transfer resolved ${remoteStatus.toUpperCase()} [ref=${transfer.reference}] [age=${ageMin}m] [queryRef=${queryRef}]`,
         );
       } catch (err) {
         this.logger.error(
